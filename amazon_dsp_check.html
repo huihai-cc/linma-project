@@ -1,0 +1,4096 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amazon DSP 設定チェック</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI','Noto Sans SC',sans-serif; background:#f5f5f5; color:#333; min-height:100vh; }
+header { background:#2c3e50; color:white; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
+header h1 { font-size:1.2rem; letter-spacing:1px; }
+.badge { background:#27ae60; border-radius:12px; padding:3px 12px; font-size:0.75rem; }
+.back-nav { background:#34495e; padding:8px 20px; display:flex; align-items:center; gap:12px; }
+.back-btn { background:#2980b9; color:white; border:none; border-radius:4px; padding:5px 14px; font-size:0.82rem; cursor:pointer; text-decoration:none; display:inline-block; }
+.back-btn:hover { background:#1a6fa8; }
+
+/* 子タイプ選択エリア */
+.system-select-bar {
+    background:white;
+    border-bottom:2px solid #e0e0e0;
+    padding:16px 20px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    flex-wrap:wrap;
+}
+.system-select-bar label {
+    font-size:0.88rem;
+    font-weight:bold;
+    color:#2c3e50;
+    white-space:nowrap;
+}
+.system-select-bar select {
+    border:2px solid #3498db;
+    border-radius:6px;
+    padding:7px 14px;
+    font-size:0.92rem;
+    background:white;
+    color:#2c3e50;
+    cursor:pointer;
+    outline:none;
+    min-width:200px;
+    transition:border-color 0.2s;
+}
+.system-select-bar select:focus {
+    border-color:#1a6fa8;
+}
+#sc-system-badge {
+    display:none;
+    color:white;
+    border-radius:12px;
+    padding:4px 16px;
+    font-size:0.82rem;
+    font-weight:bold;
+}
+
+/* アップロードエリア */
+#sc-upload-area {
+    display:none;
+    padding:0 20px 20px;
+}
+
+/* 以下はindex.htmlのscriptが使うIDを持つ要素のベーススタイル */
+/* script側のスタイルで上書きされるため、最低限のみ定義 */
+.sc-progress {
+    display:none;
+    background:#e8f0ff;
+    border:1px solid #3498db;
+    border-radius:6px;
+    padding:12px 16px;
+    margin:12px 20px;
+    font-size:0.85rem;
+    color:#1a5276;
+}
+.sc-progress.show { display:block; }
+</style>
+<script>
+// エスケープ関数
+function esc(str){
+    if(str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+}
+
+const LibLoader = {
+    loadXLSX: function(){
+        return new Promise((resolve, reject)=>{
+            if(typeof XLSX !== 'undefined'){ resolve(); return; }
+            const s = document.createElement('script');
+            s.src = 'xlsx.full.min.js';
+            s.onload = resolve;
+            s.onerror = ()=> reject(new Error('xlsx.full.min.js の読み込みに失敗しました'));
+            document.head.appendChild(s);
+        });
+    }
+};
+</script>
+</head>
+<body>
+
+<header>
+  <h1>✅ Amazon DSP 設定チェック</h1>
+  <span class="badge">🔒 完全本地运行</span>
+</header>
+
+<div class="back-nav">
+  <a href="index.html" class="back-btn">← 返回导航页</a>
+  <span style="color:#bdc3c7;font-size:0.82rem;">Amazon DSP 広告設定の自動チェック</span>
+</div>
+
+<!-- 子タイプ選択 -->
+<div class="system-select-bar">
+  <label for="sc-system-select">📋 チェック対象：</label>
+  <select id="sc-system-select">
+    <option value="">-- 子类型を選択してください --</option>
+    <option value="amazon_dsp">Amazon DSP（Display）</option>
+    <option value="amazon_pva">Amazon DSP（PVA）</option>
+    <option value="amazon_ott">Amazon OTT</option>
+  </select>
+  <span id="sc-system-badge"></span>
+</div>
+
+<!-- アップロード＆結果エリア -->
+<div id="sc-upload-area" style="display:none; padding:0 20px 20px;">
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px 0;">
+
+    <div>
+      <div style="font-size:0.82rem;font-weight:bold;color:#2c3e50;margin-bottom:6px;">
+        📋 設定表
+      </div>
+      <div id="sc-drop-setting"
+           style="border:2px dashed #3498db;border-radius:8px;padding:30px;
+                  text-align:center;cursor:pointer;background:#f0f7ff;
+                  min-height:140px;display:flex;flex-direction:column;
+                  align-items:center;justify-content:center;transition:all 0.3s;">
+        <div style="font-size:2rem;margin-bottom:8px;">📋</div>
+        <div style="color:#2980b9;font-size:0.92rem;font-weight:bold;">拖入設定表</div>
+        <div style="color:#999;font-size:0.75rem;margin-top:6px;">支持 .xlsx / .xls（複数可）</div>
+        <input type="file" id="sc-input-setting" accept=".xlsx,.xls" multiple style="display:none">
+      </div>
+      <div id="sc-setting-info" style="margin-top:4px;font-size:0.78rem;"></div>
+    </div>
+
+    <div>
+      <div style="font-size:0.82rem;font-weight:bold;color:#2c3e50;margin-bottom:6px;">
+        📥 ダウンロードデータ
+      </div>
+      <div id="sc-drop-download"
+           style="border:2px dashed #27ae60;border-radius:8px;padding:30px;
+                  text-align:center;cursor:pointer;background:#f0fff4;
+                  min-height:140px;display:flex;flex-direction:column;
+                  align-items:center;justify-content:center;transition:all 0.3s;">
+        <div style="font-size:2rem;margin-bottom:8px;">📥</div>
+        <div style="color:#27ae60;font-size:0.92rem;font-weight:bold;">拖入ダウンロードデータ</div>
+        <div style="color:#999;font-size:0.75rem;margin-top:6px;">支持 .xlsx / .xls（複数可）</div>
+        <input type="file" id="sc-input-download" accept=".xlsx,.xls" multiple style="display:none">
+      </div>
+      <div id="sc-download-info" style="margin-top:4px;font-size:0.78rem;"></div>
+    </div>
+
+  </div>
+
+  <div id="sc-controls"
+       style="display:none;align-items:center;gap:10px;padding:10px 0;flex-wrap:wrap;">
+    <button onclick="runSettingCheck()"
+        style="background:#e74c3c;color:white;border:none;border-radius:6px;
+               padding:8px 20px;font-size:0.88rem;font-weight:bold;cursor:pointer;">
+        🔍 チェック開始
+    </button>
+    <button onclick="resetSettingCheck()"
+        style="background:#95a5a6;color:white;border:none;border-radius:6px;
+               padding:8px 20px;font-size:0.88rem;font-weight:bold;cursor:pointer;">
+        🗑️ リセット
+    </button>
+  </div>
+
+  <div id="sc-filter-btns"
+       style="display:none;align-items:center;gap:8px;padding:8px 0;flex-wrap:wrap;">
+    <span style="font-size:0.8rem;color:#888;">表示：</span>
+    <button id="sc-btn-all"
+        onclick="scFilterResult('all')"
+        style="background:#2980b9;color:white;border:none;border-radius:4px;
+               padding:4px 14px;font-size:0.8rem;cursor:pointer;">
+        全て
+    </button>
+    <button id="sc-btn-mismatch"
+        onclick="scFilterResult('mismatch')"
+        style="background:transparent;color:#666;border:1px solid #ddd;border-radius:4px;
+               padding:4px 14px;font-size:0.8rem;cursor:pointer;">
+        ❌ 不一致のみ
+    </button>
+    <button id="sc-btn-match"
+        onclick="scFilterResult('match')"
+        style="background:transparent;color:#666;border:1px solid #ddd;border-radius:4px;
+               padding:4px 14px;font-size:0.8rem;cursor:pointer;">
+        ✅ 一致のみ
+    </button>
+  </div>
+
+  <div id="sc-progress"
+       style="display:none;background:#e8f0ff;border:1px solid #3498db;
+              border-radius:6px;padding:12px 16px;margin:8px 0;
+              font-size:0.85rem;color:#1a5276;">
+  </div>
+
+  <div id="sc-result-area"></div>
+
+</div>
+
+<!-- ========== 設定チェック ========== -->
+<script>
+(function(){
+
+// ===== 状態変数 =====
+const SC_COL_NO_W  = 40;
+const SC_COL_LI_W  = 180;
+let scSystem = '';
+let scFilesS = [];   // 複数設定表
+let scFilesD = [];   // 複数ダウンロードデータ
+let scWbsS   = [];   // 読み込み済みWB（設定表）
+let scWbsD   = [];   // 読み込み済みWB（ダウンロード）
+let scResults = null;
+let scCurrentFilter = 'all';
+let _scKissonVisible = false;
+
+const SC_SYSTEMS = {
+    amazon_dsp: { label: 'Amazon DSP（Display）', color: '#FF9900', badge_bg: '#FF9900' },
+    amazon_pva: { label: 'Amazon DSP（PVA）',     color: '#e74c3c', badge_bg: '#e74c3c' },
+    amazon_ott: { label: 'Amazon OTT', color: '#8e44ad', badge_bg: '#8e44ad' },
+};
+
+// ===== 初期化 =====
+document.addEventListener('DOMContentLoaded', function(){
+    document.getElementById('sc-system-select').addEventListener('change', function(){
+        scSystem = this.value;
+        if(scSystem && SC_SYSTEMS[scSystem]){
+            const sys = SC_SYSTEMS[scSystem];
+            const badge = document.getElementById('sc-system-badge');
+            badge.textContent = sys.label;
+            badge.style.background = sys.badge_bg;
+            badge.style.display = 'inline-block';
+            document.getElementById('sc-upload-area').style.display = 'block';
+        } else {
+            document.getElementById('sc-system-badge').style.display = 'none';
+            document.getElementById('sc-upload-area').style.display = 'none';
+        }
+    });
+    initScMultiDrop('setting');
+    initScMultiDrop('download');
+});
+
+// ===== 複数ファイルドロップ初期化 =====
+function initScMultiDrop(side){
+    const drop  = document.getElementById('sc-drop-'+side);
+    const input = document.getElementById('sc-input-'+side);
+    if(!drop || !input) return;
+
+    // 複数選択を有効化
+    input.setAttribute('multiple', 'multiple');
+
+    drop.addEventListener('click', ()=> input.click());
+    input.addEventListener('change', e=>{
+        if(e.target.files && e.target.files.length > 0){
+            handleScFiles(side, Array.from(e.target.files));
+        }
+    });
+    drop.addEventListener('dragover',  e=>{ e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', ()=> drop.classList.remove('dragover'));
+    drop.addEventListener('drop', e=>{
+        e.preventDefault(); drop.classList.remove('dragover');
+        if(e.dataTransfer.files && e.dataTransfer.files.length > 0){
+            handleScFiles(side, Array.from(e.dataTransfer.files));
+        }
+    });
+}
+
+// ===== 複数ファイル処理 =====
+function handleScFiles(side, files){
+    const validFiles = files.filter(f => f.name.match(/\.(xlsx|xls)$/i));
+    if(!validFiles.length){ alert('Excelファイル（.xlsx / .xls）を選択してください'); return; }
+
+    if(side === 'setting'){
+        // 追加モード（既存リストに追加）
+        validFiles.forEach(f => {
+            if(!scFilesS.find(existing => existing.name === f.name)){
+                scFilesS.push(f);
+            }
+        });
+    } else {
+        validFiles.forEach(f => {
+            if(!scFilesD.find(existing => existing.name === f.name)){
+                scFilesD.push(f);
+            }
+        });
+    }
+
+    renderScFileList(side);
+
+    if(scFilesS.length > 0 && scFilesD.length > 0){
+        document.getElementById('sc-controls').style.display = 'flex';
+        document.getElementById('sc-controls').style.flexWrap = 'wrap';
+    }
+}
+
+// ===== ファイルリスト表示 =====
+function renderScFileList(side){
+    const files = side === 'setting' ? scFilesS : scFilesD;
+    const drop  = document.getElementById('sc-drop-'+side);
+    const icon  = side === 'setting' ? '📋' : '📥';
+    const label = side === 'setting' ? '設定表' : 'ダウンロードデータ';
+
+    if(files.length === 0){
+        drop.innerHTML = `
+            <div class="drop-icon">${icon}</div>
+            <div class="drop-text">拖入${label}</div>
+            <div class="drop-sub">支持 .xlsx / .xls（複数可）</div>
+            <input type="file" id="sc-input-${side}" accept=".xlsx,.xls" multiple style="display:none">
+        `;
+        initScMultiDrop(side);
+        return;
+    }
+
+    let listHtml = files.map((f, idx) => `
+        <div style="display:flex;align-items:center;gap:6px;background:white;
+                    border:1px solid #d0e8d0;border-radius:6px;padding:5px 10px;
+                    margin-bottom:4px;font-size:0.78rem;">
+            <span style="color:#27ae60;flex-shrink:0;">✅</span>
+            <span style="flex:1;word-break:break-all;color:#333;">${f.name}</span>
+            <span style="color:#999;flex-shrink:0;">${(f.size/1024).toFixed(0)}KB</span>
+            <button onclick="scRemoveFile('${side}', ${idx})"
+                style="background:#e74c3c;color:white;border:none;border-radius:3px;
+                       padding:1px 6px;font-size:0.72rem;cursor:pointer;flex-shrink:0;">✕</button>
+        </div>
+    `).join('');
+
+    drop.innerHTML = `
+        <div style="width:100%;max-height:120px;overflow-y:auto;padding:4px 0;">
+            ${listHtml}
+        </div>
+        <div style="margin-top:6px;font-size:0.75rem;color:#27ae60;font-weight:bold;text-align:center;">
+            ${icon} ${files.length}件 ／ クリックして追加
+        </div>
+        <input type="file" id="sc-input-${side}" accept=".xlsx,.xls" multiple style="display:none">
+    `;
+
+    // clickで追加
+    drop.onclick = null;
+    drop.addEventListener('click', e=>{
+        if(e.target.tagName !== 'BUTTON'){
+            document.getElementById('sc-input-'+side).click();
+        }
+    });
+
+    // drag再初期化
+    const input = document.getElementById('sc-input-'+side);
+    input.addEventListener('change', ev=>{
+        if(ev.target.files && ev.target.files.length > 0){
+            handleScFiles(side, Array.from(ev.target.files));
+        }
+    });
+    drop.addEventListener('dragover',  e=>{ e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', ()=> drop.classList.remove('dragover'));
+    drop.addEventListener('drop', e=>{
+        e.preventDefault(); drop.classList.remove('dragover');
+        if(e.dataTransfer.files && e.dataTransfer.files.length > 0){
+            handleScFiles(side, Array.from(e.dataTransfer.files));
+        }
+    });
+
+    // infoエリア更新
+    const infoEl = document.getElementById('sc-'+(side==='setting'?'setting':'download')+'-info');
+    if(infoEl) infoEl.innerHTML = `<span style="color:#27ae60;">✅ ${files.length}件選択済み</span>`;
+}
+
+// ===== ファイル削除 =====
+window.scRemoveFile = function(side, idx){
+    if(side === 'setting'){
+        scFilesS.splice(idx, 1);
+    } else {
+        scFilesD.splice(idx, 1);
+    }
+    renderScFileList(side);
+
+    if(scFilesS.length === 0 || scFilesD.length === 0){
+        document.getElementById('sc-controls').style.display = 'none';
+    }
+};
+
+// ===== チェック実行 =====
+function runSettingCheck(){
+    if(!scFilesS.length || !scFilesD.length){ alert('設定表とダウンロードデータを両方アップロードしてください'); return; }
+    if(!scSystem){ alert('案件タイプを選択してください'); return; }
+    const progress = document.getElementById('sc-progress');
+    progress.textContent = '⏳ ファイルを読み込み中...';
+    progress.classList.add('show');
+    document.getElementById('sc-result-area').innerHTML = '';
+    LibLoader.loadXLSX().then(() => _runSettingCheck());
+}
+
+function _runSettingCheck(){
+    const progress = document.getElementById('sc-progress');
+    let doneS = 0, doneD = 0;
+    const wbsS = [], wbsD = [];
+
+    function tryProceed(){
+        if(doneS === scFilesS.length && doneD === scFilesD.length){
+            scWbsS = wbsS;
+            scWbsD = wbsD;
+            _doSettingCheck();
+        }
+    }
+
+    scFilesS.forEach((file, idx)=>{
+        readWb(file, wb=>{ wbsS[idx] = { wb, fileName: file.name }; doneS++; tryProceed(); });
+    });
+    scFilesD.forEach((file, idx)=>{
+        readWb(file, wb=>{ wbsD[idx] = { wb, fileName: file.name }; doneD++; tryProceed(); });
+    });
+}
+
+function readWb(file, cb){
+    const reader = new FileReader();
+    reader.onload = e=>{
+        const data = new Uint8Array(e.target.result);
+        const wb   = XLSX.read(data, {type:'array', cellStyles:true, cellNF:true, cellDates:true});
+        cb(wb);
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function _doSettingCheck(){
+    const progress = document.getElementById('sc-progress');
+    progress.textContent = '⏳ データ解析中...';
+    setTimeout(()=>{
+        try{
+            if(scSystem.startsWith('amazon')){
+                scResults = checkAmazon(scWbsS, scWbsD, scSystem);
+            } else {
+                scResults = { error: 'このシステムは未対応です。' };
+            }
+            document.getElementById('sc-progress').classList.remove('show');
+            renderScResult();
+        } catch(err){
+            document.getElementById('sc-progress').textContent = '❌ チェック失敗：' + err.message;
+            console.error(err);
+        }
+    }, 50);
+}
+
+// ===== 正規化・解析関数（変更なし） =====
+function normNum(v){
+    if(v === null || v === undefined || v === '') return '';
+    const s = String(v).replace(/[¥￥$€]/g,'').replace(/,/g,'').trim();
+    if(!s || s.toLowerCase() === 'nan' || s.toLowerCase() === 'none') return '';
+    const f = parseFloat(s);
+    if(isNaN(f)) return s;
+    return f === Math.floor(f) ? String(Math.floor(f)) : f.toFixed(2);
+}
+
+function _convertTo24h(timeStr){
+    if(!timeStr) return { hh:'00', mm:'00' };
+    const s = String(timeStr).trim();
+    const m24 = s.match(/^(\d{1,2})[：:](\d{2})$/);
+    if(m24) return { hh: m24[1].padStart(2,'0'), mm: m24[2] };
+    const m12 = s.match(/^(\d{1,2})[：:](\d{2})\s*(AM|PM)$/i);
+    if(m12){
+        let h = parseInt(m12[1]);
+        const mm = m12[2];
+        const period = m12[3].toUpperCase();
+        if(period === 'AM'){ if(h === 12) h = 0; }
+        else { if(h !== 12) h += 12; }
+        return { hh: String(h).padStart(2,'0'), mm };
+    }
+    return { hh:'00', mm:'00' };
+}
+
+function normDateTime(v){
+    if(!v) return '';
+    const s = String(v).trim();
+    if(/^\d{2}-\d{2}-\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = s.match(/(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+    if(m){
+        const { hh, mm } = _convertTo24h(`${m[4]}:${m[5]}`);
+        return `${m[2]}-${m[3]}-${m[1]}-${hh}-${mm}`;
+    }
+    try{
+        const parsed = new Date(s);
+        if(!isNaN(parsed)){
+            const mo = String(parsed.getMonth()+1).padStart(2,'0');
+            const d  = String(parsed.getDate()).padStart(2,'0');
+            const y  = parsed.getFullYear();
+            return `${mo}-${d}-${y}-00-00`;
+        }
+    } catch(e){}
+    return s;
+}
+
+function normDateTimeS(dayV, timeV){
+    if(!dayV) return '';
+    try{
+        const dayS = String(dayV).trim();
+        let dm = dayS.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if(!dm){
+            const num = parseFloat(dayS);
+            if(!isNaN(num) && num > 40000){
+                const date = new Date((num - 25569) * 86400 * 1000);
+                const y = date.getUTCFullYear();
+                const mo = String(date.getUTCMonth()+1).padStart(2,'0');
+                const d  = String(date.getUTCDate()).padStart(2,'0');
+                const { hh, mm } = _convertTo24h(String(timeV || ''));
+                return `${mo}-${d}-${y}-${hh}-${mm}`;
+            }
+            try{
+                const parsed = new Date(dayS);
+                if(!isNaN(parsed)){
+                    const y  = parsed.getFullYear();
+                    const mo = String(parsed.getMonth()+1).padStart(2,'0');
+                    const d  = String(parsed.getDate()).padStart(2,'0');
+                    const { hh, mm } = _convertTo24h(String(timeV || ''));
+                    return `${mo}-${d}-${y}-${hh}-${mm}`;
+                }
+            } catch(e){}
+            return dayS;
+        }
+        const { hh, mm } = _convertTo24h(String(timeV || ''));
+        return `${dm[2]}-${dm[3]}-${dm[1]}-${hh}-${mm}`;
+    } catch(e){ return String(dayV); }
+}
+
+function normSupplyS(v){
+    if(!v) return '';
+    const s = v.trim();
+    if(s.includes('Amazon内')) return 'on_amazon';
+    if(s.includes('Amazon外')) return 'off_amazon';
+    if(s.includes('全SSP') || s.toLowerCase().includes('all ssp')) return 'all_ssp';
+    return s.toLowerCase();
+}
+
+function getTwitchS(v){
+    if(!v) return '';
+    if(v.includes('Twitchなし')) return 'no_twitch';
+    if(v.includes('Twitchあり')) return 'twitch';
+    return '';
+}
+
+function judgeSSPFromThreeCols(owned, pubDirect, thirdParty){
+    const hasOwned    = /[○✓✔YES有]/i.test(String(owned || ''));
+    const hasPubDirect= /[○✓✔YES有]/i.test(String(pubDirect || ''));
+    const hasThird    = /[○✓✔YES有]/i.test(String(thirdParty || ''));
+    if(!hasOwned && !hasPubDirect && !hasThird) return { sSupplyNorm: '', sTwitchNorm: '' };
+    const amazonOn = hasOwned || hasPubDirect;
+    const thirdOn  = hasThird;
+    let sSupplyNorm = '';
+    if(amazonOn && thirdOn)  sSupplyNorm = 'all_ssp';
+    else if(amazonOn)        sSupplyNorm = 'on_amazon';
+    else if(thirdOn)         sSupplyNorm = 'off_amazon';
+    return { sSupplyNorm, sTwitchNorm: '' };
+}
+
+function judgeSupplyD(dSupply, sSupplyNorm, sTwitchNorm){
+    if(!dSupply) return { ok: false, reason: '後台Supply sourceが空です' };
+    const d = dSupply.toLowerCase();
+    const hasAmazon = d.includes('amazon');
+    const hasThird  = ['apd','aja','fluct','google adx','pubmatic','openx','magnite',
+        'index','yieldone','teads','triplelift','media.net','equativ','sovrn',
+        'improvedigital','inmobi','smaato','verizon','ironsource','kargo','ogury',
+        'sharethrough','nativo','microsoft monetize','gumgum','onetag','spotify',
+        'vungle','loopme','unity','unruly','yieldmo','mediagrid','exte'].some(k=>d.includes(k));
+    const hasTwitch = d.includes('twitch');
+    let supplyOk = false, supplyReason = '';
+    if(!sSupplyNorm){
+        supplyOk = true;
+    } else if(sSupplyNorm === 'on_amazon'){
+        supplyOk = hasAmazon && !hasThird;
+        if(!supplyOk) supplyReason = hasThird ?
+            '設定表はAmazon内ですが後台に第三者SSPが含まれています' :
+            '設定表はAmazon内ですが後台にAmazon系SSPが見つかりません';
+    } else if(sSupplyNorm === 'off_amazon'){
+        supplyOk = hasThird;
+        if(!supplyOk) supplyReason = '設定表はAmazon外ですが後台に第三者SSPが見つかりません';
+    } else if(sSupplyNorm === 'all_ssp'){
+        supplyOk = hasAmazon && hasThird;
+        if(!supplyOk) supplyReason = '設定表は全SSPですが後台にAmazon系または第三者SSPが不足しています';
+    }
+    let twitchOk = true, twitchReason = '';
+    if(sTwitchNorm === 'no_twitch' && hasTwitch){
+        twitchOk = false;
+        twitchReason = '設定表はTwitchなしですが後台にTwitchが含まれています';
+    } else if(sTwitchNorm === 'twitch' && !hasTwitch){
+        twitchOk = false;
+        twitchReason = '設定表はTwitchありですが後台にTwitchが見つかりません';
+    }
+    return { ok: supplyOk && twitchOk, supplyOk, twitchOk,
+             reason: [supplyReason, twitchReason].filter(r=>r).join('\n') };
+}
+
+function normPacing(v){
+    if(!v) return '';
+    const s = String(v).toLowerCase().trim();
+    if(s.includes('even') || s.includes('均等')) return 'even';
+    if(s.includes('frontload')) return 'frontloaded';
+    if(s.includes('asap')) return 'asap';
+    return s;
+}
+function normAutoOpt(v){
+    if(!v) return '';
+    const s = String(v).toLowerCase().trim();
+    if(s.includes('automat') || s.includes('optimize') || s.includes('allocation')) return 'yes';
+    if(s.includes('manual')) return 'no';
+    return s;
+}
+function normLocation(v){
+    if(!v) return 'japan';
+    const s = String(v).toLowerCase();
+    if(s.includes('japan')) return 'japan';
+    return s.trim();
+}
+function normMobileEnv(v){
+    if(!v) return 'both';
+    const s = String(v).toLowerCase().trim();
+    if(!s || s === 'nan' || s === 'none' || s === '無し' || s === 'all') return 'both';
+    if(s.includes('web') && s.includes('app')) return 'both';
+    if(s === 'both') return 'both';
+    if(s.includes('web')) return 'web';
+    if(s.includes('app')) return 'app';
+    return 'both';
+}
+function normFrequency(v){
+    if(!v) return '';
+    const s = String(v).trim();
+    if(!s || s === '●回/●日間' || s.toLowerCase() === 'nan') return '';
+    const m = s.match(/(\d+)\s*回\s*\/\s*(\d+)\s*(日|時|分)/);
+    if(m){ const u={'日':'days','時':'hours','分':'minutes'}; return `${m[1]}_${m[2]}_${u[m[3]]||'days'}`; }
+    const m2 = s.match(/FrequencyCap\d+:\[User,\s*(\d+),\s*(\d+),\s*(\w+)\]/i);
+    if(m2) return `${m2[1]}_${m2[2]}_${m2[3].toLowerCase()}`;
+    return s;
+}
+
+function _normalizeAudienceName(name){
+    return name
+        .trim()
+        // 去除末尾的 (数字ID)
+        .replace(/\s*[\(\[]\d{5,}[\)\]]\s*$/g, '') 
+        // 去除 Demo/Demographic 前缀
+        .replace(/^(Demo|Demographic|Demographics)\s*[-：:]\s*/i, '')
+        // 去除末尾 -Demographic/-Age/-Gender 等
+        .replace(/\s*-\s*(Demographic|Demographics|Age|Gender)\s*$/i, '')
+        // 全角空格→半角
+        .replace(/\u3000/g, ' ')
+        // 合并多余空格
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+function parseAudienceS(v){
+    if(!v) return { groups:[], notItems:[], raw:'' };
+    const raw = String(v).trim();
+    if(!raw || raw==='無し' || raw==='なし') return { groups:[], notItems:[], raw:'' };
+    const notItems=[], notParts=raw.split(/\band\s+not\b/i);
+    const mainPart=notParts[0].trim();
+    for(let i=1;i<notParts.length;i++){
+        const np=notParts[i].replace(/\([^)]+\)/g,'').trim();
+        for(const item of np.split(/[\n;；,，]/)){
+            const it=_normalizeAudienceName(item.trim().replace(/^(or|and)\s+/i, ''));
+            if(it && !['AND','NOT','OR',''].includes(it.toUpperCase())) notItems.push(it);
+        }
+    }
+    const lines=mainPart.split('\n').map(l=>l.trim()).filter(l=>l);
+    const groupsRaw=[];let current=[];
+    for(const line of lines){
+        if(line.toLowerCase()==='and'||line==='and条件'){if(current.length){groupsRaw.push(current);current=[];}}
+        else current.push(line);
+    }
+    if(current.length) groupsRaw.push(current);
+    const groups=[];
+    for(const grpLines of groupsRaw){
+        const items=[];
+        for(const line of grpLines){
+            for(const seg of line.split(/[,;；,，]/)){
+    // ★ 数字IDのみ除去（英数字を含む(ALL)などは保持）
+    const s=seg.replace(/\s*[\(\[]\d{5,}[\)\]]\s*/g,'').trim();
+    const name=_normalizeAudienceName(s.replace(/^(or|and)\s+/i, '').trim());
+    if(name&&!['AND','NOT','OR',''].includes(name.toUpperCase())) items.push(name);
+}
+        }
+        if(items.length) groups.push({items:items.sort()});
+    }
+    return {groups,notItems,raw};
+}
+function parseAudienceD(dlRow){
+    if(!dlRow) return { groups:[], notItems:[], rawAr:'', rawAt:'' };
+
+    const arVal = dlRow['Audiences - include'] || '';
+    const atVal = dlRow['Audience names'] || '';
+
+    if(!arVal && !atVal) return { groups:[], notItems:[], rawAr:'', rawAt:'' };
+
+    // ===== 第一步：从AT列构建 ID→名字 映射 =====
+    // AT列格式: "名前A (ID1); 名前B (ID2); ..."
+    const idToName = {};  // { "426773...": "2604_MEMEME_90日-ProductViews" }
+    const allNamesInOrder = []; // 按出现顺序保存所有名字
+
+    if(atVal){
+        for(const item of atVal.split(/[;；\n]/)){
+            const it = item.trim();
+            if(!it) continue;
+
+            const m = it.match(/^(.+?)\s*\((\d{5,})\)\s*$/);
+            if(m){
+                const cleanName = _normalizeAudienceName(m[1]);
+                const id = m[2].trim();
+                idToName[id] = cleanName;
+                allNamesInOrder.push(cleanName);
+            } else {
+                // 没有ID的纯名字
+                const cleanName = _normalizeAudienceName(it);
+                if(cleanName) allNamesInOrder.push(cleanName);
+            }
+        }
+    }
+
+    // ===== 第二步：用AR列解析关系（include / NOT） =====
+    // AR列格式示例:
+    //   只有include:  "(ID1; ID2)"  或  "(ID1)(ID2)"（多AND组）
+    //   有NOT:        "(ID1)[NOT ID2]"  或  "(ID1; ID2)[NOT ID3; ID4]"
+    //   无括号结构:   直接是名字（旧格式）
+
+    const groups = [];
+    const notItems = [];
+
+    if(arVal){
+        // 提取NOT部分
+        const notMatch = arVal.match(/\[NOT\s+([^\]]+)\]/i);
+        let arMain = arVal;
+
+        if(notMatch){
+            // 解析NOT中的ID列表
+            const notIds = notMatch[1].split(/[;；\s]+/).filter(s => s.trim());
+            for(const nid of notIds){
+                const nid2 = nid.trim();
+                if(!nid2) continue;
+                if(idToName[nid2]){
+                    notItems.push(idToName[nid2]);
+                } else {
+                    // ID在AT列没找到名字，保留原ID供提示
+                    notItems.push(`(UnknownID:${nid2})`);
+                }
+            }
+            arMain = arVal.substring(0, notMatch.index).trim();
+        }
+
+        // 解析include部分的AND分组
+        // 格式: "(ID1; ID2)(ID3; ID4)" 或 "(ID1)"
+        const parenGroups = [...arMain.matchAll(/\(([^)]+)\)/g)];
+
+        if(parenGroups.length > 0){
+            for(const pg of parenGroups){
+                const ids = pg[1].split(/[;；\s]+/).filter(s => s.trim());
+                const names = [];
+                for(const id of ids){
+                    const id2 = id.trim();
+                    if(!id2) continue;
+                    if(idToName[id2]){
+                        names.push(idToName[id2]);
+                    } else if(/^\d{5,}$/.test(id2)){
+                        // 纯数字ID但AT列没有名字（可能AT列是空的）
+                        names.push(`(UnknownID:${id2})`);
+                    } else {
+                        // 不是数字，当作名字直接用
+                        names.push(_normalizeAudienceName(id2));
+                    }
+                }
+                if(names.length > 0){
+                    groups.push({ items: names.sort() });
+                }
+            }
+        } else if(allNamesInOrder.length > 0){
+            // AR列没有括号结构 → 用AT列的全部名字作为一个组
+            // （排除已经在notItems里的）
+            const notSet = new Set(notItems);
+            const includeNames = allNamesInOrder.filter(n => !notSet.has(n));
+            if(includeNames.length > 0){
+                groups.push({ items: includeNames.sort() });
+            }
+        }
+    } else if(allNamesInOrder.length > 0){
+        // AR列为空，只有AT列 → 全部作为include
+        groups.push({ items: allNamesInOrder.sort() });
+    }
+
+    return { groups, notItems, rawAr: arVal, rawAt: atVal };
+}
+
+function compareAudience(sP, dP){
+    const diffs = [];
+    let allMatch = true;
+
+    // 两边都空 → 一致
+    if(sP.groups.length === 0 && sP.notItems.length === 0 &&
+       dP.groups.length === 0 && dP.notItems.length === 0){
+        return { matched: true, diffs: [] };
+    }
+
+    // 设定表空，后台有 → 要确认（返回null）
+    if(sP.groups.length === 0 && sP.notItems.length === 0 &&
+       (dP.groups.length > 0 || dP.notItems.length > 0)){
+        return { matched: null, diffs: ['設定表にAudienceの記載なし（後台には設定あり）'] };
+    }
+
+    // 设定表有，后台空 → 不一致
+    if((sP.groups.length > 0 || sP.notItems.length > 0) &&
+       dP.groups.length === 0 && dP.notItems.length === 0){
+        const sDesc = sP.groups.map(g => g.items.join(' / ')).join(' AND ');
+        return {
+            matched: false,
+            diffs: [`後台にAudienceが未設定（設定表：${sDesc}${sP.notItems.length>0?' AND NOT '+sP.notItems.join('/'):''}）`]
+        };
+    }
+
+    // ===== include グループ比対 =====
+    // 策略：把所有include名字扁平化成一个Set来比对
+    // （因为AR列的括号分组和设定表的AND分组不一定完全一致）
+    const sAllIncludes = new Set(sP.groups.flatMap(g => g.items));
+    const dAllIncludes = new Set(dP.groups.flatMap(g => g.items)
+        .filter(n => !n.startsWith('(UnknownID:')));  // 过滤掉无法识别的ID
+
+    const onlyInS = [...sAllIncludes].filter(n => !dAllIncludes.has(n));
+    const onlyInD = [...dAllIncludes].filter(n => !sAllIncludes.has(n));
+
+    if(onlyInS.length > 0){
+        allMatch = false;
+        diffs.push(`【設定表にあるが後台未設定（ダウンロード後に存在しない）】\n  → ${onlyInS.join('\n  → ')}`);
+    }
+    if(onlyInD.length > 0){
+        allMatch = false;
+        diffs.push(`【後台にあるが設定表に記載なし】\n  → ${onlyInD.join('\n  → ')}`);
+    }
+
+    // ===== NOT条件比対 =====
+    const sNotSet = new Set(sP.notItems);
+    const dNotSet = new Set(dP.notItems.filter(n => !n.startsWith('(UnknownID:')));
+
+    const onlySNot = [...sNotSet].filter(n => !dNotSet.has(n));
+    const onlyDNot = [...dNotSet].filter(n => !sNotSet.has(n));
+
+    if(onlySNot.length > 0){
+        allMatch = false;
+        diffs.push(`【NOT条件：設定表にあるが後台未設定】\n  → ${onlySNot.join('\n  → ')}`);
+    }
+    if(onlyDNot.length > 0){
+        allMatch = false;
+        diffs.push(`【NOT条件：後台にあるが設定表に記載なし】\n  → ${onlyDNot.join('\n  → ')}`);
+    }
+
+    return { matched: allMatch, diffs };
+}
+
+// ===== PVA/OTT 設定表読み取り =====
+/// ===== 修改 readAreaSheet：读取时自动转换日英地名 =====
+function readAreaSheet(wb){
+    const result = { targeted: [], excluded: [] };
+    const sheetName = wb.SheetNames.find(n =>
+        n.includes('エリアシート') || n.includes('エリア') || n.toLowerCase().includes('area')
+    );
+    if(!sheetName) return result;
+    const ws = wb.Sheets[sheetName];
+    if(!ws || !ws['!ref']) return result;
+    const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:false });
+
+    for(let i = 3; i < rows.length; i++){
+        const bVal = String(rows[i][0] || '').trim();  // A列→含む/除外
+        const cVal = String(rows[i][1] || '').trim();  // B列→エリア名
+        if(!cVal) continue;
+
+        // ★ 日語→英語変換
+        const enName = convertAreaNameToEn(cVal);
+
+        if(bVal.includes('含む') || bVal.toLowerCase().includes('targeted')){
+            result.targeted.push(enName);
+        } else if(bVal.includes('除外') || bVal.toLowerCase().includes('excluded')){
+            result.excluded.push(enName);
+        }
+    }
+    return result;
+}
+
+// ===== 日本都道府県 日英対照表 =====
+const JP_AREA_JA_TO_EN = {
+    // 都
+    '東京都': 'Tokyo',
+    '東京': 'Tokyo',
+    // 道
+    '北海道': 'Hokkaido',
+    // 府
+    '大阪府': 'Osaka Prefecture',
+    '大阪': 'Osaka Prefecture',
+    '京都府': 'Kyoto Prefecture',
+    '京都': 'Kyoto Prefecture',
+    // 県（以下全部）
+    '青森県': 'Aomori Prefecture',
+    '青森': 'Aomori Prefecture',
+    '岩手県': 'Iwate Prefecture',
+    '岩手': 'Iwate Prefecture',
+    '宮城県': 'Miyagi Prefecture',
+    '宮城': 'Miyagi Prefecture',
+    '秋田県': 'Akita Prefecture',
+    '秋田': 'Akita Prefecture',
+    '山形県': 'Yamagata Prefecture',
+    '山形': 'Yamagata Prefecture',
+    '福島県': 'Fukushima Prefecture',
+    '福島': 'Fukushima Prefecture',
+    '茨城県': 'Ibaraki Prefecture',
+    '茨城': 'Ibaraki Prefecture',
+    '栃木県': 'Tochigi Prefecture',
+    '栃木': 'Tochigi Prefecture',
+    '群馬県': 'Gunma Prefecture',
+    '群馬': 'Gunma Prefecture',
+    '埼玉県': 'Saitama Prefecture',
+    '埼玉': 'Saitama Prefecture',
+    '千葉県': 'Chiba Prefecture',
+    '千葉': 'Chiba Prefecture',
+    '神奈川県': 'Kanagawa Prefecture',
+    '神奈川': 'Kanagawa Prefecture',
+    '新潟県': 'Niigata Prefecture',
+    '新潟': 'Niigata Prefecture',
+    '富山県': 'Toyama Prefecture',
+    '富山': 'Toyama Prefecture',
+    '石川県': 'Ishikawa Prefecture',
+    '石川': 'Ishikawa Prefecture',
+    '福井県': 'Fukui Prefecture',
+    '福井': 'Fukui Prefecture',
+    '山梨県': 'Yamanashi Prefecture',
+    '山梨': 'Yamanashi Prefecture',
+    '長野県': 'Nagano Prefecture',
+    '長野': 'Nagano Prefecture',
+    '岐阜県': 'Gifu Prefecture',
+    '岐阜': 'Gifu Prefecture',
+    '静岡県': 'Shizuoka Prefecture',
+    '静岡': 'Shizuoka Prefecture',
+    '愛知県': 'Aichi Prefecture',
+    '愛知': 'Aichi Prefecture',
+    '三重県': 'Mie Prefecture',
+    '三重': 'Mie Prefecture',
+    '滋賀県': 'Shiga Prefecture',
+    '滋賀': 'Shiga Prefecture',
+    '兵庫県': 'Hyogo Prefecture',
+    '兵庫': 'Hyogo Prefecture',
+    '奈良県': 'Nara Prefecture',
+    '奈良': 'Nara Prefecture',
+    '和歌山県': 'Wakayama Prefecture',
+    '和歌山': 'Wakayama Prefecture',
+    '鳥取県': 'Tottori Prefecture',
+    '鳥取': 'Tottori Prefecture',
+    '島根県': 'Shimane Prefecture',
+    '島根': 'Shimane Prefecture',
+    '岡山県': 'Okayama Prefecture',
+    '岡山': 'Okayama Prefecture',
+    '広島県': 'Hiroshima Prefecture',
+    '広島': 'Hiroshima Prefecture',
+    '山口県': 'Yamaguchi Prefecture',
+    '山口': 'Yamaguchi Prefecture',
+    '徳島県': 'Tokushima Prefecture',
+    '徳島': 'Tokushima Prefecture',
+    '香川県': 'Kagawa Prefecture',
+    '香川': 'Kagawa Prefecture',
+    '愛媛県': 'Ehime Prefecture',
+    '愛媛': 'Ehime Prefecture',
+    '高知県': 'Kochi Prefecture',
+    '高知': 'Kochi Prefecture',
+    '福岡県': 'Fukuoka Prefecture',
+    '福岡': 'Fukuoka Prefecture',
+    '佐賀県': 'Saga Prefecture',
+    '佐賀': 'Saga Prefecture',
+    '長崎県': 'Nagasaki Prefecture',
+    '長崎': 'Nagasaki Prefecture',
+    '熊本県': 'Kumamoto Prefecture',
+    '熊本': 'Kumamoto Prefecture',
+    '大分県': 'Oita Prefecture',
+    '大分': 'Oita Prefecture',
+    '宮崎県': 'Miyazaki Prefecture',
+    '宮崎': 'Miyazaki Prefecture',
+    '鹿児島県': 'Kagoshima Prefecture',
+    '鹿児島': 'Kagoshima Prefecture',
+    '沖縄県': 'Okinawa Prefecture',
+    '沖縄': 'Okinawa Prefecture',
+    // 政令指定都市・特別区（よく使われるもの）
+    '札幌市': 'Sapporo',
+    '仙台市': 'Sendai',
+    'さいたま市': 'Saitama',
+    '千葉市': 'Chiba',
+    '横浜市': 'Yokohama',
+    '川崎市': 'Kawasaki',
+    '相模原市': 'Sagamihara',
+    '新潟市': 'Niigata',
+    '静岡市': 'Shizuoka',
+    '浜松市': 'Hamamatsu',
+    '名古屋市': 'Nagoya',
+    '京都市': 'Kyoto',
+    '大阪市': 'Osaka',
+    '堺市': 'Sakai',
+    '神戸市': 'Kobe',
+    '岡山市': 'Okayama',
+    '広島市': 'Hiroshima',
+    '北九州市': 'Kitakyushu',
+    '福岡市': 'Fukuoka',
+    '熊本市': 'Kumamoto',
+    // 地方区分
+    '関東': 'Kanto',
+    '近畿': 'Kinki',
+    '関西': 'Kinki',
+    '東北': 'Tohoku',
+    '中部': 'Chubu',
+    '中国': 'Chugoku',
+    '四国': 'Shikoku',
+    '九州': 'Kyushu',
+    // 特別対応
+    'Japan': 'Japan',
+    '日本': 'Japan',
+};
+
+/**
+ * 日語地名を英語に変換する
+ * 英語がすでに入っている場合はそのまま返す
+ */
+function convertAreaNameToEn(name) {
+    const trimmed = name.trim();
+    if(!trimmed) return '';
+    // まず辞書で直接検索
+    if(JP_AREA_JA_TO_EN[trimmed]) return JP_AREA_JA_TO_EN[trimmed];
+    // 前方一致（長い順に検索してより正確に）
+    const keys = Object.keys(JP_AREA_JA_TO_EN).sort((a,b) => b.length - a.length);
+    for(const k of keys){
+        if(trimmed.startsWith(k)) return JP_AREA_JA_TO_EN[k];
+    }
+    // 変換できなかった場合はそのまま返す（英語で書かれている可能性）
+    return trimmed;
+}
+
+// ===== セグメントシート読み込み（PVA用）=====
+function readAllSegmentSheets(wb) {
+    const segMap = {};
+    for (const sheetName of wb.SheetNames) {
+        if (!sheetName.includes('セグメントシート') && !sheetName.includes('セグメント')) continue;
+        const ws = wb.Sheets[sheetName];
+        if (!ws || !ws['!ref']) continue;
+        const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:false });
+        let isNewFMT = false;
+        const settingSheetName = wb.SheetNames.find(n =>
+            n.includes('PVA設定') || n.includes('設定シート')
+        );
+        if (settingSheetName) {
+            const settingWs = wb.Sheets[settingSheetName];
+            const a1Cell = settingWs && settingWs['A1'];
+            const verStr = a1Cell ? String(a1Cell.v || '').trim() : '';
+            const verMatch = verStr.match(/Ver\.?(\d+)-(\d+)/i);
+            if (verMatch) {
+                const major = parseInt(verMatch[1]);
+                const minor = parseInt(verMatch[2]);
+                isNewFMT = (major > 1) || (major === 1 && minor >= 6);
+            }
+        }
+        if (!isNewFMT) {
+            const row2 = rows[2] || [];
+            const row2C = String(row2[2] || '').trim();
+            const row2H = String(row2[7] || '').trim();
+            const row2M = String(row2[12] || '').trim();
+            isNewFMT = [row2C, row2H, row2M].some(v =>
+                v.toLowerCase().includes('include') ||
+                v.toLowerCase().includes('exclude') ||
+                v.includes('含む') || v.includes('除外')
+            );
+        }
+        const data = isNewFMT
+            ? _readSegmentSheetNewFMT(rows)
+            : _readSegmentSheetOldFMT(rows);
+        segMap[sheetName] = data;
+    }
+    return segMap;
+}
+
+function _findSegmentForLI(audienceVal, segMap) {
+    if (!audienceVal || !audienceVal.includes('セグメントシート')) {
+        return { groups: [], groupOps: [] };
+    }
+    const m = audienceVal.match(/セグメントシート[（(「]([^）)」]+)[）)」]/);
+    if (!m) return { groups: [], groupOps: [] };
+    const keyword = m[1].trim();
+    for (const [sheetName, data] of Object.entries(segMap)) {
+        if (sheetName.includes(keyword)) return data;
+    }
+    // 模糊匹配兜底
+    const keyParts = keyword.split(/[×・]/);
+    for (const [sheetName, data] of Object.entries(segMap)) {
+        if (keyParts.every(p => p.trim() && sheetName.includes(p.trim()))) return data;
+    }
+    return { groups: [], groupOps: [] };
+}
+
+// ===== 新FMT(Ver.1-6) =====
+// 行0: グループヘッダー
+// 行1: グループ間演算子
+// 行2: 含む/除外（C列=index2, H列=index7, M列=index12）
+// 行3: グループ内演算子
+// 行4: セグメント名ラベル
+// 行5～: セグメントデータ
+function _readSegmentSheetNewFMT(rows){
+    const result = { groups: [], groupOps: [] };
+
+    // グループ間演算子：行1のE列(4)とJ列(9)
+    const row1 = rows[1] || [];
+    [4, 9].forEach(col => {
+        const op = String(row1[col] || '').trim();
+        if(op.includes('および') || op.toLowerCase().includes('and')){
+            result.groupOps.push('and');
+        } else if(op.includes('または') || op.toLowerCase().includes('or')){
+            result.groupOps.push('or');
+        }
+    });
+
+    // 含む/除外：行2のC列(2), H列(7), M列(12)
+    const row2 = rows[2] || [];
+    const TYPE_COLS = [2, 7, 12];
+    const SEG_COLS  = [1, 6, 11];
+    const DATA_START_ROW = 5;
+
+    TYPE_COLS.forEach((typeCol, idx) => {
+        const typeVal = String(row2[typeCol] || '').trim();
+        if(!typeVal) return;
+
+        const type = (typeVal.toLowerCase().includes('exclude') || typeVal.includes('除外'))
+            ? 'Exclude' : 'Include';
+
+        const segCol = SEG_COLS[idx];
+        const segments = [];
+        for(let i = DATA_START_ROW; i < rows.length; i++){
+            const seg = String(rows[i][segCol] || '').trim();
+            if(!seg) continue;
+            if(['セグメント名','グループ内演算子','含む/除外',
+                'グループ間演算子'].includes(seg)) continue;
+            segments.push(seg);
+        }
+
+        if(segments.length > 0){
+            result.groups.push({ type, segments });
+        }
+    });
+
+    console.log('★新FMT結果:', JSON.stringify(result));
+    return result;
+}
+
+// ===== 旧FMT(Ver.1-5) =====
+// 行0: グループヘッダー
+// 行1: グループ内演算子
+// 行2: セグメント名ラベル
+// 行3～: Include/Exclude + セグメントデータ
+//   B列(1)=Include/Exclude, C列(2)=セグメント名（グループ1）
+//   F列(5)=Include/Exclude, G列(6)=セグメント名（グループ2）
+//   J列(9)=Include/Exclude, K列(10)=セグメント名（グループ3）
+function _readSegmentSheetOldFMT(rows){
+    const result = { groups: [], groupOps: [] };
+
+    // ===== 列構造を動的に検出 =====
+    // 旧FMTのヘッダー行（行2か行3）からInclude/Excludeの列を探す
+    // データ行（行3以降）でInclude/Excludeが入っている列 = TYPE_COL
+    // その右隣の列 = SEG_COL
+
+    // まずグループ間演算子を行0～2から探す
+    for(let ri = 0; ri <= 2; ri++){
+        const r = rows[ri] || [];
+        r.forEach(v => {
+            const s = String(v || '').trim();
+            if(result.groupOps.length >= 2) return;
+            if(s.includes('および') || s.toLowerCase() === 'and'){
+                result.groupOps.push('and');
+            } else if(s.includes('または') || s.toLowerCase() === 'or'){
+                result.groupOps.push('or');
+            }
+        });
+    }
+
+    // ===== データ行から列インデックスを動的検出 =====
+    // 行3（index=3）を見て、Include/Excludeが入っている列を探す
+    const SKIP_LABELS = [
+        'セグメント名','グループ内演算子','含む/除外',
+        'グループ間演算子','グループ1','グループ2','グループ3',
+        'および(and)','または(or)'
+    ];
+
+    // データ開始行を探す（Include/Excludeが最初に現れる行）
+    let dataStartRow = -1;
+    const typeCols = [];   // Include/Excludeが入る列インデックス
+    const segCols  = [];   // セグメント名が入る列インデックス
+
+    for(let ri = 2; ri < Math.min(6, rows.length); ri++){
+        const r = rows[ri] || [];
+        const foundTypeCols = [];
+        r.forEach((v, ci) => {
+            const s = String(v || '').trim();
+            if(s.toLowerCase() === 'include' || s.toLowerCase() === 'exclude'
+               || s === '含む' || s === '除外'){
+                foundTypeCols.push(ci);
+            }
+        });
+        if(foundTypeCols.length > 0){
+            dataStartRow = ri;
+            foundTypeCols.forEach(tc => {
+                typeCols.push(tc);
+                // セグメント名の列 = type列の右隣（+1）
+                segCols.push(tc + 1);
+            });
+            break;
+        }
+    }
+
+    console.log('★旧FMT dataStartRow:', dataStartRow, 'typeCols:', typeCols, 'segCols:', segCols);
+
+    if(dataStartRow === -1 || typeCols.length === 0){
+        console.log('★旧FMT: 列構造検出失敗');
+        return result;
+    }
+
+    // ===== グループごとにセグメント収集 =====
+    const groupData = typeCols.map(() => ({ segments: [], type: 'Include' }));
+
+    for(let i = dataStartRow; i < rows.length; i++){
+        typeCols.forEach((typeCol, idx) => {
+            const typeVal = String(rows[i][typeCol] || '').trim();
+            const segVal  = String(rows[i][segCols[idx]] || '').trim();
+
+            if(!segVal) return;
+            if(SKIP_LABELS.some(s => segVal.includes(s))) return;
+
+            if(typeVal.toLowerCase() === 'include' || typeVal.includes('含む')){
+                groupData[idx].type = 'Include';
+            } else if(typeVal.toLowerCase() === 'exclude' || typeVal.includes('除外')){
+                groupData[idx].type = 'Exclude';
+            }
+
+            groupData[idx].segments.push(segVal);
+        });
+    }
+
+    groupData.forEach(g => {
+        if(g.segments.length > 0){
+            result.groups.push({ type: g.type, segments: g.segments });
+        }
+    });
+
+    console.log('★旧FMT結果:', JSON.stringify(result));
+    return result;
+}
+
+function readSettingTableVideo(wb, system){
+    const areaSheetData = readAreaSheet(wb);  // ★ エリアシート読み込み
+    const allSegmentSheets = readAllSegmentSheets(wb);  // ★ 全セグメントシート読み込み
+    const isPVA = system === 'amazon_pva';
+    const SKIP_KW = ['入稿物','ブラックリスト','選択','ASIN','Deal',
+                     'セグメント','Instructions','Reference'];
+    const candidateSheets = [];
+
+    for(const sname of wb.SheetNames){
+        const ws = wb.Sheets[sname];
+        if(!ws || !ws['!ref']) continue;
+        if(SKIP_KW.some(kw => sname.includes(kw))) continue;
+        const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}).slice(0,35);
+        const rowStr = rows.map(r=>r.join(' ')).join(' ');
+        let score = 0;
+        if(rowStr.includes('ラインアイテム名'))  score += 10;
+        if(rowStr.includes('Base supply bid'))    score += 5;
+        if(rowStr.includes('Pacing'))             score += 3;
+        if(rowStr.includes('Frequency'))          score += 2;
+        if(isPVA){
+            if(rowStr.includes('DealID') || rowStr.includes('Deal名')) score += 8;
+            if(rowStr.includes('Streaming TV'))   score += 3;
+        } else {
+            // OTT
+            if(rowStr.includes('Supply sources') || rowStr.includes('SSP')) score += 8;
+            if(rowStr.includes('StreamingTV') || rowStr.includes('TVer'))   score += 3;
+        }
+        if(score >= 5) candidateSheets.push({ sname, score, ws });
+    }
+
+    if(!candidateSheets.length) return [];
+    candidateSheets.sort((a,b) => b.score - a.score);
+
+    const result = [];
+    for(const { sname, ws } of candidateSheets){
+        const ioName = _extractIOName(ws);
+        const allRows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+
+        // ヘッダー行検出
+        let headerRowIdx = -1;
+        for(let i=0; i<Math.min(100,allRows.length); i++){
+            const rs = allRows[i].join(' ');
+            if(rs.includes('ラインアイテム名') || rs.includes('Line Item Name')){
+                headerRowIdx = i;
+                // 次の行にStart day等があればそちらをヘッダーに
+                for(let j=i+1; j<Math.min(i+5,allRows.length); j++){
+                    const rs2 = allRows[j].join(' ');
+                    if(rs2.includes('Start day') || rs2.includes('Device') || rs2.includes('Type')){
+                        headerRowIdx = j; break;
+                    }
+                }
+                break;
+            }
+        }
+        if(headerRowIdx === -1) continue;
+
+        const headers = allRows[headerRowIdx];
+        const colIdx = {};
+
+        // ★ PVA/OTT 共通列キーワード
+        const COL_KEYWORDS_VIDEO = {
+            LI_NAME:      ['ラインアイテム名','Line Item Name'],
+            media:        ['メディア','Type'],
+            device:       ['Device type'],
+            mobile_env:   ['Mobile environment'],
+            start_day:    ['Start day'],
+            start_time:   ['Start time'],
+            end_day:      ['End day'],
+            end_time:     ['End time'],
+            auto_opt:     ['Automated optimization'],
+            budget:       ['予算','Line item budget'],
+            budget_cap:   ['日予算','Budget cap'],
+            pacing:       ['配信ペース','Pacing'],
+            fee_3p:       ['3P Fee'],
+            frequency:    ['Frequency'],
+            base_cpm:     ['ベースCPM','Base supply bid'],
+            max_cpm:      ['上限CPM','Maximum average CPM','Max supply bid'],
+            product_small:['商材カテゴリ','Product categories'],
+            audience:     ['セグメント','Audience'],
+            location:     ['配信地域','Location','エリア'],
+            location_sig: ['位置情報シグナル'],
+            content:      ['コンテンツ','Content'],
+            language:     ['Language'],
+            video_init:   ['Video initiation type'],
+            video_format: ['Video ad format'],
+            video_size:   ['Video player size'],
+            video_comp:   ['Video completion'],
+            // PVA専用
+            deal_type:    ['Deal Type','Deal type'],
+            deal_id:      ['DealID'],
+            deal_name:    ['Deal名'],
+            twitch:       ['Twitch'],
+            timezone:     ['タイムゾーン','Time zone'],
+            // OTT専用
+            ssp:          ['SSP','Supply sources'],
+            region:       ['ユーザーの地域','Region'],
+        };
+
+        headers.forEach((h,i)=>{
+            const hFull = String(h);
+            const hs = hFull.split('\n')[0]
+                .replace(/（[^）]*）/g,'')
+                .replace(/\([^)]*\)/g,'')
+                .trim();
+            for(const [key,keywords] of Object.entries(COL_KEYWORDS_VIDEO)){
+                if(!keywords) continue;
+                if(keywords.some(kw => hs.includes(kw) || hFull.includes(kw))){
+                    if(!(key in colIdx)) colIdx[key] = i;
+                }
+            }
+        });
+
+        if(!('LI_NAME' in colIdx)) colIdx['LI_NAME'] = 1;
+
+        for(let i=headerRowIdx+1; i<allRows.length; i++){
+            const row = allRows[i];
+            const liName = row[colIdx.LI_NAME]
+                ? String(row[colIdx.LI_NAME]).trim() : '';
+            if(!liName || liName.includes('●') || liName.includes('例）')
+   || liName.startsWith('▼')
+   || liName.includes('合計')
+   || liName.includes('小計')
+   || liName.includes('金額')
+   || /^\d+$/.test(liName)         // 数字だけの行も除外
+) continue;
+
+            const g = (idx) => idx !== undefined && row[idx] !== undefined
+                ? String(row[idx]).trim() : '';
+
+            result.push({
+                __LI_NAME__:   liName,
+                __IO_NAME__:   ioName,
+                __SHEET__:     sname,
+                __SYSTEM__:    system,
+                // 共通
+                media:         g(colIdx.media),
+                device:        g(colIdx.device),
+                mobile_env:    g(colIdx.mobile_env),
+                start_day:     g(colIdx.start_day),
+                start_time:    g(colIdx.start_time),
+                end_day:       g(colIdx.end_day),
+                end_time:      g(colIdx.end_time),
+                auto_opt:      g(colIdx.auto_opt),
+                budget:        g(colIdx.budget),
+                budget_cap:    g(colIdx.budget_cap),
+                pacing:        g(colIdx.pacing),
+                fee_3p:        g(colIdx.fee_3p),
+                frequency:     g(colIdx.frequency),
+                base_cpm:      g(colIdx.base_cpm),
+                max_cpm:       g(colIdx.max_cpm),
+                product_small: g(colIdx.product_small),
+                audience:      g(colIdx.audience),
+                location:      g(colIdx.location),
+                location_sig:  g(colIdx.location_sig),
+                content:       g(colIdx.content),
+                language:      g(colIdx.language),
+                video_init:    g(colIdx.video_init),
+                video_format:  g(colIdx.video_format),
+                video_size:    g(colIdx.video_size),
+                video_comp:    g(colIdx.video_comp),
+                // PVA専用
+                deal_type:     g(colIdx.deal_type),
+                deal_id:       g(colIdx.deal_id),
+                deal_name:     g(colIdx.deal_name),
+                twitch:        g(colIdx.twitch),
+                timezone:      g(colIdx.timezone),
+                // OTT専用
+                ssp:           g(colIdx.ssp),
+                region:        g(colIdx.region),
+                __AREA_SHEET__: areaSheetData,  // ★ エリアシートデータ
+                __SEGMENT_SHEET__: _findSegmentForLI(g(colIdx.audience), allSegmentSheets),  // ★ LIごとに対応セグメントシートを取得
+                // Display互換
+                product_big:   '',
+                ssp_owned:     '',
+                ssp_pub:       '',
+                ssp_third:     '',
+                mobile_os:     '',
+                device_type:   g(colIdx.device),
+                viewability_pct: '',
+                viewability_excl:'',
+                daypart:       '',
+                domain_bl:     '',
+                mobile_app:    '',
+            });
+        }
+    }
+    return result;
+}
+
+// ===== VIDEO LINE ITEMS 下载数据読み取り（PVA/OTT共用）=====
+function readDownloadDataVideoMulti(wbsD){
+    const liMap = {};
+    const files = [];
+    const ioDownloadMap = {};
+
+    wbsD.forEach(({ wb, fileName }) => {
+        let targetSheet = null, targetHeaderRow = 0, bestScore = 0;
+
+        for(const sname of wb.SheetNames){
+            const ws = wb.Sheets[sname];
+            if(!ws || !ws['!ref']) continue;
+            const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}).slice(0,30);
+            for(let i=0; i<rows.length; i++){
+                const rowStr = rows[i].join(' ');
+                let score = 0;
+                if(rowStr.includes('Line name'))              score += 5;
+                if(rowStr.includes('Video Ad Content Type'))  score += 8;
+                if(rowStr.includes('Supply source'))           score += 4;
+                if(rowStr.includes('Base supply bid'))         score += 3;
+                if(rowStr.includes('Pacing profile'))          score += 3;
+                if(rowStr.includes('Audience names'))          score += 3;
+                // ★ VIDEO LINE ITEMS を最優先
+                if(sname.toUpperCase().includes('VIDEO LINE ITEMS'))   score += 20;
+                if(sname.toUpperCase().includes('DISPLAY LINE ITEMS')) score -= 30;
+                if(score > bestScore){
+                    bestScore = score;
+                    targetSheet = sname;
+                    targetHeaderRow = i;
+                }
+            }
+        }
+
+        if(!targetSheet || bestScore < 5){
+            files.push({ fileName, sheet:'（未発見）', liCount:0, lis:[] });
+            return;
+        }
+
+        const ws = wb.Sheets[targetSheet];
+        const allRows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+        const headers = allRows[targetHeaderRow].map(h => String(h).trim());
+        const liColIdx = headers.findIndex(h => h.toLowerCase().includes('line name'));
+        const orderColIdx = headers.findIndex(h =>
+            h.toLowerCase().includes('order name') || h === 'Order name - (READ ONLY)');
+
+        if(liColIdx === -1){
+            files.push({ fileName, sheet:targetSheet, liCount:0, lis:[] });
+            return;
+        }
+
+        const junkPattern = /Follow instructions|Choose from|Don't delete|READ ONLY|informational/i;
+        const fileLis = [];
+        let fileIoName = '';
+
+        for(let i=targetHeaderRow+1; i<allRows.length; i++){
+            const row = allRows[i];
+            const liName = row[liColIdx] ? String(row[liColIdx]).trim() : '';
+            if(!liName || junkPattern.test(liName)) continue;
+
+            const obj = { __LI_NAME__: liName };
+            headers.forEach((h,idx) => {
+                if(h) obj[h] = row[idx] !== undefined ? String(row[idx]).trim() : '';
+            });
+
+            if(orderColIdx !== -1 && !fileIoName){
+                const orderVal = String(row[orderColIdx] || '').trim();
+                if(orderVal && !junkPattern.test(orderVal)) fileIoName = orderVal;
+            }
+
+            obj.__IO_NAME_D__ = fileIoName;
+            obj.__FILE_D__    = fileName;
+
+            liMap[liName] = obj;
+            fileLis.push({ name:liName, status:obj['Active/Inactive']||'' });
+
+            if(fileIoName){
+                if(!ioDownloadMap[fileIoName]) ioDownloadMap[fileIoName] = [];
+                ioDownloadMap[fileIoName].push(liName);
+            }
+        }
+
+        files.push({
+            fileName, sheet:targetSheet,
+            liCount:fileLis.length, lis:fileLis, ioName:fileIoName
+        });
+    });
+
+    return { liMap, files, ioDownloadMap };
+}
+
+// ===== PVA/OTT 共用列定義 =====
+const DL_COLUMNS_VIDEO = [
+    { key:'Line ID',                   ja:'ラインID',            checkFn:null, autoHide:true },
+    { key:'Advertiser ID*',            ja:'広告主ID',            checkFn:null, autoHide:true },
+    { key:'Advertiser name',           ja:'広告主名',            checkFn:null, autoHide:true },
+    { key:'Order ID*',                 ja:'オーダーID',          checkFn:null, autoHide:true },
+    { key:'Order name - (READ ONLY)',  ja:'オーダー名',          checkFn:null, autoHide:true },
+    { key:'Line type*',                ja:'広告フォーマット',
+      checkFn:(s,v) => !!(v && v.toLowerCase().includes('video'))
+    },
+    { key:'Line name*',                ja:'ラインアイテム名',    checkFn:null },
+    { key:'Video Ad Content Type*',    ja:'VideoコンテンツType',
+      checkFn:(s,v) => !!(v && v.toUpperCase().includes('STREAMING_TV'))
+    },
+    { key:'Line start date',           ja:'開始日時',
+      checkFn:(s,v) => {
+        const sd = normDateTimeS(s.start_day, s.start_time);
+        return !sd || sd === normDateTime(v);
+      }
+    },
+    { key:'Line end date',             ja:'終了日時',
+      checkFn:(s,v) => {
+        const ed = normDateTimeS(s.end_day, s.end_time);
+        return !ed || ed === normDateTime(v);
+      }
+    },
+    { key:'Active/Inactive',           ja:'配信状態',
+      checkFn:(s,v) => v && v.toLowerCase() === 'pause'
+    },
+    { key:'Product categories*',       ja:'商材カテゴリ',
+      checkFn:(s,v) => {
+        if(!v || !s.product_small) return true;
+        const dLast = (v.split(':').pop() || '').replace(/\s/g,'').toLowerCase();
+        const sSmall = (s.product_small || '').replace(/\s/g,'').toLowerCase();
+        return !sSmall || dLast.includes(sSmall) || sSmall.includes(dLast);
+      }
+    },
+    { key:'Device type',               ja:'デバイス',
+      checkFn:(s,v) => {
+        const sd = (s.device || '').toLowerCase();
+        const dv = (v  || '').toLowerCase();
+        if(!sd) return null;
+        const sHasAll = sd.includes('all') || (sd.includes('desktop') && sd.includes('mobile') && sd.includes('connected'));
+        if(sHasAll) return dv.includes('all') || (dv.includes('desktop') && dv.includes('mobile'));
+        return (sd.includes('desktop') === dv.includes('desktop')) &&
+               (sd.includes('mobile')  === dv.includes('mobile'))  &&
+               (sd.includes('connected') === dv.includes('connected'));
+      }
+    },
+    { key:'Mobile environment',        ja:'モバイル環境',
+      checkFn:(s,v) => normMobileEnv(s.mobile_env) === normMobileEnv(v)
+    },
+    { key:'Supply source',             ja:'SSP/Supply source',
+      checkFn:(s,v) => {
+        if(!v) return null;
+        const dv = v.toLowerCase();
+        // PVA: DealIDが含まれているか確認
+    if(s.__SYSTEM__ === 'amazon_pva'){
+        const dealId = (s.deal_id || '').trim().toLowerCase();
+        if(!dealId) return null;
+        return dv.includes(dealId);
+    }
+        // OTT: 設定表のSSP欄と照合
+        const ssp = (s.ssp || '').toLowerCase();
+        if(!ssp || ssp === 'all') return null;
+        return dv.includes(ssp) || ssp.includes(dv.split(':')[0].trim());
+      }
+    },
+    // 修正後 ★ Netflix Web Video: などのプレフィックスを除去
+{ key:'Deal selection', ja:'DealID',
+  checkFn:(s,v) => {
+    if(!s.deal_id || !v) return null;
+    // 後台の "Netflix Web Video:UUID" → UUIDだけ抽出して比対
+    const cleanV = v.replace(/^[^:]+:\s*/,'').trim();
+    return cleanV === s.deal_id.trim() || v.includes(s.deal_id);
+  }
+},
+    { key:'Targeting - Content', ja:'コンテンツ(Rating)',
+  checkFn:(s,v) => {
+    const sc = (s.content || '').toLowerCase();
+    const dv = (v || '').toLowerCase();
+    // 設定表が空 → 比対スキップ
+    if(!sc) return null;
+    // MPデフォルト除外 → Ratings:TWITCH_EXPANDED は一致
+    if(sc.includes('mpデフォルト') || sc.includes('mpデフォルト')){
+      if(dv.includes('twitch_expanded') || !dv) return true;
+      return null;
+    }
+    if(!sc) return null;
+  }
+},
+
+    // 修正後 ★ DSP版に合わせて強化
+{ key:'Location targeting by',    ja:'位置情報シグナル',
+  checkFn:(s,v) => {
+    // location_sig優先、なければlocationから判定
+    const sig = (s.location_sig || s.location || '').toLowerCase();
+    if(!sig) return null;
+    
+    const dv = (v || '').toLowerCase();
+    
+    // 設定表に "only if currently in" が含まれる場合
+    // → 後台も "currently" が含まれればOK
+    if(sig.includes('only if currently') || sig.includes('real-time')){
+      if(!dv) return null;  // 後台が空なら要確認
+      return dv.includes('currently');
+    }
+    
+    // それ以外は比対スキップ
+    return null;
+  }
+},
+
+    { key:'Location targeting 1 of 2', ja:'配信地域（含む）',
+  checkFn:(s,v) => {
+    const loc = (s.location || s.region || '').trim();
+    const locL = loc.toLowerCase();
+
+    // ===== エリアシート参照モード =====
+    if(locL.includes('別紙') || locL.includes('エリアシート')){
+        const area = s.__AREA_SHEET__;
+        if(!area || area.targeted.length === 0) return null;
+        if(!v || !v.trim()){
+            s.__location_diff__ = `エリアシートに含む地域が指定されていますが後台が空です：${area.targeted.join(', ')}`;
+            return false;
+        }
+
+        // ★ 後台の地域名を正規化（"Prefecture:Osaka, JP" → "osaka"）
+        const normLocName = (raw) => {
+            const s = raw.trim();
+            const colonIdx = s.indexOf(':');
+            let name = colonIdx !== -1
+                ? s.substring(colonIdx + 1).split(',')[0].trim()
+                : s;
+            // ★ " Prefecture" / " prefecture" を除去して正規化
+            return name.replace(/\s*prefecture\s*$/i, '').trim().toLowerCase();
+        };
+
+        const dLocNames = v.split(';').map(normLocName).filter(Boolean);
+
+        // ★ 設定表側も同様に " Prefecture" を除去して正規化
+        const normSettingName = (name) =>
+            name.replace(/\s*prefecture\s*$/i, '').trim().toLowerCase();
+
+        const missing = area.targeted.filter(a =>
+            !dLocNames.includes(normSettingName(a))
+        );
+        if(missing.length > 0){
+            s.__location_diff__ = `後台に含まれていない地域：${missing.join(', ')}`;
+            return false;
+        }
+        return true;
+    }
+
+    // ===== 通常モード =====
+    if(!locL) return null;
+    if(locL.includes('japan')) return (v || '').toLowerCase().includes('japan');
+    return null;
+  }
+},
+    { key:'Location excluding 1 of 2', ja:'除外地域（エリアシート）',
+  checkFn:(s,v) => {
+    const loc = (s.location || s.region || '').trim();
+    const locL = loc.toLowerCase();
+    if(!(locL.includes('別紙') || locL.includes('エリアシート'))) return null;
+    const area = s.__AREA_SHEET__;
+    if(!area || area.excluded.length === 0) return null;
+    if(!v || !v.trim()){
+        s.__location_excl_diff__ = `エリアシートに除外地域が指定されていますが後台が空です：${area.excluded.join(', ')}`;
+        return false;
+    }
+
+    // ★ 同じ正規化ロジック
+    const normLocName2 = (raw) => {
+        const s = raw.trim();
+        const colonIdx = s.indexOf(':');
+        let name = colonIdx !== -1
+            ? s.substring(colonIdx + 1).split(',')[0].trim()
+            : s;
+        return name.replace(/\s*prefecture\s*$/i, '').trim().toLowerCase();
+    };
+
+    const dLocNames2 = v.split(';').map(normLocName2).filter(Boolean);
+
+    const normSettingName2 = (name) =>
+        name.replace(/\s*prefecture\s*$/i, '').trim().toLowerCase();
+
+    const missing = area.excluded.filter(a =>
+        !dLocNames2.includes(normSettingName2(a))
+    );
+    if(missing.length > 0){
+        s.__location_excl_diff__ = `後台に除外されていない地域：${missing.join(', ')}`;
+        return false;
+    }
+    return true;
+  }
+},
+    { key:'Audiences - include',       ja:'オーディエンスID',   checkFn:null, autoHide:true },
+    { key:'Reach similar audiences', ja:'類似オーディエンス',
+  checkFn:(s,v)=>{
+    const sP = parseAudienceS(s.audience);
+    const hasAud = sP.groups.length > 0 || sP.notItems.length > 0;
+    const dv = (v||'').trim().toUpperCase();
+    if(hasAud){
+        if(dv === 'NO') return true;
+        else if(!dv || dv === 'YES') return false;
+        else return null;
+    } else {
+        if(!dv || dv === 'YES') return true;
+        else return null;
+    }
+}
+},
+    { key:'Audience names', ja:'オーディエンス名',
+  checkFn:(s, v, dlRow)=>{
+    const settingVal = (s.audience || '').trim();
+
+    // 設定表が「セグメントシート」参照の場合
+    const isSegSheet = settingVal.includes('セグメントシート');
+
+    if(isSegSheet){
+        const seg = s.__SEGMENT_SHEET__;
+        if(!seg || seg.groups.length === 0) return null;
+
+        // 後台のAudience names列からIDを除去して名前リストを作成
+        const rawNames = (v || '').split(';').map(item => {
+            return item.replace(/\(\d+\)/g, '').trim();
+        }).filter(Boolean);
+
+        // 後台のAudiences - include列からグループ構造を解析
+        const arVal = dlRow ? (dlRow['Audiences - include'] || '') : '';
+
+        // グループ数カウント（Includeグループ = ()の数, Excludeグループ = []の数）
+        const dIncludeGroups = (arVal.match(/\([^)]+\)/g) || []);
+        const dExcludeGroups = (arVal.match(/\[[^\]]+\]/g) || []);
+
+        const sIncludeGroups = seg.groups.filter(g => g.type === 'Include');
+        const sExcludeGroups = seg.groups.filter(g => g.type === 'Exclude');
+
+        // グループ数比較
+        if(sIncludeGroups.length !== dIncludeGroups.length){
+            s.__audience_diff__ = 
+                `Includeグループ数不一致：設定表${sIncludeGroups.length}グループ / 後台${dIncludeGroups.length}グループ`;
+            return false;
+        }
+        if(sExcludeGroups.length !== dExcludeGroups.length){
+            s.__audience_diff__ = 
+                `Excludeグループ数不一致：設定表${sExcludeGroups.length}グループ / 後台${dExcludeGroups.length}グループ`;
+            return false;
+        }
+
+        // 全セグメント名が後台に存在するか確認（順不同）
+        const allSettingSegs = seg.groups.flatMap(g => g.segments);
+        const missing = allSettingSegs.filter(segName => {
+            // 後台の名前リストに部分一致で確認
+            return !rawNames.some(dName =>
+                dName.toLowerCase().includes(segName.toLowerCase()) ||
+                segName.toLowerCase().includes(dName.toLowerCase())
+            );
+        });
+
+        if(missing.length > 0){
+            s.__audience_diff__ = `後台に見つからないセグメント：\n${missing.join('\n')}`;
+            return false;
+        }
+
+        return true;
+    }
+
+    // 通常モード（既存ロジック）
+    const sP = parseAudienceS(s.audience);
+    const hasS = sP.groups.length > 0 || sP.notItems.length > 0;
+    const hasD = !!(v && v.trim());
+    if(!hasS && !hasD) return true;
+    if(!hasS && hasD)  return null;
+    const dP = parseAudienceD(
+        dlRow || { 'Audience names': v, 'Audiences - include': '' }
+    );
+    const result = compareAudience(sP, dP);
+    if(result.diffs && result.diffs.length > 0){
+        s.__audience_diff__ = result.diffs.join('\n\n');
+    }
+    return result.matched === null ? null : result.matched;
+  }
+},
+    { key:'Automated optimization',    ja:'自動最適化',
+      checkFn:(s,v) => {
+        const sa = normAutoOpt(s.auto_opt);
+        return !sa || sa === normAutoOpt(v);
+      }
+    },
+    { key:'Line item budget',          ja:'予算',
+      checkFn:(s,v) => {
+        const sb = normNum(s.budget);
+        return !sb || sb === normNum(v);
+      }
+    },
+    { key:'Budget cap',                ja:'日予算',
+      checkFn:(s,v) => {
+        const sc = normNum(s.budget_cap);
+        return !sc || sc === normNum(v);
+      }
+    },
+    { key:'Pacing profile',            ja:'配信ペース',
+      checkFn:(s,v) => {
+        const sp = normPacing(s.pacing);
+        return !sp || sp === normPacing(v);
+      }
+    },
+    { key:'3P fees',                   ja:'3Pフィー',            checkFn:null, autoHide:true },
+    { key:'Base supply bid*',          ja:'ベースCPM',
+      checkFn:(s,v) => normNum(s.base_cpm) === normNum(v)
+    },
+    { key:'Maximum average CPM', ja:'上限CPM',
+  checkFn:(s,v) => {
+    if(!s.max_cpm || !v) return null;
+    // ¥1,822 → 1822
+    const sVal = parseFloat(s.max_cpm.replace(/[¥,￥\s]/g, ''));
+    // 1821.6 → 1821.6（四捨五入しない）
+    const dVal = parseFloat(String(v).replace(/[¥,￥\s]/g, ''));
+    if(isNaN(sVal) || isNaN(dVal)) return null;
+    return sVal === dVal;  // 厳密比対
+  }
+},
+    { key:'Creative rotation type', ja:'クリエイティブローテーション',
+      checkFn:(s,v) => {
+        const dv = (v || '').trim().toLowerCase();
+        if(!dv || dv === 'random') return true;  // 空またはRandomは✅
+        return null;  // それ以外は要確認
+      }
+    },
+    { key:'Upload failure',            ja:'アップロードエラー',  checkFn:null, autoHide:true },
+];
+
+// ===== PVA/OTT マッチング比対 =====
+function matchAndCompareVideo(settingData, downloadMap, system){
+    const results = [];
+
+    for(const sRow of settingData){
+        const liName  = sRow.__LI_NAME__;
+        const ioName  = sRow.__IO_NAME__ || '';
+        let dRow = null, matchedName = liName;
+
+        // ① 完全一致
+        if(downloadMap[liName]) dRow = downloadMap[liName];
+
+        // ② IO名スコープでファジー検索
+        if(!dRow && ioName){
+            const scopedNames = Object.keys(downloadMap).filter(n => {
+                const d = downloadMap[n];
+                return d.__IO_NAME_D__ &&
+                    (d.__IO_NAME_D__.includes(ioName) || ioName.includes(d.__IO_NAME_D__));
+            });
+            const fuzzy = scopedNames.find(n => {
+                const nl = n.toLowerCase(), ll = liName.toLowerCase();
+                return nl === ll ||
+                    (nl.includes(ll) && ll.length/nl.length > 0.7) ||
+                    (ll.includes(nl) && nl.length/ll.length > 0.7);
+            });
+            if(fuzzy){ dRow = downloadMap[fuzzy]; matchedName = fuzzy; }
+        }
+
+        // ③ 全体ファジー（フォールバック）
+        if(!dRow){
+            const fuzzy = Object.keys(downloadMap).find(n => {
+                const nl = n.toLowerCase(), ll = liName.toLowerCase();
+                return nl === ll ||
+                    (nl.includes(ll) && ll.length/nl.length > 0.7) ||
+                    (ll.includes(nl) && nl.length/ll.length > 0.7);
+            });
+            if(fuzzy){ dRow = downloadMap[fuzzy]; matchedName = fuzzy; }
+        }
+
+        const found = !!dRow;
+
+        function dGet(key){
+            if(!dRow) return '';
+            if(dRow[key] !== undefined) return String(dRow[key] || '');
+            const aliases = DL_COL_ALIASES[key] || [];
+            for(const a of aliases){ if(dRow[a] !== undefined) return String(dRow[a] || ''); }
+            return '';
+        }
+
+        function sGetForCol(key){
+            const map = {
+                'Line name*':              sRow.__LI_NAME__,
+                'Line type*':              'Video',
+                'Video Ad Content Type*':  'STREAMING_TV',
+                'Line start date':         [sRow.start_day, sRow.start_time].filter(Boolean).join(' '),
+                'Line end date':           [sRow.end_day,   sRow.end_time].filter(Boolean).join(' '),
+                'Active/Inactive':         'Pause',
+                'Product categories*':     sRow.product_small,
+                'Device type':             sRow.device,
+                'Mobile environment':      sRow.mobile_env,
+                'Supply source':           system === 'amazon_pva'
+                    ? `DealID: ${sRow.deal_id || ''}` : sRow.ssp,
+                'Deal selection':          sRow.deal_id,
+                'Targeting - Content':     sRow.content,
+                'Location targeting by':   sRow.location_sig || sRow.location,
+                'Location targeting 1 of 2': sRow.location || sRow.region,
+                'Audiences - include':     sRow.audience,
+                'Reach similar audiences': sRow.audience ? '（AudienceありのためNO）' : '',
+                'Audience names': (sRow.audience || '').includes('セグメントシート')
+                    ? `セグメントシート参照（グループ数:${(sRow.__SEGMENT_SHEET__?.groups||[]).length}）`
+                    : sRow.audience,
+                'Automated optimization':  sRow.auto_opt,
+                'Line item budget':        sRow.budget,
+                'Budget cap':              sRow.budget_cap,
+                'Pacing profile':          sRow.pacing,
+                'Base supply bid*':        sRow.base_cpm,
+                'Maximum average CPM':     sRow.max_cpm,
+            };
+            return map[key] !== undefined ? String(map[key] || '') : '';
+        }
+
+        const colResults = DL_COLUMNS_VIDEO.map(col => {
+    const dVal = dGet(col.key);
+    const sVal = sGetForCol(col.key);
+    let result = null;
+    if(found && col.checkFn){
+        try { result = col.checkFn(sRow, dVal, dRow); }  // ← 加第3个参数 dRow
+        catch(e){ result = null; }
+    }
+    return { key:col.key, ja:col.ja, sVal, dVal, result };
+});
+
+        results.push({
+    liName,
+    __IO_NAME__:    sRow.__IO_NAME__ || '',
+    __SHEET__:      sRow.__SHEET__   || '',
+    __FILE_S__:     sRow.__FILE_S__  || '',
+    found,
+    matchedName:    dRow ? matchedName : null,
+    matchedIOName:  dRow ? (dRow.__IO_NAME_D__ || '') : '',
+    matchedFileD:   dRow ? (dRow.__FILE_D__    || '') : '',
+    isPause:        dRow ? (dRow['Active/Inactive']||'').toLowerCase()==='pause' : null,
+    activeStatus:   dRow ? dRow['Active/Inactive'] : '',
+    colResults,
+    mismatchCount:  colResults.filter(c => c.result === false).length,
+    // ★ sRowから差異情報を引き継ぐ
+    __audience_diff__:      sRow.__audience_diff__      || '',
+    __location_diff__:      sRow.__location_diff__      || '',
+    __location_excl_diff__: sRow.__location_excl_diff__ || '',
+    __brand_content_note__: sRow.__brand_content_note__ || '',
+    __brand_tier_note__:    sRow.__brand_tier_note__     || '',
+});
+    }
+    return results;
+}
+
+// ===== checkAmazon（複数ファイル対応版） =====
+function checkAmazon(wbsS, wbsD, system){
+    let allSettingData = [];
+
+    // ★ PVA/OTT は専用読み取り関数を使用
+    const readFn = (system === 'amazon_pva' || system === 'amazon_ott')
+        ? (wb) => readSettingTableVideo(wb, system)
+        : readSettingTableDSP;
+
+    wbsS.forEach(({ wb, fileName }) => {
+        const rows = readFn(wb);
+        rows.forEach(r => r.__FILE_S__ = fileName);
+        allSettingData = allSettingData.concat(rows);
+    });
+
+    // ★ PVA/OTT は VIDEO LINE ITEMS を読む
+    const downloadData = (system === 'amazon_pva' || system === 'amazon_ott')
+        ? readDownloadDataVideoMulti(wbsD)
+        : readDownloadDataDSPMulti(wbsD);
+
+    return {
+        system,
+        settingCount:  allSettingData.length,
+        downloadCount: Object.keys(downloadData.liMap).length,
+        downloadFiles: downloadData.files,
+        settingData:   allSettingData,
+        downloadData:  downloadData.liMap,
+        ioDownloadMap: downloadData.ioDownloadMap,
+        items: (system === 'amazon_pva' || system === 'amazon_ott')
+            ? matchAndCompareVideo(allSettingData, downloadData.liMap, system)
+            : matchAndCompareDSP(allSettingData, downloadData.liMap, system),
+    };
+}
+
+// ===== 複数ダウンロードデータ読み込み（IO名紐付け） =====
+function readDownloadDataDSPMulti(wbsD){
+    const liMap = {};
+    const files = [];
+    const ioDownloadMap = {}; // IO名 → LI名配列
+
+    wbsD.forEach(({ wb, fileName }) => {
+        let targetSheet = null, targetHeaderRow = 0, bestScore = 0;
+        for(const sname of wb.SheetNames){
+            const ws = wb.Sheets[sname];
+            if(!ws || !ws['!ref']) continue;
+            const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}).slice(0,30);
+            for(let i=0; i<rows.length; i++){
+                const rowStr = rows[i].join(' ');
+                let score = 0;
+                if(rowStr.includes('Line name'))          score+=5;
+                if(rowStr.includes('Line type'))          score+=4;
+                if(rowStr.includes('Supply source'))       score+=4;
+                if(rowStr.includes('Base supply bid'))     score+=3;
+                if(rowStr.includes('Pacing profile'))      score+=3;
+                if(rowStr.includes('Audience names'))      score+=3;
+                if(rowStr.includes('Awareness'))           score-=10;
+                if(rowStr.includes('Consideration'))       score-=10;
+                if(sname.includes('DISPLAY LINE ITEMS'))   score+=10;
+                if(score>bestScore){ bestScore=score; targetSheet=sname; targetHeaderRow=i; }
+            }
+        }
+
+        if(!targetSheet || bestScore<5){
+            files.push({ fileName, sheet:'（未発見）', liCount:0, lis:[] });
+            return;
+        }
+
+        const ws = wb.Sheets[targetSheet];
+        const allRows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+        const headers = allRows[targetHeaderRow].map(h=>String(h).trim());
+        const liColIdx = headers.findIndex(h=>h.toLowerCase().includes('line name'));
+        const orderColIdx = headers.findIndex(h=>
+            h.toLowerCase().includes('order name') || h === 'Order name - (READ ONLY)');
+
+        if(liColIdx === -1){
+            files.push({ fileName, sheet:targetSheet, liCount:0, lis:[] });
+            return;
+        }
+
+        // ダウンロードデータのIO名を抽出（Order name列から）
+        const junkPattern = /Follow instructions|Choose from|Don't delete|READ ONLY|informational/i;
+        const fileLis = [];
+        let fileIoName = '';
+
+        for(let i=targetHeaderRow+1; i<allRows.length; i++){
+            const row = allRows[i];
+            const liName = row[liColIdx] ? String(row[liColIdx]).trim() : '';
+            if(!liName || junkPattern.test(liName)) continue;
+
+            const obj = { __LI_NAME__: liName };
+            headers.forEach((h,idx)=>{ if(h) obj[h] = row[idx]!==undefined ? String(row[idx]).trim() : ''; });
+
+            // Order名からIO名を取得
+            if(orderColIdx !== -1 && !fileIoName){
+                const orderVal = String(row[orderColIdx]||'').trim();
+                if(orderVal && !junkPattern.test(orderVal)) fileIoName = orderVal;
+            }
+
+            obj.__IO_NAME_D__ = fileIoName; // ダウンロード側のIO名
+            obj.__FILE_D__    = fileName;
+
+            liMap[liName] = obj;
+            fileLis.push({ name:liName, status:obj['Active/Inactive']||'' });
+
+            // ioDownloadMapに追加
+            if(fileIoName){
+                if(!ioDownloadMap[fileIoName]) ioDownloadMap[fileIoName] = [];
+                ioDownloadMap[fileIoName].push(liName);
+            }
+        }
+
+        files.push({ fileName, sheet:targetSheet, liCount:fileLis.length, lis:fileLis, ioName:fileIoName });
+    });
+
+    return { liMap, files, ioDownloadMap };
+}
+
+// ===== DSP用セグメントsheet解析 =====
+function readDSPSegmentSheet(wb) {
+    // シート名に「セグメント」を含むものを探す
+    const sheetName = wb.SheetNames.find(n =>
+        n === 'セグメント' || n.includes('セグメント')
+    );
+    if (!sheetName) return null;
+
+    const ws = wb.Sheets[sheetName];
+    if (!ws || !ws['!ref']) return null;
+
+    const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+
+    // LIブロックリスト: [{ liNames:[], groups:[], notItems:[] }, ...]
+    const blocks = [];
+    let i = 0;
+
+    while (i < allRows.length) {
+    const row = allRows[i];
+    const bVal = String(row[1] || '').trim();
+    const cVal = String(row[2] || '').trim();
+
+    // ★ 対象LI行の判定を明確化
+    // 条件: B列が「対象LI」を含む行
+    const isLIHeader = bVal === '対象LI' || bVal.includes('対象LI');
+
+    if (!isLIHeader) { i++; continue; }
+
+    // LI名をC列から取得（改行で分割）
+    const liNames = cVal.split(/\n|\r\n|\r/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+    if (liNames.length === 0) { i++; continue; }
+
+    i++; // 対象LI行の次へ
+
+    // 表頭行を探す（「セグメント」と「つなぎ方」を含む行）
+    let foundHeader = false;
+    for (let j = 0; j < 5 && i < allRows.length; j++, i++) {
+        const hStr = allRows[i].join(' ');
+        if (hStr.includes('セグメント') && hStr.includes('つなぎ方')) {
+            foundHeader = true;
+            i++; // 表頭行をスキップ
+            break;
+        }
+    }
+
+    if (!foundHeader) continue;
+
+    // データ行を収集
+    const groups = {};
+    const notItems = [];
+
+    while (i < allRows.length) {
+        const dRow = allRows[i];
+        const segName = String(dRow[1] || '').trim(); // B列
+        const tsunagi = String(dRow[2] || '').trim(); // C列
+        const groupVal = String(dRow[4] || '').trim(); // E列
+
+        // 次の対象LIブロック開始を検出
+        if (String(dRow[1] || '').trim() === '対象LI' ||
+            String(dRow[1] || '').trim().includes('対象LI')) {
+            break; // iをインクリメントせずbreak
+        }
+
+        // 空行チェック（B/C/E列すべて空）
+if (segName === '' && tsunagi === '' && groupVal === '') {
+    // ★ 次の非空行を先読みして判断
+    let peekIdx = i + 1;
+    while (peekIdx < allRows.length) {
+        const peekRow = allRows[peekIdx];
+        const peekB = String(peekRow[1] || '').trim();
+        const peekC = String(peekRow[2] || '').trim();
+        const peekE = String(peekRow[4] || '').trim();
+        
+        // 次のブロック開始（対象LI行）なら終了
+        if (peekB === '対象LI' || peekB.includes('対象LI')) {
+            i = peekIdx;
+            break;
+        }
+        // 空行でない → まだ同じブロック内（Group間の空行）
+        if (peekB !== '' || peekC !== '' || peekE !== '') {
+            i = peekIdx; // 空行をスキップして継続
+            break;
+        }
+        peekIdx++;
+    }
+    // peekIdxがallRows.lengthに達した → ファイル終端
+    if (peekIdx >= allRows.length) {
+        i = peekIdx;
+        break;
+    }
+    // 次のブロック開始なら外側のwhileへ
+    const checkRow = allRows[i];
+    const checkB = String(checkRow[1] || '').trim();
+    if (checkB === '対象LI' || checkB.includes('対象LI')) break;
+    continue; // 同じブロック内→データ収集継続
+}
+
+        // 表頭キーワードはスキップ
+        const TABLE_HEADERS = ['セグメント','つなぎ方','ステータス',
+                               'Group','依頼日','メモ','Daily reach'];
+        if (segName !== '' && !TABLE_HEADERS.includes(segName)) {
+            if (tsunagi.toLowerCase() === 'not') {
+                notItems.push(segName);
+            } else {
+                const gKey = groupVal || 'Group1';
+                if (!groups[gKey]) groups[gKey] = [];
+                groups[gKey].push(segName);
+            }
+        }
+        i++;
+    }
+
+    // groups → 配列変換（Group1, Group2... の順）
+    const groupKeys = Object.keys(groups).sort((a, b) => {
+        const na = parseInt(a.replace(/\D/g, '')) || 0;
+        const nb = parseInt(b.replace(/\D/g, '')) || 0;
+        return na - nb;
+    });
+
+    const groupList = groupKeys.map(k => ({
+        key: k,
+        items: groups[k]
+    }));
+
+    blocks.push({ liNames, groups: groupList, notItems });
+} return blocks.length > 0 ? blocks : null;
+}
+
+// セグメントsheetからLI名でブロックを検索
+function findDSPSegmentBlock(blocks, liName) {
+    if (!blocks || !blocks.length) return null;
+    const liLower = liName.toLowerCase().trim();
+    for (const block of blocks) {
+        if (block.liNames.some(n => n.toLowerCase().trim() === liLower)) {
+            return block;
+        }
+    }
+    // 完全一致がない場合は部分一致
+    for (const block of blocks) {
+        if (block.liNames.some(n => {
+            const nl = n.toLowerCase().trim();
+            return nl.includes(liLower) || liLower.includes(nl);
+        })) {
+            return block;
+        }
+    }
+    return null;
+}
+
+// DSPセグメントsheet vs 後台 Audience対比
+function compareDSPSegment(block, dlRow) {
+    if (!block) return { matched: null, diffs: ['セグメントsheetに対応するLIブロックが見つかりません'] };
+
+    const arVal = dlRow ? (dlRow['Audiences - include'] || '') : '';
+    const atVal = dlRow ? (dlRow['Audience names'] || '') : '';
+
+    // ===== AT列: ID → 名前マッピング =====
+    const idToName = {};
+    if (atVal) {
+        for (const item of atVal.split(/[;；\n]/)) {
+            const it = item.trim();
+            if (!it) continue;
+            const m = it.match(/^(.+?)\s*\((\d{5,})\)\s*$/);
+            if (m) {
+                idToName[m[2].trim()] = _normalizeAudienceName(m[1]);
+            }
+        }
+    }
+
+    // ===== AR列: AND組・NOT構造を解析 =====
+    let arMain = arVal;
+    const dNotNames = [];
+
+    // NOT部分を抽出
+    const notMatch = arVal.match(/\[NOT\s+([^\]]+)\]/i);
+    if (notMatch) {
+        const notIds = notMatch[1].split(/[;；\s]+/).filter(s => s.trim());
+        for (const nid of notIds) {
+            const n = nid.trim();
+            if (n && idToName[n]) dNotNames.push(idToName[n]);
+        }
+        arMain = arVal.substring(0, notMatch.index).trim();
+    }
+
+    // include部分のAND組を抽出
+    const parenGroups = [...arMain.matchAll(/\(([^)]+)\)/g)];
+    const dGroups = []; // [[名前, ...], ...]
+
+    for (const pg of parenGroups) {
+        const ids = pg[1].split(/[;；\s]+/).filter(s => s.trim());
+        const names = [];
+        for (const id of ids) {
+            const id2 = id.trim();
+            if (!id2) continue;
+            if (idToName[id2]) {
+                names.push(idToName[id2]);
+            } else if (/^\d{5,}$/.test(id2)) {
+                names.push(`(UnknownID:${id2})`);
+            }
+        }
+        if (names.length > 0) dGroups.push(names);
+    }
+
+    const sGroups = block.groups;   // [{ key, items }, ...]
+    const sNotItems = block.notItems;
+
+    const diffs = [];
+    let allMatch = true;
+
+    // ===== Groupの数を比較 =====
+    // NOT以外のsGroupsとdGroupsの数
+    const sIncludeCount = sGroups.length;
+    const dIncludeCount = dGroups.length;
+
+    if (sIncludeCount !== dIncludeCount) {
+    // グループ数が違っても名前チェックで判断するため、falseにしない
+    diffs.push(
+        `【参考】ANDグループ数が異なります（設定表: ${sIncludeCount} / 後台: ${dIncludeCount}）`
+    );
+}
+
+    // ===== 各GroupのセグメントをAT列と照合 =====
+    // 後台の全名前（NOT以外）
+    const dAllIncludeNames = dGroups.flat();
+
+    sGroups.forEach((sGroup, idx) => {
+        const missingInD = sGroup.items.filter(sName => {
+            const sLower = sName.toLowerCase().trim();
+            return !dAllIncludeNames.some(dName => {
+                const dLower = dName.toLowerCase().trim();
+                return dLower === sLower ||
+                    dLower.includes(sLower) ||
+                    sLower.includes(dLower);
+            });
+        });
+        if (missingInD.length > 0) {
+            allMatch = false;
+            diffs.push(
+                `【${sGroup.key}】後台に見つからないセグメント:\n  → ${missingInD.join('\n  → ')}`
+            );
+        }
+    });
+
+    // 後台にあって設定表にないもの（UnknownIDを除く）
+    const sAllIncludeNames = sGroups.flatMap(g => g.items);
+    const onlyInD = dAllIncludeNames.filter(dName => {
+        if (dName.startsWith('(UnknownID:')) return false;
+        const dLower = dName.toLowerCase().trim();
+        return !sAllIncludeNames.some(sName => {
+            const sLower = sName.toLowerCase().trim();
+            return dLower === sLower ||
+                dLower.includes(sLower) ||
+                sLower.includes(dLower);
+        });
+    });
+    if (onlyInD.length > 0) {
+        allMatch = false;
+        diffs.push(
+            `【後台にあるが設定表に記載なし】\n  → ${onlyInD.join('\n  → ')}`
+        );
+    }
+
+    // ===== NOT条件の照合 =====
+    const sNotSet = sNotItems.map(n => n.toLowerCase().trim());
+    const dNotSet = dNotNames.map(n => n.toLowerCase().trim());
+
+    const onlySNot = sNotItems.filter(sn =>
+        !dNotSet.some(dn => dn === sn.toLowerCase().trim() || dn.includes(sn.toLowerCase().trim()))
+    );
+    const onlyDNot = dNotNames.filter(dn =>
+        !sNotSet.some(sn => sn === dn.toLowerCase().trim() || sn.includes(dn.toLowerCase().trim()))
+    );
+
+    if (onlySNot.length > 0) {
+        allMatch = false;
+        diffs.push(`【NOT条件: 設定表にあるが後台未設定】\n  → ${onlySNot.join('\n  → ')}`);
+    }
+    if (onlyDNot.length > 0) {
+        allMatch = false;
+        diffs.push(`【NOT条件: 後台にあるが設定表に記載なし】\n  → ${onlyDNot.join('\n  → ')}`);
+    }
+
+    return { matched: allMatch, diffs };
+}
+
+// ===== 設定表読み込み（変更なし） =====
+function readSettingTableDSP(wb){
+    // ★ セグメントsheetを事前解析（wb全体で1回）
+    const _dspSegBlocks = readDSPSegmentSheet(wb);
+    const SKIP_KW = ['入稿物','ブラックリスト','選択','ASIN','ReC','ABC','BSC',
+                     '馬さん','Instructions','Reference','セグメント',
+                     'Deal','デモグラ'];
+    const candidateSheets = [];
+    for(const sname of wb.SheetNames){
+        const ws = wb.Sheets[sname];
+        if(!ws || !ws['!ref']) continue;
+        if(SKIP_KW.some(kw => sname.includes(kw))) continue;
+        const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}).slice(0,35);
+        const rowStr = rows.map(r=>r.join(' ')).join(' ');
+        let score = 0;
+        if(rowStr.includes('ラインアイテム')) score += 10;
+        if(rowStr.includes('Media'))          score += 3;
+        if(rowStr.includes('SSP')||rowStr.includes('Supply')) score += 3;
+        if(rowStr.includes('Base supply bid')) score += 5;
+        if(rowStr.includes('Viewability'))     score += 3;
+        if(rowStr.includes('Pacing'))          score += 3;
+        if(rowStr.includes('Frequency'))       score += 2;
+        if(sname.includes('設定シート')||sname.includes('LineItem')) score += 5;
+        if(score >= 5) candidateSheets.push({ sname, score, ws });
+    }
+    if(!candidateSheets.length) return [];
+    const result = [];
+    for(const { sname, ws } of candidateSheets){
+        const ioName = _extractIOName(ws);
+        const allRows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+        let headerRowIdx = -1;
+        for(let i=0; i<Math.min(100,allRows.length); i++){
+            const rs = allRows[i].join(' ');
+            if(rs.includes('ラインアイテム名')||rs.includes('Line Item Name')){
+                headerRowIdx=i;
+                for(let j=i+1;j<Math.min(i+5,allRows.length);j++){
+                    const rs2=allRows[j].join(' ');
+                    if(rs2.includes('Type')||rs2.includes('Device')||rs2.includes('Start day')){
+                        headerRowIdx=j; break;
+                    }
+                }
+                break;
+            }
+        }
+        if(headerRowIdx===-1) continue;
+        const headers = allRows[headerRowIdx];
+        const colIdx  = {};
+        const COL_KEYWORDS = {
+            LI_NAME:['ラインアイテム名','Line Item Name'],media:['Type'],device:['Device'],
+            mobile_env:['Mobile environment'],start_day:['Start day'],start_time:['Start time'],
+            end_day:['End day'],end_time:['End time'],auto_opt:['Automated optimization'],
+            budget:['予算','Line item budget'],budget_cap:['日予算','Budget cap'],
+            pacing:['配信ペース','Pacing'],fee_3p:['3P Fee'],frequency:['Frequency'],
+            base_cpm:['ベースCPM','Base supply bid'],max_cpm:['上限CPM','Maximum average CPM'],
+            product_small:['商材カテゴリ','Product categories'],ssp:['SSP','Supply sources'],
+            ssp_owned:['Amazon Owned and Operated'],ssp_pub:['Amazon Publisher Direct'],
+            ssp_third:['Third Party Exchanges'],mobile_os:['Mobile OS'],
+            device_type:['Device type'],audience:['セグメント','Audience'],
+            location:['配信地域','Location'],language:['Language'],
+            domain_bl:['Domain'],mobile_app:['Mobile app targeting'],
+            daypart:['配信時間帯','Daypart'],viewability_pct:['Viewability'],
+        };
+        headers.forEach((h,i)=>{
+            const hFull=String(h);
+            const hs=hFull.split('\n')[0].replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim();
+            for(const [key,keywords] of Object.entries(COL_KEYWORDS)){
+                if(!keywords) continue;
+                if(keywords.some(kw=>hs.includes(kw)||hFull.includes(kw))){
+                    if(!(key in colIdx)) colIdx[key]=i;
+                }
+            }
+        });
+        if(!('LI_NAME' in colIdx)) colIdx['LI_NAME']=1;
+        if('viewability_pct' in colIdx) colIdx['viewability_excl']=colIdx['viewability_pct']+1;
+        for(let i=headerRowIdx+1; i<allRows.length; i++){
+            const row=allRows[i];
+            const liName=row[colIdx.LI_NAME]?String(row[colIdx.LI_NAME]).trim():'';
+            if(!liName||liName.includes('●●●')||liName.includes('例）')) continue;
+            const g=(idx)=>idx!==undefined&&row[idx]!==undefined?String(row[idx]).trim():'';
+            result.push({
+                __LI_NAME__:liName,__IO_NAME__:ioName,__SHEET__:sname,
+                __SEGMENT_SHEET_DSP__: _dspSegBlocks,  // ← この1行を追加
+                media:g(colIdx.media),device:g(colIdx.device),mobile_env:g(colIdx.mobile_env),
+                start_day:g(colIdx.start_day),start_time:g(colIdx.start_time),
+                end_day:g(colIdx.end_day),end_time:g(colIdx.end_time),
+                auto_opt:g(colIdx.auto_opt),budget:g(colIdx.budget),
+                budget_cap:g(colIdx.budget_cap),pacing:g(colIdx.pacing),
+                fee_3p:g(colIdx.fee_3p),frequency:g(colIdx.frequency),
+                base_cpm:g(colIdx.base_cpm),max_cpm:g(colIdx.max_cpm),
+                product_big:'',product_small:g(colIdx.product_small),
+                ssp:g(colIdx.ssp),ssp_owned:g(colIdx.ssp_owned),
+                ssp_pub:g(colIdx.ssp_pub),ssp_third:g(colIdx.ssp_third),
+                twitch:g(colIdx.twitch),mobile_os:g(colIdx.mobile_os),
+                device_type:g(colIdx.device_type),audience:g(colIdx.audience),
+                location:g(colIdx.location),language:g(colIdx.language),
+                viewability_pct:g(colIdx.viewability_pct),
+                viewability_excl:g(colIdx.viewability_excl),
+                daypart:g(colIdx.daypart),domain_bl:g(colIdx.domain_bl),
+                mobile_app:g(colIdx.mobile_app),
+            });
+        }
+    }
+    return result;
+}
+
+function _extractIOName(ws){
+    const allRows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+    let orderName='', settingOrderName='';
+    for(let i=0; i<Math.min(60,allRows.length); i++){
+        const row=allRows[i];
+        for(let c=0; c<row.length; c++){
+            const cell=String(row[c]||'').trim();
+            if(cell.includes('設定Order名')){
+                const v=String(row[c+1]||'').trim();
+                if(v){ settingOrderName=v; break; }
+            }
+            if(cell.includes('Order名')&&!cell.includes('設定')&&!orderName){
+                const v=String(row[c+1]||'').trim();
+                if(v) orderName=v;
+            }
+        }
+        if(settingOrderName) break;
+    }
+    return settingOrderName || orderName || '';
+}
+
+// ===== DL_COLUMNS（変更なし） =====
+const DL_COLUMNS = [
+    { key:'Line ID',                  ja:'ラインID',             checkFn:null, autoHide:true },
+    { key:'Advertiser ID*',           ja:'広告主ID',             checkFn:null, autoHide:true },
+    { key:'Advertiser name',          ja:'広告主名',             checkFn:null, autoHide:true },
+    { key:'Order ID*',                ja:'オーダーID',           checkFn:null, autoHide:true },
+    { key:'Order name - (READ ONLY)', ja:'オーダー名',           checkFn:null, autoHide:true },
+    { key:'Line type*',               ja:'広告フォーマット',
+      checkFn:(s,v)=> !!(v&&v.toLowerCase().includes('display'))
+    },
+    { key:'Line name*',               ja:'ラインアイテム名',     checkFn:null },
+    { key:'External ID',              ja:'外部ID',               checkFn:null, autoHide:true },
+    { key:'Line start date',          ja:'開始日時',
+      checkFn:(s,v)=>{ const sd=normDateTimeS(s.start_day,s.start_time); return !sd||sd===normDateTime(v); }
+    },
+    { key:'Line end date',            ja:'終了日時',
+      checkFn:(s,v)=>{ const ed=normDateTimeS(s.end_day,s.end_time); return !ed||ed===normDateTime(v); }
+    },
+    { key:'Active/Inactive',          ja:'配信状態',
+      checkFn:(s,v)=> v&&v.toLowerCase()==='pause'
+    },
+    { key:'Tactic Tag - (READ ONLY)', ja:'タクティクタグ', checkFn:(s,v)=> null },
+    { key:'Product categories*',      ja:'商材カテゴリ',
+      checkFn:(s,v)=>{
+        if(!v) return true;
+        const dParts=(v||'').split(':');
+        const dLast=dParts[dParts.length-1].replace(/\s/g,'').toLowerCase();
+        const dFirst=dParts[0].replace(/\s/g,'').toLowerCase();
+        const sBig=(s.product_big||'').replace(/\s/g,'').toLowerCase();
+        const sSmall=(s.product_small||'').replace(/\s/g,'').toLowerCase();
+        if(sBig&&sSmall) return dFirst.includes(sBig)&&dLast.includes(sSmall);
+        else if(sSmall) return dLast.includes(sSmall)||sSmall.includes(dLast);
+        else if(sBig) return dFirst.includes(sBig)||sBig.includes(dFirst);
+        return true;
+      }
+    },
+    { key:'Frequency Caps',           ja:'フリークエンシー',
+      checkFn:(s,v)=>{ const sf=normFrequency(s.frequency); return !sf||sf===normFrequency(v); }
+    },
+    { key:'Device type',              ja:'デバイス',
+      checkFn:(s,v)=>{
+        const sd=(s.device||'').toLowerCase();const dv=(v||'').toLowerCase();
+        return (sd.includes('desktop')===dv.includes('desktop'))&&(sd.includes('mobile')===dv.includes('mobile'));
+      }
+    },
+    { key:'Environment Type',         ja:'モバイル環境',
+      checkFn:(s,v)=> normMobileEnv(s.mobile_env)===normMobileEnv(v)
+    },
+    { key:'Amazon viewability', ja:'Viewability',
+  checkFn:(s,v)=>{
+    // 设定表空 → 后台应为 Allow all (greatest reach)
+    if(!s.viewability_pct || !s.viewability_pct.trim()){
+        const dv = (v||'').toLowerCase();
+        if(dv.includes('allow all') || dv.includes('greatest reach') || !v || !v.trim()){
+            return true;
+        } else {
+            return false;
+        }
+    }
+    function nv(x){
+        const t=(x||'').toLowerCase().trim();
+        if(t.includes('70%')&&t.includes('greater')) return '70g';
+        if(t.includes('60%')&&t.includes('greater')) return '60g';
+        if(t.includes('50%')&&t.includes('greater')) return '50g';
+        if(t.includes('40%')&&t.includes('greater')) return '40g';
+        if(t.includes('up to 40')) return 'u40';
+        if(t.includes('allow all')||t.includes('greatest reach')) return 'all';
+        return t;
+    }
+    return nv(s.viewability_pct)===nv(v);
+  }
+},
+    { key:'Unmeasured viewability',   ja:'Viewability除外',
+      checkFn:(s,v)=>{
+        if(!s.viewability_excl) return null;
+        const se=(s.viewability_excl||'').includes('含めない')?'exclude':'include';
+        const de=(v||'').toLowerCase().includes('exclude')?'exclude':'include';
+        return se===de;
+      }
+    },
+    { key:'Third-party pre-bid targeting', ja:'サードパーティ事前入札', checkFn:null },
+    { key:'Supply source',            ja:'SSP',
+      checkFn:(s,v)=>{
+        const sSspS=(s.ssp||'').trim();let sSupplyNorm='';
+        if(sSspS){
+            const sl=sSspS.toLowerCase();
+            if(sl.includes('全ssp')||sl.includes('all ssp')) sSupplyNorm='all_ssp';
+            else if(sl.includes('amazon内')) sSupplyNorm='on_amazon';
+            else if(sl.includes('amazon外')) sSupplyNorm='off_amazon';
+        } else {
+            const hasOwned=/[○✓✔yesあり有]/i.test(s.ssp_owned||'')||!!(s.ssp_owned||'').trim();
+            const hasPub=/[○✓✔yesあり有]/i.test(s.ssp_pub||'')||!!(s.ssp_pub||'').trim();
+            const hasThird=/[○✓✔yesあり有すべて]/i.test(s.ssp_third||'')||!!(s.ssp_third||'').trim();
+            if((hasOwned||hasPub)&&hasThird) sSupplyNorm='all_ssp';
+            else if(hasOwned||hasPub) sSupplyNorm='on_amazon';
+            else if(hasThird) sSupplyNorm='off_amazon';
+        }
+        return judgeSupplyD(v,sSupplyNorm,getTwitchS(s.twitch||'')).ok;
+      }
+    },
+    { key:'Deal selection',           ja:'ディール選択',          checkFn:null, autoHide:true },
+    { key:'Inventory group',          ja:'インベントリグループ',  checkFn:null, autoHide:true },
+    { key:'Mobile OS',                ja:'モバイルOS',            checkFn:null, autoHide:true },
+    { key:'Site language',            ja:'サイト言語',            checkFn:null, autoHide:true },
+    { key:'Language targeting', ja:'言語ターゲティング',
+  checkFn:(s,v) => {
+    const sl = (s.language || '').trim();
+    const dv = (v || '').trim().toLowerCase();
+    
+    // 設定表が空 → 後台がDisableなら一致、それ以外はnull
+    if(!sl){
+      if(dv === 'disable' || dv === '') return true;
+      return null;
+    }
+    
+    // 設定表が「チェック無し」→ Disableと同じ扱い
+    if(sl === 'チェック無し'){
+      return dv === 'disable' || dv === '';
+    }
+    
+    // 設定表が「チェック有」→ Enableと比対
+    if(sl === 'チェック有'){
+      return dv === 'enable';
+    }
+    
+    return null;
+  }
+},
+    { key:'Contextual targeting by categories',    ja:'In-market categories（Contextual）',    checkFn:null, autoHide:true },
+    { key:'Target Categories using only contextual signals?', ja:'Only use contextual', checkFn:null, autoHide:true },
+    { key:'Contextual excluding by categories',    ja:'コンテキスト除外（カテゴリ）', checkFn:null, autoHide:true },
+    { key:'Contextual targeting by products',      ja:'コンテキスト（商品）',         checkFn:null, autoHide:true },
+    { key:'Contextual excluding by products',      ja:'コンテキスト除外（商品）',     checkFn:null, autoHide:true },
+    { key:'Contextual targeting (on Amazon)',       ja:'コンテキスト（Amazon内）',     checkFn:null, autoHide:true },
+    { key:'Targeting by Keywords',                 ja:'キーワードターゲティング',     checkFn:null, autoHide:true },
+    { key:'Target Keywords using only contextual signals?', ja:'KWのみコンテキスト', checkFn:null, autoHide:true },
+    { key:'Targeting - Content',                   ja:'コンテンツターゲティング',     checkFn:null, autoHide:true },
+    { key:'Brand suitability content exclusion categories', ja:'content exclusion categories',
+  checkFn:(s,v)=>{
+    // 判断SSP设定
+    const sspRaw = (s.ssp||'').trim();
+    const sl = sspRaw.toLowerCase();
+    const isOffAmazon  = sl.includes('amazon外');
+    const isAllSSP     = sl.includes('全ssp') || sl.includes('all ssp');
+    const isOnAmazon   = sl.includes('amazon内');
+
+    // 也兼容三列拆分写法
+    const hasOwned = /[○✓✔yesあり有]/i.test(s.ssp_owned||'');
+    const hasPub   = /[○✓✔yesあり有]/i.test(s.ssp_pub||'');
+    const hasThird = /[○✓✔yesあり有すべて]/i.test(s.ssp_third||'');
+
+    let sspType = '';
+    if(sspRaw){
+        if(isAllSSP)         sspType = 'all';
+        else if(isOffAmazon) sspType = 'off';
+        else if(isOnAmazon)  sspType = 'on';
+    } else {
+        if((hasOwned||hasPub) && hasThird) sspType = 'all';
+        else if(hasOwned||hasPub)          sspType = 'on';
+        else if(hasThird)                  sspType = 'off';
+    }
+
+    // 全SSP → 要确认有无单独指示
+    if(sspType === 'all'){
+        s.__brand_content_note__ =
+            '⚠️ SSP=全SSP：Content exclusion categoriesに単独指示があるか確認してください。指示がない場合は日方に連絡してください。';
+        return null;
+    }
+
+    // Amazon内 or 不明 → 后台应为空
+    if(sspType === 'on' || sspType === ''){
+        if(!v || v.trim() === ''){
+            return true; // 空=正常
+        } else {
+            s.__brand_content_note__ = 'SSP=Amazon内配信のため、Content exclusion categoriesは空白が正しいです。';
+            return false;
+        }
+    }
+
+    // Amazon外 → 后台应包含 Select all 的全部内容
+    if(sspType === 'off'){
+        const SELECT_ALL_ITEMS = [
+            'ACCIDENTS_DISASTERS_AND_TRAGEDIES',
+            'WEAPONS',
+            'GAMBLING',
+            'BLOOD_GORE_VIOLENCE',
+            'CRIME',
+            'SHOCK_AND_HORROR',
+            'PROFANITY',
+            'HIGHLY_DEBATED_SOCIAL_ISSUES',
+            'POLITICS',
+            'SEXUAL_REFERENCES_AND_SUGGESTIVE',
+            'ALCOHOL_AND_RELATED_PRODUCTS',
+            'TOBACCO_AND_RELATED_PRODUCTS',
+            'DRUG_REFERENCES_OR_USE',
+            'RELIGIOUS_CONTENT',
+            'UNRATED_MEDIA_CONTENT',
+        ];
+
+        if(!v || v.trim() === ''){
+            s.__brand_content_note__ = 'SSP=Amazon外配信のため、Content exclusion categories=Select allが必要ですが、後台が空白です。';
+            return false;
+        }
+
+        const dItems = v.split(';').map(x => x.trim().toUpperCase()).filter(Boolean);
+        const dSet   = new Set(dItems);
+
+        // 检查 SELECT_ALL_ITEMS 里哪些后台没有
+        const missing = SELECT_ALL_ITEMS.filter(item => !dSet.has(item));
+
+        // 检查后台有哪些不在 SELECT_ALL_ITEMS 里（可能是新增项目）
+        const extra   = dItems.filter(item => !SELECT_ALL_ITEMS.includes(item));
+
+        if(missing.length === 0 && extra.length === 0){
+            return true; // 完全一致
+        }
+        if(missing.length > 0){
+            s.__brand_content_note__ =
+                `❌ 以下のカテゴリが後台に設定されていません：\n${missing.join('\n')}`;
+            return false;
+        }
+        if(extra.length > 0){
+            s.__brand_content_note__ =
+                `⚠️ 後台に未知のカテゴリが含まれています（管理者にSelect allの内容更新を連絡してください）：\n${extra.join('\n')}`;
+            return null; // 要确认
+        }
+    }
+
+    return null;
+  }
+},
+
+{ key:'Brand suitability inventory tier', ja:'inventory tier',
+  checkFn:(s,v)=>{
+    const sspRaw = (s.ssp||'').trim();
+    const sl = sspRaw.toLowerCase();
+    const isOffAmazon  = sl.includes('amazon外');
+    const isAllSSP     = sl.includes('全ssp') || sl.includes('all ssp');
+    const isOnAmazon   = sl.includes('amazon内');
+
+    const hasOwned = /[○✓✔yesあり有]/i.test(s.ssp_owned||'');
+    const hasPub   = /[○✓✔yesあり有]/i.test(s.ssp_pub||'');
+    const hasThird = /[○✓✔yesあり有すべて]/i.test(s.ssp_third||'');
+
+    let sspType = '';
+    if(sspRaw){
+        if(isAllSSP)         sspType = 'all';
+        else if(isOffAmazon) sspType = 'off';
+        else if(isOnAmazon)  sspType = 'on';
+    } else {
+        if((hasOwned||hasPub) && hasThird) sspType = 'all';
+        else if(hasOwned||hasPub)          sspType = 'on';
+        else if(hasThird)                  sspType = 'off';
+    }
+
+    // 全SSP → 要确认
+    if(sspType === 'all'){
+        s.__brand_tier_note__ =
+            '⚠️ SSP=全SSP：Inventory tierに単独指示があるか確認してください。指示がない場合は日方に連絡してください。';
+        return null;
+    }
+
+    // Amazon内 or 不明 → 后台应为空
+    if(sspType === 'on' || sspType === ''){
+        if(!v || v.trim() === ''){
+            return true;
+        } else {
+            s.__brand_tier_note__ = 'SSP=Amazon内配信のため、Inventory tierは空白が正しいです。';
+            return false;
+        }
+    }
+
+    // Amazon外 → 后台应为 STANDARD
+    if(sspType === 'off'){
+        if(!v || v.trim() === ''){
+            s.__brand_tier_note__ = 'SSP=Amazon外配信のため、Inventory tier=Standardが必要ですが、後台が空白です。';
+            return false;
+        }
+        const dv = v.trim().toLowerCase();
+        if(dv === 'standard'){
+            return true;
+        } else {
+            s.__brand_tier_note__ = `SSP=Amazon外配信のため、Inventory tier=Standardが必要ですが、後台は「${v}」です。`;
+            return false;
+        }
+    }
+
+    return null;
+  }
+},
+    { key:'Location targeting by',                ja:'位置情報シグナル',
+      checkFn:(s,v)=>{
+        const locStr=(s.location||'').toLowerCase();
+        if(locStr.includes('only use real-time')||locStr.includes('real-time')){
+            return (v||'').toLowerCase().includes('currently');
+        }
+        return true;
+      }
+    },
+    { key:'Location targeting 1 of 2', ja:'配信地域①',
+  checkFn:(s,v)=>{
+    const locStr=(s.location||'').toLowerCase();
+    if(locStr.includes('除外')) return null;
+    if(locStr.includes('japan')) return (v||'').toLowerCase().includes('japan');
+
+    // ===== 都道府県名の比対 =====
+    if(!v || !v.trim()) return null;
+
+    // 後台の地域名を正規化
+    // "PREFECTURE:Chiba, JP; PREFECTURE:Tokyo, JP" → ["chiba","tokyo"]
+    const normDName = (raw) => {
+        const s = raw.trim();
+        // PREFECTURE:名前, JP の形式
+        const m = s.match(/^(?:PREFECTURE:|CITY:|COUNTRY:)?(.+?)(?:,\s*JP)?$/i);
+        const name = m ? m[1].trim() : s;
+        return name.replace(/\s*prefecture\s*$/i, '').trim().toLowerCase();
+    };
+
+    const dNames = v.split(';').map(normDName).filter(Boolean);
+    if(dNames.length === 0) return null;
+
+    // 設定表の地域名を正規化（スペース・改行・※以降を除去）
+    // "Tokyo Kanagawa Chiba Saitama ※Only use real-time location"
+    const cleanLoc = (s.location || '').replace(/※.*/g, '').trim();
+    const sNames = cleanLoc.split(/[\s,、，\n]+/)
+        .map(n => n.replace(/\s*prefecture\s*$/i, '').trim().toLowerCase())
+        .filter(n => n && n.length > 1);
+
+    if(sNames.length === 0) return null;
+
+    // 設定表の全地名が後台に含まれているか確認
+    const missing = sNames.filter(sn => !dNames.some(dn => dn === sn));
+    const extra   = dNames.filter(dn => !sNames.some(sn => sn === dn));
+
+    if(missing.length === 0 && extra.length === 0) return true;   // ✅ 完全一致
+    if(missing.length > 0){
+        s.__location_diff__ = `後台に含まれていない地域：${missing.join(', ')}`;
+        return false;  // ❌ 不一致
+    }
+    if(extra.length > 0){
+        s.__location_diff__ = `設定表に記載のない地域が後台に設定されています：${extra.join(', ')}`;
+        return false;  // ❌ 不一致
+    }
+    return null;
+  }
+},
+    { key:'Location targeting 2 of 2', ja:'配信地域②',           checkFn:null, autoHide:true },
+    { key:'Location excluding 1 of 2', ja:'除外地域①',           checkFn:null, autoHide:true },
+    { key:'Location excluding 2 of 2', ja:'除外地域②',           checkFn:null, autoHide:true },
+    { key:'Location group ID targeting excluding', ja:'地域グループID（除外）', checkFn:null, autoHide:true },
+    { key:'Audiences - include',      ja:'オーディエンスID',      checkFn:null, autoHide:true },
+    { key:'Reach similar audiences', ja:'類似オーディエンス',
+  checkFn:(s,v)=>{
+    const sP = parseAudienceS(s.audience);
+    const hasAudFromText = sP.groups.length > 0 || sP.notItems.length > 0;
+    let hasAud = hasAudFromText;
+    if(!hasAud && s.__SEGMENT_SHEET_DSP__){
+        const block = findDSPSegmentBlock(s.__SEGMENT_SHEET_DSP__, s.__LI_NAME__);
+        if(block && (block.groups.length > 0 || block.notItems.length > 0)){
+            hasAud = true;
+        }
+    }
+    const dv = (v||'').trim().toUpperCase();
+    if(hasAud){
+        if(dv === 'NO') return true;
+        else if(!dv || dv === 'YES') return false;
+        else return null;
+    } else {
+        if(!dv || dv === 'YES') return true;
+        else return null;
+    }
+}
+},
+    { key:'Audience names', ja:'オーディエンス名',
+  checkFn:(s, v, dlRow)=>{
+    const audienceRaw = (s.audience || '').trim();
+    const hasD = !!(v && v.trim());
+
+    // ===== ★ DSPセグメントsheet参照モード =====
+    // 設定表のAudience列が空 かつ __SEGMENT_SHEET_DSP__ が存在する場合
+    if (!audienceRaw && s.__SEGMENT_SHEET_DSP__ && s.__SEGMENT_SHEET_DSP__.length > 0) {
+        const block = findDSPSegmentBlock(s.__SEGMENT_SHEET_DSP__, s.__LI_NAME__);
+
+        if (!block) {
+            // セグメントsheetにこのLIの記載がない
+            // → Audience なし扱い（後台も空ならOK）
+            if (!hasD) return true;
+            return null; // 後台にあるが設定表（セグメントsheet）に記載なし
+        }
+
+        // ブロックが見つかったが中身が空
+        const hasSegData = block.groups.length > 0 || block.notItems.length > 0;
+        if (!hasSegData) {
+            if (!hasD) return true;
+            return null;
+        }
+
+        // 後台が空なのに設定表にセグメントあり → NG
+        if (!hasD) {
+            const segDesc = block.groups.map(g =>
+                `${g.key}: ${g.items.join(' / ')}`
+            ).join(' AND ');
+            s.__audience_diff__ =
+                `後台にAudienceが未設定\n（セグメントsheet: ${segDesc}${block.notItems.length > 0 ? ' AND NOT ' + block.notItems.join('/') : ''}）`;
+            return false;
+        }
+
+        // 対比実行
+        const result = compareDSPSegment(block, dlRow || { 'Audiences - include': '', 'Audience names': v });
+        if (result.diffs && result.diffs.length > 0) {
+            s.__audience_diff__ = result.diffs.join('\n\n');
+        }
+        return result.matched === null ? null : result.matched;
+    }
+
+    // ===== 既存ロジック（変更なし）=====
+    const sP = parseAudienceS(audienceRaw);
+    const hasS = sP.groups.length > 0 || sP.notItems.length > 0;
+
+    if (!hasS && !hasD) return true;
+    if (!hasS && hasD)  return null;
+
+    const dP = parseAudienceD(
+        dlRow || { 'Audience names': v, 'Audiences - include': '' }
+    );
+    const result = compareAudience(sP, dP);
+
+    if (result.diffs && result.diffs.length > 0) {
+        s.__audience_diff__ = result.diffs.join('\n\n');
+    }
+
+    return result.matched === null ? null : result.matched;
+  }
+},
+    { key:'Tactics Converters Exclusion Type', ja:'Exclude past purchasers', checkFn:null },
+    { key:'Daypart targeting timezone', ja:'デイパート時間帯',
+      checkFn:(s,v)=>{
+        const daypart=(s.daypart||'').trim();
+        if(!daypart) return null;
+        return (v||'').toLowerCase().includes("viewer's time zone")||(v||'').toLowerCase().includes('viewer');
+      }
+    },
+    { key:'Daypart period', ja:'デイパート期間',
+  checkFn:(s,v)=>{
+    const daypart = (s.daypart||'').trim();
+    if(!daypart) return null; // 設定表空 → チェック対象外
+
+    // ===== 設定表 → 5桁コード変換 =====
+    const DAY_MAP = {
+        'sunday':0,'monday':1,'tuesday':2,'wednesday':3,
+        'thursday':4,'friday':5,'saturday':6
+    };
+
+    function timeToCode(t, isEnd){
+        const s = t.trim().toUpperCase();
+        // 12 AM
+        if(s === '12 AM'){
+            return isEnd ? '24' : '00';
+        }
+        // 12 PM
+        if(s === '12 PM') return '12';
+        const m = s.match(/^(\d{1,2})\s*(AM|PM)$/i);
+        if(!m) return null;
+        let h = parseInt(m[1]);
+        const period = m[2].toUpperCase();
+        if(period === 'PM' && h !== 12) h += 12;
+        if(period === 'AM' && h === 12) h = 0;
+        return String(h).padStart(2,'0');
+    }
+
+    function settingToCodes(text){
+        const codes = new Set();
+        // 各行をパース: "Monday: 12 AM - 2 AM, 5 AM - 12 AM"
+        const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+        for(const line of lines){
+            // 曜日を取得
+            const dayMatch = line.match(/^(\w+)\s*:/i);
+            if(!dayMatch) continue;
+            const dayName = dayMatch[1].toLowerCase();
+            const dayCode = DAY_MAP[dayName];
+            if(dayCode === undefined) continue;
+
+            // 時間帯部分を取得
+            const timePart = line.substring(line.indexOf(':')+1).trim();
+            // カンマで分割
+            const segments = timePart.split(',').map(s=>s.trim()).filter(s=>s);
+            for(const seg of segments){
+                // "12 AM - 2 AM" 形式をパース
+                const timeMatch = seg.match(/^(.+?)\s*-\s*(.+)$/);
+                if(!timeMatch) continue;
+                const startCode = timeToCode(timeMatch[1], false);
+                const endCode   = timeToCode(timeMatch[2], true);
+                if(startCode === null || endCode === null) continue;
+                codes.add(`${startCode}${endCode}${dayCode}`);
+            }
+        }
+        return codes;
+    }
+
+    // ===== 下载データをパース =====
+    function downloadToCodes(text){
+        const codes = new Set();
+        text.split(';').map(s=>s.trim()).filter(s=>s).forEach(c=>{
+            if(c.length === 5) codes.add(c);
+        });
+        return codes;
+    }
+
+    const sCodes = settingToCodes(daypart);
+    const dCodes = downloadToCodes(v||'');
+
+    if(sCodes.size === 0) return null;
+    if(dCodes.size === 0) return false; // ❌ 設定表あるのに下载空
+
+    // 比較
+    const onlyS = [...sCodes].filter(c => !dCodes.has(c));
+    const onlyD = [...dCodes].filter(c => !sCodes.has(c));
+
+    if(onlyS.length === 0 && onlyD.length === 0){
+        return true;  // ✅ 完全一致
+    }
+
+    // 差異詳細を保存
+    if(onlyS.length > 0){
+        s.__daypart_diff__ = `設定表にあるが後台未設定：${onlyS.join('; ')}`;
+    }
+    if(onlyD.length > 0){
+        s.__daypart_diff__ = (s.__daypart_diff__||'') +
+            `\n後台にあるが設定表に記載なし：${onlyD.join('; ')}`;
+    }
+
+    return false; // ❌ 不一致
+  }
+},
+    { key:'IAB content categories',   ja:'IABカテゴリ',           checkFn:null, autoHide:true },
+    { key:'Fold position',            ja:'フォールドポジション',  checkFn:null, autoHide:true },
+    { key:'Native content position',  ja:'ネイティブポジション',  checkFn:null, autoHide:true },
+    { key:'Automated optimization',   ja:'自動最適化',
+      checkFn:(s,v)=>{ const sa=normAutoOpt(s.auto_opt); return !sa||sa===normAutoOpt(v); }
+    },
+    { key:'Line item budget',         ja:'予算',
+      checkFn:(s,v)=>{ const sb=normNum(s.budget); return !sb||sb===normNum(v); }
+    },
+    { key:'Budget cap',               ja:'日予算',
+      checkFn:(s,v)=>{ const sc=normNum(s.budget_cap); return !sc||sc===normNum(v); }
+    },
+    { key:'Daily Minimum Spend',      ja:'最低日次支出',          checkFn:null, autoHide:true },
+    { key:'Pacing profile',           ja:'配信ペース',
+      checkFn:(s,v)=>{ const sp=normPacing(s.pacing); return !sp||sp===normPacing(v); }
+    },
+    { key:'3P fees',                  ja:'3Pフィー',              checkFn:null, autoHide:true },
+    { key:'Base supply bid*',         ja:'ベースCPM',
+      checkFn:(s,v)=> normNum(s.base_cpm)===normNum(v)
+    },
+    { key:'Maximum average CPM', ja:'上限平均CPM',
+  checkFn:(s,v)=>{
+    const sm=normNum(s.max_cpm);
+    const dv=normNum(v);
+    // 設定表が空・ハイフン・auto → 後台が空でもOK
+    if(!sm || sm==='-' || sm.toLowerCase().includes('auto')) return true;
+    return sm===dv;
+  }
+},
+    { key:'Floor',                    ja:'フロアCPM',             checkFn:null, autoHide:true },
+    { key:'Domain Targeting - (READ ONLY)', ja:'Domain',
+  checkFn:(s,v)=>{
+    const sspRaw = (s.ssp||'').trim();
+    const sl = sspRaw.toLowerCase();
+    const hasOwned = /[○✓✔yesあり有]/i.test(s.ssp_owned||'');
+    const hasPub   = /[○✓✔yesあり有]/i.test(s.ssp_pub||'');
+    const hasThird = /[○✓✔yesあり有すべて]/i.test(s.ssp_third||'');
+
+    // SSPタイプを判定
+    let sspType = '';
+    if(sspRaw){
+        if(sl.includes('全ssp') || sl.includes('all ssp')) sspType = 'all';
+        else if(sl.includes('amazon外'))                   sspType = 'off';
+        else if(sl.includes('amazon内'))                   sspType = 'on';
+    } else {
+        if((hasOwned || hasPub) && hasThird) sspType = 'all';
+        else if(hasOwned || hasPub)          sspType = 'on';
+        else if(hasThird)                    sspType = 'off';
+    }
+
+    const dv = (v||'').trim();
+    const dvLower = dv.toLowerCase();
+
+    // ===== Amazon内配信 =====
+    if(sspType === 'on'){
+        // Domain=No/空が正しい、ブラックリストは無視
+        if(!dv || dvLower === 'no'){
+            return true;   // ✅ 正常
+        } else {
+            return null;   // ☞ 要確認
+        }
+    }
+
+    // ===== Amazon外配信 =====
+    if(sspType === 'off'){
+        const domainSetting = (s.domain_bl||'').trim();
+        const isBlacklist = domainSetting.includes('ブラックリスト') && 
+                            domainSetting.includes('統一ルール');
+        
+        if(dvLower === 'yes' || dv === 'Yes'){
+            if(isBlacklist){
+                return true;   // ✅ 設定表=ブラックリスト統一ルール + 下载=Yes → 正常
+            } else {
+                return null;   // ☞ 設定表≠ブラックリスト統一ルール + 下载=Yes → 要確認
+            }
+        } else {
+            // 下载=No/空 → Amazon外なのにDomainなし → 不一致
+            return false;  // ❌ 不一致
+        }
+    }
+
+    // ===== 全SSP / 不明 =====
+    return null;
+  }
+},
+    { key:'Orientation',              ja:'オリエンテーション',    checkFn:null, autoHide:true },
+    { key:'Mobile app targeting - include or exclude', ja:'アプリターゲティング', 
+  checkFn:(s,v)=>{
+    const setting = (s.mobile_app||'').trim();
+    const dv = (v||'').trim().toLowerCase();
+
+    // 設定表が空の場合 → 下载=Excludeが正しい
+    if(!setting){
+        if(dv === 'exclude'){
+            return true;   // ✅ 正常
+        } else if(!dv){
+            return true;   // ✅ 空も正常
+        } else {
+            return null;   // ☞ 要確認
+        }
+    }
+
+    // 設定表に値がある場合 → 要確認
+    return null;
+  }
+},
+    { key:'App IDs 1 of 2',           ja:'アプリID①',             checkFn:null, autoHide:true },
+    { key:'App IDs 2 of 2',           ja:'アプリID②',             checkFn:null, autoHide:true },
+    { key:'Mobile app group ID targeting', ja:'アプリグループID', checkFn:null, autoHide:true },
+    { key:"Advertiser's domain targeting - (CREATE ONLY)", ja:'広告主ドメイン', checkFn:null, autoHide:true },
+    { key:'Line item domain targeting - (CREATE ONLY)', ja:'LIドメイン',       checkFn:null, autoHide:true },
+    { key:'Domains - (CREATE ONLY)',  ja:'ドメインリスト',         checkFn:null, autoHide:true },
+    { key:'Creative rotation type', ja:'Creative rotation type', 
+  checkFn:(s,v)=>{
+    const dv = (v||'').trim().toLowerCase();
+    if(dv === 'random'){
+        return true;   // ✅ 正常
+    } else if(!dv){
+        return null;   // ☞ 要確認（空）
+    } else {
+        return null;   // ☞ 要確認（Random以外）
+    }
+  }
+},
+    { key:'Upload failure',           ja:'アップロードエラー',    checkFn:null, autoHide:true },
+];
+
+const DL_COL_ALIASES = {
+    'Base supply bid*':    ['Base supply bid'],
+    'Product categories*': ['Product categories'],
+    'Line name*':          ['Line name'],
+    'Line type*':          ['Line type'],
+    'Order ID*':           ['Order ID'],
+    'Advertiser ID*':      ['Advertiser ID'],
+};
+
+function _getSettingValForCol(key, sRow){
+    const map={
+        'Line name*':sRow.__LI_NAME__,
+        'Line type*':sRow.media,
+        'Line start date':[sRow.start_day,sRow.start_time].filter(Boolean).join(' '),
+        'Line end date':[sRow.end_day,sRow.end_time].filter(Boolean).join(' '),
+        'Active/Inactive':'Pause',
+        'Tactic Tag - (READ ONLY)':'',
+        'Product categories*':[sRow.product_big,sRow.product_small].filter(Boolean).join(' > '),
+        'Frequency Caps':sRow.frequency,
+        'Device type':sRow.device,
+        'Environment Type':sRow.mobile_env,
+        'Amazon viewability':sRow.viewability_pct,
+        'Unmeasured viewability':sRow.viewability_excl,
+        'Third-party pre-bid targeting':'',
+        'Supply source':[sRow.ssp,sRow.ssp_owned,sRow.ssp_pub,sRow.ssp_third].filter(Boolean).join(' / '),
+        'Language targeting':sRow.language,
+        'Location targeting by':sRow.location,
+        'Location targeting 1 of 2':sRow.location,
+        'Location excluding 1 of 2':sRow.location,
+        'Audiences - include':sRow.audience,
+        'Reach similar audiences':sRow.audience?'（AudienceありのためNO）':'',
+        'Audience names':(()=>{
+    if(sRow.audience) return sRow.audience;
+    console.log('★DSP seg check:', sRow.__LI_NAME__, 
+        'hasSegSheet:', !!(sRow.__SEGMENT_SHEET_DSP__),
+        'blocks:', sRow.__SEGMENT_SHEET_DSP__ ? sRow.__SEGMENT_SHEET_DSP__.length : 'null');
+    if(sRow.__SEGMENT_SHEET_DSP__){
+        const block = findDSPSegmentBlock(sRow.__SEGMENT_SHEET_DSP__, sRow.__LI_NAME__);
+        console.log('★block found:', block ? JSON.stringify(block).slice(0,200) : 'null');
+        if(block && (block.groups.length > 0 || block.notItems.length > 0)){
+            const groupDesc = block.groups.map(g =>
+                g.key + ': ' + g.items.join(' / ')
+            ).join(' AND ');
+            const notDesc = block.notItems.length > 0
+                ? ' AND NOT ' + block.notItems.join(' / ') : '';
+            return '[セグメントsheet] ' + groupDesc + notDesc;
+        }
+    }
+    return '';
+})(),
+        'Tactics Converters Exclusion Type':'',
+        'Daypart targeting timezone':sRow.daypart,
+        'Daypart period':sRow.daypart,
+        'Automated optimization':sRow.auto_opt,
+        'Line item budget':sRow.budget,
+        'Budget cap':sRow.budget_cap,
+        'Pacing profile':sRow.pacing,
+        'Base supply bid*':sRow.base_cpm,
+        'Maximum average CPM':sRow.max_cpm,
+        'Domain Targeting - (READ ONLY)':sRow.domain_bl,
+        'Mobile app targeting - include or exclude':sRow.mobile_app,
+    };
+    return map[key]!==undefined?String(map[key]||''):'';
+}
+
+// ===== マッチング（IO名優先ロジック追加） =====
+function matchAndCompareDSP(settingData, downloadMap, system){
+    const results=[];
+    for(const sRow of settingData){
+        const liName=sRow.__LI_NAME__;
+        const ioName=sRow.__IO_NAME__||'';
+        let dRow=null, matchedName=liName;
+
+        // ① 同名完全一致
+        if(downloadMap[liName]) dRow=downloadMap[liName];
+
+        // ② IO名でスコープを絞って検索
+        if(!dRow && ioName){
+            const scopedNames = Object.keys(downloadMap).filter(n=>{
+                const d = downloadMap[n];
+                return (d.__IO_NAME_D__ && d.__IO_NAME_D__.includes(ioName)) ||
+                       (ioName && d.__IO_NAME_D__ && ioName.includes(d.__IO_NAME_D__));
+            });
+            const fuzzy = scopedNames.find(n=>{
+                const nl=n.toLowerCase(), ll=liName.toLowerCase();
+                if(nl===ll) return true;
+                if(nl.includes(ll)&&ll.length/nl.length>0.7) return true;
+                if(ll.includes(nl)&&nl.length/ll.length>0.7) return true;
+                return false;
+            });
+            if(fuzzy){ dRow=downloadMap[fuzzy]; matchedName=fuzzy; }
+        }
+
+        // ③ 全体からファジー検索（フォールバック）
+        if(!dRow){
+            const dlNames=Object.keys(downloadMap);
+            const fuzzy=dlNames.find(n=>{
+                const nl=n.toLowerCase(), ll=liName.toLowerCase();
+                if(nl===ll) return true;
+                if(nl.includes(ll)&&ll.length/nl.length>0.7) return true;
+                if(ll.includes(nl)&&nl.length/ll.length>0.7) return true;
+                return false;
+            });
+            if(fuzzy){ dRow=downloadMap[fuzzy]; matchedName=fuzzy; }
+        }
+
+        const found=!!dRow;
+        function dGet(key){
+            if(!dRow) return '';
+            if(dRow[key]!==undefined) return String(dRow[key]||'');
+            const aliases=DL_COL_ALIASES[key]||[];
+            for(const a of aliases){ if(dRow[a]!==undefined) return String(dRow[a]||''); }
+            return '';
+        }
+        const colResults = DL_COLUMNS.map(col => {
+    const dVal = dGet(col.key);
+    const sVal = _getSettingValForCol(col.key, sRow);
+    let result = null;
+    if(found && col.checkFn){
+        try{ result = col.checkFn(sRow, dVal, dRow); }  // ← 加第3个参数 dRow
+        catch(e){ result = null; }
+    }
+    return { key:col.key, ja:col.ja, sVal, dVal, result };
+});
+        results.push({
+    liName,
+    __IO_NAME__:sRow.__IO_NAME__||'',
+    __SHEET__:sRow.__SHEET__||'',
+    __FILE_S__:sRow.__FILE_S__||'',
+    found,
+    matchedName:dRow?matchedName:null,
+    matchedIOName:dRow?(dRow.__IO_NAME_D__||''):'',
+    matchedFileD:dRow?(dRow.__FILE_D__||''):'',
+    isPause:dRow?(dRow['Active/Inactive']||'').toLowerCase()==='pause':null,
+    activeStatus:dRow?dRow['Active/Inactive']:'',
+    colResults,
+    mismatchCount:colResults.filter(c=>c.result===false).length,
+    // ★ sRowから差異情報を引き継ぐ
+    __audience_diff__:      sRow.__audience_diff__      || '',
+    __location_diff__:      sRow.__location_diff__      || '',
+    __location_excl_diff__: sRow.__location_excl_diff__ || '',
+    __daypart_diff__:       sRow.__daypart_diff__        || '',
+    __brand_content_note__: sRow.__brand_content_note__ || '',
+    __brand_tier_note__:    sRow.__brand_tier_note__     || '',
+});
+    }
+    return results;
+}
+
+// ===== IO名フィルター =====
+function scApplyIOFilter(){
+    const checkedIOs=new Set(
+        [...document.querySelectorAll('.sc-io-filter-cb:checked')].map(cb=>cb.dataset.io)
+    );
+    if(!scResults||!scResults.items) return;
+    let visibleNo=0;
+    scResults.items.forEach((item,idx)=>{
+        const ioName=item.__IO_NAME__||'';
+        const show=checkedIOs.size===0||checkedIOs.has(ioName);
+        document.querySelectorAll(`.sc-li-row[data-li-idx="${idx}"]`).forEach(r=>{
+            r.style.display=show?'':'none';
+        });
+        const bar=document.getElementById(`sc-hidden-bar-${idx}`);
+        if(bar) bar.style.display=show?'':'none';
+        if(show){
+            visibleNo++;
+            const rows=document.querySelectorAll(`.sc-li-row[data-li-idx="${idx}"]`);
+            const noCell=rows[0]?rows[0].querySelector('td[rowspan="2"]'):null;
+            if(noCell) noCell.textContent=visibleNo;
+        }
+    });
+}
+function scIOSelectAll(val){
+    document.querySelectorAll('.sc-io-filter-cb').forEach(cb=>{ cb.checked=val; });
+    scApplyIOFilter();
+}
+
+// ===== renderScResult（IO名グルーピング強化） =====
+function renderScResult(){
+    if(!scResults) return;
+    const result=document.getElementById('sc-result-area');
+    if(scResults.error){
+        result.innerHTML=`<div style="padding:30px;text-align:center;color:#e74c3c;
+            background:#fff8f8;border:1px solid #f5b7b1;border-radius:8px;margin-top:16px;">
+            ❌ ${scResults.error}</div>`;
+        return;
+    }
+
+    const { items, settingCount, system, downloadFiles, downloadData } = scResults;
+    const sys=SC_SYSTEMS[system]||{};
+    const today=new Date(); today.setHours(0,0,0,0);
+
+    // ===== IO名別グルーピング情報 =====
+    const ioNames=[...new Set(items.map(i=>i.__IO_NAME__||'').filter(n=>n))];
+
+    // ===== IO別統計 =====
+    const ioStats={};
+    ioNames.forEach(io=>{
+        const ioItems=items.filter(i=>(i.__IO_NAME__||'')===io);
+        ioStats[io]={
+            total:ioItems.length,
+            found:ioItems.filter(i=>i.found).length,
+            mismatch:ioItems.reduce((s,i)=>s+(i.mismatchCount||0),0),
+            files:[...new Set(ioItems.map(i=>i.__FILE_S__).filter(Boolean))],
+            dlFiles:[...new Set(ioItems.map(i=>i.matchedFileD).filter(Boolean))],
+        };
+    });
+
+    // IO名フィルターHTML（IO別統計付き）
+    const ioFilterHtml=ioNames.length>0?`
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+                background:#1a252f;border-radius:8px;padding:5px 10px;margin-left:8px;">
+        <span style="font-size:0.78rem;color:#bdc3c7;white-space:nowrap;font-weight:bold;">
+            🗂️ IO絞込：
+        </span>
+        <button onclick="scIOSelectAll(true)"
+            style="background:#3498db;color:white;border:none;border-radius:4px;
+                   padding:3px 8px;font-size:0.72rem;cursor:pointer;white-space:nowrap;">全選択</button>
+        <button onclick="scIOSelectAll(false)"
+            style="background:#7f8c8d;color:white;border:none;border-radius:4px;
+                   padding:3px 8px;font-size:0.72rem;cursor:pointer;white-space:nowrap;">全解除</button>
+        ${ioNames.map(io=>{
+            const st=ioStats[io];
+            const hasMismatch=st.mismatch>0||(st.total-st.found)>0;
+            return `
+        <label style="display:flex;flex-direction:column;gap:2px;background:#2c3e50;
+                       border:2px solid ${hasMismatch?'#e74c3c':'#27ae60'};
+                       border-radius:8px;padding:4px 10px;
+                       cursor:pointer;font-size:0.75rem;color:#ecf0f1;
+                       user-select:none;min-width:120px;"
+               onmouseover="this.style.borderColor='#f39c12'"
+               onmouseout="this.style.borderColor='${hasMismatch?'#e74c3c':'#27ae60'}'">
+            <div style="display:flex;align-items:center;gap:4px;">
+                <input type="checkbox" class="sc-io-filter-cb"
+                       data-io="${esc(io)}" checked
+                       style="accent-color:#f39c12;cursor:pointer;"
+                       onchange="scApplyIOFilter()">
+                <span style="font-weight:bold;font-size:0.78rem;">${esc(io)}</span>
+            </div>
+            <div style="font-size:0.68rem;color:#bdc3c7;padding-left:18px;">
+                LI:${st.total}件
+                ${st.mismatch>0?`<span style="color:#f39c12;">⚠${st.mismatch}不一致</span>`:'<span style="color:#2ecc71;">✅</span>'}
+            </div>
+            <div style="font-size:0.65rem;color:#95a5a6;padding-left:18px;word-break:break-all;">
+                📋${st.files.join(',')||'?'}
+            </div>
+        </label>`;
+        }).join('')}
+    </div>`:'';
+
+    // 寄存LI
+    const settingNames=new Set(items.map(i=>i.liName));
+    const kissonLIs=[];
+    const JUNK_PATTERN=/Follow instructions|Choose from|Don't delete|READ ONLY|informational|Use letters|Enter a number|Leave blank|Choose from dropdown/i;
+    if(downloadData){
+        Object.entries(downloadData).forEach(([liName,dRow])=>{
+            if(settingNames.has(liName)) return;
+            if(JUNK_PATTERN.test(liName)) return;
+            const startRaw=dRow['Line start date']||'';
+            let startDate=null;
+            try{
+                const m=startRaw.match(/(\d{2})-(\d{2})-(\d{4})/);
+                if(m) startDate=new Date(parseInt(m[3]),parseInt(m[1])-1,parseInt(m[2]));
+                else{ const p=new Date(startRaw); if(!isNaN(p)) startDate=p; }
+            }catch(e){}
+            kissonLIs.push({liName,dRow,startDate,isKisson:startDate&&startDate<today});
+        });
+    }
+
+    // 統計
+    let mismatchCount=0;
+    const foundCount=items.filter(i=>i.found).length;
+    const notFoundCount=items.filter(i=>!i.found).length;
+    items.forEach(item=>{
+        if(item.colResults) item.colResults.forEach(c=>{ if(c.result===false) mismatchCount++; });
+    });
+
+    // 列定義
+    const ALWAYS_HIDDEN=new Set(['Line ID','Advertiser ID*','Advertiser name','Order ID*','Order name - (READ ONLY)']);
+    const LI_NAME_SKIP=new Set(['Line name*']);
+    const activeCols = (scResults && (scResults.system === 'amazon_pva' || scResults.system === 'amazon_ott'))
+    ? DL_COLUMNS_VIDEO : DL_COLUMNS;
+const visibleCols = activeCols.filter(col=>{
+        if(ALWAYS_HIDDEN.has(col.key)) return false;
+        if(LI_NAME_SKIP.has(col.key)) return false;
+        return true;
+    });
+    function colHideStyle(col){ return col.autoHide?'display:none;':''; }
+
+    document.getElementById('sc-filter-btns').style.display='flex';
+    document.getElementById('sc-filter-btns').style.alignItems='center';
+
+    const COL_NO_W=SC_COL_NO_W, COL_LI_W=SC_COL_LI_W, COL_ITEM_W=120;
+
+    let html=`
+    <div style="background:#2c3e50;color:white;border-radius:8px 8px 0 0;
+                padding:12px 16px;display:flex;align-items:center;
+                gap:10px;flex-wrap:wrap;margin-top:16px;">
+        <span style="font-weight:bold;font-size:0.95rem;">✅ ${sys.label||system} チェック結果</span>
+        <span style="background:#7f8c8d;border-radius:10px;padding:2px 10px;font-size:0.8rem;">
+            設定表：${settingCount}件 / ${scFilesS.length}ファイル
+        </span>
+        <span style="background:#2980b9;border-radius:10px;padding:2px 10px;font-size:0.8rem;">
+            ダウンロード：${scFilesD.length}ファイル
+        </span>
+        <span style="background:#27ae60;border-radius:10px;padding:2px 10px;font-size:0.8rem;">後台マッチ：${foundCount}件</span>
+        <span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.8rem;">未発見：${notFoundCount}件</span>
+        <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">不一致：${mismatchCount}項目</span>
+        ${kissonLIs.length>0?`
+        <button id="sc-kisson-btn" onclick="scToggleKisson()"
+            style="background:#8e44ad;color:white;border:none;border-radius:6px;
+                   padding:5px 14px;font-size:0.82rem;font-weight:bold;cursor:pointer;">
+            🗄️ 寄存LI を表示（${kissonLIs.length}件）
+        </button>`:''}
+        ${ioFilterHtml}
+        <span id="sc-hidden-count"
+              onclick="scRestoreAllHidden()"
+              style="background:#8e44ad;border-radius:10px;padding:2px 10px;
+                     font-size:0.8rem;color:white;cursor:pointer;display:none;margin-left:4px;">
+        </span>
+    </div>`;
+
+    // ファイル情報バー（複数対応）
+    html+=`<div style="background:#f0f8ff;border:1px solid #bdd7ee;border-top:none;
+                       padding:7px 16px;font-size:0.82rem;">`;
+    html+=`<div style="margin-bottom:4px;"><span style="font-weight:bold;color:#2c3e50;">📋 設定表：</span>`;
+    scFilesS.forEach(f=>{ html+=`<span style="color:#2980b9;margin-left:8px;">📄 ${f.name}</span>`; });
+    html+=`</div>`;
+    html+=`<div><span style="font-weight:bold;color:#2c3e50;">📥 ダウンロードデータ：</span>`;
+    if(downloadFiles&&downloadFiles.length>0){
+        downloadFiles.forEach(f=>{
+            html+=`<span style="color:#27ae60;margin-left:8px;">
+                📄 ${f.fileName}
+                ${f.ioName?`<span style="background:#f39c12;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;margin-left:3px;">IO: ${f.ioName}</span>`:''}
+                （LI:${f.liCount}件）
+            </span>`;
+        });
+    }
+    html+=`</div></div>`;
+
+    // 凡例
+    html+=`<div style="background:#f8f8f8;border:1px solid #ddd;border-top:none;
+                       padding:7px 16px;display:flex;align-items:center;
+                       gap:16px;flex-wrap:wrap;font-size:0.78rem;color:#555;">
+        <span style="font-weight:bold;">凡例：</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#d5f5e3;border:1px solid #27ae60;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>✅ 一致</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#fde8e8;border:1px solid #e74c3c;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>❌ 不一致</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#fef9e7;border:1px solid #f39c12;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>☞ 要確認</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#f0f0f0;border:1px solid #bbb;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>— 空/対象外</span>
+        <span style="color:#999;margin-left:8px;">※ 上段＝設定表 / 下段＝ダウンロード</span>
+    </div>`;
+
+    // 列表示切替パネル
+    html+=`
+    <div style="background:#f0f4f8;border:1px solid #dce3ea;border-top:none;">
+        <div style="padding:6px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;"
+             onclick="scToggleColPanel()">
+            <span style="font-size:0.8rem;font-weight:bold;color:#2c3e50;">🔧 列の表示切替</span>
+            <span style="font-size:0.72rem;color:#888;">（クリックで展開/折りたたみ）</span>
+            <span id="sc-col-panel-arrow" style="margin-left:auto;font-size:0.85rem;color:#2c3e50;">▲</span>
+        </div>
+        <div id="sc-col-panel-body"
+             style="padding:6px 16px 10px;display:flex;align-items:flex-start;
+                    gap:6px;flex-wrap:wrap;border-top:1px dashed #dce3ea;">
+            ${activeCols.filter(c=>c.autoHide&&!ALWAYS_HIDDEN.has(c.key)&&!LI_NAME_SKIP.has(c.key)).map(col=>`
+            <label style="display:flex;align-items:center;gap:4px;background:white;
+                           border:1px solid #ccc;border-radius:4px;padding:3px 8px;
+                           cursor:pointer;font-size:0.76rem;color:#555;user-select:none;"
+                   onmouseover="this.style.borderColor='#3498db'"
+                   onmouseout="this.style.borderColor='#ccc'">
+                <input type="checkbox" data-col-key="${col.key}"
+                       style="accent-color:#3498db;cursor:pointer;"
+                       onchange="scToggleCol(this)">
+                ${col.ja}
+            </label>`).join('')}
+        </div>
+    </div>`;
+
+    // メインテーブル
+    html+=`
+<div id="sc-outer-wrap"
+     style="position:relative;border:1px solid #ddd;border-top:none;
+            border-radius:0 0 8px 8px;max-height:75vh;
+            overflow-y:auto;overflow-x:hidden;
+            overflow-anchor:none;">
+
+    <!-- ★ 表头单独放在sc-body-scroll外面，相对sc-outer-wrap做sticky -->
+    <div id="sc-thead-container"
+     style="position:sticky;top:0;z-index:50;overflow:hidden;
+            background:#1a252f;">
+        <div id="sc-thead-scroller" style="overflow:hidden;display:block;">
+        <table id="sc-head-table"
+               style="border-collapse:collapse;font-size:0.76rem;
+                      font-family:'Segoe UI','Noto Sans JP',sans-serif;
+                      table-layout:fixed;width:100%;">
+            <colgroup id="sc-head-colgroup">
+                <col id="sc-col-h-no"  style="width:${COL_NO_W}px;">
+                <col id="sc-col-h-li"  style="width:${COL_LI_W}px;">
+                ${visibleCols.map((col,i)=>`
+                    <col id="sc-col-h-${i}" data-col-key="${col.key}"
+                         style="width:${COL_ITEM_W}px;${colHideStyle(col)}">`
+                ).join('')}
+            </colgroup>
+            <thead>
+                <tr style="height:36px;">
+                    <th style="background:#1a252f;color:white;padding:8px 6px;
+                               border:1px solid #445;text-align:center;
+                               vertical-align:middle;
+                               position:sticky;left:0;z-index:30;
+                               width:${COL_NO_W}px;">
+                        No.
+                    </th>
+                    <th style="background:#1a252f;color:white;padding:8px 10px;
+           border:1px solid #445;text-align:center;vertical-align:middle;
+           position:sticky;left:${COL_NO_W}px;z-index:30;
+           width:${COL_LI_W}px;
+           box-shadow:2px 0 4px rgba(0,0,0,0.3);">
+                        LI名称
+                        <div onmousedown="scColResizeLI(event)"
+                             style="position:absolute;right:0;top:0;width:6px;height:100%;
+                                    cursor:col-resize;z-index:10;background:transparent;"
+                             onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                             onmouseout="this.style.background='transparent'"></div>
+                    </th>
+                    ${visibleCols.map((col,i)=>`
+                    <th data-col-key="${col.key}"
+                        style="background:#34495e;color:#ecf0f1;padding:6px 8px;
+                               border:1px solid #445;text-align:center;
+                               vertical-align:middle;
+                               white-space:nowrap;font-size:0.73rem;
+                               position:relative;${colHideStyle(col)}">
+                        ${col.ja}
+                        <div onmousedown="scColResizeStart(event,${i})"
+                             style="position:absolute;right:0;top:0;width:6px;height:100%;
+                                    cursor:col-resize;z-index:10;background:transparent;"
+                             onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                             onmouseout="this.style.background='transparent'"></div>
+                    </th>`).join('')}
+                </tr>
+            </thead>
+        </table>
+        </div>
+    </div>
+
+    <!-- ★ データ本体：水平スクロールはここで処理 -->
+    <div id="sc-body-scroll" style="width:100%;position:relative;overflow-x:auto;">
+    <table id="sc-main-table"
+           style="border-collapse:collapse;font-size:0.76rem;
+                  font-family:'Segoe UI','Noto Sans JP',sans-serif;
+                  table-layout:fixed;width:100%;">
+        <colgroup id="sc-body-colgroup">
+            <col id="sc-col-b-no" style="width:${COL_NO_W}px;">
+            <col id="sc-col-b-li" style="width:${COL_LI_W}px;">
+            ${visibleCols.map((col,i)=>`
+                <col id="sc-col-b-${i}" data-col-key="${col.key}"
+                     style="width:${COL_ITEM_W}px;${colHideStyle(col)}">`
+            ).join('')}
+        </colgroup>
+        <tbody id="sc-tbody">
+`;
+
+    // ===== IO名ごとにグループヘッダーを挿入 =====
+    // IO名でグルーピング
+    const itemsByIO={};
+    items.forEach((item,globalIdx)=>{
+        const io=item.__IO_NAME__||'（IO名なし）';
+        if(!itemsByIO[io]) itemsByIO[io]=[];
+        itemsByIO[io].push({item,globalIdx});
+    });
+
+    let rowNo=0;
+    Object.entries(itemsByIO).forEach(([ioName, ioItems])=>{
+        const st=ioStats[ioName]||{};
+        const colSpan=visibleCols.length+2;
+        const hasMismatch=(st.mismatch||0)>0||((st.total||0)-(st.found||0))>0;
+
+        // IO名グループヘッダー行
+        html+=`
+        <td colspan="${colSpan}"
+    style="padding:0 16px;
+           height:36px;line-height:36px;
+           background:${hasMismatch?'#4a1a1a':'#1a3a1a'};
+           border-bottom:2px solid ${hasMismatch?'#e74c3c':'#27ae60'};
+           color:white;font-weight:bold;font-size:0.82rem;
+           white-space:nowrap;overflow:hidden;">
+                🗂️ IO：${esc(ioName)}
+                <span style="background:${hasMismatch?'#e74c3c':'#27ae60'};border-radius:6px;
+                             padding:1px 8px;font-size:0.72rem;margin-left:8px;">
+                    LI ${st.total||0}件
+                    ${(st.mismatch||0)>0?`／ <span style="color:#f39c12;">⚠️ 不一致${st.mismatch}項目</span>`:''}
+                    ${(st.total||0)-(st.found||0)>0?`／ <span style="color:#ff9999;">未発見${(st.total||0)-(st.found||0)}件</span>`:''}
+                </span>
+                ${st.files&&st.files.length>0?`<span style="font-size:0.68rem;color:#bdc3c7;margin-left:8px;">📋 ${st.files.join(' / ')}</span>`:''}
+                ${st.dlFiles&&st.dlFiles.length>0?`<span style="font-size:0.68rem;color:#82e0aa;margin-left:8px;">📥 ${st.dlFiles.join(' / ')}</span>`:''}
+            </td>
+        </tr>`;
+
+        // IO内のLI行
+        ioItems.forEach(({item,globalIdx})=>{
+            rowNo++;
+            const idx=globalIdx;
+            const hasMismatch=item.colResults&&item.colResults.some(c=>c.result===false);
+            const rowStatus=!item.found?'notfound':(hasMismatch)?'mismatch':'match';
+            const badges=[];
+            if(!item.found) badges.push(`<span style="background:#95a5a6;color:white;border-radius:3px;padding:1px 6px;font-size:0.68rem;">後台未発見</span>`);
+
+            // 設定表行
+            html+=`
+            <tr class="sc-li-row" data-li-idx="${idx}" data-io="${esc(ioName)}" data-status="${rowStatus}"
+                style="border-bottom:1px solid #e0e0e0;">
+                <td rowspan="2" data-sticky="no"
+                    style="background:#2c3e50;color:white;text-align:center;font-weight:bold;
+                           font-size:0.88rem;vertical-align:middle;border:1px solid #445;
+                           position:sticky;left:0;z-index:20;box-shadow:2px 0 4px rgba(0,0,0,0.15);">
+                    ${rowNo}
+                </td>
+                <td rowspan="2" data-sticky="li"
+                    style="border:1px solid #ddd;padding:6px 8px;vertical-align:middle;
+                           position:sticky;left:${COL_NO_W}px;z-index:20;box-shadow:2px 0 4px rgba(0,0,0,0.1);
+                           background:white;overflow:hidden;">
+                    <div onmousedown="scColResizeLI(event)"
+                         style="position:absolute;right:0;top:0;width:6px;height:100%;
+                                cursor:col-resize;z-index:30;background:transparent;"
+                         onmouseover="this.style.background='rgba(0,0,0,0.15)'"
+                         onmouseout="this.style.background='transparent'"></div>
+                    <div style="display:flex;align-items:flex-start;gap:4px;">
+                        <div style="font-weight:bold;font-size:0.78rem;color:#2c3e50;
+                                    word-break:break-all;flex:1;">
+                            ${esc(item.liName)}
+                        </div>
+                        <button onclick="scHideLiRow(${idx})"
+                            title="非表示（寄存LIとしてマーク）"
+                            style="background:none;border:1px solid #ddd;border-radius:3px;
+                                   padding:1px 5px;cursor:pointer;font-size:0.75rem;
+                                   color:#bbb;flex-shrink:0;line-height:1.4;"
+                            onmouseover="this.style.background='#8e44ad';this.style.color='white';this.style.borderColor='#8e44ad';"
+                            onmouseout="this.style.background='none';this.style.color='#bbb';this.style.borderColor='#ddd';">
+                            🗄️
+                        </button>
+                    </div>
+                    ${badges.length?`<div style="margin-top:3px;">${badges.join('')}</div>`:''}
+                    ${item.matchedFileD&&item.matchedFileD!==''?`
+                    <div style="font-size:0.65rem;color:#888;margin-top:2px;">
+                        📥 ${item.matchedFileD}
+                    </div>`:''}
+                </td>`;
+
+            if(!item.found){
+                html+=`<td colspan="${visibleCols.length}"
+                    style="padding:10px;background:#f8f8f8;color:#888;
+                           font-size:0.82rem;text-align:center;vertical-align:middle;">
+                    ⚠️ ダウンロードデータに見つかりませんでした
+                </td></tr>
+                <tr class="sc-li-row" data-li-idx="${idx}" data-io="${esc(ioName)}" data-status="${rowStatus}"
+                    style="border-bottom:3px solid #ccc;"></tr>`;
+            } else {
+                // 設定表値行
+                visibleCols.forEach(col=>{
+                    const cr=item.colResults?item.colResults.find(c=>c.key===col.key):null;
+                    const sVal=cr?String(cr.sVal||'').trim():'';
+                    const dVal=cr?String(cr.dVal||'').trim():'';
+                    const result=cr?cr.result:null;
+                    const effectiveResult=(result===null&&!dVal&&!sVal)?true:result;
+                    const bg=effectiveResult===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
+                    const border=effectiveResult===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
+                    const color=effectiveResult===false?'#922b21':(result===null&&dVal)?'#856404':'#333';
+                    const hideStyle=col.autoHide?'display:none;':'';
+                    html+=`<td data-col-key="${col.key}"
+                        style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
+                               vertical-align:middle;height:28px;overflow:hidden;
+                               white-space:nowrap;text-overflow:ellipsis;text-align:left !important;${hideStyle}"
+                        title="${esc(sVal)}"
+                        onclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'28px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
+                        <span style="font-size:0.73rem;color:${color};text-align:left;display:block;">
+                            ${sVal||'<span style="color:#ccc;">—</span>'}
+                        </span>
+                    </td>`;
+                });
+                html+=`</tr>`;
+
+                // ダウンロード値行
+                html+=`<tr class="sc-li-row" data-li-idx="${idx}" data-io="${esc(ioName)}" data-status="${rowStatus}"
+                    style="border-bottom:3px solid #ddd;">`;
+                visibleCols.forEach(col=>{
+                    const cr=item.colResults?item.colResults.find(c=>c.key===col.key):null;
+                    const sVal=cr?String(cr.sVal||'').trim():'';
+                    const dVal=cr?String(cr.dVal||'').trim():'';
+                    const result=cr?cr.result:null;
+                    const effectiveResult=(result===null&&!dVal&&!sVal)?true:result;
+                    const bg=effectiveResult===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
+                    const border=effectiveResult===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
+                    const confirmLabel=(result===null&&dVal)?'<span style="font-size:0.68rem;color:#856404;margin-left:4px;">要確認</span>':'';
+                    const hideStyle=col.autoHide?'display:none;':'';
+                    html+=`<td data-col-key="${col.key}"
+                        style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
+                               vertical-align:middle;height:28px;overflow:hidden;
+                               white-space:nowrap;text-overflow:ellipsis;text-align:left !important;${hideStyle}"
+                        title="${esc([dVal, item[col.key==='Brand suitability content exclusion categories'?'__brand_content_note__':
+col.key==='Brand suitability inventory tier'?'__brand_tier_note__':
+col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n'))}"
+                        onclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'28px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
+                        <span style="font-size:0.73rem;text-align:left;display:block;${effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':'color:#856404'};">
+                            ${dVal||'<span style="color:#ccc;">—</span>'}
+                        </span>
+                        ${confirmLabel}
+                        ${(()=>{
+    const noteKey = col.key === 'Brand suitability content exclusion categories'
+        ? '__brand_content_note__'
+        : col.key === 'Brand suitability inventory tier'
+        ? '__brand_tier_note__'
+        : col.key === 'Audience names'
+        ? '__audience_diff__'
+        : null;
+    const note = noteKey ? (item[noteKey]||'') : '';
+    if(!note) return '';
+    const noteColor = note.startsWith('❌') ? '#e74c3c'
+                    : note.startsWith('⚠️') ? '#856404'
+                    : '#666';
+    return `<div style="font-size:0.65rem;color:${noteColor};
+                white-space:pre-wrap;word-break:break-all;
+                margin-top:2px;line-height:1.4;">${esc(note)}</div>`;
+})()}
+                    </td>`;
+                });
+                html+=`</tr>`;
+            }
+        });
+    });
+
+    // 寄存LI行
+    if(kissonLIs.length>0){
+        kissonLIs.forEach((ki,kidx)=>{
+            const startStr=ki.startDate?ki.startDate.toISOString().slice(0,10):(ki.dRow['Line start date']||'');
+            html+=`<tr class="sc-kisson-row" style="display:none;background:#f5eeff;">
+                <td style="background:#6c3483;color:white;text-align:center;font-weight:bold;
+                           font-size:0.75rem;border:1px solid #9b59b6;
+                           position:sticky;left:0;z-index:10;">K${kidx+1}</td>
+                <td style="border:1px solid #d7bde2;padding:6px 8px;
+                           position:sticky;left:${SC_COL_NO_W}px;z-index:10;
+                           background:#f5eeff;overflow:hidden;">
+                    <div style="font-weight:bold;font-size:0.75rem;color:#6c3483;word-break:break-all;">
+                        ${esc(ki.liName)}
+                    </div>
+                    <div style="margin-top:2px;">
+                        <span style="background:#9b59b6;color:white;border-radius:3px;
+                                     padding:1px 6px;font-size:0.68rem;">🗄️ 寄存LI</span>
+                        <span style="color:#999;font-size:0.68rem;margin-left:4px;">開始: ${startStr}</span>
+                        ${ki.dRow.__FILE_D__?`<span style="color:#9b59b6;font-size:0.65rem;margin-left:4px;">📥 ${ki.dRow.__FILE_D__}</span>`:''}
+                    </div>
+                </td>`;
+            visibleCols.forEach(col=>{
+                const aliases=DL_COL_ALIASES[col.key]||[];
+                let dVal=ki.dRow[col.key]||'';
+                if(!dVal){for(const a of aliases){if(ki.dRow[a]){dVal=ki.dRow[a];break;}}}
+                dVal=String(dVal).trim();
+                html+=`<td data-col-key="${col.key}"
+                           style="padding:4px 8px;border:1px solid #e8e8e8;
+                                  background:#f5eeff;vertical-align:middle;
+                                  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;"
+                           title="${esc(dVal)}">
+                    <span style="font-size:0.73rem;color:#6c3483;">
+                        ${dVal||'<span style="color:#ccc;">—</span>'}
+                    </span>
+                </td>`;
+            });
+            html+=`</tr>`;
+        });
+    }
+
+    html+=`</tbody></table></div></div>`;
+    result.innerHTML=html;
+
+    // 固定ヘッダー初期化（変更なし）
+    setTimeout(()=>{
+        const ps=document.getElementById('page-sticky');
+        const fixedHead=document.getElementById('sc-fixed-head');
+        const bodyScroll=document.getElementById('sc-body-scroll');
+        const outerWrap=document.getElementById('sc-outer-wrap');
+        const dummyHead=document.getElementById('sc-dummy-head');
+        if(!bodyScroll||!outerWrap) return;
+
+        function updateStickycols(){
+    // ★ 水平スクロール同期：データ本体 → 固定表頭
+    const scrollLeft = bodyScroll.scrollLeft;
+    const theadScroller = document.getElementById('sc-thead-scroller');
+    if(theadScroller){
+        theadScroller.scrollLeft = scrollLeft;
+    }
+    // ★ No./LI名称列の固定はCSS sticky に任せる（transformは不要）
+}
+
+        bodyScroll.addEventListener('scroll',()=>{updateStickycols();updateFixedHead();},{passive:true});
+
+        function syncHeadWidth(){
+    const theadContainer = document.getElementById('sc-thead-container');
+    const theadScroller  = document.getElementById('sc-thead-scroller');
+    if(theadContainer && bodyScroll){
+        theadContainer.style.width = bodyScroll.offsetWidth + 'px';
+    }
+    // 表頭の実際の高さを取得してsc-outer-wrapのpadding-topに反映
+    if(theadContainer){
+        const h = theadContainer.offsetHeight;
+        // sc-outer-wrapの上部に表頭分の余白を確保（既にstickyで重ならないようにする）
+    }
+}
+
+        function updateFixedHead(){
+    // 表頭の幅をbodyScrollに合わせて同期
+    const theadContainer = document.getElementById('sc-thead-container');
+    if(theadContainer && bodyScroll){
+        theadContainer.style.width = bodyScroll.offsetWidth + 'px';
+    }
+}
+
+        window.addEventListener('scroll',updateFixedHead,{passive:true});
+        window.addEventListener('resize',()=>{syncHeadWidth();updateFixedHead();},{passive:true});
+        updateFixedHead();
+    },200);
+}
+
+// ===== 以下、既存関数（変更なし） =====
+function scFilterResult(filter){
+    scCurrentFilter=filter;
+    ['all','mismatch','match'].forEach(f=>{
+        const btn=document.getElementById('sc-btn-'+f);
+        if(!btn) return;
+        btn.style.background=f===filter?'#2980b9':'transparent';
+        btn.style.color=f===filter?'white':'#666';
+        btn.style.border=f===filter?'none':'1px solid #ddd';
+    });
+    const processedIdx=new Set();
+    document.querySelectorAll('.sc-li-row').forEach(row=>{
+        const status=row.dataset.status;
+        const idx=row.dataset.liIdx;
+        if(processedIdx.has(idx)) return;
+        processedIdx.add(idx);
+        const show=filter==='all'?true:filter==='mismatch'&&(status==='mismatch'||status==='notfound')?true:filter==='match'&&status==='match'?true:false;
+        document.querySelectorAll(`.sc-li-row[data-li-idx="${idx}"]`).forEach(r=>{ r.style.display=show?'':'none'; });
+        const bar=document.getElementById(`sc-hidden-bar-${idx}`);
+        if(bar) bar.style.display=show?'':'none';
+    });
+    document.querySelectorAll('.sc-kisson-row').forEach(r=>{
+        if(filter==='mismatch'||filter==='match') r.style.display='none';
+        else r.style.display=_scKissonVisible?'':'none';
+    });
+    // IO グループヘッダーも連動
+    document.querySelectorAll('.sc-io-group-header').forEach(header=>{
+        header.style.display='';
+    });
+}
+
+function scToggleKisson(){
+    _scKissonVisible=!_scKissonVisible;
+    document.querySelectorAll('.sc-kisson-row').forEach(r=>{r.style.display=_scKissonVisible?'':'none';});
+    const btn=document.getElementById('sc-kisson-btn');
+    if(btn){
+        const cnt=document.querySelectorAll('.sc-kisson-row').length;
+        btn.textContent=_scKissonVisible?`🗄️ 寄存LI を非表示`:`🗄️ 寄存LI を表示（${cnt}件）`;
+        btn.style.background=_scKissonVisible?'#6c3483':'#8e44ad';
+    }
+}
+
+function resetSettingCheck(){
+    scFilesS=[]; scFilesD=[]; scWbsS=[]; scWbsD=[];
+    scResults=null; scCurrentFilter='all'; _scKissonVisible=false;
+    ['setting','download'].forEach(side=>{
+        const icon=side==='setting'?'📋':'📥';
+        const label=side==='setting'?'設定表':'ダウンロードデータ';
+        const drop=document.getElementById('sc-drop-'+side);
+        drop.innerHTML=`<div class="drop-icon">${icon}</div>
+            <div class="drop-text">拖入${label}</div>
+            <div class="drop-sub">支持 .xlsx / .xls（複数可）</div>
+            <input type="file" id="sc-input-${side}" accept=".xlsx,.xls" multiple style="display:none">`;
+        initScMultiDrop(side);
+        const info=document.getElementById('sc-'+(side==='setting'?'setting':'download')+'-info');
+        if(info) info.innerHTML='';
+    });
+    document.getElementById('sc-controls').style.display='none';
+    document.getElementById('sc-result-area').innerHTML='';
+    document.getElementById('sc-progress').classList.remove('show');
+    document.getElementById('sc-filter-btns').style.display='none';
+}
+
+// ===== グローバル公開 =====
+const _scHiddenLIs=new Set();
+window.scHideLiRow=function(idx){
+    const rows=document.querySelectorAll(`.sc-li-row[data-li-idx="${idx}"]`);
+    const barId=`sc-hidden-bar-${idx}`;
+    if(_scHiddenLIs.has(idx)){
+        _scHiddenLIs.delete(idx);
+        rows.forEach(r=>r.style.display='');
+        const bar=document.getElementById(barId);
+        if(bar) bar.remove();
+    } else {
+        _scHiddenLIs.add(idx);
+        rows.forEach(r=>r.style.display='none');
+        const firstRow=document.querySelector(`.sc-li-row[data-li-idx="${idx}"]`);
+        if(firstRow&&firstRow.parentElement){
+            const item=scResults.items[idx];
+            const bar=document.createElement('tr');
+            bar.id=barId;
+            bar.style.cssText='background:#f5f5f5;border-bottom:1px solid #ddd;';
+            bar.innerHTML=`
+                <td style="background:#e0e0e0;color:#999;text-align:center;padding:2px 4px;
+                           border:1px solid #ccc;font-size:0.72rem;
+                           position:sticky;left:0;z-index:10;">🗄️</td>
+                <td style="padding:3px 10px;border:1px solid #ddd;
+                           position:sticky;left:${SC_COL_NO_W}px;z-index:10;background:#f5f5f5;">
+                    <span style="color:#bbb;font-size:0.74rem;font-style:italic;">${esc(item.liName)}</span>
+                    <button onclick="scHideLiRow(${idx})"
+                        style="background:none;border:none;color:#3498db;cursor:pointer;
+                               font-size:0.74rem;margin-left:8px;text-decoration:underline;padding:0;">再表示</button>
+                </td>
+                <td colspan="999" style="border:1px solid #ddd;background:#f5f5f5;
+                                         color:#ccc;font-size:0.72rem;padding:3px 8px;">
+                    — 非表示中（寄存LIとしてマーク）
+                </td>`;
+            firstRow.parentElement.insertBefore(bar,firstRow);
+        }
+    }
+    const count=_scHiddenLIs.size;
+    const countEl=document.getElementById('sc-hidden-count');
+    if(countEl){
+        countEl.textContent=count>0?`🗄️ 非表示：${count}件`:'';
+        countEl.style.display=count>0?'inline-block':'none';
+    }
+};
+
+window.scApplyIOFilter=scApplyIOFilter;
+window.scIOSelectAll=scIOSelectAll;
+window.scRestoreAllHidden=function(){
+    _scHiddenLIs.forEach(idx=>{
+        document.querySelectorAll(`.sc-li-row[data-li-idx="${idx}"]`).forEach(r=>{r.style.display='';});
+        const bar=document.getElementById(`sc-hidden-bar-${idx}`);
+        if(bar) bar.remove();
+    });
+    _scHiddenLIs.clear();
+    const countEl=document.getElementById('sc-hidden-count');
+    if(countEl){countEl.textContent='';countEl.style.display='none';}
+};
+
+let _scResizing=null;
+window.scColResizeStart=function(e,colIdx){
+    e.preventDefault();
+    const startX=e.clientX;
+    const bodyCol=document.getElementById(`sc-col-b-${colIdx}`);
+    if(!bodyCol) return;
+    const headCol=document.getElementById(`sc-col-h-${colIdx}`);
+    const startW=parseInt(bodyCol.style.width)||120;
+    _scResizing={colIdx,startX,startW,bodyCol,headCol};
+    document.addEventListener('mousemove',_scColResizeMove);
+    document.addEventListener('mouseup',_scColResizeEnd);
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+};
+window.scColResizeLI=function(e){
+    e.preventDefault();
+    const startX=e.clientX;
+    const bodyCol=document.getElementById('sc-col-b-li');
+    const headCol=document.getElementById('sc-col-h-li');
+    if(!bodyCol) return;
+    const startW=parseInt(bodyCol.style.width)||180;
+    function onMove(e){const newW=Math.max(80,startW+e.clientX-startX);bodyCol.style.width=newW+'px';if(headCol)headCol.style.width=newW+'px';}
+    function onUp(){document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);document.body.style.cursor='';document.body.style.userSelect='';}
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+};
+function _scColResizeMove(e){
+    if(!_scResizing) return;
+    const{startX,startW,colIdx}=_scResizing;
+    const newW=Math.max(60,startW+e.clientX-startX);
+    const bodyCol=document.getElementById(`sc-col-b-${colIdx}`);
+    if(bodyCol) bodyCol.style.width=newW+'px';
+    const headCol=document.getElementById(`sc-col-h-${colIdx}`);
+    if(headCol) headCol.style.width=newW+'px';
+}
+function _scColResizeEnd(){
+    if(!_scResizing) return;
+    _scResizing=null;
+    document.removeEventListener('mousemove',_scColResizeMove);
+    document.removeEventListener('mouseup',_scColResizeEnd);
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+}
+
+window.scToggleColPanel=function(){
+    const body=document.getElementById('sc-col-panel-body');
+    const arrow=document.getElementById('sc-col-panel-arrow');
+    if(!body||!arrow) return;
+    const isOpen=body.style.display!=='none';
+    body.style.display=isOpen?'none':'flex';
+    arrow.textContent=isOpen?'▼':'▲';
+};
+window.scToggleCol=function(checkbox){
+    const key=checkbox.dataset.colKey;
+    const show=checkbox.checked;
+    document.querySelectorAll(`#sc-result-area [data-col-key="${CSS.escape(key)}"]`).forEach(el=>{el.style.display=show?'':'none';});
+};
+
+window.runSettingCheck=runSettingCheck;
+window.resetSettingCheck=resetSettingCheck;
+window.scFilterResult=scFilterResult;
+window.scToggleKisson=scToggleKisson;
+window._scGetResults=function(){return scResults;};
+window._scGetDownloadMap=function(){
+    if(scResults&&scResults.downloadData){
+        const first=Object.values(scResults.downloadData)[0];
+        if(first){console.log('列名：');Object.keys(first).forEach((k,i)=>console.log(i+': "'+k+'"'));}
+    }
+};
+
+})();
+</script>
+
+</body>
+</html>

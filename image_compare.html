@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片对比</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI','Noto Sans SC',sans-serif; background:#f5f5f5; color:#333; min-height:100vh; }
+header { background:#2c3e50; color:white; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
+header h1 { font-size:1.2rem; letter-spacing:1px; }
+.badge { background:#27ae60; border-radius:12px; padding:3px 12px; font-size:0.75rem; }
+.back-nav { background:#34495e; padding:8px 20px; display:flex; align-items:center; gap:12px; }
+.back-btn { background:#2980b9; color:white; border:none; border-radius:4px; padding:5px 14px; font-size:0.82rem; cursor:pointer; text-decoration:none; display:inline-block; }
+.back-btn:hover { background:#1a6fa8; }
+button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; font-weight:bold; cursor:pointer; transition:all 0.2s; }
+
+/* モード切替 */
+.mode-bar { background:#2c3e50; padding:8px 20px; display:flex; align-items:center; gap:10px; }
+.mode-btn { background:transparent; color:#bdc3c7; border:1px solid #4a6278; border-radius:6px; padding:5px 16px; font-size:0.82rem; cursor:pointer; transition:all 0.2s; }
+
+/* ドロップエリア */
+.drop-wrap { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px 20px; }
+.xl-drop-area { border:2px dashed #3498db; border-radius:8px; padding:0; text-align:center; cursor:pointer; transition:all 0.3s; background:#f0f7ff; min-height:160px; display:flex; align-items:center; justify-content:center; }
+.xl-drop-area:hover, .xl-drop-area.dragover { background:#dbeeff; border-color:#1a6fa8; }
+.xl-drop-area .drop-icon { font-size:2.5rem; margin-bottom:8px; }
+.xl-drop-area .drop-text { color:#2980b9; font-size:0.95rem; font-weight:bold; }
+.xl-drop-area .drop-sub { color:#999; font-size:0.78rem; margin-top:6px; }
+.drop-inner { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; width:100%; }
+.drop-label { font-size:0.82rem; font-weight:bold; color:#2c3e50; margin-bottom:6px; padding:0 4px; }
+
+/* コントロール */
+.controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 20px; background:#fafafa; border-bottom:1px solid #e0e0e0; }
+
+/* 統計バー */
+.stats-bar { display:none; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 20px; background:#f0f7ff; border-bottom:1px solid #c8e6ff; font-size:0.85rem; }
+
+/* 表示モードボタン */
+.mode-btns { display:none; align-items:center; gap:6px; padding:8px 20px; background:#fafafa; border-bottom:1px solid #eee; flex-wrap:wrap; }
+
+/* プログレス */
+.xl-progress { display:none; background:#e8f0ff; border:1px solid #3498db; border-radius:6px; padding:12px 16px; margin:12px 20px; font-size:0.85rem; color:#1a5276; }
+.xl-progress.show { display:block; }
+
+/* OCR パネル */
+.ocr-panel { padding:16px 20px; }
+.ocr-drop-wrap { margin-bottom:16px; }
+.ocr-drop { border:2px dashed #27ae60; border-radius:8px; padding:40px; text-align:center; cursor:pointer; background:#f9fff9; transition:all 0.3s; }
+.ocr-drop:hover, .ocr-drop.dragover { background:#e8f8e8; border-color:#1e8449; }
+.ocr-drop .drop-icon { font-size:2.5rem; margin-bottom:8px; }
+.ocr-drop .drop-text { color:#27ae60; font-size:0.95rem; font-weight:bold; }
+.ocr-drop .drop-sub { color:#999; font-size:0.78rem; margin-top:6px; }
+.ocr-preview { display:none; margin-bottom:12px; text-align:center; }
+.ocr-preview img { max-width:100%; max-height:300px; object-fit:contain; border:1px solid #ddd; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.ocr-controls { display:none; align-items:center; gap:10px; padding:10px 0; flex-wrap:wrap; }
+
+/* 結果エリア */
+#img-compare-result { padding:0 20px 40px; }
+#img-ocr-result { padding-bottom:40px; }
+
+@media(max-width:600px){
+  .drop-wrap { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🖼️ 图片对比</h1>
+  <span class="badge">🔒 完全本地运行</span>
+</header>
+
+<div class="back-nav">
+  <a href="index.html" class="back-btn">← 返回导航页</a>
+  <span style="color:#bdc3c7;font-size:0.82rem;">对比两张图片的差异 / OCR文字提取</span>
+</div>
+
+<!-- 大モード切替 -->
+<div class="mode-bar">
+  <span style="color:#bdc3c7;font-size:0.82rem;">功能：</span>
+  <button class="mode-btn" id="img-mode-compare"
+          style="background:#3498db;color:white;border:none;"
+          onclick="imgSwitchMode('compare')">🖼️ 图片对比</button>
+  <button class="mode-btn" id="img-mode-ocr"
+          onclick="imgSwitchMode('ocr')">📝 OCR文字提取</button>
+</div>
+
+<!-- ===== 图片对比パネル ===== -->
+<div id="img-compare-panel">
+
+  <!-- ファイルドロップ -->
+  <div class="drop-wrap">
+    <div>
+      <div class="drop-label">🖼️ 图片 A（原图）</div>
+      <div class="xl-drop-area" id="img-drop-a">
+        <div class="drop-inner">
+          <div class="drop-icon">🖼️</div>
+          <div class="drop-text">拖入图片 A</div>
+          <div class="drop-sub">支持 JPG / PNG / WebP</div>
+          <input type="file" id="img-input-a" accept="image/*" style="display:none">
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="drop-label">🖼️ 图片 B（对照）</div>
+      <div class="xl-drop-area" id="img-drop-b">
+        <div class="drop-inner">
+          <div class="drop-icon">🖼️</div>
+          <div class="drop-text">拖入图片 B</div>
+          <div class="drop-sub">支持 JPG / PNG / WebP</div>
+          <input type="file" id="img-input-b" accept="image/*" style="display:none">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- コントロール -->
+  <div class="controls" id="img-compare-controls" style="display:none">
+    <button style="background:#e74c3c;color:white;" onclick="runImgCompare()">🔍 开始对比</button>
+    <button style="background:#95a5a6;color:white;" onclick="resetImgCompare()">🗑️ 重新选择</button>
+  </div>
+
+  <!-- 統計バー -->
+  <div class="stats-bar" id="img-compare-stats"></div>
+
+  <!-- 表示モードボタン -->
+  <div class="mode-btns" id="img-mode-btns">
+    <span style="font-size:0.8rem;color:#888;">显示模式：</span>
+    <button id="img-btn-side"
+            style="background:#3498db;color:white;border:none;border-radius:4px;
+                   padding:4px 12px;font-size:0.8rem;cursor:pointer;"
+            onclick="imgShowMode('sidebyside')">⬛⬛ 左右对照</button>
+    <button id="img-btn-diff"
+            style="background:transparent;color:#666;border:1px solid #ddd;border-radius:4px;
+                   padding:4px 12px;font-size:0.8rem;cursor:pointer;"
+            onclick="imgShowMode('diff')">🔴 差异高亮</button>
+    <button id="img-btn-slider"
+            style="background:transparent;color:#666;border:1px solid #ddd;border-radius:4px;
+                   padding:4px 12px;font-size:0.8rem;cursor:pointer;"
+            onclick="imgShowMode('slider')">↔ 滑动对比</button>
+    <button id="img-btn-overlay"
+            style="background:transparent;color:#666;border:1px solid #ddd;border-radius:4px;
+                   padding:4px 12px;font-size:0.8rem;cursor:pointer;"
+            onclick="imgShowMode('overlay')">🔀 叠加对比</button>
+  </div>
+
+  <!-- 結果 -->
+  <div id="img-compare-result"></div>
+
+</div><!-- /img-compare-panel -->
+
+<!-- ===== OCRパネル ===== -->
+<div id="img-ocr-panel" style="display:none">
+  <div class="ocr-panel">
+
+    <!-- ドロップ -->
+    <div class="ocr-drop-wrap">
+      <div class="ocr-drop" id="img-ocr-drop">
+        <div class="drop-icon">📝</div>
+        <div class="drop-text">拖入需要提取文字的图片</div>
+        <div class="drop-sub">支持 JPG / PNG / WebP</div>
+        <input type="file" id="img-ocr-input" accept="image/*" style="display:none">
+      </div>
+    </div>
+
+    <!-- プレビュー -->
+    <div class="ocr-preview" id="img-ocr-preview">
+      <img id="img-ocr-img" src="" alt="OCR预览">
+    </div>
+
+    <!-- コントロール -->
+    <div class="ocr-controls" id="img-ocr-controls">
+      <label style="font-size:0.85rem;color:#555;">识别语言：</label>
+      <select id="ocr-lang"
+              style="border:1px solid #ddd;border-radius:4px;padding:5px 10px;
+                     font-size:0.85rem;background:white;">
+        <option value="jpn">🇯🇵 日语</option>
+        <option value="chi_sim">🇨🇳 简体中文</option>
+        <option value="chi_tra">🇹🇼 繁体中文</option>
+        <option value="jpn+chi_sim">🇯🇵🇨🇳 日语+简中</option>
+        <option value="eng">🇺🇸 英语</option>
+        <option value="jpn+eng">🇯🇵🇺🇸 日语+英语</option>
+      </select>
+      <button style="background:#27ae60;color:white;" onclick="runOCR()">📝 开始识别</button>
+      <button style="background:#95a5a6;color:white;" onclick="resetOCR()">🗑️ 重新选择</button>
+    </div>
+
+    <!-- プログレス -->
+    <div class="xl-progress" id="img-ocr-progress" style="margin:12px 0;"></div>
+
+    <!-- 結果 -->
+    <div id="img-ocr-result"></div>
+
+  </div>
+</div><!-- /img-ocr-panel -->
+
+<script>
+'use strict';
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ===== 状態変数 =====
+let imgCompMode   = 'compare';
+let imgFileA      = null, imgFileB = null;
+let imgA          = null, imgB     = null;
+let sliderDragging= false;
+let sliderPos     = 50;
+let _imgUrlA      = null, _imgUrlB = null;
+
+// ===== 初期化 =====
+document.addEventListener('DOMContentLoaded', function(){
+    initImgDrop('a');
+    initImgDrop('b');
+    initOcrDrop();
+});
+
+// ===== 大モード切替 =====
+function imgSwitchMode(mode){
+    imgCompMode = mode;
+    const compareBtn   = document.getElementById('img-mode-compare');
+    const ocrBtn       = document.getElementById('img-mode-ocr');
+    const comparePanel = document.getElementById('img-compare-panel');
+    const ocrPanel     = document.getElementById('img-ocr-panel');
+
+    if(mode === 'compare'){
+        compareBtn.style.background='#3498db'; compareBtn.style.color='white'; compareBtn.style.border='none';
+        ocrBtn.style.background='transparent'; ocrBtn.style.color='#bdc3c7'; ocrBtn.style.border='1px solid #4a6278';
+        comparePanel.style.display='block';
+        ocrPanel.style.display='none';
+    } else {
+        ocrBtn.style.background='#27ae60'; ocrBtn.style.color='white'; ocrBtn.style.border='none';
+        compareBtn.style.background='transparent'; compareBtn.style.color='#bdc3c7'; compareBtn.style.border='1px solid #4a6278';
+        comparePanel.style.display='none';
+        ocrPanel.style.display='block';
+    }
+}
+
+// ===== ドロップ初期化 =====
+function initImgDrop(side){
+    const drop  = document.getElementById('img-drop-'+side);
+    const input = document.getElementById('img-input-'+side);
+    if(!drop||!input) return;
+
+    drop.addEventListener('click', ()=> input.click());
+    input.addEventListener('change', e=>{ if(e.target.files[0]) handleImgFile(side, e.target.files[0]); });
+    drop.addEventListener('dragover',  e=>{ e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', ()=> drop.classList.remove('dragover'));
+    drop.addEventListener('drop', e=>{
+        e.preventDefault(); drop.classList.remove('dragover');
+        if(e.dataTransfer.files[0]) handleImgFile(side, e.dataTransfer.files[0]);
+    });
+}
+
+function handleImgFile(side, file){
+    if(!file.type.match(/^image\//)){
+        alert('请上传图片文件');
+        return;
+    }
+    if(side==='a'&&_imgUrlA){ URL.revokeObjectURL(_imgUrlA); _imgUrlA=null; }
+    if(side==='b'&&_imgUrlB){ URL.revokeObjectURL(_imgUrlB); _imgUrlB=null; }
+
+    if(side==='a') imgFileA=file; else imgFileB=file;
+    const url = URL.createObjectURL(file);
+    if(side==='a') _imgUrlA=url; else _imgUrlB=url;
+
+    const drop = document.getElementById('img-drop-'+side);
+    drop.innerHTML=`
+        <div style="display:flex;flex-direction:column;align-items:center;
+                    justify-content:center;height:100%;width:100%;padding:16px;">
+            <img src="${url}"
+                 style="max-width:90%;max-height:130px;object-fit:contain;
+                        border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+            <div style="font-size:0.78rem;color:#27ae60;margin-top:8px;
+                        text-align:center;word-break:break-all;padding:0 10px;">
+                ✅ ${esc(file.name)}
+            </div>
+        </div>
+        <input type="file" id="img-input-${side}" accept="image/*" style="display:none">
+    `;
+    document.getElementById('img-input-'+side).addEventListener('change', e=>{
+        if(e.target.files[0]) handleImgFile(side, e.target.files[0]);
+    });
+    drop.onclick = ()=> document.getElementById('img-input-'+side).click();
+
+    if(imgFileA&&imgFileB){
+        document.getElementById('img-compare-controls').style.display='flex';
+        document.getElementById('img-compare-controls').style.flexWrap='wrap';
+    }
+}
+
+// ===== 対比実行 =====
+function runImgCompare(){
+    if(!imgFileA||!imgFileB){ alert('请上传两张图片'); return; }
+
+    const result = document.getElementById('img-compare-result');
+    result.innerHTML='<div style="padding:20px;text-align:center;color:#888;">⏳ 正在加载图片...</div>';
+
+    const urlA = URL.createObjectURL(imgFileA);
+    const urlB = URL.createObjectURL(imgFileB);
+    imgA = new Image(); imgB = new Image();
+    imgA.crossOrigin = 'anonymous'; imgB.crossOrigin = 'anonymous';
+
+    let loadedCount=0;
+    const onLoad=()=>{
+        loadedCount++;
+        if(loadedCount===2){
+            URL.revokeObjectURL(urlA);
+            URL.revokeObjectURL(urlB);
+            try{ doImgCompare(); }
+            catch(e){
+                result.innerHTML=`<div style="padding:20px;color:#e74c3c;">❌ 对比失败：${e.message}</div>`;
+            }
+        }
+    };
+    imgA.onerror=()=> result.innerHTML='<div style="padding:20px;color:#e74c3c;">❌ 图片A加载失败</div>';
+    imgB.onerror=()=> result.innerHTML='<div style="padding:20px;color:#e74c3c;">❌ 图片B加载失败</div>';
+    imgA.onload=onLoad; imgB.onload=onLoad;
+    imgA.src=urlA; imgB.src=urlB;
+}
+
+function doImgCompare(){
+    const w=Math.max(imgA.width, imgB.width);
+    const h=Math.max(imgA.height, imgB.height);
+
+    const canvasA=document.createElement('canvas');
+    const canvasB=document.createElement('canvas');
+    const canvasDiff=document.createElement('canvas');
+    canvasA.width=canvasB.width=canvasDiff.width=w;
+    canvasA.height=canvasB.height=canvasDiff.height=h;
+
+    const ctxA=canvasA.getContext('2d');
+    const ctxB=canvasB.getContext('2d');
+    const ctxD=canvasDiff.getContext('2d');
+
+    ctxA.drawImage(imgA,0,0,w,h);
+    ctxB.drawImage(imgB,0,0,w,h);
+
+    const dataA=ctxA.getImageData(0,0,w,h);
+    const dataB=ctxB.getImageData(0,0,w,h);
+    const dataDiff=ctxD.createImageData(w,h);
+
+    let diffPixels=0;
+    const threshold=10;
+
+    for(let i=0;i<dataA.data.length;i+=4){
+        const rDiff=Math.abs(dataA.data[i]  -dataB.data[i]);
+        const gDiff=Math.abs(dataA.data[i+1]-dataB.data[i+1]);
+        const bDiff=Math.abs(dataA.data[i+2]-dataB.data[i+2]);
+        const diff=(rDiff+gDiff+bDiff)/3;
+        if(diff>threshold){
+            diffPixels++;
+            dataDiff.data[i]=255; dataDiff.data[i+1]=0; dataDiff.data[i+2]=0;
+            dataDiff.data[i+3]=Math.min(255,diff*3);
+        } else {
+            dataDiff.data[i]=dataA.data[i]*0.3;
+            dataDiff.data[i+1]=dataA.data[i+1]*0.3;
+            dataDiff.data[i+2]=dataA.data[i+2]*0.3;
+            dataDiff.data[i+3]=dataA.data[i+3];
+        }
+    }
+    ctxD.putImageData(dataDiff,0,0);
+
+    const totalPixels=w*h;
+    const similarity=((totalPixels-diffPixels)/totalPixels*100).toFixed(2);
+
+    window._imgCanvasA=canvasA;
+    window._imgCanvasB=canvasB;
+    window._imgCanvasDiff=canvasDiff;
+    window._imgW=w; window._imgH=h;
+
+    // 統計バー
+    const stats=document.getElementById('img-compare-stats');
+    stats.style.display='flex';
+    stats.innerHTML=`
+        <span style="font-weight:bold;">对比结果：</span>
+        <span style="background:${similarity>=99?'#27ae60':'#e74c3c'};color:white;
+                     border-radius:10px;padding:2px 12px;font-size:0.85rem;">
+            相似度：${similarity}%
+        </span>
+        <span style="background:#7f8c8d;color:white;border-radius:10px;padding:2px 12px;font-size:0.85rem;">
+            差异像素：${diffPixels.toLocaleString()}
+        </span>
+        <span style="background:#95a5a6;color:white;border-radius:10px;padding:2px 12px;font-size:0.85rem;">
+            图片尺寸：${w}×${h}
+        </span>
+        ${similarity>=99.9
+            ?'<span style="color:#27ae60;font-weight:bold;font-size:0.95rem;">✅ 图片完全一致</span>'
+            :'<span style="color:#e74c3c;font-weight:bold;font-size:0.95rem;">⚠️ 图片存在差异</span>'}
+    `;
+
+    // 表示モードボタン
+    const modeBtns=document.getElementById('img-mode-btns');
+    modeBtns.style.display='flex';
+    modeBtns.style.alignItems='center';
+    modeBtns.style.gap='6px';
+
+    // HEXボタン追加（重複防止）
+    if(!document.getElementById('img-btn-hex')){
+        const hexBtn=document.createElement('button');
+        hexBtn.id='img-btn-hex';
+        hexBtn.textContent='🔢 HEX对比';
+        hexBtn.onclick=()=> imgShowMode('hex');
+        hexBtn.style.cssText='background:transparent;color:#666;border:1px solid #ddd;border-radius:4px;padding:4px 12px;font-size:0.8rem;cursor:pointer;';
+        modeBtns.appendChild(hexBtn);
+    }
+
+    imgShowMode('sidebyside');
+}
+
+// ===== 表示モード切替 =====
+function imgShowMode(mode){
+    ['side','diff','slider','overlay'].forEach(m=>{
+        const btn=document.getElementById('img-btn-'+m);
+        if(btn){ btn.style.background='transparent'; btn.style.color='#666'; btn.style.border='1px solid #ddd'; }
+    });
+    const hexBtn=document.getElementById('img-btn-hex');
+    if(hexBtn){ hexBtn.style.background='transparent'; hexBtn.style.color='#666'; hexBtn.style.border='1px solid #ddd'; }
+
+    const activeMap={sidebyside:'side', diff:'diff', slider:'slider', overlay:'overlay', hex:'hex'};
+    const activeBtn=document.getElementById('img-btn-'+activeMap[mode]);
+    if(activeBtn){ activeBtn.style.background='#3498db'; activeBtn.style.color='white'; activeBtn.style.border='none'; }
+
+    const result=document.getElementById('img-compare-result');
+    const cA=window._imgCanvasA;
+    const cB=window._imgCanvasB;
+    const cD=window._imgCanvasDiff;
+    if(!cA) return;
+
+    if(mode==='sidebyside'){
+        result.innerHTML=`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 0;">
+            <div>
+                <div style="text-align:center;font-size:0.82rem;color:#666;margin-bottom:6px;font-weight:bold;">◀ 图片 A</div>
+                <canvas id="view-canvas-a" style="width:100%;border:1px solid #ddd;border-radius:4px;display:block;"></canvas>
+            </div>
+            <div>
+                <div style="text-align:center;font-size:0.82rem;color:#666;margin-bottom:6px;font-weight:bold;">▶ 图片 B</div>
+                <canvas id="view-canvas-b" style="width:100%;border:1px solid #ddd;border-radius:4px;display:block;"></canvas>
+            </div>
+        </div>`;
+        copyCanvas(cA, document.getElementById('view-canvas-a'));
+        copyCanvas(cB, document.getElementById('view-canvas-b'));
+
+    } else if(mode==='diff'){
+        result.innerHTML=`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 0;">
+            <div>
+                <div style="text-align:center;font-size:0.82rem;color:#666;margin-bottom:6px;font-weight:bold;">◀ 图片 A（原图）</div>
+                <canvas id="view-canvas-orig" style="width:100%;border:1px solid #ddd;border-radius:4px;display:block;"></canvas>
+            </div>
+            <div>
+                <div style="text-align:center;font-size:0.82rem;color:#e74c3c;margin-bottom:6px;font-weight:bold;">🔴 差异高亮（红色=差异）</div>
+                <canvas id="view-canvas-diff" style="width:100%;border:1px solid #ddd;border-radius:4px;display:block;"></canvas>
+            </div>
+        </div>`;
+        copyCanvas(cA, document.getElementById('view-canvas-orig'));
+        copyCanvas(cD, document.getElementById('view-canvas-diff'));
+
+    } else if(mode==='slider'){
+        result.innerHTML=`
+        <div style="padding:16px 0;">
+            <div style="font-size:0.82rem;color:#666;margin-bottom:8px;text-align:center;">拖动分割线查看差异</div>
+            <div id="img-slider-wrap" style="position:relative;width:100%;
+                 overflow:hidden;cursor:col-resize;user-select:none;
+                 border:1px solid #ddd;border-radius:4px;">
+                <canvas id="img-slider-canvas" style="width:100%;display:block;"></canvas>
+                <div id="img-slider-line" style="position:absolute;top:0;bottom:0;
+                     left:50%;width:3px;background:#e74c3c;cursor:col-resize;
+                     transform:translateX(-50%);">
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+                                background:#e74c3c;color:white;border-radius:50%;
+                                width:32px;height:32px;display:flex;align-items:center;
+                                justify-content:center;font-size:1rem;
+                                box-shadow:0 2px 6px rgba(0,0,0,0.3);">↔</div>
+                </div>
+            </div>
+        </div>`;
+        const canvas=document.getElementById('img-slider-canvas');
+        copyCanvas(cA, canvas);
+        sliderPos=50;
+        drawSlider();
+        initSlider();
+
+    } else if(mode==='overlay'){
+        result.innerHTML=`
+        <div style="padding:16px 0;">
+            <div style="text-align:center;margin-bottom:8px;">
+                <span style="font-size:0.82rem;color:#666;">透明度：</span>
+                <input type="range" id="overlay-range" min="0" max="100" value="50"
+                       oninput="drawOverlay(this.value)"
+                       style="width:200px;accent-color:#3498db;">
+                <span id="overlay-val" style="font-size:0.82rem;color:#666;margin-left:8px;">50%</span>
+            </div>
+            <div style="text-align:center;font-size:0.78rem;color:#888;margin-bottom:8px;">← 图片A &nbsp;&nbsp;&nbsp; 图片B →</div>
+            <canvas id="img-overlay-canvas" style="width:100%;border:1px solid #ddd;border-radius:4px;display:block;"></canvas>
+        </div>`;
+        drawOverlay(50);
+
+    } else if(mode==='hex'){
+        showHexDump();
+    }
+}
+
+function copyCanvas(src, dst){
+    dst.width=src.width; dst.height=src.height;
+    dst.getContext('2d').drawImage(src,0,0);
+}
+
+// ===== スライダー =====
+function drawSlider(){
+    const canvas=document.getElementById('img-slider-canvas');
+    if(!canvas) return;
+    const cA=window._imgCanvasA, cB=window._imgCanvasB;
+    const w=window._imgW, h=window._imgH;
+    canvas.width=w; canvas.height=h;
+    const ctx=canvas.getContext('2d');
+    const splitX=Math.floor(w*sliderPos/100);
+    ctx.drawImage(cA,0,0,splitX,h,0,0,splitX,h);
+    ctx.drawImage(cB,splitX,0,w-splitX,h,splitX,0,w-splitX,h);
+    const line=document.getElementById('img-slider-line');
+    if(line) line.style.left=sliderPos+'%';
+}
+
+function initSlider(){
+    const wrap=document.getElementById('img-slider-wrap');
+    if(!wrap) return;
+    const onMove=(e)=>{
+        if(!sliderDragging) return;
+        const rect=wrap.getBoundingClientRect();
+        const x=(e.clientX||(e.touches&&e.touches[0].clientX)||0)-rect.left;
+        sliderPos=Math.max(0,Math.min(100,x/rect.width*100));
+        drawSlider();
+    };
+    wrap.addEventListener('mousedown', e=>{ sliderDragging=true; onMove(e); });
+    wrap.addEventListener('touchstart', e=>{ sliderDragging=true; onMove(e); },{passive:true});
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, {passive:true});
+    document.addEventListener('mouseup', ()=> sliderDragging=false);
+    document.addEventListener('touchend', ()=> sliderDragging=false);
+}
+
+// ===== オーバーレイ =====
+function drawOverlay(val){
+    const canvas=document.getElementById('img-overlay-canvas');
+    if(!canvas) return;
+    const cA=window._imgCanvasA, cB=window._imgCanvasB;
+    const w=window._imgW, h=window._imgH;
+    canvas.width=w; canvas.height=h;
+    const ctx=canvas.getContext('2d');
+    ctx.globalAlpha=1; ctx.drawImage(cA,0,0);
+    ctx.globalAlpha=val/100; ctx.drawImage(cB,0,0);
+    ctx.globalAlpha=1;
+    const valEl=document.getElementById('overlay-val');
+    if(valEl) valEl.textContent=val+'%';
+}
+
+// ===== HEXダンプ =====
+function showHexDump(){
+    if(!imgFileA||!imgFileB) return;
+    const result=document.getElementById('img-compare-result');
+    result.innerHTML=`<div style="padding:20px;text-align:center;color:#888;">⏳ 正在读取二进制数据...</div>`;
+
+    let bufA=null, bufB=null;
+    const tryRender=()=>{ if(bufA!==null&&bufB!==null) renderHexDump(bufA,bufB); };
+
+    const readerA=new FileReader();
+    readerA.onload=e=>{ bufA=new Uint8Array(e.target.result); tryRender(); };
+    readerA.readAsArrayBuffer(imgFileA);
+
+    const readerB=new FileReader();
+    readerB.onload=e=>{ bufB=new Uint8Array(e.target.result); tryRender(); };
+    readerB.readAsArrayBuffer(imgFileB);
+}
+
+function renderHexDump(bufA, bufB){
+    const result=document.getElementById('img-compare-result');
+    const BYTES_PER_ROW=16;
+    const maxLen=Math.max(bufA.length, bufB.length);
+    const totalRows=Math.ceil(maxLen/BYTES_PER_ROW);
+
+    let diffBytes=0;
+    for(let i=0;i<maxLen;i++){
+        const a=i<bufA.length?bufA[i]:-1;
+        const b=i<bufB.length?bufB[i]:-1;
+        if(a!==b) diffBytes++;
+    }
+
+    result.innerHTML=`
+    <div style="padding:12px 0;">
+    <div style="background:#1a252f;color:white;padding:10px 16px;
+                border-radius:6px 6px 0 0;display:flex;align-items:center;
+                gap:12px;flex-wrap:wrap;font-family:'Courier New',monospace;font-size:0.82rem;">
+        <span style="font-weight:bold;">🔢 HEX对比</span>
+        <span style="background:#7f8c8d;border-radius:8px;padding:2px 10px;">文件A: ${bufA.length.toLocaleString()} bytes</span>
+        <span style="background:#7f8c8d;border-radius:8px;padding:2px 10px;">文件B: ${bufB.length.toLocaleString()} bytes</span>
+        <span style="background:${diffBytes>0?'#e74c3c':'#27ae60'};border-radius:8px;padding:2px 10px;">
+            差异字节: ${diffBytes.toLocaleString()}
+        </span>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;
+                      background:#34495e;padding:2px 10px;border-radius:8px;">
+            <input type="checkbox" id="hex-diff-only" onchange="hexFilterDiffOnly()"
+                   style="accent-color:#e74c3c;cursor:pointer;">
+            仅显示差异行
+        </label>
+    </div>
+    <div style="background:#2c3e50;padding:8px 16px;display:flex;align-items:center;
+                gap:10px;flex-wrap:wrap;font-size:0.82rem;">
+        <button onclick="hexNav(-1)"
+            style="background:#e74c3c;color:white;border:none;border-radius:4px;
+                   padding:5px 14px;font-size:0.82rem;font-weight:bold;cursor:pointer;">
+            ⬆ 上一差异
+        </button>
+        <span id="hex-nav-info"
+              style="background:#e74c3c;color:white;padding:4px 14px;
+                     border-radius:16px;font-size:0.82rem;font-weight:bold;
+                     min-width:100px;text-align:center;">0 / 0</span>
+        <button onclick="hexNav(1)"
+            style="background:#e74c3c;color:white;border:none;border-radius:4px;
+                   padding:5px 14px;font-size:0.82rem;font-weight:bold;cursor:pointer;">
+            下一差异 ⬇
+        </button>
+        <span style="color:#bdc3c7;font-size:0.78rem;margin-left:8px;">🔴=差异字节　--=文件无此字节</span>
+    </div>
+    <div id="hex-scroll-wrap"
+         style="max-height:65vh;overflow-y:auto;overflow-x:auto;
+                border:1px solid #ddd;border-top:none;border-radius:0 0 6px 6px;background:white;">
+        <table id="hex-table"
+               style="border-collapse:collapse;font-family:'Courier New',monospace;
+                      font-size:13px;line-height:1.6;width:100%;min-width:1000px;">
+            <thead style="position:sticky;top:0;z-index:10;">
+                <tr>
+                    <th style="background:#2c3e50;color:#ecf0f1;padding:7px 12px;text-align:center;
+                               border-right:1px solid #445;min-width:90px;white-space:nowrap;">地址</th>
+                    <th colspan="16" style="background:#1a4a6e;color:#c8e6ff;padding:7px 12px;
+                               text-align:center;border-right:2px solid #34495e;">◀ 文件 A（HEX）</th>
+                    <th style="background:#1a4a6e;color:#c8e6ff;padding:7px 8px;text-align:center;
+                               border-right:2px solid #34495e;min-width:140px;">ASCII (A)</th>
+                    <th colspan="16" style="background:#4a1a1a;color:#ffd0b0;padding:7px 12px;
+                               text-align:center;border-right:2px solid #34495e;">▶ 文件 B（HEX）</th>
+                    <th style="background:#4a1a1a;color:#ffd0b0;padding:7px 8px;text-align:center;
+                               min-width:140px;">ASCII (B)</th>
+                </tr>
+            </thead>
+            <tbody id="hex-tbody"></tbody>
+        </table>
+    </div>
+    </div>`;
+
+    window._hexRows=[];
+    window._hexDiffRowIdxs=[];
+    window._hexNavIdx=-1;
+
+    for(let row=0;row<totalRows;row++){
+        const offset=row*BYTES_PER_ROW;
+        const cells=[];
+        let hasDiff=false;
+        for(let col=0;col<BYTES_PER_ROW;col++){
+            const byteOffset=offset+col;
+            const vA=byteOffset<bufA.length?bufA[byteOffset]:null;
+            const vB=byteOffset<bufB.length?bufB[byteOffset]:null;
+            const diff=vA!==vB;
+            if(diff) hasDiff=true;
+            cells.push({vA,vB,diff});
+        }
+        window._hexRows.push({row,offset,cells,hasDiff});
+        if(hasDiff) window._hexDiffRowIdxs.push(row);
+    }
+
+    const navInfo=document.getElementById('hex-nav-info');
+    if(navInfo) navInfo.textContent=`0 / ${window._hexDiffRowIdxs.length} 行差异`;
+
+    // デフォルト：差異行のみ表示
+    const diffOnlyChk=document.getElementById('hex-diff-only');
+    if(diffOnlyChk) diffOnlyChk.checked=true;
+    _hexRenderAll(true);
+}
+
+function _hexRenderAll(diffOnly){
+    const tbody=document.getElementById('hex-tbody');
+    if(!tbody) return;
+    const rows=diffOnly?window._hexRows.filter(r=>r.hasDiff):window._hexRows;
+    const CHUNK=300;
+    let idx=0;
+    tbody.innerHTML='';
+
+    function renderChunk(){
+        const frag=document.createDocumentFragment();
+        const end=Math.min(idx+CHUNK,rows.length);
+        for(;idx<end;idx++) frag.appendChild(_buildHexRow(rows[idx]));
+        tbody.appendChild(frag);
+        if(idx<rows.length) requestAnimationFrame(renderChunk);
+    }
+    renderChunk();
+}
+
+function _buildHexRow(rowData){
+    const {row,offset,cells,hasDiff}=rowData;
+    const tr=document.createElement('tr');
+    tr.id=`hex-row-${row}`;
+    tr.style.cssText=hasDiff
+        ?'background:#fff5f5;border-bottom:1px solid #f0d0d0;'
+        :'background:white;border-bottom:1px solid #f5f5f5;';
+
+    const tdOffset=document.createElement('td');
+    tdOffset.style.cssText=`padding:4px 12px;color:${hasDiff?'#e74c3c':'#888'};font-weight:${hasDiff?'bold':'normal'};border-right:1px solid #ddd;white-space:nowrap;background:#f9f9f9;font-size:12px;text-align:center;`;
+    tdOffset.textContent='0x'+offset.toString(16).toUpperCase().padStart(8,'0');
+    tr.appendChild(tdOffset);
+
+    let asciiA='', asciiB='';
+    cells.forEach(cell=>{
+        const td=document.createElement('td');
+        const isNull=cell.vA===null;
+        td.style.cssText=`padding:4px 4px;text-align:center;min-width:26px;font-size:12px;${cell.diff&&!isNull?'background:#ffcccc;color:#cc0000;font-weight:bold;':isNull?'background:#f0f0f0;color:#ccc;':'color:#1a3a6a;'}`;
+        td.textContent=cell.vA===null?'--':cell.vA.toString(16).toUpperCase().padStart(2,'0');
+        tr.appendChild(td);
+        asciiA+=(cell.vA!==null&&cell.vA>=0x20&&cell.vA<=0x7E)?String.fromCharCode(cell.vA):'·';
+    });
+
+    const tdAsciiA=document.createElement('td');
+    tdAsciiA.style.cssText='padding:4px 10px;border-left:2px solid #c8e6ff;border-right:2px solid #34495e;font-size:11px;letter-spacing:2px;color:#1a3a6a;background:#f0f8ff;white-space:pre;';
+    tdAsciiA.textContent=asciiA;
+    tr.appendChild(tdAsciiA);
+
+    cells.forEach(cell=>{
+        const td=document.createElement('td');
+        const isNull=cell.vB===null;
+        td.style.cssText=`padding:4px 4px;text-align:center;min-width:26px;font-size:12px;${cell.diff&&!isNull?'background:#ffcccc;color:#cc0000;font-weight:bold;':isNull?'background:#f0f0f0;color:#ccc;':'color:#6a2a00;'}`;
+        td.textContent=cell.vB===null?'--':cell.vB.toString(16).toUpperCase().padStart(2,'0');
+        tr.appendChild(td);
+        asciiB+=(cell.vB!==null&&cell.vB>=0x20&&cell.vB<=0x7E)?String.fromCharCode(cell.vB):'·';
+    });
+
+    const tdAsciiB=document.createElement('td');
+    tdAsciiB.style.cssText='padding:4px 10px;border-left:2px solid #ffd8b0;font-size:11px;letter-spacing:2px;color:#6a2a00;background:#fff8f0;white-space:pre;';
+    tdAsciiB.textContent=asciiB;
+    tr.appendChild(tdAsciiB);
+
+    return tr;
+}
+
+function hexFilterDiffOnly(){
+    const diffOnly=document.getElementById('hex-diff-only').checked;
+    window._hexNavIdx=-1;
+    _hexRenderAll(diffOnly);
+}
+
+function hexNav(dir){
+    const idxs=window._hexDiffRowIdxs;
+    if(!idxs||!idxs.length) return;
+
+    if(window._hexNavIdx>=0&&window._hexNavIdx<idxs.length){
+        const prevRow=document.getElementById(`hex-row-${idxs[window._hexNavIdx]}`);
+        if(prevRow){ prevRow.style.outline=''; prevRow.style.boxShadow=''; }
+    }
+
+    window._hexNavIdx=(window._hexNavIdx+dir+idxs.length)%idxs.length;
+    const targetRowIdx=idxs[window._hexNavIdx];
+    const targetEl=document.getElementById(`hex-row-${targetRowIdx}`);
+    if(targetEl){
+        targetEl.style.outline='3px solid #f39c12';
+        targetEl.style.outlineOffset='-2px';
+        targetEl.style.boxShadow='0 0 10px rgba(243,156,18,0.8)';
+        targetEl.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+
+    const navInfo=document.getElementById('hex-nav-info');
+    if(navInfo) navInfo.textContent=`${window._hexNavIdx+1} / ${idxs.length} 行差异`;
+}
+
+// ===== リセット =====
+function resetImgCompare(){
+    if(_imgUrlA){ URL.revokeObjectURL(_imgUrlA); _imgUrlA=null; }
+    if(_imgUrlB){ URL.revokeObjectURL(_imgUrlB); _imgUrlB=null; }
+    imgFileA=null; imgFileB=null; imgA=null; imgB=null;
+    if(window._imgCanvasA){ window._imgCanvasA.width=1; window._imgCanvasA=null; }
+    if(window._imgCanvasB){ window._imgCanvasB.width=1; window._imgCanvasB=null; }
+    if(window._imgCanvasDiff){ window._imgCanvasDiff.width=1; window._imgCanvasDiff=null; }
+
+    ['a','b'].forEach(side=>{
+        const drop=document.getElementById('img-drop-'+side);
+        drop.innerHTML=`
+            <div class="drop-inner">
+                <div class="drop-icon">🖼️</div>
+                <div class="drop-text">拖入图片 ${side.toUpperCase()}</div>
+                <div class="drop-sub">支持 JPG / PNG / WebP</div>
+                <input type="file" id="img-input-${side}" accept="image/*" style="display:none">
+            </div>`;
+        initImgDrop(side);
+    });
+
+    document.getElementById('img-compare-controls').style.display='none';
+    document.getElementById('img-compare-stats').style.display='none';
+    document.getElementById('img-compare-result').innerHTML='';
+    document.getElementById('img-mode-btns').style.display='none';
+    // HEXボタン除去
+    const hexBtn=document.getElementById('img-btn-hex');
+    if(hexBtn) hexBtn.remove();
+}
+
+// ===== OCR =====
+let ocrFile=null, _ocrUrl=null;
+
+function initOcrDrop(){
+    const drop=document.getElementById('img-ocr-drop');
+    const input=document.getElementById('img-ocr-input');
+    if(!drop||!input) return;
+
+    drop.addEventListener('click', ()=> input.click());
+    input.addEventListener('change', e=>{ if(e.target.files[0]) handleOcrFile(e.target.files[0]); });
+    drop.addEventListener('dragover',  e=>{ e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', ()=> drop.classList.remove('dragover'));
+    drop.addEventListener('drop', e=>{
+        e.preventDefault(); drop.classList.remove('dragover');
+        if(e.dataTransfer.files[0]) handleOcrFile(e.dataTransfer.files[0]);
+    });
+}
+
+function handleOcrFile(file){
+    if(!file.type.match(/^image\//)){
+        alert('请上传图片文件');
+        return;
+    }
+    if(_ocrUrl){ URL.revokeObjectURL(_ocrUrl); _ocrUrl=null; }
+    ocrFile=file;
+    const url=URL.createObjectURL(file);
+    _ocrUrl=url;
+
+    document.getElementById('img-ocr-img').src=url;
+    document.getElementById('img-ocr-preview').style.display='block';
+    document.getElementById('img-ocr-controls').style.display='flex';
+    document.getElementById('img-ocr-controls').style.flexWrap='wrap';
+    document.getElementById('img-ocr-result').innerHTML='';
+    document.getElementById('img-ocr-progress').classList.remove('show');
+}
+
+function runOCR(){
+    if(!ocrFile){ alert('请先上传图片'); return; }
+    const progress=document.getElementById('img-ocr-progress');
+    const result=document.getElementById('img-ocr-result');
+    const lang=document.getElementById('ocr-lang').value;
+
+    progress.textContent='⏳ 正在加载OCR引擎...';
+    progress.classList.add('show');
+    result.innerHTML='';
+
+    if(typeof Tesseract==='undefined'){
+        const script=document.createElement('script');
+        script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+        script.onload=()=> doOCR(lang, progress, result);
+        script.onerror=()=>{ progress.textContent='❌ OCR引擎加载失败，请检查网络'; };
+        document.head.appendChild(script);
+    } else {
+        doOCR(lang, progress, result);
+    }
+}
+
+async function doOCR(lang, progress, result){
+    try{
+        progress.textContent='⏳ 正在识别文字（可能需要10-30秒）...';
+        const worker=await Tesseract.createWorker(lang, 1, {
+            logger: m=>{
+                if(m.status==='recognizing text'){
+                    const pct=Math.round(m.progress*100);
+                    progress.textContent=`⏳ 识别中... ${pct}%`;
+                }
+            }
+        });
+        const {data}=await worker.recognize(ocrFile);
+        await worker.terminate();
+
+        const text=data.text.trim();
+        const lines=text.split('\n').filter(l=>l.trim());
+        progress.classList.remove('show');
+
+        result.innerHTML=`
+        <div style="background:white;border:1px solid #ddd;border-radius:8px;overflow:hidden;margin-top:8px;">
+            <div style="background:#27ae60;color:white;padding:10px 16px;
+                        display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <span style="font-weight:bold;">📝 识别结果</span>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span style="background:#1e8449;border-radius:10px;padding:2px 10px;font-size:0.78rem;">${lines.length}行文字</span>
+                    <button onclick="copyOcrResult()"
+                        style="background:white;color:#27ae60;border:none;border-radius:4px;
+                               padding:4px 12px;font-size:0.82rem;font-weight:bold;cursor:pointer;">
+                        📋 复制全文
+                    </button>
+                </div>
+            </div>
+            <div style="padding:6px 16px;background:#fffde8;border-bottom:1px solid #f0d080;">
+                <p style="font-size:0.78rem;color:#856404;margin:0;">⚠️ OCR识别结果仅供参考，请人工确认准确性</p>
+            </div>
+            <div id="ocr-text-content"
+                 style="padding:16px;font-family:'Noto Sans JP','Microsoft YaHei',sans-serif;
+                        font-size:0.95rem;line-height:2;white-space:pre-wrap;
+                        max-height:400px;overflow-y:auto;color:#333;">
+                ${lines.map(l=>`<div style="padding:2px 0;border-bottom:1px solid #f5f5f5;">${esc(l)}</div>`).join('')}
+            </div>
+            <div style="padding:8px 16px;background:#f8f8f8;font-size:0.75rem;color:#888;">
+                识别语言：${lang} ／ 识别文字数：${text.replace(/\s/g,'').length}字
+            </div>
+        </div>`;
+
+        window._ocrText=text;
+
+    } catch(err){
+        progress.textContent='❌ 识别失败：'+err.message;
+    }
+}
+
+function copyOcrResult(){
+    if(!window._ocrText){ alert('没有可复制的文字'); return; }
+    const btn=event.target;
+    navigator.clipboard.writeText(window._ocrText).then(()=>{
+        btn.textContent='✅ 已复制！';
+        setTimeout(()=> btn.textContent='📋 复制全文', 2000);
+    }).catch(()=>{
+        const ta=document.createElement('textarea');
+        ta.value=window._ocrText;
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        btn.textContent='✅ 已复制！';
+        setTimeout(()=> btn.textContent='📋 复制全文', 2000);
+    });
+}
+
+function resetOCR(){
+    if(_ocrUrl){ URL.revokeObjectURL(_ocrUrl); _ocrUrl=null; }
+    ocrFile=null; window._ocrText=null;
+    document.getElementById('img-ocr-preview').style.display='none';
+    document.getElementById('img-ocr-controls').style.display='none';
+    document.getElementById('img-ocr-result').innerHTML='';
+    document.getElementById('img-ocr-progress').classList.remove('show');
+
+    const drop=document.getElementById('img-ocr-drop');
+    drop.innerHTML=`
+        <div class="drop-icon">📝</div>
+        <div class="drop-text">拖入需要提取文字的图片</div>
+        <div class="drop-sub">支持 JPG / PNG / WebP</div>
+        <input type="file" id="img-ocr-input" accept="image/*" style="display:none">
+    `;
+    initOcrDrop();
+}
+</script>
+</body>
+</html>

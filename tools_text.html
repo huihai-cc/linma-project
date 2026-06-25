@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="zh">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文本处理工具</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI','Noto Sans SC',sans-serif; background:#f5f5f5; color:#333; min-height:100vh; }
+
+header { background:#2c3e50; color:white; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
+header h1 { font-size:1.2rem; letter-spacing:1px; }
+.badge { background:#27ae60; border-radius:12px; padding:3px 12px; font-size:0.75rem; }
+
+/* 导航回主页 */
+.back-nav { background:#34495e; padding:8px 20px; display:flex; align-items:center; gap:12px; }
+.back-btn { background:#2980b9; color:white; border:none; border-radius:4px; padding:5px 14px; font-size:0.82rem; cursor:pointer; text-decoration:none; display:inline-block; }
+.back-btn:hover { background:#1a6fa8; }
+
+.page-sticky { position:sticky; top:0; z-index:200; background:white; box-shadow:0 3px 10px rgba(0,0,0,0.18); }
+
+.tab-bar { background:#34495e; display:flex; border-bottom:2px solid #2c3e50; flex-wrap:wrap; }
+.tab-btn { padding:10px 20px; color:#bdc3c7; cursor:pointer; font-size:0.85rem; font-weight:bold; border:none; background:transparent; border-right:1px solid #2c3e50; transition:all 0.15s; }
+.tab-btn:hover { background:#3d566e; color:white; }
+.tab-btn.active { background:#f5f5f5; color:#2c3e50; border-bottom:2px solid #f5f5f5; margin-bottom:-2px; }
+
+.tab-panel { display:none; background:white; }
+.tab-panel.active { display:block; }
+
+.input-area { padding:14px 20px; border-bottom:1px solid #eee; }
+.input-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:10px; }
+.input-label { font-size:0.8rem; color:#666; margin-bottom:4px; font-weight:bold; display:flex; align-items:center; gap:8px; }
+.label-tip { font-size:0.72rem; color:#999; font-weight:normal; }
+textarea { width:100%; height:180px; border:1px solid #ccc; border-radius:4px; padding:10px; font-family:'Courier New',monospace; font-size:0.88rem; resize:vertical; outline:none; line-height:1.5; transition:border 0.2s; }
+textarea:focus { border-color:#3498db; }
+
+.clean-info { display:none; background:#fff3cd; border:1px solid #ffc107; border-radius:4px; padding:7px 12px; font-size:0.78rem; color:#856404; margin-bottom:8px; }
+.clean-info.show { display:block; }
+
+.controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 20px; background:#fafafa; border-bottom:1px solid #e0e0e0; }
+button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; font-weight:bold; cursor:pointer; transition:all 0.2s; }
+.btn-diff  { background:#e74c3c; color:white; }
+.btn-diff:hover  { background:#c0392b; }
+.btn-clear { background:#95a5a6; color:white; }
+.btn-clear:hover { background:#7f8c8d; }
+.btn-export { background:#27ae60; color:white; display:none; }
+.btn-export:hover { background:#1e8449; }
+.btn-sort  { background:#8e44ad; color:white; }
+.btn-sort:hover  { background:#6c3483; }
+.btn-hide-eq { background:#f39c12; color:white; display:none; }
+.btn-hide-eq:hover { background:#d68910; }
+.btn-show-eq { background:#2980b9; color:white; display:none; }
+.btn-show-eq:hover { background:#1a6fa8; }
+.btn-check { background:#4ecca3; color:#1a1a2e; font-weight:bold; }
+.btn-check:hover { background:#38b089; }
+.btn-check-clear { background:#ccc; color:#333; border:1px solid #bbb; }
+
+.opt-group { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.opt-item { display:flex; align-items:center; gap:5px; font-size:0.81rem; color:#555; cursor:pointer; user-select:none; }
+.opt-item input { accent-color:#e74c3c; cursor:pointer; }
+.check-opt { display:flex; align-items:center; gap:5px; font-size:0.80rem; color:#555; cursor:pointer; user-select:none; }
+.check-opt input { accent-color:#27ae60; cursor:pointer; }
+
+.stats { display:none; background:#ecf0f1; padding:7px 20px; font-size:0.82rem; gap:12px; align-items:center; flex-wrap:wrap; border-bottom:1px solid #ddd; }
+.stats.show { display:flex; }
+.tag { padding:2px 10px; border-radius:10px; font-weight:bold; font-size:0.8rem; }
+.tag-eq { background:#eaecee; color:#626567; border:1px solid #d5d8dc; }
+
+.nav-bar { display:none; background:#2c3e50; padding:7px 20px; align-items:center; gap:12px; flex-wrap:wrap; }
+.nav-bar.show { display:flex; }
+.btn-nav { background:#e74c3c; color:white; border:none; border-radius:6px; padding:6px 16px; font-size:0.85rem; font-weight:bold; cursor:pointer; transition:all 0.2s; }
+.btn-nav:hover { background:#c0392b; }
+.nav-info { color:#ecf0f1; font-size:0.82rem; background:#34495e; padding:5px 12px; border-radius:4px; min-width:120px; text-align:center; }
+.nav-counter { color:#f39c12; font-weight:bold; }
+
+.sort-info-box { background:#f0e8ff; border:1px solid #c39bd3; border-radius:6px; padding:8px 14px; margin-bottom:10px; font-size:0.82rem; color:#6c3483; }
+.sort-preview { background:#fafafa; border:1px solid #ddd; border-radius:6px; padding:8px 14px; margin-top:6px; font-size:0.78rem; color:#666; font-family:'Courier New',monospace; max-height:70px; overflow-y:auto; white-space:pre-wrap; }
+
+.diff-wrap { display:none; padding:16px 20px; }
+.diff-wrap.show { display:block; }
+
+.diff-table { width:100%; border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.85rem; background:white; border:1px solid #bbb; border-radius:4px; overflow:hidden; }
+.diff-table th { padding:8px 12px; font-size:0.8rem; font-weight:bold; border-bottom:2px solid #bbb; }
+.th-num  { background:#dde; width:56px; text-align:center; color:#556; }
+.th-left { background:#c8e6ff; color:#1a3a6a; border-left:1px solid #bbb; font-weight:bold; }
+.th-right{ background:#ffd8b0; color:#6a2a00; border-left:1px solid #bbb; font-weight:bold; }
+.diff-table td { padding:4px 12px; vertical-align:top; line-height:1.8; white-space:pre-wrap; word-break:break-all; border-bottom:1px solid #eee; }
+.td-num  { text-align:center; color:#888; font-size:0.75rem; background:#f5f5f5; border-right:1px solid #ddd; user-select:none; min-width:56px; }
+
+.row-eq td.td-left,.row-eq td.td-right { background:white; color:#444; }
+.row-add .td-num { background:#00b300; color:white; font-weight:bold; }
+.row-add td.td-left  { background:#f0f0f0; color:#bbb; }
+.row-add td.td-right { background:#b8ffb8; color:#004400; border-left:4px solid #00aa00; font-weight:bold; }
+.row-del .td-num { background:#cc0000; color:white; font-weight:bold; }
+.row-del td.td-left  { background:#ffb8b8; color:#440000; border-left:4px solid #cc0000; font-weight:bold; }
+.row-del td.td-right { background:#f0f0f0; color:#bbb; }
+.row-mod .td-num { background:#cc6600; color:white; font-weight:bold; }
+.row-mod td.td-left  { background:white; color:#333; border-left:4px solid #cc6600; }
+.row-mod td.td-right { background:white; color:#333; border-left:4px solid #00aa44; }
+.row-eq.hidden-eq { display:none; }
+.diff-focus { outline:3px solid #f39c12 !important; outline-offset:-2px; }
+
+.sort-hl-a { background:#ffaa55; color:#442200; border-radius:2px; padding:0 2px; }
+.sort-hl-b { background:#55dd88; color:#003322; border-radius:2px; padding:0 2px; }
+
+.row-sort-diff td.sort-cell { background:white !important; border-left:none !important; }
+.sort-only-a { display:inline-block; background:#ffaaaa; color:#660000; border-radius:3px; padding:1px 6px; border-left:3px solid #cc0000; width:100%; box-sizing:border-box; }
+.sort-only-b { display:inline-block; background:#aaffaa; color:#003300; border-radius:3px; padding:1px 6px; border-left:3px solid #00aa00; width:100%; box-sizing:border-box; }
+
+.contain-result { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.contain-panel { background:white; border:1px solid #bbb; border-radius:4px; overflow:hidden; }
+.contain-panel-header { padding:8px 14px; font-size:0.8rem; font-weight:bold; border-bottom:2px solid #bbb; }
+.panel-header-a { background:#c8e6ff; color:#1a3a6a; }
+.panel-header-b { background:#ffd8b0; color:#6a2a00; }
+.contain-panel-body { padding:12px 14px; font-family:'Courier New',monospace; font-size:0.88rem; line-height:2; white-space:pre-wrap; word-break:break-all; min-height:80px; }
+.hl-only-a  { background:#ffd0d0; color:#660000; border-radius:2px; padding:1px 0; }
+.hl-only-b  { background:#b2f0f0; color:#004444; border-radius:2px; padding:1px 0; }
+.no-diff { text-align:center; padding:40px; color:#27ae60; font-size:1.1rem; background:#eafaf1; border-radius:4px; border:1px solid #a9dfbf; }
+
+.check-input-box { background:#f8f8f8; border:1px solid #ddd; border-radius:8px; overflow:hidden; margin-bottom:10px; }
+.check-input-label { background:#f0f0f0; color:#27ae60; padding:8px 14px; font-size:0.82rem; font-weight:bold; border-bottom:1px solid #ddd; }
+.check-textarea { width:100%; height:160px; background:#fff; color:#333; border:none; padding:12px; font-family:'Courier New',monospace; font-size:0.88rem; resize:vertical; outline:none; line-height:1.6; }
+.check-stats { display:none; background:#f0f8f0; border:1px solid #ddd; border-radius:6px; margin:8px 20px 4px; padding:8px 16px; gap:10px; align-items:center; flex-wrap:wrap; font-size:0.80rem; }
+.check-stats.show { display:flex; }
+.cstat { padding:2px 10px; border-radius:10px; font-weight:bold; font-size:0.78rem; }
+.check-legend { display:none; background:#fafafa; border:1px solid #eee; border-radius:6px; margin:0 20px 4px; padding:8px 16px; gap:10px; flex-wrap:wrap; align-items:center; font-size:0.76rem; }
+.check-legend.show { display:flex; }
+.cl-item { display:flex; align-items:center; gap:4px; }
+.cl-sw { padding:1px 6px; border-radius:3px; font-size:0.72rem; font-weight:bold; }
+.check-summary { display:none; background:#fffbf0; border:1px solid #f0d080; border-radius:6px; margin:0 20px 6px; padding:10px 16px; }
+.check-summary.show { display:block; }
+.cs-title { font-size:0.80rem; color:#e67e22; font-weight:bold; margin-bottom:6px; }
+.cs-list { display:flex; flex-wrap:wrap; gap:6px; }
+.cs-item { display:flex; align-items:center; gap:5px; background:#fff; border:1px solid #ddd; border-radius:6px; padding:3px 10px; font-size:0.76rem; cursor:pointer; transition:all 0.15s; color:#333; }
+.cs-item:hover { border-color:#27ae60; }
+.cs-count { color:#e67e22; font-weight:bold; }
+.check-result-area { padding:0 20px 16px; }
+.preview-container { background:#fff; border:1px solid #ddd; border-radius:6px; overflow-x:auto; font-family:'Courier New',monospace; font-size:13.5px; line-height:1.7; }
+.ruler-wrap { position:sticky; top:0; z-index:20; background:#f0f0f0; border-bottom:1px solid #ddd; }
+.ruler-canvas { display:block; height:22px; }
+.editor-body { display:flex; }
+.line-gutter { background:#f5f5f5; color:#999; text-align:right; padding:6px 10px 6px 8px; border-right:1px solid #ddd; user-select:none; flex-shrink:0; font-size:12px; line-height:1.7; min-width:50px; }
+.editor-content { flex:1; padding:6px 12px; white-space:pre; line-height:1.7; min-width:0; overflow-x:auto; color:#333; }
+
+.s-sp-half { display:inline-block; background:#ff6b35; color:white; border-radius:3px; padding:0 3px; font-size:0.7em; vertical-align:middle; font-weight:bold; margin:0 0.5px; }
+.s-sp-full { display:inline-block; background:#ff1493; color:white; border-radius:3px; padding:0 3px; font-size:0.7em; vertical-align:middle; font-weight:bold; margin:0 0.5px; }
+.s-nl  { color:#2980b9; font-size:0.82em; opacity:0.8; user-select:none; }
+.s-tab { display:inline-block; background:#00b894; color:white; border-radius:3px; padding:0 4px; font-size:0.7em; vertical-align:middle; font-weight:bold; margin:0 1px; }
+.s-invisible { display:inline-block; background:#d63031; color:white; border-radius:3px; padding:0 4px; font-size:0.7em; vertical-align:middle; font-weight:bold; margin:0 1px; border:1px solid #ff4444; }
+.s-pua { display:inline-block; background:#e67e22; color:white; border-radius:3px; padding:0 4px; font-size:0.7em; vertical-align:middle; font-weight:bold; margin:0 1px; border:1px solid #d35400; }
+.s-eof { color:#aaa; font-size:0.75em; font-style:italic; user-select:none; }
+.s-sym-fullwidth,.s-sym-fullnum,.s-sym-fullalpha { display:inline-block; background:#6c3483; color:white; border-radius:3px; padding:0 3px; font-size:0.82em; vertical-align:middle; font-weight:bold; border:1px solid #4a235a; }
+.s-sym-halfkana,.s-sym-other { display:inline-block; background:#c0392b; color:white; border-radius:3px; padding:0 3px; font-size:0.82em; vertical-align:middle; font-weight:bold; border:1px solid #922b21; }
+.inv { display:inline-block; background:#8e44ad; color:white; border-radius:3px; padding:0 3px; font-size:0.68em; vertical-align:middle; font-weight:bold; }
+.ck-row { display:flex; align-items:baseline; min-height:1.7em; line-height:1.7; white-space:pre; }
+.ck-row-special { background:rgba(240,165,0,0.1); border-left:2px solid #f0a500; }
+.ck-num { flex-shrink:0; min-width:50px; text-align:right; padding-right:10px; color:#999; font-size:12px; background:#f5f5f5; border-right:1px solid #ddd; user-select:none; line-height:1.7; }
+.ck-num-special { color:#e67e22; font-weight:bold; }
+.ck-content { flex:1; padding:0 12px; color:#333; white-space:pre; min-width:0; }
+
+.vs-scroll-wrap { width:100%; overflow-x:auto; overflow-y:auto; max-height:70vh; border:1px solid #bbb; border-radius:4px; background:white; }
+.vscroll-table { width:100%; border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.85rem; background:white; }
+.vscroll-table th { position:sticky; top:0; z-index:10; padding:8px 12px; font-size:0.8rem; font-weight:bold; border-bottom:2px solid #bbb; }
+.vscroll-table td { padding:4px 12px; vertical-align:top; line-height:1.8; white-space:pre-wrap; word-break:break-all; border-bottom:1px solid #eee; }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>🔍 文本处理工具</h1>
+    <span class="badge">🔒 完全本地运行</span>
+</header>
+
+<div class="back-nav">
+    <a href="index.html" class="back-btn">← 返回导航页</a>
+    <span style="color:#bdc3c7;font-size:0.82rem;">逐行比对 / 升序比对 / 包含关系比对 / 符号检查</span>
+</div>
+
+<div class="page-sticky" id="page-sticky">
+    <div class="tab-bar">
+        <button class="tab-btn active" id="tab-diff"  onclick="switchTab('diff')">🔍 逐行比对</button>
+        <button class="tab-btn"        id="tab-sort"  onclick="switchTab('sort')">🔤 升序比对</button>
+        <button class="tab-btn"        id="tab-full"  onclick="switchTab('full')">🔎 包含关系比对</button>
+        <button class="tab-btn"        id="tab-check" onclick="switchTab('check')">🔬 符号检查</button>
+    </div>
+
+    <!-- 逐行比对 -->
+    <div class="tab-panel active" id="panel-diff">
+        <div class="input-area">
+            <div class="clean-info" id="clean-info-diff"></div>
+            <div class="input-row">
+                <div>
+                    <div class="input-label">📄 文本 A（原文）<span class="label-tip"></span></div>
+                    <textarea id="ta-diff" placeholder="请粘贴文本A..."></textarea>
+                </div>
+                <div>
+                    <div class="input-label">📄 文本 B（对照）</div>
+                    <textarea id="tb-diff" placeholder="请粘贴文本B..."></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="controls">
+            <button class="btn-diff"    onclick="runLineDiff()">🔍 开始比对（Ctrl+Enter）</button>
+            <button class="btn-clear"   onclick="clearDiff()">🗑️ 清空</button>
+            <button class="btn-export"  id="btn-exp-diff"     onclick="exportDiff()">💾 导出HTML</button>
+            <button class="btn-hide-eq" id="btn-hide-eq-diff" onclick="toggleHideEq('diff')">🧹 隐藏一致行</button>
+            <button class="btn-show-eq" id="btn-show-eq-diff" onclick="toggleShowEq('diff')">👁 显示全部行</button>
+            <div class="opt-group">
+                <label class="opt-item"><input type="checkbox" id="o-case-diff"> 忽略大小写</label>
+                <label class="opt-item"><input type="checkbox" id="o-inv-diff" checked> 显示隐藏字符</label>
+                <label class="opt-item"><input type="checkbox" id="o-fold-diff"> 折叠相同行</label>
+            </div>
+        </div>
+        <div class="stats" id="stats-diff"></div>
+        <div class="nav-bar" id="nav-bar-diff">
+            <button class="btn-nav" onclick="navDiff(-1)">⬆ 上一个差异</button>
+            <div class="nav-info">差异 <span class="nav-counter" id="nav-cur-diff">0</span> / <span class="nav-counter" id="nav-tot-diff">0</span></div>
+            <button class="btn-nav" onclick="navDiff(1)">下一个差异 ⬇</button>
+        </div>
+    </div>
+
+    <!-- 升序比对 -->
+    <div class="tab-panel" id="panel-sort">
+        <div class="input-area">
+            <div class="sort-info-box">🔤 升序比对：两边内容分别自动排序后再比较差异</div>
+            <div class="clean-info" id="clean-info-sort"></div>
+            <div class="input-row">
+                <div>
+                    <div class="input-label">📄 列表 A<span class="label-tip">每行一个项目，自动升序排列后比对</span></div>
+                    <textarea id="ta-sort" placeholder="请粘贴列表A..."></textarea>
+                    <div class="sort-preview" id="preview-sort-a">排序预览：粘贴内容后显示</div>
+                </div>
+                <div>
+                    <div class="input-label">📄 列表 B<span class="label-tip">每行一个项目，自动升序排列后比对</span></div>
+                    <textarea id="tb-sort" placeholder="请粘贴列表B..."></textarea>
+                    <div class="sort-preview" id="preview-sort-b">排序预览：粘贴内容后显示</div>
+                </div>
+            </div>
+        </div>
+        <div class="controls">
+            <button class="btn-sort"    onclick="runSortDiff()">🔤 升序排列并比对（Ctrl+Enter）</button>
+            <button class="btn-clear"   onclick="clearSort()">🗑️ 清空</button>
+            <button class="btn-export"  id="btn-exp-sort"     onclick="exportSort()">💾 导出HTML</button>
+            <button class="btn-hide-eq" id="btn-hide-eq-sort" onclick="toggleHideEq('sort')">🧹 隐藏一致行</button>
+            <button class="btn-show-eq" id="btn-show-eq-sort" onclick="toggleShowEq('sort')">👁 显示全部行</button>
+            <div class="opt-group">
+                <label class="opt-item"><input type="checkbox" id="o-case-sort"> 忽略大小写</label>
+                <label class="opt-item"><input type="checkbox" id="o-trim-sort" checked> 忽略首尾空格</label>
+                <label class="opt-item"><input type="checkbox" id="o-empty-sort" checked> 忽略空行</label>
+            </div>
+        </div>
+        <div class="stats" id="stats-sort"></div>
+        <div class="nav-bar" id="nav-bar-sort">
+            <button class="btn-nav" onclick="navDiff(-1)">⬆ 上一个差异</button>
+            <div class="nav-info">差异 <span class="nav-counter" id="nav-cur-sort">0</span> / <span class="nav-counter" id="nav-tot-sort">0</span></div>
+            <button class="btn-nav" onclick="navDiff(1)">下一个差异 ⬇</button>
+        </div>
+    </div>
+
+    <!-- 包含关系比对 -->
+    <div class="tab-panel" id="panel-full">
+        <div class="input-area">
+            <div class="clean-info" id="clean-info-full"></div>
+            <div class="input-row">
+                <div>
+                    <div class="input-label">📄 文本 A<span class="label-tip">支持PDF复制</span></div>
+                    <textarea id="ta-full" placeholder="请粘贴文本A..."></textarea>
+                </div>
+                <div>
+                    <div class="input-label">📄 文本 B</div>
+                    <textarea id="tb-full" placeholder="请粘贴文本B..."></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="controls">
+            <button class="btn-diff"   onclick="runFullDiff()">🔍 开始比对（Ctrl+Enter）</button>
+            <button class="btn-clear"  onclick="clearFull()">🗑️ 清空</button>
+            <button class="btn-export" id="btn-exp-full" onclick="exportFull()">💾 导出HTML</button>
+            <div class="opt-group">
+                <label class="opt-item"><input type="checkbox" id="o-case-full"> 忽略大小写</label>
+                <label class="opt-item"><input type="checkbox" id="o-inv-full" checked> 显示隐藏字符</label>
+                <label class="opt-item"><input type="checkbox" id="o-line-full"> 逐行包含检查</label>
+            </div>
+        </div>
+        <div class="stats" id="stats-full"></div>
+        <div class="nav-bar" id="nav-bar-full">
+            <button class="btn-nav" onclick="navDiff(-1)">⬆ 上一个差异</button>
+            <div class="nav-info">差异 <span class="nav-counter" id="nav-cur-full">0</span> / <span class="nav-counter" id="nav-tot-full">0</span></div>
+            <button class="btn-nav" onclick="navDiff(1)">下一个差异 ⬇</button>
+        </div>
+    </div>
+
+    <!-- 符号检查 -->
+    <div class="tab-panel" id="panel-check">
+        <div class="input-area">
+            <div class="check-input-box">
+                <div class="check-input-label">📄 粘贴要检查的文本</div>
+                <textarea class="check-textarea" id="ta-check" placeholder="请粘贴文本..."></textarea>
+            </div>
+            <div class="clean-info" id="clean-info-check"></div>
+        </div>
+        <div class="controls">
+            <button class="btn-check"       onclick="runCheck()">🔬 开始检查（Ctrl+Enter）</button>
+            <button class="btn-check-clear" onclick="clearCheck()">🗑️ 清空</button>
+            <button class="btn-export" id="btn-exp-check" onclick="exportCheck()">💾 导出HTML</button>
+            <label class="check-opt"><input type="checkbox" id="o-nl"    checked onchange="rerender()"> 显示换行↵</label>
+            <label class="check-opt"><input type="checkbox" id="o-sp"    checked onchange="rerender()"> 显示空格</label>
+            <label class="check-opt"><input type="checkbox" id="o-tab"   checked onchange="rerender()"> 显示Tab</label>
+            <label class="check-opt"><input type="checkbox" id="o-cinv"  checked onchange="rerender()"> 显示不可见字符</label>
+            <label class="check-opt"><input type="checkbox" id="o-ruler" checked onchange="rerender()"> 列标尺</label>
+            <label class="check-opt"><input type="checkbox" id="o-hl-ln" checked onchange="rerender()"> 高亮含符号的行</label>
+        </div>
+    </div>
+</div>
+
+<div class="diff-wrap" id="diff-wrap">
+    <div id="diff-out"></div>
+</div>
+
+<div id="check-result-outer" style="display:none;">
+    <div class="check-stats" id="check-stats"></div>
+    <div class="check-legend" id="check-legend">
+        <span style="color:#666;font-size:0.76rem;">颜色说明：</span>
+        <div class="cl-item"><span class="cl-sw" style="background:#ff6b35;color:white;">半</span>半角空格</div>
+        <div class="cl-item"><span class="cl-sw" style="background:#ff1493;color:white;">全</span>全角空格</div>
+        <div class="cl-item"><span class="cl-sw" style="background:#00b894;color:white;">→</span>Tab</div>
+        <div class="cl-item"><span class="cl-sw" style="background:#d63031;color:white;">ZWS</span>不可见字符</div>
+        <div class="cl-item"><span class="cl-sw" style="background:#6c3483;color:white;">全</span>全角符号</div>
+        <div class="cl-item"><span class="cl-sw" style="background:#c0392b;color:white;">半</span>半角特殊符号</div>
+    </div>
+    <div class="check-summary" id="check-summary">
+        <div class="cs-title">⚠️ 检测到的特殊符号（点击定位）</div>
+        <div class="cs-list" id="cs-list"></div>
+    </div>
+    <div class="check-result-area" id="preview-wrap">
+        <div class="preview-container">
+            <div class="ruler-wrap" id="ruler-wrap"><canvas class="ruler-canvas" id="ruler-canvas"></canvas></div>
+            <div class="editor-body">
+                <div class="line-gutter"    id="line-gutter"></div>
+                <div class="editor-content" id="editor-content"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+const CIRCLED_NUMS = new Set([...`①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⑾⑿⒀⒁⒂⒃⒄⒅⒆⒇`]);
+const ROMAN_NUMS   = new Set([...`ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ`]);
+const UNIT_SYMBOLS = new Set([...`㍉㌢㍍㌫㍑㍗㌔㌘㌧㌃㌶㌍㌦㌣㍊㍼㍻㍾㍽№℡㊙㊣㈱㈲㈹Åℓ㏄`]);
+const CURRENCY     = new Set([...`￥￡€＄`]);
+const KANA_EXT     = new Set([...`ぁぃぅぇぉゃゅょっァィゥェォャュョッヵヶㇰㇱㇲㇳㇴㇵㇶㇷㇸㇹㇺㇻㇼㇽㇾㇿ`]);
+const RARE_CHARS   = new Set([...`纊褜鍈銈蓜俉炻昱棈鋹曻彅丨仡仼伀伃伹佖侒侊侚侔俍偀倢俿倞偆偰偂傔僴僘兊兤冝冾凬刕劜劦勀勛匀匇匤卲厓厲叝﨎咜咊咩哿喆坙坥垬埈埇﨏塚增墲夋奓奛奝奣妤妺孖寀甯寘寬尞岦岺峵崧嵓﨑嵂嵭嶸嶹巐弡弴彧德忞恝悅悊惞惕愠惲愑愷愰憘戓抦揵摠撝擎敎昀昕昻昉昮昞昤晥晗晙晴晳暙暠暲暿曺朎朗杦枻桒柀栁桄棏﨓楨﨔榘槢樰橫橆橳橾櫢櫤毖氿汜沆汯泚洄涇浯涖涬淏淸淲淼渹湜渧渼溿澈澵濵瀅瀇瀨炅炫焏焄煜煆煇凞燁燾犱犾猤猪獷玽珉珖珣珒琇珵琦琪琩琮瑢璉璟甁畯皂皜皞皛皦益睆劯砡硎硤硺礰礼神祥禔福禛竑竧靖竫箞精絈絜綷綠緖繒罇羡羽茁荢荿菇菶葈蒴蕓蕙蕫﨟薰蘒﨡蠇裵訒訷詹誧誾諟諸諶譓譿賰賴贒赶﨣軏﨤逸遧郞都鄕鄧釚釗釞釭釮釤釥鈆鈐鈊鈺鉀鈻鉎鉙鉑鈹鉧銧鉷鉸鋧鋗鋙鋐﨧鋕鋠鋓錥錡鋻﨨錞鋿錝錂鍰鍗鎤鏆鏞鏸鐱鑅鑈閒隆﨩隝隯霳霻靃靍靏靑靕顗顥飯飼餧館馞驎髙髜魵魲鮏鮱鮻鰀鵰鵫鶴鸙黑`]);
+
+let symbolIndex=[],lastCheckText='',diffRows=[],navIndex=-1,currentTab='diff';
+const eqHidden={diff:false,sort:false};
+const vsState={diff:{blocks:[],showInv:true,container:null},sort:{blocks:[],showInv:false,container:null}};
+const VS_THRESHOLD=2000,VS_BUFFER=25;
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.title = "文本处理工具";
+    document.getElementById('ta-sort').addEventListener('input', () => updateSortPreview('a'));
+    document.getElementById('tb-sort').addEventListener('input', () => updateSortPreview('b'));
+
+    const pasteBindings = [
+        { taId: 'ta-diff',  ciId: 'clean-info-diff'  },
+        { taId: 'tb-diff',  ciId: 'clean-info-diff'  },
+        { taId: 'ta-sort',  ciId: 'clean-info-sort'  },
+        { taId: 'tb-sort',  ciId: 'clean-info-sort'  },
+        { taId: 'ta-full',  ciId: 'clean-info-full'  },
+        { taId: 'tb-full',  ciId: 'clean-info-full'  },
+        { taId: 'ta-check', ciId: 'clean-info-check' },
+    ];
+    pasteBindings.forEach(({ taId, ciId }) => {
+        const el = document.getElementById(taId);
+        if (el) el.addEventListener('paste', e => handlePaste(e, taId, ciId));
+    });
+});
+
+function switchTab(tab){
+    currentTab=tab;
+    ['diff','sort','full','check'].forEach(t=>{
+        document.getElementById('tab-'+t).classList.toggle('active',t===tab);
+        document.getElementById('panel-'+t).classList.toggle('active',t===tab);
+    });
+    document.getElementById('diff-wrap').classList.remove('show');
+    document.getElementById('check-result-outer').style.display='none';
+}
+
+function cleanText(raw){
+    const removed=new Set(); let out='';
+    for(let i=0;i<raw.length;i++){
+        const code=raw.charCodeAt(i),ch=raw[i];
+        if(code>=0xE000&&code<=0xF8FF){removed.add(`U+${code.toString(16).toUpperCase().padStart(4,'0')}(PDF)`);continue;}
+        const rm=[0x200B,0x200C,0x200D,0xFEFF,0x2060,0x00AD,0x034F,0x180E,0x202A,0x202B,0x202C,0x202D,0x202E,0x2066,0x2067,0x2068,0x2069,0xFFFD];
+        if(rm.includes(code)){removed.add(`U+${code.toString(16).toUpperCase().padStart(4,'0')}`);continue;}
+        if(code===0x00A0){removed.add('NBSP->space');out+=' ';continue;}
+        if(code===0x000D)continue;
+        out+=ch;
+    }
+    return{text:out,removed:[...removed]};
+}
+
+function handlePaste(e,taId,ciId){
+    e.preventDefault();
+    const raw=(e.clipboardData||window.clipboardData).getData('text');
+    let cleaned=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n'),removed=[];
+    if(taId!=='ta-check'&&taId!=='ta-diff'&&taId!=='tb-diff'&&taId!=='ta-sort'&&taId!=='tb-sort'){const r=cleanText(raw);cleaned=r.text.replace(/\r\n/g,'\n').replace(/\r/g,'\n');removed=r.removed;}
+    const ta=document.getElementById(taId);
+    const s=ta.selectionStart,en=ta.selectionEnd;
+    ta.value=ta.value.substring(0,s)+cleaned+ta.value.substring(en);
+    ta.selectionStart=ta.selectionEnd=s+cleaned.length;
+    if(taId==='ta-sort')updateSortPreview('a');
+    if(taId==='tb-sort')updateSortPreview('b');
+    if(removed.length>0&&ciId){const ci=document.getElementById(ciId);ci.innerHTML=`🧹 已自动清理：<b>${removed.join('、')}</b>`;ci.classList.add('show');}
+}
+
+function updateSortPreview(side){
+    const taId=side==='a'?'ta-sort':'tb-sort',divId=side==='a'?'preview-sort-a':'preview-sort-b';
+    const raw=document.getElementById(taId).value;
+    const trimOn=document.getElementById('o-trim-sort').checked,emptyOn=document.getElementById('o-empty-sort').checked;
+    let lines=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    if(trimOn)lines=lines.map(l=>l.trim());
+    if(emptyOn)lines=lines.filter(l=>l.length>0);
+    const sorted=[...lines].sort((a,b)=>a.localeCompare(b,'ja'));
+    const el=document.getElementById(divId);
+    if(!sorted.length){el.textContent='排序预览：粘贴内容后显示';return;}
+    el.textContent='排序后（前5行）：\n'+sorted.slice(0,5).join('\n')+(sorted.length>5?'\n...':'');
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+const INV_MAP={'\u00A0':'NBSP','\u200B':'ZWS','\u200C':'ZWNJ','\u200D':'ZWJ','\uFEFF':'BOM','\u2060':'WJ','\u3000':'全','\u0009':'TAB','\u000D':'CR'};
+function isInv(ch){return !!INV_MAP[ch]||(ch.charCodeAt(0)<32&&ch!=='\n');}
+function invLabel(ch){return INV_MAP[ch]||'U+'+ch.charCodeAt(0).toString(16).toUpperCase().padStart(4,'0');}
+
+function myersDiff(a,b){
+    const N=a.length,M=b.length,MAX=N+M;
+    if(!MAX)return[];
+    const V=new Int32Array(2*MAX+2),trace=[];
+    outer:for(let d=0;d<=MAX;d++){
+        trace.push(V.slice());
+        for(let k=-d;k<=d;k+=2){
+            const ki=k+MAX;
+            let x=(k===-d||(k!==d&&V[ki-1]<V[ki+1]))?V[ki+1]:V[ki-1]+1,y=x-k;
+            while(x<N&&y<M&&a[x]===b[y]){x++;y++;}
+            V[ki]=x;if(x>=N&&y>=M)break outer;
+        }
+    }
+    const ops=[];let x=N,y=M;
+    for(let d=trace.length-1;d>=0;d--){
+        const Vd=trace[d],k=x-y,ki=k+MAX;
+        const prevK=(k===-d||(k!==d&&Vd[ki-1]<Vd[ki+1]))?k+1:k-1;
+        const prevX=Vd[prevK+MAX],prevY=prevX-prevK;
+        while(x>prevX&&y>prevY){ops.unshift({t:'eq',x:x-1,y:y-1});x--;y--;}
+        if(d>0){if(x===prevX){ops.unshift({t:'ins',x:prevX,y:prevY});y--;}else{ops.unshift({t:'del',x:prevX,y:prevY});x--;}}
+    }
+    return ops;
+}
+
+function buildBlocks(ops,lA,lB){
+    const blocks=[];let i=0;
+    while(i<ops.length){
+        const op=ops[i];
+        if(op.t==='eq'){
+            if(lA[op.x]===lB[op.y]){blocks.push({t:'eq',la:lA[op.x],lb:lB[op.y]});}
+            else{blocks.push({t:'mod',la:lA[op.x],lb:lB[op.y]});}
+            i++;
+        }else if(op.t==='del'&&i+1<ops.length&&ops[i+1].t==='ins'){
+            blocks.push({t:'mod',la:lA[op.x],lb:lB[ops[i+1].y]});i+=2;
+        }else if(op.t==='del'){blocks.push({t:'del',la:lA[op.x],lb:null});i++;}
+        else{blocks.push({t:'ins',la:null,lb:lB[op.y]});i++;}
+    }
+    return blocks;
+}
+
+function buildBlocksAligned(lA,lB,nA,nB){
+    const maxLen=Math.max(lA.length,lB.length);
+    const blocks=[];
+    for(let i=0;i<maxLen;i++){
+        const hasA=i<lA.length,hasB=i<lB.length;
+        if(!hasA)blocks.push({t:'ins',la:null,lb:lB[i]});
+        else if(!hasB)blocks.push({t:'del',la:lA[i],lb:null});
+        else if(nA[i]===nB[i])blocks.push({t:'eq',la:lA[i],lb:lB[i]});
+        else blocks.push({t:'mod',la:lA[i],lb:lB[i]});
+    }
+    return blocks;
+}
+
+function buildBlocksNoMod(ops,lA,lB){
+    return ops.map(op=>{
+        if(op.t==='eq')return{t:'eq',la:lA[op.x],lb:lB[op.y]};
+        if(op.t==='del')return{t:'del',la:lA[op.x],lb:null};
+        return{t:'ins',la:null,lb:lB[op.y]};
+    });
+}
+
+function renderLine(text,showInv){
+    return[...text].map(ch=>{if(isInv(ch))return showInv?`<span class="inv">${esc(invLabel(ch))}</span>`:'';return esc(ch);}).join('');
+}
+
+function sortCharDiff(a,b){
+    const ac=[...a],bc=[...b],N=ac.length,M=bc.length;
+    if(N>600||M>600)return{left:`<span class="sort-only-a">${esc(a)}</span>`,right:`<span class="sort-only-b">${esc(b)}</span>`};
+    const dp=Array.from({length:N+1},()=>new Uint16Array(M+1));
+    for(let i=1;i<=N;i++)for(let j=1;j<=M;j++)dp[i][j]=ac[i-1]===bc[j-1]?dp[i-1][j-1]+1:Math.max(dp[i-1][j],dp[i][j-1]);
+    const lOps=[],rOps=[];let i=N,j=M;
+    while(i>0||j>0){
+        if(i>0&&j>0&&ac[i-1]===bc[j-1]){lOps.unshift({t:'eq',c:ac[i-1]});rOps.unshift({t:'eq',c:bc[j-1]});i--;j--;}
+        else if(j>0&&(i===0||dp[i][j-1]>=dp[i-1][j])){rOps.unshift({t:'diff',c:bc[j-1]});j--;}
+        else{lOps.unshift({t:'diff',c:ac[i-1]});i--;}
+    }
+    function render(ops,hlClass){
+        let html='',buf='',inHL=false;
+        const flush=()=>{if(!buf)return;html+=inHL?`<span class="${hlClass}">${buf}</span>`:buf;buf='';};
+        for(const op of ops){const isDiff=op.t==='diff';if(isDiff!==inHL){flush();inHL=isDiff;}buf+=esc(op.c);}
+        flush();return html;
+    }
+    return{left:render(lOps,'sort-hl-a'),right:render(rOps,'sort-hl-b')};
+}
+
+function rowClass(t){return t==='eq'?'row-eq':t==='ins'?'row-add':t==='del'?'row-del':'row-mod';}
+
+function buildTr(b,no,showInv){
+    const tr=document.createElement('tr');
+    tr.className=rowClass(b.t);
+    if(b.t==='eq'){
+        const cL=showInv?renderLine(b.la,true):esc(b.la);
+        const cR=showInv?renderLine(b.lb,true):esc(b.lb);
+        tr.innerHTML=`<td class="td-num">${no}</td><td class="td-left">${cL}</td><td class="td-right">${cR}</td>`;
+    }else if(b.t==='ins'){
+        const rc=showInv?renderLine(b.lb,true):esc(b.lb);
+        tr.innerHTML=`<td class="td-num">${no}</td><td class="td-left">&nbsp;</td><td class="td-right">+&nbsp;${rc}</td>`;
+    }else if(b.t==='del'){
+        const lc=showInv?renderLine(b.la,true):esc(b.la);
+        tr.innerHTML=`<td class="td-num">${no}</td><td class="td-left">-&nbsp;${lc}</td><td class="td-right">&nbsp;</td>`;
+    }else{
+        const laClean=b.la.replace(/[\u200B\u200C\u200D\uFEFF\u2060\u00AD\u034F\u180E\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069\uFFFD]/g,'');
+        const lbClean=b.lb.replace(/[\u200B\u200C\u200D\uFEFF\u2060\u00AD\u034F\u180E\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069\uFFFD]/g,'');
+        if(laClean===lbClean){
+            const cL=showInv?renderLine(b.la,true):esc(b.la);
+            const cR=showInv?renderLine(b.lb,true):esc(b.lb);
+            tr.innerHTML=`<td class="td-num">${no}</td><td class="td-left">${cL}</td><td class="td-right">${cR}</td>`;
+        }else{
+            const res=sortCharDiff(b.la,b.lb);
+            tr.innerHTML=`<td class="td-num">${no}</td><td class="td-left">${res.left}</td><td class="td-right">${res.right}</td>`;
+        }
+    }
+    return tr;
+}
+
+function initNav(tab){
+    diffRows=[];navIndex=-1;
+    document.querySelectorAll('#diff-out .row-add,#diff-out .row-del,#diff-out .row-mod').forEach(r=>diffRows.push(r));
+    const vs=vsState[tab];
+    let totalDiff=diffRows.length;
+    if(totalDiff===0&&vs&&vs.blocks.length>0){
+        totalDiff=vs.blocks.filter(b=>b.t==='ins'||b.t==='del'||b.t==='mod').length;
+    }
+    const nb=document.getElementById('nav-bar-'+tab);
+    if(totalDiff>0){
+        nb.classList.add('show');
+        document.getElementById('nav-tot-'+tab).textContent=totalDiff;
+        document.getElementById('nav-cur-'+tab).textContent=0;
+    }else{nb.classList.remove('show');}
+}
+
+function initNavSort(){
+    diffRows=[];navIndex=-1;
+    document.querySelectorAll('#diff-out .row-sort-diff').forEach(r=>diffRows.push(r));
+    const nb=document.getElementById('nav-bar-sort');
+    if(diffRows.length>0){nb.classList.add('show');document.getElementById('nav-tot-sort').textContent=diffRows.length;document.getElementById('nav-cur-sort').textContent=0;}
+    else nb.classList.remove('show');
+}
+
+function navDiff(dir){
+    const vs=vsState[currentTab];
+    if(vs&&vs.blocks.length>0&&diffRows.length===0){
+        const diffBlocks=[];
+        vs.blocks.forEach((b,i)=>{if(b.t==='ins'||b.t==='del'||b.t==='mod')diffBlocks.push(i);});
+        if(!diffBlocks.length)return;
+        if(navIndex<0)navIndex=-1;
+        navIndex=(navIndex+dir+diffBlocks.length)%diffBlocks.length;
+        const blockIdx=diffBlocks[navIndex];
+        const container=vs.container;
+        if(container){const ROW_H=30;const scrollTarget=blockIdx*ROW_H-container.clientHeight/2;container.scrollTo({top:Math.max(0,scrollTarget),behavior:'smooth'});}
+        const cur=document.getElementById('nav-cur-'+currentTab);
+        if(cur)cur.textContent=navIndex+1;
+        document.getElementById('nav-tot-'+currentTab).textContent=diffBlocks.length;
+        return;
+    }
+    if(!diffRows.length)return;
+    if(navIndex>=0&&navIndex<diffRows.length){
+        const prevRow=diffRows[navIndex];
+        prevRow.classList.remove('diff-focus');
+        if(prevRow._focusCell){prevRow._focusCell.style.outline='';prevRow._focusCell.style.outlineOffset='';prevRow._focusCell.style.boxShadow='';prevRow._focusCell=null;}
+    }
+    navIndex=(navIndex+dir+diffRows.length)%diffRows.length;
+    const target=diffRows[navIndex];
+    let focusCell=null;
+    if(target.classList.contains('row-del'))focusCell=target.querySelector('td.td-left');
+    else if(target.classList.contains('row-add'))focusCell=target.querySelector('td.td-right');
+    else if(target.classList.contains('row-mod'))focusCell=target.querySelector('td.td-left');
+    if(focusCell){
+        focusCell.style.outline='3px solid #f39c12';focusCell.style.outlineOffset='-2px';focusCell.style.boxShadow='0 0 10px rgba(243,156,18,0.8)';
+        focusCell.scrollIntoView({behavior:'smooth',block:'center'});target._focusCell=focusCell;
+    }else{target.classList.add('diff-focus');target.scrollIntoView({behavior:'smooth',block:'center'});}
+    const cur=document.getElementById('nav-cur-'+currentTab);
+    if(cur)cur.textContent=navIndex+1;
+}
+
+function toggleHideEq(tab){eqHidden[tab]=true;_applyEq(tab);}
+function toggleShowEq(tab){eqHidden[tab]=false;_applyEq(tab);}
+function _applyEq(tab){
+    const h=eqHidden[tab];
+    if(tab==='sort'){const vs=vsState['sort'];if(vs.blocks.length>0)renderSortResult(vs.blocks);}
+    else{document.querySelectorAll('#diff-out .row-eq').forEach(r=>r.classList.toggle('hidden-eq',h));const vs=vsState[tab];if(vs.blocks.length>0&&vs.container)_vsRerender(tab);}
+    document.getElementById('btn-hide-eq-'+tab).style.display=h?'none':'inline-block';
+    document.getElementById('btn-show-eq-'+tab).style.display=h?'inline-block':'none';
+    requestAnimationFrame(()=>initNav(tab));
+}
+
+function renderResult(tab,blocks,showInv){
+    const vs=vsState[tab];vs.blocks=blocks;vs.showInv=showInv;
+    const visible=eqHidden[tab]?blocks.filter(b=>b.t!=='eq'):blocks;
+    if(visible.length<=VS_THRESHOLD)_renderDirect(visible,showInv,tab);
+    else _renderVirtual(tab,visible,showInv);
+}
+
+function _renderDirect(blocks,showInv,tab){
+    if(blocks.every(b=>b.t==='eq')){document.getElementById('diff-out').innerHTML='<div class="no-diff">✅ 无差异 — 两个文本完全相同</div>';return;}
+    const wrap=document.getElementById('diff-out');
+    wrap.innerHTML=`<table class="diff-table"><thead><tr><th class="th-num">行号</th><th class="th-left">◀ 文本 A</th><th class="th-right">▶ 文本 B</th></tr></thead><tbody id="dt-body"></tbody></table>`;
+    const tbody=document.getElementById('dt-body');
+    let idx=0,no=0;
+    function batch(){
+        const end=Math.min(idx+500,blocks.length);
+        const frag=document.createDocumentFragment();
+        for(;idx<end;idx++){no++;frag.appendChild(buildTr(blocks[idx],no,showInv));}
+        tbody.appendChild(frag);
+        if(idx<blocks.length)requestAnimationFrame(batch);
+        else requestAnimationFrame(()=>initNav(tab));
+    }
+    batch();
+}
+
+function _renderVirtual(tab,visible,showInv){
+    const ROW_H=30,totalH=visible.length*ROW_H;
+    const wrap=document.getElementById('diff-out');
+    wrap.innerHTML=`<div class="vs-scroll-wrap" id="vs-scroll-${tab}"><table class="vscroll-table" style="table-layout:fixed;"><colgroup><col style="width:56px"><col style="width:50%"><col style="width:50%"></colgroup><thead><tr><th class="th-num">行号</th><th class="th-left">◀ 文本 A</th><th class="th-right">▶ 文本 B</th></tr></thead><tbody id="vs-tbody-${tab}"><tr id="vs-top-${tab}"><td colspan="3" style="height:0;padding:0;border:none;"></td></tr><tr id="vs-bot-${tab}"><td colspan="3" style="height:${totalH}px;padding:0;border:none;"></td></tr></tbody></table></div>`;
+    const container=document.getElementById('vs-scroll-'+tab);
+    vsState[tab].container=container;
+    container._v=visible;container._rh=ROW_H;container._rendered={start:-1,end:-1};container._si=showInv;container._tab=tab;
+    let pending=false;
+    container.addEventListener('scroll',()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{_vsRender(container);pending=false;});});
+    _vsRender(container);requestAnimationFrame(()=>initNav(tab));
+}
+
+function _vsRerender(tab){
+    const vs=vsState[tab];
+    const visible=eqHidden[tab]?vs.blocks.filter(b=>b.t!=='eq'):vs.blocks;
+    if(visible.length<=VS_THRESHOLD){_renderDirect(visible,vs.showInv,tab);return;}
+    _renderVirtual(tab,visible,vs.showInv);
+}
+
+function _vsRender(c){
+    const v=c._v,ROW_H=c._rh,si=Math.max(0,Math.floor(c.scrollTop/ROW_H)-VS_BUFFER);
+    const ei=Math.min(v.length-1,Math.ceil((c.scrollTop+c.clientHeight)/ROW_H)+VS_BUFFER);
+    if(c._rendered.start===si&&c._rendered.end===ei)return;
+    c._rendered={start:si,end:ei};
+    const tab=c._tab,tbody=document.getElementById('vs-tbody-'+tab);
+    tbody.querySelectorAll('tr.vs-row').forEach(r=>r.remove());
+    document.getElementById('vs-top-'+tab).firstElementChild.style.height=(si*ROW_H)+'px';
+    document.getElementById('vs-bot-'+tab).firstElementChild.style.height=Math.max(0,(v.length-1-ei)*ROW_H)+'px';
+    const frag=document.createDocumentFragment(),bot=document.getElementById('vs-bot-'+tab);
+    for(let i=si;i<=ei;i++){const tr=buildTr(v[i],i+1,c._si);tr.classList.add('vs-row');frag.appendChild(tr);}
+    tbody.insertBefore(frag,bot);
+}
+
+function runLineDiff(){
+    const rawA=document.getElementById('ta-diff').value;
+    const rawB=document.getElementById('tb-diff').value;
+    const ignCase=document.getElementById('o-case-diff').checked;
+    const showInv=document.getElementById('o-inv-diff').checked;
+    eqHidden.diff=false;
+    const lA=rawA.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    const lB=rawB.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    const nA=lA.map(l=>{let s=ignCase?l.toLowerCase():l;return s.replace(/[\u200B\u200C\u200D\uFEFF\u2060\u00AD\u034F\u180E\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069\uFFFD]/g,'');});
+    const nB=lB.map(l=>{let s=ignCase?l.toLowerCase():l;return s.replace(/[\u200B\u200C\u200D\uFEFF\u2060\u00AD\u034F\u180E\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069\uFFFD]/g,'');});
+    document.getElementById('diff-out').innerHTML='<div style="padding:30px;text-align:center;color:#888;">⏳ 正在比对中...</div>';
+    document.getElementById('diff-wrap').classList.add('show');
+    setTimeout(()=>{
+        const ops=myersDiff(nA,nB);
+        const eqCount=ops.filter(o=>o.t==='eq').length;
+        const totalLines=Math.max(nA.length,nB.length)||1;
+        const blocks=(eqCount/totalLines<0.3)?buildBlocksAligned(lA,lB,nA,nB):buildBlocks(ops,lA,lB);
+        let nAdd=0,nDel=0,nMod=0,nEq=0;
+        for(const b of blocks){if(b.t==='ins')nAdd++;else if(b.t==='del')nDel++;else if(b.t==='mod')nMod++;else nEq++;}
+        const st=document.getElementById('stats-diff');
+        st.innerHTML=`<span>比对结果：</span>
+            <span class="tag" style="background:#b8ffb8;color:#004400;border:1px solid #00aa00;">+ 新增 <b>${nAdd}</b> 行</span>
+            <span class="tag" style="background:#ffb8b8;color:#440000;border:1px solid #cc0000;">- 删除 <b>${nDel}</b> 行</span>
+            <span class="tag" style="background:#ffe0b0;color:#442200;border:1px solid #cc6600;">≠ 修改 <b>${nMod}</b> 行</span>
+            <span class="tag tag-eq">= 相同 <b>${nEq}</b> 行</span>
+            <span style="font-size:0.78rem;color:#999;">共 <b>${blocks.length}</b> 行</span>`;
+        st.classList.add('show');
+        document.getElementById('btn-exp-diff').style.display='inline-block';
+        document.getElementById('btn-hide-eq-diff').style.display='inline-block';
+        document.getElementById('btn-show-eq-diff').style.display='none';
+        eqHidden.diff=false;
+        renderResult('diff',blocks,showInv);
+    },20);
+}
+
+function sortLines(text,ignCase,trimOn,emptyOn){
+    let lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    if(trimOn)lines=lines.map(l=>l.trim());
+    if(emptyOn)lines=lines.filter(l=>l.length>0);
+    return lines.sort((a,b)=>{const ca=ignCase?a.toLowerCase():a,cb=ignCase?b.toLowerCase():b;return ca.localeCompare(cb,'ja');});
+}
+
+function runSortDiff(){
+    const rawA=document.getElementById('ta-sort').value;
+    const rawB=document.getElementById('tb-sort').value;
+    if(!rawA.trim()&&!rawB.trim()){alert('请先粘贴内容');return;}
+    const ignCase=document.getElementById('o-case-sort').checked;
+    const trimOn=document.getElementById('o-trim-sort').checked;
+    const emptyOn=document.getElementById('o-empty-sort').checked;
+    eqHidden.sort=false;
+    const sortedA=sortLines(rawA,ignCase,trimOn,emptyOn);
+    const sortedB=sortLines(rawB,ignCase,trimOn,emptyOn);
+    const keysA=ignCase?sortedA.map(l=>l.toLowerCase()):sortedA;
+    const keysB=ignCase?sortedB.map(l=>l.toLowerCase()):sortedB;
+    document.getElementById('diff-out').innerHTML='<div style="padding:30px;text-align:center;color:#888;">⏳ 正在比对中...</div>';
+    document.getElementById('diff-wrap').classList.add('show');
+    setTimeout(()=>{
+        const ops=myersDiff(keysA,keysB);
+        const blocks=buildBlocksNoMod(ops,sortedA,sortedB);
+        let nDel=0,nIns=0,nEq=0;
+        for(const b of blocks){if(b.t==='ins')nIns++;else if(b.t==='del')nDel++;else nEq++;}
+        const common=keysA.filter(k=>new Set(keysB).has(k)).length;
+        const st=document.getElementById('stats-sort');
+        st.innerHTML=`<span>升序比对结果：</span>
+            <span class="tag" style="background:#e8d5ff;color:#6c3483;border:1px solid #c39bd3;">A共 <b>${sortedA.length}</b> 项</span>
+            <span class="tag" style="background:#e8d5ff;color:#6c3483;border:1px solid #c39bd3;">B共 <b>${sortedB.length}</b> 项</span>
+            <span class="tag" style="background:#b8ffb8;color:#004400;border:1px solid #00aa00;">共同 <b>${common}</b> 项</span>
+            <span class="tag" style="background:#ffb8b8;color:#440000;border:1px solid #cc0000;">仅A有 <b>${nDel}</b> 项</span>
+            <span class="tag" style="background:#ffe0b0;color:#442200;border:1px solid #cc6600;">仅B有 <b>${nIns}</b> 项</span>
+            <span class="tag tag-eq">= 相同 <b>${nEq}</b> 项</span>`;
+        st.classList.add('show');
+        document.getElementById('btn-exp-sort').style.display='inline-block';
+        document.getElementById('btn-hide-eq-sort').style.display='inline-block';
+        document.getElementById('btn-show-eq-sort').style.display='none';
+        vsState['sort'].blocks=blocks;
+        renderSortResult(blocks);
+    },20);
+}
+
+function renderSortResult(blocks){
+    if(blocks.every(b=>b.t==='eq')){document.getElementById('diff-out').innerHTML='<div class="no-diff">✅ 无差异 — 两个列表完全相同</div>';return;}
+    const rows=[];let i=0;
+    while(i<blocks.length){
+        const b=blocks[i];
+        if(b.t==='eq'){rows.push({t:'eq',la:b.la,lb:b.lb});i++;}
+        else{
+            const dels=[],inss=[];
+            while(i<blocks.length&&blocks[i].t==='del'){dels.push(blocks[i].la);i++;}
+            while(i<blocks.length&&blocks[i].t==='ins'){inss.push(blocks[i].lb);i++;}
+            const maxLen=Math.max(dels.length,inss.length);
+            for(let j=0;j<maxLen;j++)rows.push({t:'diff',la:j<dels.length?dels[j]:null,lb:j<inss.length?inss[j]:null});
+        }
+    }
+    const visible=eqHidden['sort']?rows.filter(r=>r.t!=='eq'):rows;
+    const wrap=document.getElementById('diff-out');
+    wrap.innerHTML=`<table class="diff-table"><thead><tr><th class="th-num">行号</th><th class="th-left">◀ 列表 A</th><th class="th-right">▶ 列表 B</th></tr></thead><tbody id="sort-tbody"></tbody></table>`;
+    const tbody=document.getElementById('sort-tbody');
+    let idx=0,no=0;
+    function batch(){
+        const end=Math.min(idx+500,visible.length);
+        const frag=document.createDocumentFragment();
+        for(;idx<end;idx++){
+            const r=visible[idx];no++;
+            const tr=document.createElement('tr');
+            if(r.t==='eq'){
+                tr.className='row-eq';
+                tr.innerHTML=`<td class="td-num">${no}</td><td class="td-left">${esc(r.la)}</td><td class="td-right">${esc(r.la)}</td>`;
+            }else{
+                tr.className='row-sort-diff';
+                let lHtml='',rHtml='';
+                if(r.la!==null&&r.lb!==null){const res=sortCharDiff(r.la,r.lb);lHtml=res.left;rHtml=res.right;}
+                else if(r.la!==null)lHtml=`<span class="sort-only-a">${esc(r.la)}</span>`;
+                else rHtml=`<span class="sort-only-b">${esc(r.lb)}</span>`;
+                const numStyle=r.la!==null&&r.lb!==null?'background:#cc6600;color:white;font-weight:bold;':r.la!==null?'background:#cc0000;color:white;font-weight:bold;':'background:#00b300;color:white;font-weight:bold;';
+                tr.innerHTML=`<td class="td-num" style="${numStyle}">${no}</td><td class="td-left sort-cell">${lHtml}</td><td class="td-right sort-cell">${rHtml}</td>`;
+            }
+            frag.appendChild(tr);
+        }
+        tbody.appendChild(frag);
+        if(idx<visible.length)requestAnimationFrame(batch);
+        else requestAnimationFrame(initNavSort);
+    }
+    batch();
+}
+
+function runFullDiff(){
+    const rawA=document.getElementById('ta-full').value;
+    const rawB=document.getElementById('tb-full').value;
+    const cA=cleanText(rawA),cB=cleanText(rawB);
+    const ignCase=document.getElementById('o-case-full').checked;
+    const showInv=document.getElementById('o-inv-full').checked;
+    const lineMode=document.getElementById('o-line-full').checked;
+    if(lineMode){runLineContainCheck(cA.text,cB.text,ignCase);return;}
+    runTabSplitCheck(cA.text,cB.text,ignCase);
+}
+
+function runTabSplitCheck(textA,textB,ignCase){
+    const normalize=s=>s.normalize('NFC');
+    const rawLinesA=normalize(textA).replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim());
+    const rawLinesB=normalize(textB).replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim());
+    function splitWords(line){return line.split(/[\t\s,，;；]+/).map(s=>s.trim()).filter(s=>s);}
+    const wordsA=[];
+    rawLinesA.forEach((line,lineIdx)=>{splitWords(line).forEach(w=>wordsA.push({text:w,lineIdx,status:'del'}));});
+    const wordsB=[];
+    rawLinesB.forEach((line,lineIdx)=>{splitWords(line).forEach(w=>wordsB.push({text:w,lineIdx,status:'ins'}));});
+    const avgLenA=wordsA.reduce((s,w)=>s+w.text.length,0)/(wordsA.length||1);
+    const avgLenB=wordsB.reduce((s,w)=>s+w.text.length,0)/(wordsB.length||1);
+    const aIsShort=avgLenA<=avgLenB;
+    const shortWords=aIsShort?wordsA:wordsB;
+    const longWords=aIsShort?wordsB:wordsA;
+    const rawLinesLong=aIsShort?rawLinesB:rawLinesA;
+    const longLines=rawLinesLong.map((text,lineIdx)=>({text,lineIdx,comp:ignCase?text.toLowerCase():text,lockedRanges:[]}));
+    function isOverlap(ranges,s,e){return ranges.some(r=>s<r.end&&e>r.start);}
+    const sortedShortIdx=shortWords.map((_,i)=>i).sort((a,b)=>shortWords[b].text.length-shortWords[a].text.length);
+    sortedShortIdx.forEach(si=>{
+        const sw=shortWords[si];
+        const cs=ignCase?sw.text.toLowerCase():sw.text;
+        if(!cs)return;
+        for(let li=0;li<longLines.length;li++){
+            const slot=longLines[li];
+            let from=0,found=-1;
+            while(from<=slot.comp.length-cs.length){
+                const pos=slot.comp.indexOf(cs,from);
+                if(pos===-1)break;
+                if(!isOverlap(slot.lockedRanges,pos,pos+cs.length)){found=pos;break;}
+                from=pos+1;
+            }
+            if(found!==-1){slot.lockedRanges.push({start:found,end:found+cs.length,swIdx:si});sw.status='eq';return;}
+            if(!isOverlap(slot.lockedRanges,0,slot.comp.length)){if(cs.includes(slot.comp)){slot.lockedRanges.push({start:0,end:slot.comp.length,swIdx:si});sw.status='eq';return;}}
+        }
+    });
+    const eqCount=shortWords.filter(w=>w.status==='eq').length;
+    const delCount=shortWords.filter(w=>w.status==='del').length;
+    const longUnmatched=longLines.filter(l=>l.lockedRanges.length===0).length;
+    const st=document.getElementById('stats-full');
+    st.innerHTML=`<span>包含关系对比：</span>
+        <span class="tag" style="background:#b8ffb8;color:#004400;border:1px solid #00aa00;">✅ 一致 <b>${eqCount}</b> 个</span>
+        <span class="tag" style="background:#ffd0d0;color:#660000;border:1px solid #cc0000;">❌ 仅A有 <b>${aIsShort?delCount:longUnmatched}</b> 个</span>
+        <span class="tag" style="background:#b2f0f0;color:#004444;border:1px solid #00aaaa;">⚠ 仅B有 <b>${aIsShort?longUnmatched:delCount}</b> 个</span>
+        <span style="font-size:0.78rem;color:#888;">A共<b>${wordsA.length}</b>词／B共<b>${wordsB.length}</b>词</span>`;
+    st.classList.add('show');
+    const longToShortLines=longLines.map(()=>new Set());
+    const shortLineMatched=new Map();
+    longLines.forEach((slot,li)=>{slot.lockedRanges.forEach(r=>{const sw=shortWords[r.swIdx];longToShortLines[li].add(sw.lineIdx);shortLineMatched.set(sw.lineIdx,li);});});
+    const shortLinesAll=[...new Set(shortWords.map(w=>w.lineIdx))].sort((a,b)=>a-b);
+    const pairs=[];
+    const usedLongIdx=new Set();
+    const usedShortLineIdx=new Set();
+    longLines.forEach((slot,li)=>{const matchedShortSet=longToShortLines[li];pairs.push({longIdx:li,shortLineIdxSet:matchedShortSet});usedLongIdx.add(li);matchedShortSet.forEach(si=>usedShortLineIdx.add(si));});
+    shortLinesAll.forEach(si=>{if(!usedShortLineIdx.has(si)){pairs.push({longIdx:null,shortLineIdxSet:new Set([si])});}});
+    function renderOneShortLine(lineIdx){
+        const lw=shortWords.filter(w=>w.lineIdx===lineIdx);
+        if(!lw.length)return'&nbsp;';
+        let html='';
+        lw.forEach((w,i)=>{
+            if(i>0)html+=' ';
+            if(w.status==='eq')html+='<span style="color:#333;">'+esc(w.text)+'</span>';
+            else html+='<span style="background:#ffd0d0;color:#cc0000;border-radius:3px;padding:1px 4px;font-weight:bold;">'+esc(w.text)+'</span>';
+        });
+        return html;
+    }
+    function renderOneLongLine(li){
+        if(li===null)return'&nbsp;';
+        const slot=longLines[li];
+        const chars=[...slot.text];
+        const ranges=[...slot.lockedRanges].sort((a,b)=>a.start-b.start);
+        const hasMatch=ranges.length>0;
+        let lineHtml='',pos=0;
+        if(!hasMatch){lineHtml='<span style="background:#b2f0f0;color:#004444;font-weight:bold;">'+esc(slot.text)+'</span>';}
+        else{ranges.forEach(r=>{if(r.start>pos){lineHtml+='<span style="background:#b2f0f0;color:#004444;">'+esc(chars.slice(pos,r.start).join(''))+'</span>';}lineHtml+='<span style="color:#333;">'+esc(chars.slice(r.start,r.end).join(''))+'</span>';pos=r.end;});if(pos<chars.length){lineHtml+='<span style="background:#b2f0f0;color:#004444;">'+esc(chars.slice(pos).join(''))+'</span>';}}
+        return lineHtml;
+    }
+    let tbodyHtml='';
+    pairs.forEach(pair=>{
+        let shortCellHtml='';
+        if(pair.shortLineIdxSet&&pair.shortLineIdxSet.size>0){[...pair.shortLineIdxSet].sort((a,b)=>a-b).forEach((si,i)=>{if(i>0)shortCellHtml+='<hr style="border:none;border-top:1px dashed #eee;margin:2px 0;">';shortCellHtml+=renderOneShortLine(si);});}
+        else{shortCellHtml='<span style="color:#ccc;font-size:0.75rem;">（无对应行）</span>';}
+        const longCellHtml=renderOneLongLine(pair.longIdx);
+        const slot=pair.longIdx!==null?longLines[pair.longIdx]:null;
+        const hasMatch=slot&&slot.lockedRanges.length>0;
+        const longBg=slot===null?'#f9f9f9':hasMatch?'white':'#e8f8ff';
+        const longBorderL=slot===null?'':hasMatch?'':'border-left:3px solid #00aaaa;';
+        const leftHtml=aIsShort?shortCellHtml:longCellHtml;
+        const rightHtml=aIsShort?longCellHtml:shortCellHtml;
+        const leftBg=aIsShort?'white':longBg;
+        const rightBg=aIsShort?longBg:'white';
+        const leftBorderL=aIsShort?'':longBorderL;
+        const rightBorderL=aIsShort?longBorderL:'';
+        tbodyHtml+=`<tr style="border-bottom:1px solid #eee;"><td style="padding:6px 14px;border-right:2px solid #ddd;vertical-align:top;background:${leftBg};${leftBorderL}word-break:break-all;font-family:'Courier New',monospace;font-size:0.85rem;line-height:2;">${leftHtml}</td><td style="padding:6px 14px;vertical-align:top;background:${rightBg};${rightBorderL}word-break:break-all;font-family:'Courier New',monospace;font-size:0.85rem;line-height:2;">${rightHtml}</td></tr>`;
+    });
+    const leftLabel=aIsShort?'◀ 文本 A（红色=B中未找到）':'◀ 文本 A（蓝色=B中没有的内容）';
+    const rightLabel=aIsShort?'▶ 文本 B（蓝色=A中没有的内容）':'▶ 文本 B（红色=A中未找到）';
+    document.getElementById('diff-out').innerHTML=`<div style="background:white;border:1px solid #bbb;border-radius:4px;overflow:hidden;"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="background:#c8e6ff;color:#1a3a6a;padding:8px 14px;text-align:left;border-bottom:2px solid #bbb;width:50%;position:sticky;top:0;z-index:5;">${leftLabel}</th><th style="background:#e8f8e8;color:#1a4a1a;padding:8px 14px;text-align:left;border-bottom:2px solid #bbb;width:50%;position:sticky;top:0;z-index:5;">${rightLabel}</th></tr></thead><tbody>${tbodyHtml}</tbody></table></div>`;
+    document.getElementById('diff-wrap').classList.add('show');
+    document.getElementById('btn-exp-full').style.display='inline-block';
+    diffRows=[];navIndex=-1;
+    requestAnimationFrame(()=>{
+        document.querySelectorAll('#diff-out span[style*="ffd0d0"],#diff-out td[style*="e8f8ff"]').forEach(el=>diffRows.push(el));
+        const nb=document.getElementById('nav-bar-full');
+        if(diffRows.length>0){nb.classList.add('show');document.getElementById('nav-tot-full').textContent=diffRows.length;document.getElementById('nav-cur-full').textContent=0;}
+        else nb.classList.remove('show');
+    });
+}
+
+function runLineContainCheck(textA,textB,ignCase){
+    const normalize=s=>s.normalize('NFC');
+    const linesB=normalize(textB).replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n').filter(l=>l.trim());
+    const linesA=normalize(textA).split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+    const lineBNorm=linesB.map(l=>normalize(l));
+    let foundCount=0,notFoundCount=0;
+    const matches=linesA.map(aLine=>{
+        const comp=ignCase?aLine.toLowerCase():aLine;
+        const matchedLineIdxs=[];
+        lineBNorm.forEach((bLine,i)=>{const bComp=ignCase?bLine.toLowerCase():bLine;if(bComp.includes(comp))matchedLineIdxs.push(i);});
+        if(matchedLineIdxs.length===0){notFoundCount++;return{aLine,found:[],ok:false};}
+        foundCount++;
+        const isParagraphStart=(line)=>/\|/.test(line);
+        const foundParas=[];
+        const usedStarts=new Set();
+        matchedLineIdxs.forEach(matchIdx=>{
+            let startIdx=matchIdx;
+            while(startIdx>0&&!isParagraphStart(linesB[startIdx]))startIdx--;
+            if(usedStarts.has(startIdx))return;
+            usedStarts.add(startIdx);
+            let endIdx=startIdx+1;
+            while(endIdx<linesB.length&&!isParagraphStart(linesB[endIdx]))endIdx++;
+            const para=linesB.slice(startIdx,endIdx).filter(l=>l.trim()!=='');
+            if(para.length>0)foundParas.push(para);
+        });
+        return{aLine,found:foundParas,ok:true};
+    });
+    let tableHtml=`<table style="width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:0.88rem;"><thead><tr><th style="background:#c8e6ff;color:#1a3a6a;padding:8px 14px;text-align:left;border-bottom:2px solid #bbb;width:25%;">◀ 列表 A</th><th style="background:#e8f8e8;color:#1a4a1a;padding:8px 14px;text-align:left;border-bottom:2px solid #bbb;width:75%;">▶ 文本 B（匹配到的词条）</th></tr></thead><tbody>`;
+    matches.forEach(m=>{
+        const aHtml=m.ok?`<div style="padding:8px 14px;color:#333;font-weight:bold;">${esc(m.aLine)}</div>`:`<div style="padding:8px 14px;"><span style="background:#ffd0d0;color:#660000;border-radius:3px;padding:2px 6px;font-weight:bold;">${esc(m.aLine)}</span><div style="font-size:0.78rem;color:#aaa;margin-top:4px;">（B中未找到）</div></div>`;
+        let bHtml='';
+        if(m.found.length>0){
+            m.found.forEach(para=>{
+                const comp2=ignCase?normalize(m.aLine).toLowerCase():normalize(m.aLine);
+                let paraHtml='';
+                para.forEach(line=>{
+                    const lineComp=ignCase?normalize(line).toLowerCase():normalize(line);
+                    if(lineComp.includes(comp2)){
+                        const parts=line.split(new RegExp('('+m.aLine.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')',ignCase?'gi':'g'));
+                        let lineHtml='';
+                        parts.forEach(part=>{const partComp=ignCase?normalize(part).toLowerCase():normalize(part);if(partComp===comp2){lineHtml+=`<span style="color:#333;">${esc(part)}</span>`;}else if(part){lineHtml+=`<span style="background:#b2f0f0;color:#004444;">${esc(part)}</span>`;}});
+                        paraHtml+=`<div style="padding:2px 0;">${lineHtml}</div>`;
+                    }else{paraHtml+=`<div style="background:#b2f0f0;color:#004444;padding:2px 0;">${esc(line)}</div>`;}
+                });
+                bHtml+=`<div style="background:white;padding:6px 14px;margin-bottom:4px;border-radius:4px;border-left:3px solid #00aaaa;">${paraHtml}</div>`;
+            });
+        }
+        tableHtml+=`<tr style="border-bottom:2px solid #ddd;vertical-align:top;"><td style="padding:4px;border-right:2px solid #ddd;vertical-align:middle;">${aHtml}</td><td style="padding:4px;">${bHtml}</td></tr>`;
+    });
+    tableHtml+=`</tbody></table>`;
+    const st=document.getElementById('stats-full');
+    st.innerHTML=`<span>逐行包含检查：</span><span class="tag" style="background:#b8ffb8;color:#004400;border:1px solid #00aa00;">A中找到 <b>${foundCount}</b> 行</span><span class="tag" style="background:#ffd0d0;color:#660000;border:1px solid #cc8888;">A中未找到 <b>${notFoundCount}</b> 行</span>`;
+    st.classList.add('show');
+    document.getElementById('diff-out').innerHTML=`<div style="background:white;border:1px solid #bbb;border-radius:4px;overflow:hidden;">${tableHtml}</div>`;
+    document.getElementById('diff-wrap').classList.add('show');
+    document.getElementById('btn-exp-full').style.display='inline-block';
+    document.getElementById('nav-bar-full').classList.remove('show');
+}
+
+function classifyChar(ch){
+    const c=ch.codePointAt(0);
+    if(ch==='\n')return'nl';if(ch==='\t')return'tab';
+    const inv=[0x200B,0x200C,0x200D,0xFEFF,0x2060,0x00AD,0x034F,0x180E,0x202A,0x202B,0x202C,0x202D,0x202E,0x2066,0x2067,0x2068,0x2069,0xFFFD,0x00A0];
+    if(inv.includes(c))return'invisible';
+    if(c>=0xE000&&c<=0xF8FF)return'pua';
+    if(c<0x20)return'invisible';
+    if(c===0x20)return'sp-half';if(c===0x3000)return'sp-full';
+    if(RARE_CHARS.has(ch))return'sym-fullwidth';
+    if(ch==='％'||ch==='！')return'sym-fullwidth';
+    if(c>=0x21&&c<=0x7E)return'pass';
+    if(c>=0x3041&&c<=0x3096)return'pass';
+    if(c>=0x30A1&&c<=0x30FF)return'pass';
+    if(c>=0x4E00&&c<=0x9FFF)return'pass';
+    if(c>=0xAC00&&c<=0xD7A3)return'pass';
+    if(c>=0xFF65&&c<=0xFF9F)return'sym-halfkana';
+    if(c>=0xFF10&&c<=0xFF19)return'sym-fullnum';
+    if(c>=0xFF21&&c<=0xFF3A)return'sym-fullalpha';
+    if(c>=0xFF41&&c<=0xFF5A)return'sym-fullalpha';
+    if(c>=0xFF01&&c<=0xFF60)return'sym-fullwidth';
+    if(CIRCLED_NUMS.has(ch)||ROMAN_NUMS.has(ch)||UNIT_SYMBOLS.has(ch)||CURRENCY.has(ch))return'sym-fullwidth';
+    if(c>=0x2200&&c<=0x22FF||c>=0x2190&&c<=0x21FF||c>=0x25A0&&c<=0x25FF||c>=0x2600&&c<=0x26FF)return'sym-fullwidth';
+    if(c>=0x2500&&c<=0x257F||c>=0x3001&&c<=0x303F||c>=0x2000&&c<=0x206F||c>=0x2100&&c<=0x214F)return'sym-fullwidth';
+    if(KANA_EXT.has(ch))return'sym-fullwidth';
+    if(c>=0x2E80&&c<=0x2FDF||c>=0xF900&&c<=0xFAFF||c>=0xFE30&&c<=0xFE4F)return'sym-fullwidth';
+    if(c>=0x3400&&c<=0x4DBF||c>=0x20000)return'sym-fullwidth';
+    if(c>0x7E)return'sym-other';
+    return'pass';
+}
+
+const INV_LABELS={0x00A0:'NBSP',0x200B:'ZWS',0x200C:'ZWNJ',0x200D:'ZWJ',0xFEFF:'BOM',0x2060:'WJ',0x00AD:'SHY',0x034F:'CGJ',0x180E:'MVS',0x202A:'LRE',0x202B:'RLE',0x202C:'PDF-ctrl',0x202D:'LRO',0x202E:'RLO',0x2066:'LRI',0x2067:'RLI',0x2068:'FSI',0x2069:'PDI',0xFFFD:'REPL'};
+function invLabelC(c){return INV_LABELS[c]||`U+${c.toString(16).toUpperCase().padStart(4,'0')}`;}
+
+function runCheck(){lastCheckText=document.getElementById('ta-check').value;if(!lastCheckText)return;renderCheck(lastCheckText);document.getElementById('btn-exp-check').style.display='inline-block';}
+function rerender(){if(lastCheckText)renderCheck(lastCheckText);}
+
+function renderCheck(text){
+    const showNL=document.getElementById('o-nl').checked;
+    const showSP=document.getElementById('o-sp').checked;
+    const showTab=document.getElementById('o-tab').checked;
+    const showInv=document.getElementById('o-cinv').checked;
+    const showRuler=document.getElementById('o-ruler').checked;
+    const hlLine=document.getElementById('o-hl-ln').checked;
+    const lines=text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    symbolIndex=[];
+    const stats={'sp-half':0,'sp-full':0,'tab':0,'invisible':0,'pua':0,'sym-fullwidth':0,'sym-halfkana':0,'sym-fullnum':0,'sym-fullalpha':0,'sym-other':0};
+    const numW=String(lines.length).length;
+    let allRows='';
+    lines.forEach((line,li)=>{
+        const lineNo=li+1;let lh='',hasSym=false,col=0;
+        for(const ch of[...line]){
+            const code=ch.codePointAt(0),type=classifyChar(ch);col++;
+            if(type==='pass'){lh+=esc(ch);continue;}
+            if(type==='nl')continue;
+            if(stats[type]!==undefined)stats[type]++;
+            symbolIndex.push({line:lineNo,col,type,char:ch,code});
+            switch(type){
+                case'sp-half':if(showSP){lh+=`<span class="s-sp-half" title="L${lineNo}C${col}">半</span>`;hasSym=true;}else lh+=' ';break;
+                case'sp-full':if(showSP){lh+=`<span class="s-sp-full" title="L${lineNo}C${col}">全</span>`;hasSym=true;}else lh+=esc(ch);break;
+                case'tab':if(showTab){lh+=`<span class="s-tab" title="L${lineNo}C${col}">→</span>`;hasSym=true;}else lh+='    ';break;
+                case'invisible':if(showInv){lh+=`<span class="s-invisible" title="L${lineNo}C${col}">${invLabelC(code)}</span>`;hasSym=true;}break;
+                case'pua':if(showInv){lh+=`<span class="s-pua" title="L${lineNo}C${col}">U+${code.toString(16).toUpperCase().padStart(4,'0')}</span>`;hasSym=true;}break;
+                case'sym-fullwidth':case'sym-fullnum':case'sym-fullalpha':lh+=`<span class="s-sym-fullwidth" title="L${lineNo}C${col}">${esc(ch)}</span>`;hasSym=true;break;
+                case'sym-halfkana':lh+=`<span class="s-sym-halfkana" title="L${lineNo}C${col}">${esc(ch)}</span>`;hasSym=true;break;
+                case'sym-other':lh+=`<span class="s-sym-other" title="U+${code.toString(16).toUpperCase().padStart(4,'0')} L${lineNo}C${col}">${esc(ch)}</span>`;hasSym=true;break;
+                default:lh+=esc(ch);
+            }
+        }
+        const isLast=li===lines.length-1;
+        if(!isLast&&showNL)lh+=`<span class="s-nl">↵</span>`;
+        if(isLast)lh+=`<span class="s-eof">[EOF]</span>`;
+        const rc=(hlLine&&hasSym)?'ck-row ck-row-special':'ck-row';
+        const nc=hasSym?'ck-num ck-num-special':'ck-num';
+        allRows+=`<div class="${rc}" id="ck-line-${lineNo}"><span class="${nc}">${String(lineNo).padStart(numW,' ')}</span><span class="ck-content">${lh}</span></div>`;
+    });
+    document.getElementById('editor-content').innerHTML=allRows;
+    document.getElementById('line-gutter').innerHTML='';
+    document.getElementById('check-result-outer').style.display='block';
+    document.getElementById('check-legend').classList.add('show');
+    if(showRuler){document.getElementById('ruler-wrap').style.display='';requestAnimationFrame(drawRuler);}
+    else document.getElementById('ruler-wrap').style.display='none';
+    const total=Object.values(stats).reduce((a,b)=>a+b,0);
+    const fw=stats['sym-fullwidth']+stats['sym-fullnum']+stats['sym-fullalpha'];
+    const hw=stats['sym-halfkana']+stats['sym-other'];
+    document.getElementById('check-stats').innerHTML=`
+        <span style="color:#27ae60;font-weight:bold;">检查结果：</span>
+        <span class="cstat" style="background:#e8f8e8;border:1px solid #27ae60;color:#1e8449;">总行 <b>${lines.length}</b></span>
+        <span class="cstat" style="background:#fff3e0;border:1px solid #e67e22;color:#d35400;">符号共 <b>${total}</b> 处</span>
+        <span class="cstat" style="background:#fff0e8;border:1px solid #ff6b35;color:#cc4400;">半角空格 <b>${stats['sp-half']}</b></span>
+        <span class="cstat" style="background:#ffe8f0;border:1px solid #ff1493;color:#cc0066;">全角空格 <b>${stats['sp-full']}</b></span>
+        <span class="cstat" style="background:#e8fff8;border:1px solid #00b894;color:#007a5e;">Tab <b>${stats['tab']}</b></span>
+        <span class="cstat" style="background:#ffe8e8;border:1px solid #d63031;color:#aa0000;">不可见 <b>${stats['invisible']}</b></span>
+        <span class="cstat" style="background:#f0e8ff;border:1px solid #6c3483;color:#4a235a;">🟣全角符号 <b>${fw}</b></span>
+        <span class="cstat" style="background:#ffe8e8;border:1px solid #c0392b;color:#922b21;">🔴半角特殊 <b>${hw}</b></span>`;
+    document.getElementById('check-stats').classList.add('show');
+    buildSummary();
+}
+
+function buildSummary(){
+    const groups={};
+    for(const item of symbolIndex){const key=item.type+':'+item.char;if(!groups[key])groups[key]={type:item.type,char:item.char,code:item.code,lines:new Set()};groups[key].lines.add(item.line);}
+    const names={'sp-half':'半角空格','sp-full':'全角空格','tab':'Tab','invisible':'不可见字符','pua':'PDF私用字符','sym-fullwidth':'全角符号','sym-fullnum':'全角数字','sym-fullalpha':'全角英字','sym-halfkana':'半角假名','sym-other':'其他符号'};
+    const sl=document.getElementById('cs-list');
+    if(!Object.keys(groups).length){document.getElementById('check-summary').classList.remove('show');return;}
+    sl.innerHTML=Object.values(groups).map(g=>{
+        const dc=g.char===' '?'·':g.char.codePointAt(0)<32||g.char==='\u3000'?'':esc(g.char);
+        const ll=[...g.lines].slice(0,5).join(',')+(g.lines.size>5?'...':'');
+        return`<div class="cs-item" onclick="jumpToLine(${[...g.lines][0]})"><span class="cs-count">${g.lines.size}处</span><span style="color:#888">${names[g.type]||g.type}</span><span style="font-family:monospace">${dc||`U+${g.code.toString(16).toUpperCase().padStart(4,'0')}`}</span><span style="color:#aaa;font-size:0.7em;">行:${ll}</span></div>`;
+    }).join('');
+    document.getElementById('check-summary').classList.add('show');
+}
+
+function jumpToLine(n){const el=document.getElementById(`ck-line-${n}`);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.outline='2px solid #27ae60';setTimeout(()=>el.style.outline='',2000);}}
+
+function drawRuler(){
+    const canvas=document.getElementById('ruler-canvas'),content=document.getElementById('editor-content');
+    if(!canvas||!content)return;
+    const W=Math.max(content.scrollWidth+200,2000);canvas.width=W;canvas.height=22;
+    const ctx=canvas.getContext('2d');ctx.fillStyle='#f0f0f0';ctx.fillRect(0,0,W,22);
+    for(let col=0;col*8.1<W;col++){
+        const x=col*8.1;
+        if(col%10===0){ctx.fillStyle='#2980b9';ctx.fillRect(x,14,1,8);ctx.font='9px Courier New';ctx.fillText(String(col),x+1,11);}
+        else if(col%5===0){ctx.fillStyle='#999';ctx.fillRect(x,16,1,6);}
+        else{ctx.fillStyle='#ccc';ctx.fillRect(x,18,1,4);}
+    }
+}
+
+function clearDiff(){
+    document.getElementById('ta-diff').value='';document.getElementById('tb-diff').value='';
+    document.getElementById('diff-out').innerHTML='';document.getElementById('diff-wrap').classList.remove('show');
+    document.getElementById('stats-diff').classList.remove('show');document.getElementById('nav-bar-diff').classList.remove('show');
+    ['btn-exp-diff','btn-hide-eq-diff','btn-show-eq-diff'].forEach(id=>document.getElementById(id).style.display='none');
+    diffRows=[];navIndex=-1;vsState.diff.blocks=[];vsState.diff.container=null;eqHidden.diff=false;
+}
+function clearSort(){
+    document.getElementById('ta-sort').value='';document.getElementById('tb-sort').value='';
+    document.getElementById('preview-sort-a').textContent='排序预览：粘贴内容后显示';
+    document.getElementById('preview-sort-b').textContent='排序预览：粘贴内容后显示';
+    document.getElementById('diff-out').innerHTML='';document.getElementById('diff-wrap').classList.remove('show');
+    document.getElementById('stats-sort').classList.remove('show');document.getElementById('nav-bar-sort').classList.remove('show');
+    ['btn-exp-sort','btn-hide-eq-sort','btn-show-eq-sort'].forEach(id=>document.getElementById(id).style.display='none');
+    diffRows=[];navIndex=-1;vsState.sort.blocks=[];vsState.sort.container=null;eqHidden.sort=false;
+}
+function clearFull(){
+    document.getElementById('ta-full').value='';document.getElementById('tb-full').value='';
+    document.getElementById('diff-out').innerHTML='';document.getElementById('diff-wrap').classList.remove('show');
+    document.getElementById('stats-full').classList.remove('show');document.getElementById('nav-bar-full').classList.remove('show');
+    document.getElementById('btn-exp-full').style.display='none';diffRows=[];navIndex=-1;
+}
+function clearCheck(){
+    document.getElementById('ta-check').value='';
+    document.getElementById('editor-content').innerHTML='';document.getElementById('line-gutter').innerHTML='';
+    document.getElementById('cs-list').innerHTML='';
+    ['check-stats','check-legend','check-summary'].forEach(id=>document.getElementById(id).classList.remove('show'));
+    document.getElementById('check-result-outer').style.display='none';
+    document.getElementById('btn-exp-check').style.display='none';
+    lastCheckText='';symbolIndex=[];
+}
+
+function doExport(body,title){
+    const html=`<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>${title}</title><style>${document.querySelector('style').innerHTML}</style></head><body><header style="background:#2c3e50;color:white;padding:14px 20px"><h1>📄 ${title} — ${new Date().toLocaleString()}</h1></header><div style="padding:16px 20px">${body}</div></body></html>`;
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));a.download=`${title}_${new Date().toISOString().slice(0,10)}.html`;a.click();
+}
+function exportDiff(){doExport(document.getElementById('stats-diff').outerHTML+document.getElementById('diff-out').outerHTML,'比对结果');}
+function exportSort(){doExport(document.getElementById('stats-sort').outerHTML+document.getElementById('diff-out').outerHTML,'升序比对结果');}
+function exportFull(){doExport(document.getElementById('stats-full').outerHTML+document.getElementById('diff-out').outerHTML,'全文高亮结果');}
+function exportCheck(){doExport(document.getElementById('check-stats').outerHTML+document.getElementById('check-summary').outerHTML+document.getElementById('preview-wrap').outerHTML,'符号检查结果');}
+
+document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
+        if(currentTab==='diff')runLineDiff();
+        else if(currentTab==='sort')runSortDiff();
+        else if(currentTab==='full')runFullDiff();
+        else runCheck();
+    }
+});
+</script>
+</body>
+</html>

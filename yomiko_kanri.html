@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>読売広告ルール管理システム</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Meiryo', sans-serif; background: #f0f2f5; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+header {
+  background: linear-gradient(135deg, #1a237e, #283593);
+  color: white;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+header h1 { font-size: 20px; }
+header span { font-size: 13px; opacity: 0.8; }
+
+.toolbar {
+  background: white;
+  padding: 12px 24px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  flex-shrink: 0;
+}
+
+.toolbar input, .toolbar select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.toolbar input { width: 200px; }
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+}
+.btn-primary { background: #1a237e; color: white; }
+.btn-success { background: #2e7d32; color: white; }
+.btn-warning { background: #f57c00; color: white; }
+.btn-danger { background: #c62828; color: white; }
+.btn:hover { opacity: 0.85; }
+
+.count-bar {
+  padding: 8px 24px;
+  font-size: 13px;
+  color: #666;
+  background: #fafafa;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.table-wrap {
+  padding: 0 24px 16px 24px;
+  overflow-x: auto;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+thead { background: #1a237e; color: white; }
+thead th {
+  padding: 10px 8px;
+  text-align: left;
+  white-space: nowrap;
+  background: #1a237e;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  resize: horizontal;
+  overflow: hidden;
+  font-size: 12px;
+}
+
+tbody tr:hover { background: #e8eaf6; }
+tbody tr:nth-child(even) { background: #f5f5f5; }
+tbody tr:nth-child(even):hover { background: #e8eaf6; }
+
+td {
+  padding: 8px;
+  border-bottom: 1px solid #e0e0e0;
+  vertical-align: top;
+  word-break: break-all;
+  font-size: 12px;
+  max-width: 120px;
+}
+
+.td-actions { white-space: nowrap; }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+
+.modal {
+  background: white;
+  border-radius: 10px;
+  padding: 28px;
+  width: 600px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.modal h2 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #1a237e;
+  border-bottom: 2px solid #1a237e;
+  padding-bottom: 8px;
+}
+
+.form-group {
+  margin-bottom: 14px;
+}
+.form-group label {
+  display: block;
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'Meiryo', sans-serif;
+}
+.form-group textarea { height: 80px; resize: vertical; }
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 16px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  z-index: 9999;
+  display: none;
+  animation: fadeIn 0.3s;
+}
+.toast.success { background: #2e7d32; }
+.toast.error { background: #c62828; }
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.filter-panel {
+  width: 200px;
+  min-width: 200px;
+  background: white;
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto;
+  padding: 12px 0;
+  flex-shrink: 0;
+}
+
+.filter-section {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.filter-section-title {
+  font-size: 11px;
+  font-weight: bold;
+  color: #888;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  cursor: pointer;
+  font-size: 12px;
+  color: #333;
+}
+
+.filter-item input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #1a237e;
+  width: 14px;
+  height: 14px;
+}
+
+.filter-item .filter-count {
+  margin-left: auto;
+  color: #999;
+  font-size: 11px;
+}
+
+.filter-item.all-item {
+  font-weight: bold;
+  color: #1a237e;
+}
+
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  font-size: 12px;
+}
+
+.table-wrap {
+  padding: 0 24px 16px 24px;
+  overflow-x: auto;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📋 読売広告ルール管理システム</h1>
+  <span id="lastUpdate">読み込み中...</span>
+</header>
+
+<div class="toolbar">
+  <input type="text" id="searchInput" placeholder="🔍 キーワード検索..." oninput="filterTable()">
+  <button class="btn btn-success" onclick="openAddModal()">＋ 新規追加</button>
+  <button class="btn btn-primary" onclick="loadData()">🔄 更新</button>
+</div>
+
+<div class="main-layout">
+  <div class="filter-panel" id="filterPanel">
+    <div class="filter-section" id="filterClientSection"></div>
+    <div class="filter-section" id="filterMediaSection"></div>
+    <div class="filter-section" id="filterCategorySection"></div>
+  </div>
+  <div class="content-area">
+    <div class="count-bar" id="countBar">読み込み中...</div>
+    <div class="table-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>クライアント</th>
+        <th>商材</th>
+        <th>媒体</th>
+        <th>業務項目</th>
+        <th>カテゴリ</th>
+        <th style="min-width:400px; max-width:600px;">内容詳細</th>
+        <th>確認先</th>
+        <th>日本更新日</th>
+        <th>日本担当</th>
+        <th>長春更新日</th>
+        <th>長春担当</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr><td colspan="13" class="loading">⏳ データ読み込み中...</td></tr>
+    </tbody>
+  </table>
+</div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h2 id="modalTitle">新規追加</h2>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div class="form-group">
+        <label>ID</label>
+        <input type="text" id="fID" placeholder="例: 001">
+      </div>
+      <div class="form-group">
+        <label>クライアント</label>
+        <input type="text" id="fClient">
+      </div>
+      <div class="form-group">
+        <label>商材</label>
+        <input type="text" id="fProduct">
+      </div>
+      <div class="form-group">
+        <label>媒体</label>
+        <input type="text" id="fMedia">
+      </div>
+      <div class="form-group">
+        <label>業務項目</label>
+        <input type="text" id="fBusiness">
+      </div>
+      <div class="form-group">
+        <label>カテゴリ</label>
+        <input type="text" id="fCategory">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>内容詳細</label>
+      <textarea id="fDetail"></textarea>
+    </div>
+    <div class="form-group">
+      <label>確認先</label>
+      <input type="text" id="fContact">
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+      <div class="form-group">
+        <label>日本更新日</label>
+        <input type="text" id="fJpDate">
+      </div>
+      <div class="form-group">
+        <label>日本担当</label>
+        <input type="text" id="fJpPerson">
+      </div>
+      <div class="form-group">
+        <label>長春更新日</label>
+        <input type="text" id="fCcDate">
+      </div>
+      <div class="form-group">
+        <label>長春担当</label>
+        <input type="text" id="fCcPerson">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>🔐 編集パスワード</label>
+      <input type="password" id="fPassword" placeholder="パスワードを入力">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-success" onclick="saveRecord()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Password Modal for Delete -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal" style="width:360px;">
+    <h2>🗑️ 削除確認</h2>
+    <p style="margin-bottom:16px; color:#555;">この記録を削除しますか？</p>
+    <div class="form-group">
+      <label>🔐 編集パスワード</label>
+      <input type="password" id="dPassword" placeholder="パスワードを入力">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeDeleteModal()">キャンセル</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">削除する</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbzSJrm9gzRMDHF0RoKkTDJdj5IPsgoKc--tfXiKWNiQBqdt7XWfeS-osRZPx7IOv4O6Ng/exec';
+
+let allRecords = [];
+let editingId = null;
+let deletingId = null;
+
+function formatDate(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return val;
+  return d.toLocaleDateString('ja-JP', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: 'Asia/Tokyo'
+  });
+}
+
+async function loadData() {
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="13" class="loading">⏳ 読み込み中...</td></tr>';
+  try {
+    const res = await fetch(API_URL + '?action=getAll');
+    const data = await res.json();
+    allRecords = data.records || [];
+    updateFilters();
+    renderTable(allRecords);
+    document.getElementById('lastUpdate').textContent = '最終更新: ' + new Date().toLocaleTimeString('ja-JP');
+  } catch(e) {
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="13" class="loading">❌ 読み込み失敗</td></tr>';
+  }
+}
+const filterState = {
+  client: new Set(['__all__']),
+  media: new Set(['__all__']),
+  category: new Set(['__all__']),
+};
+
+function updateFilters() {
+  const clients = [...new Set(allRecords.map(r => r['クライアント']).filter(Boolean))].sort();
+  const medias = [...new Set(allRecords.map(r => r['媒体']).filter(Boolean))].sort();
+  const cats = [...new Set(allRecords.map(r => r['カテゴリ']).filter(Boolean))].sort();
+
+  buildFilterSection('filterClientSection', 'クライアント', 'client', clients);
+  buildFilterSection('filterMediaSection', '媒体', 'media', medias);
+  buildFilterSection('filterCategorySection', 'カテゴリ', 'category', cats);
+}
+
+function buildFilterSection(sectionId, label, key, values) {
+  const section = document.getElementById(sectionId);
+  const allCount = allRecords.length;
+
+  let html = `<div class="filter-section-title">${label}</div>`;
+
+  // 「すべて」チェックボックス
+  html += `<label class="filter-item all-item">
+    <input type="checkbox" id="${key}_all" onchange="onFilterAll('${key}', this.checked)">
+    すべて <span class="filter-count">${allCount}</span>
+  </label>`;
+
+  values.forEach(v => {
+    const count = allRecords.filter(r => r[getLabelKey(key)] === v).length;
+    const safeId = `${key}_${v.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    html += `<label class="filter-item">
+      <input type="checkbox" id="${safeId}" value="${v}" onchange="onFilterChange('${key}', '${v}', this.checked)">
+      ${v} <span class="filter-count">${count}</span>
+    </label>`;
+  });
+
+  section.innerHTML = html;
+  // 初期状態：すべてON
+  document.getElementById(`${key}_all`).checked = true;
+}
+
+function getLabelKey(key) {
+  if (key === 'client') return 'クライアント';
+  if (key === 'media') return '媒体';
+  if (key === 'category') return 'カテゴリ';
+}
+
+function onFilterAll(key, checked) {
+  const section = document.getElementById(`filter${capitalize(key)}Section`);
+  const checkboxes = section.querySelectorAll('input[type="checkbox"]:not(#' + key + '_all)');
+  checkboxes.forEach(cb => cb.checked = false);
+  filterState[key] = new Set(['__all__']);
+  filterTable();
+}
+
+function onFilterChange(key, value, checked) {
+  const allCb = document.getElementById(`${key}_all`);
+  if (checked) {
+    filterState[key].delete('__all__');
+    filterState[key].add(value);
+    allCb.checked = false;
+  } else {
+    filterState[key].delete(value);
+    if (filterState[key].size === 0) {
+      filterState[key].add('__all__');
+      allCb.checked = true;
+    }
+  }
+  filterTable();
+}
+
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function filterTable() {
+  const keyword = document.getElementById('searchInput').value.toLowerCase();
+
+  const filtered = allRecords.filter(r => {
+    const text = Object.values(r).join(' ').toLowerCase();
+    const clientOk = filterState.client.has('__all__') || filterState.client.has(r['クライアント']);
+    const mediaOk = filterState.media.has('__all__') || filterState.media.has(r['媒体']);
+    const categoryOk = filterState.category.has('__all__') || filterState.category.has(r['カテゴリ']);
+    return (!keyword || text.includes(keyword)) && clientOk && mediaOk && categoryOk;
+  });
+  renderTable(filtered);
+}
+
+function renderTable(records) {
+  const tbody = document.getElementById('tableBody');
+  document.getElementById('countBar').textContent = `全 ${allRecords.length} 件中 ${records.length} 件表示`;
+
+  if (records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="13" class="loading">データがありません</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = records.map(r => `
+    <tr>
+      <td>${r['ID']||''}</td>
+      <td>${r['クライアント']||''}</td>
+      <td>${r['商材']||''}</td>
+      <td>${r['媒体']||''}</td>
+      <td>${r['業務項目']||''}</td>
+      <td>${r['カテゴリ']||''}</td>
+      <td style="min-width:400px; max-width:600px; word-break:break-word;">${(r['内容詳細']||'').replace(/\n/g,'<br>')}</td>
+      <td>${r['確認先']||''}</td>
+      <td>${formatDate(r['日本更新日'])}</td>
+      <td>${r['日本担当']||''}</td>
+      <td>${formatDate(r['長春更新日'])}</td>
+      <td>${r['長春担当']||''}</td>
+      <td class="td-actions">
+        <button class="btn btn-warning" onclick="openEditModal('${r['ID']}')">編集</button>
+        <button class="btn btn-danger" onclick="openDeleteModal('${r['ID']}')">削除</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '新規追加';
+  ['fID','fClient','fProduct','fMedia','fBusiness','fCategory','fDetail','fContact','fJpDate','fJpPerson','fCcDate','fCcPerson','fPassword'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('editModal').classList.add('active');
+}
+
+function openEditModal(id) {
+  const r = allRecords.find(x => x['ID'] == id);
+  if (!r) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = '編集';
+  document.getElementById('fID').value = r['ID']||'';
+  document.getElementById('fClient').value = r['クライアント']||'';
+  document.getElementById('fProduct').value = r['商材']||'';
+  document.getElementById('fMedia').value = r['媒体']||'';
+  document.getElementById('fBusiness').value = r['業務項目']||'';
+  document.getElementById('fCategory').value = r['カテゴリ']||'';
+  document.getElementById('fDetail').value = r['内容詳細']||'';
+  document.getElementById('fContact').value = r['確認先']||'';
+  document.getElementById('fJpDate').value = r['日本更新日']||'';
+  document.getElementById('fJpPerson').value = r['日本担当']||'';
+  document.getElementById('fCcDate').value = r['長春更新日']||'';
+  document.getElementById('fCcPerson').value = r['長春担当']||'';
+  document.getElementById('fPassword').value = '';
+  document.getElementById('editModal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('active');
+}
+
+async function saveRecord() {
+  const record = {
+    'ID': document.getElementById('fID').value,
+    'クライアント': document.getElementById('fClient').value,
+    '商材': document.getElementById('fProduct').value,
+    '媒体': document.getElementById('fMedia').value,
+    '業務項目': document.getElementById('fBusiness').value,
+    'カテゴリ': document.getElementById('fCategory').value,
+    '内容詳細': document.getElementById('fDetail').value,
+    '確認先': document.getElementById('fContact').value,
+    '日本更新日': document.getElementById('fJpDate').value,
+    '日本担当': document.getElementById('fJpPerson').value,
+    '長春更新日': document.getElementById('fCcDate').value,
+    '長春担当': document.getElementById('fCcPerson').value,
+  };
+  const password = document.getElementById('fPassword').value;
+  const action = editingId ? 'update' : 'add';
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({action, record, password})
+    });
+    const data = await res.json();
+    if (data.error) { showToast(data.error, 'error'); return; }
+    showToast('保存しました！', 'success');
+    closeModal();
+    loadData();
+  } catch(e) {
+    showToast('エラーが発生しました', 'error');
+  }
+}
+
+function openDeleteModal(id) {
+  deletingId = id;
+  document.getElementById('dPassword').value = '';
+  document.getElementById('deleteModal').classList.add('active');
+}
+
+function closeDeleteModal() {
+  document.getElementById('deleteModal').classList.remove('active');
+}
+
+async function confirmDelete() {
+  const password = document.getElementById('dPassword').value;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({action: 'delete', id: deletingId, password})
+    });
+    const data = await res.json();
+    if (data.error) { showToast(data.error, 'error'); return; }
+    showToast('削除しました', 'success');
+    closeDeleteModal();
+    loadData();
+  } catch(e) {
+    showToast('エラーが発生しました', 'error');
+  }
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+loadData();
+</script>
+</body>
+</html>

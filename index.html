@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>惠海 QC ツール</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Segoe UI', 'Noto Sans SC', sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 18px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+        }
+        header h1 { font-size: 1.25rem; letter-spacing: 1px; }
+        .badge {
+            background: #27ae60;
+            border-radius: 12px;
+            padding: 3px 12px;
+            font-size: 0.75rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 36px auto;
+            padding: 0 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* ===== セクション ===== */
+        .section {}
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .section-title {
+            font-size: 0.82rem;
+            font-weight: bold;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        .section-line {
+            flex: 1;
+            height: 1px;
+            background: #ddd;
+        }
+
+        /* ===== カードグリッド ===== */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .card {
+            background: white;
+            border: 1px solid #e4e8ed;
+            border-radius: 10px;
+            padding: 18px 16px;
+            text-decoration: none;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: all 0.18s;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            cursor: pointer;
+            position: relative;
+        }
+        .card:hover {
+            border-color: #3498db;
+            box-shadow: 0 4px 14px rgba(52,152,219,0.15);
+            transform: translateY(-2px);
+        }
+        .card.disabled {
+            opacity: 0.55;
+            cursor: default;
+            pointer-events: none;
+        }
+        .card.legacy {
+            border-style: dashed;
+            border-color: #bbb;
+            background: #fafafa;
+        }
+        .card.legacy:hover {
+            border-color: #95a5a6;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        }
+
+        .card-icon {
+            font-size: 1.6rem;
+            line-height: 1;
+        }
+        .card-name {
+            font-size: 0.88rem;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        .card-desc {
+            font-size: 0.72rem;
+            color: #999;
+            line-height: 1.4;
+        }
+
+        .dev-badge {
+            display: inline-block;
+            background: #f39c12;
+            color: white;
+            border-radius: 4px;
+            padding: 1px 7px;
+            font-size: 0.68rem;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .legacy-badge {
+            display: inline-block;
+            background: #95a5a6;
+            color: white;
+            border-radius: 4px;
+            padding: 1px 7px;
+            font-size: 0.68rem;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        /* 課ラベル */
+        .ka-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #2c3e50;
+            color: white;
+            border-radius: 6px;
+            padding: 2px 10px;
+            font-size: 0.78rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        .ka-label.ka-1 { background: #2980b9; }
+        .ka-label.ka-2 { background: #27ae60; }
+        .ka-label.ka-3 { background: #8e44ad; }
+        .ka-label.ka-common { background: #7f8c8d; }
+        .ka-label.ka-legacy { background: #95a5a6; }
+
+        @media (max-width: 540px) {
+            .card-grid { grid-template-columns: repeat(2, 1fr); }
+            .container { margin: 20px auto; padding: 0 14px; }
+        }
+        @media (max-width: 360px) {
+            .card-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<script>
+(function() {
+    const MY_PASSWORD = "huihai2026！";
+    const KEY = 'qc_portal_access';
+    const isAuth = localStorage.getItem(KEY);
+    if (isAuth !== MY_PASSWORD) {
+        const input = prompt("请输入社内专用访问密码：");
+        if (input === MY_PASSWORD) {
+            localStorage.setItem(KEY, MY_PASSWORD);
+        } else {
+            alert("密码错误，禁止访问！");
+            document.write("<h1 style='color:red;text-align:center;margin-top:100px;'>403 Forbidden</h1>");
+            window.stop();
+            throw new Error("Unauthorized");
+        }
+    }
+})();
+</script>
+
+<header>
+    <h1>🔍 惠海 QC ツール</h1>
+    <span class="badge">🔒 完全本地运行</span>
+</header>
+
+<div class="container">
+
+    <!-- ===== 共通ツール ===== -->
+    <div class="section">
+        <div class="section-header">
+            <span class="ka-label ka-common">共通</span>
+            <span class="section-title">共通ツール</span>
+            <div class="section-line"></div>
+        </div>
+        <div class="card-grid">
+            <a class="card" href="tools_text.html" target="_blank">
+                <span class="card-icon">🔍</span>
+                <span class="card-name">文本对比工具</span>
+                <span class="card-desc">文字列の差分を確認</span>
+            </a>
+            <a class="card" href="excel_clean.html" target="_blank">
+                <span class="card-icon">🧹</span>
+                <span class="card-name">Excel 清洗</span>
+                <span class="card-desc">不要データの除去・整形</span>
+            </a>
+            <a class="card" href="excel_compare.html" target="_blank">
+                <span class="card-icon">📊</span>
+                <span class="card-name">Excel 対比</span>
+                <span class="card-desc">2ファイルの差分チェック</span>
+            </a>
+            <a class="card" href="image_compare.html" target="_blank">
+                <span class="card-icon">🖼️</span>
+                <span class="card-name">图片对比</span>
+                <span class="card-desc">画像の並べて比較</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== 1課 ===== -->
+    <div class="section">
+        <div class="section-header">
+            <span class="ka-label ka-1">1課</span>
+            <span class="section-title">広告設定チェック・入稿</span>
+            <div class="section-line"></div>
+        </div>
+        <div class="card-grid">
+            <a class="card" href="amazon_dsp_check.html" target="_blank">
+                <span class="card-icon">📋</span>
+                <span class="card-name">Amazon DSP 設定チェック</span>
+                <span class="card-desc">Display / PVA / OTT 対応</span>
+            </a>
+            <a class="card disabled">
+                <span class="dev-badge">开发中</span>
+                <span class="card-icon">📈</span>
+                <span class="card-name">DV360 設定チェック</span>
+                <span class="card-desc">準備中</span>
+            </a>
+            <a class="card" href="upload.html" target="_blank">
+                <span class="card-icon">📤</span>
+                <span class="card-name">読売専用 アップロード</span>
+                <span class="card-desc">読売新聞向け入稿ツール</span>
+            </a>
+            <a class="card" href="yomiko_kanri.html" target="_blank">
+                <span class="card-icon">📋</span>
+                <span class="card-name">読売ルール管理</span>
+                <span class="card-desc">広告ルールの閲覧・編集・追加</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- ===== 統合版（保留中） ===== -->
+    <div class="section">
+        <div class="section-header">
+            <span class="ka-label ka-legacy">保留</span>
+            <span class="section-title">統合版（保留中）</span>
+            <div class="section-line"></div>
+        </div>
+        <div class="card-grid">
+            <a class="card legacy" href="index_legacy.html" target="_blank">
+                <span class="legacy-badge">保留中</span>
+                <span class="card-icon">📄</span>
+                <span class="card-name">統合版（保留中）</span>
+                <span class="card-desc">index_legacy — 問題なければ削除予定</span>
+            </a>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>
