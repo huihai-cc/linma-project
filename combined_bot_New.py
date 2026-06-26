@@ -437,7 +437,6 @@ def run_xone(context, xone_page, gas_page):
     try:
         xone_page.wait_for_selector("tr.am1-table__row", state="attached", timeout=15000)
     except:
-        # ★修正②：テーブル未検出時にTeams通知
         print("⚠️ Xoneテーブル未検出")
         send_teams_alert(
             "Xoneテーブル未検出",
@@ -446,7 +445,32 @@ def run_xone(context, xone_page, gas_page):
         )
         return
 
-    time.sleep(2)
+    # ★AJAXデータ読込待機：最初の行のdateが「ログイン中」じゃなくなるまで待つ
+    try:
+        xone_page.wait_for_function("""
+            () => {
+                const rows = document.querySelectorAll('tr.am1-table__row');
+                for (const row of rows) {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        const date = cells[0].innerText.trim();
+                        const subj = cells[1].innerText.trim();
+                        if (date !== 'ログイン中' && date !== '' && /\\d/.test(date) && subj.length > 5) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        """, timeout=30000)
+        print("  ✅ データ読込完了")
+    except:
+        print("  ⚠️ データ読込タイムアウト、現状の行で続行します")
+        send_teams_alert(
+            "Xoneデータ読込遅延",
+            "テーブル行のデータ読込が30秒以内に完了しませんでした。一部データが未取得の可能性があります。",
+            "warning"
+        )
 
     rows          = xone_page.query_selector_all("tr.am1-table__row")
     print(f"  取得行数: {len(rows)}行")

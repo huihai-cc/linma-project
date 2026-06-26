@@ -432,14 +432,26 @@ function extractDeadlines(subjectStr) {
   const nyuukouMatch = subjectStr.match(/【入稿依頼([^】]*)】/);
   const targetStr = nyuukouMatch ? nyuukouMatch[1] : subjectStr;
 
-  // 複数納期パターン
-  const multiPattern = /納期[①②③④⑤⑥⑦⑧⑨\d]?(?:[（(][^）)]*[）)])?[：:]\s*(\d{1,2})\/(\d{1,2})([^\/／【\n]*)/g;
+  // 複数納期パターン（日付は任意 = ②以降で省略された場合、前の日付を継承）
+  const multiPattern = /納期[①②③④⑤⑥⑦⑧⑨\d]?(?:[（(][^）)]*[）)])?[：:]\s*(?:(\d{1,2})\/(\d{1,2}))?([^\/／【\n]*)/g;
 
   let match;
+  let lastDate = "";  // 直前の納期の日付を保持（日付省略時に継承）
   while ((match = multiPattern.exec(targetStr)) !== null) {
-    const month = match[1].padStart(2, '0');
-    const day   = match[2].padStart(2, '0');
-    const rest  = match[3] || "";
+    let month, day;
+    if (match[1] !== undefined && match[2] !== undefined) {
+      // 日付あり → そのまま使って lastDate も更新
+      month = match[1].padStart(2, '0');
+      day   = match[2].padStart(2, '0');
+      lastDate = month + "/" + day;
+    } else if (lastDate) {
+      // 日付なし → 前の納期の日付を継承（例：納期②は納期①の6/29を使う）
+      [month, day] = lastDate.split('/');
+    } else {
+      // 日付も前の日付もない → スキップ
+      continue;
+    }
+    const rest = match[3] || "";
 
     let time = "";
     const timeHalfMatch = rest.match(/(\d{1,2})時半まで/);
