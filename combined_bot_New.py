@@ -448,27 +448,28 @@ def run_xone(context, xone_page, gas_page):
     # ★AJAXデータ読込待機：最初の行のdateが「ログイン中」じゃなくなるまで待つ
     try:
         xone_page.wait_for_function("""
-            () => {
-                const rows = document.querySelectorAll('tr.am1-table__row');
+        () => {
+            const rows = document.querySelectorAll('tr.am1-table__row');
                 for (const row of rows) {
                     const cells = row.querySelectorAll('td');
                     if (cells.length >= 2) {
                         const date = cells[0].innerText.trim();
                         const subj = cells[1].innerText.trim();
-                        if (date !== 'ログイン中' && date !== '' && /\\d/.test(date) && subj.length > 5) {
+                        // ★修正：日付が YYYY/MM/DD 形式かどうかを厳密にチェック
+                        if (/^\d{4}\/\d{2}\/\d{2}/.test(date) && subj.length > 5) {
                             return true;
                         }
                     }
                 }
                 return false;
             }
-        """, timeout=30000)
+        """, timeout=60000)  # ★タイムアウトも30秒→60秒に延長
         print("  ✅ データ読込完了")
     except:
         print("  ⚠️ データ読込タイムアウト、現状の行で続行します")
         send_teams_alert(
             "Xoneデータ読込遅延",
-            "テーブル行のデータ読込が30秒以内に完了しませんでした。一部データが未取得の可能性があります。",
+            "テーブル行のデータ読込が60秒以内に完了しませんでした。",
             "warning"
         )
 
@@ -485,11 +486,13 @@ def run_xone(context, xone_page, gas_page):
             sender_raw = cells[2].inner_text().strip()
             sender     = sender_raw.split("<")[0].strip() if "<" in sender_raw else sender_raw
 
-            has_digit   = any(char.isdigit() for char in date)
-            long_enough = len(subject) > 10
-            print(f"  行: date='{date[:15]}' subject='{subject[:20]}' digit={has_digit} len={len(subject)}")
+            # ★修正：日付形式を正規表現で厳密チェック（"ログイン中"などを除外）
+            import re
+            is_valid_date = bool(re.match(r'^\d{4}/\d{2}/\d{2}', date))
+            long_enough   = len(subject) > 5
+            print(f"  行: date='{date[:15]}' subject='{subject[:20]}' valid_date={is_valid_date} len={len(subject)}")
 
-            if not (has_digit and long_enough):
+            if not (is_valid_date and long_enough):
                 continue
 
             # 7日フィルタ
