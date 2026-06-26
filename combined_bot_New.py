@@ -346,7 +346,7 @@ def run_xone(context, xone_page, gas_page):
     processed_ids = load_processed_ids(XONE_PROCESSED_IDS_FILE)
     max_retries   = 3
 
-    # ナビゲート＆ログイン確認（自動リトライ）
+    # ナビゲート＆ログイン確認（自動リトライ＋MS365自動クリック）
     for attempt in range(max_retries):
         try:
             xone_page.goto(TARGET_URL, wait_until="domcontentloaded", timeout=30000)
@@ -355,8 +355,37 @@ def run_xone(context, xone_page, gas_page):
             if "mailBox" in xone_page.url:
                 break
 
-            # ログインページにいる場合
-            print(f"  ⚠️ Xoneセッション切れ({attempt+1}/{max_retries}回目)")
+            # ★Microsoft 365ログインボタンがあれば自動クリック
+            login_btn = xone_page.query_selector('button:has-text("Microsoft 365でログイン")')
+            if login_btn:
+                print(f"  🔐 ログインボタン検出 → 自動クリック({attempt+1}/{max_retries})")
+                if attempt == 0:
+                    send_teams_alert(
+                        "Xone自動ログイン実行",
+                        "Microsoft 365ログインボタンを検出、自動クリックします。",
+                        "warning"
+                    )
+                login_btn.click()
+                print(f"  認証待機中(90秒)...")
+                time.sleep(90)
+
+                # 認証後に再確認
+                xone_page.goto(TARGET_URL, wait_until="domcontentloaded", timeout=30000)
+                time.sleep(3)
+                if "mailBox" in xone_page.url:
+                    print(f"  ✅ 自動ログイン成功")
+                    break
+                elif not xone_page.query_selector('button:has-text("Microsoft 365でログイン")'):
+                    # ログインボタンが消えたがmailBoxでもない → 別の認証画面かも
+                    print(f"  ⚠️ ログインボタン消失、待機継続...")
+                    time.sleep(60)
+                    continue
+                # まだログインボタンがある → MFAなど手動操作が必要
+                print(f"  ⚠️ ログインボタン再表示 → 手動操作が必要かもしれません")
+                continue
+
+            # ログインボタンなし、かつmailBoxでもない → 不明なページ
+            print(f"  ⚠️ 不明なページ({attempt+1}/{max_retries}回目) → 60秒待機")
             if attempt == 0:
                 send_teams_alert(
                     "Xoneセッション切れ",
@@ -895,7 +924,7 @@ def run():
         sp_page   = context.new_page()
         gas_page  = context.new_page()
 
-        # ★Xoneログイン確認（input()なし）
+        # ★Xoneログイン確認（MS365自動クリック対応）
         print("Xoneログイン確認中...")
         try:
             xone_page.goto(TARGET_URL, wait_until="domcontentloaded", timeout=30000)
@@ -903,7 +932,26 @@ def run():
         except:
             pass
 
-        if "mailBox" not in xone_page.url:
+        # Microsoft 365ログインボタンがあれば自動クリック
+        login_btn = xone_page.query_selector('button:has-text("Microsoft 365でログイン")')
+        if login_btn:
+            print("  🔐 ログインボタン検出 → 自動クリック")
+            login_btn.click()
+            time.sleep(90)
+            try:
+                xone_page.goto(TARGET_URL, wait_until="domcontentloaded", timeout=30000)
+                time.sleep(3)
+            except:
+                pass
+
+            # それでもログイン画面のままなら手動待機
+            if xone_page.query_selector('button:has-text("Microsoft 365でログイン")'):
+                if not wait_for_login(xone_page, "mailBox", "Xone", TARGET_URL):
+                    print("❌ Xoneログイン失敗。終了します。")
+                    return
+
+        elif "mailBox" not in xone_page.url:
+            # ログインボタンなし＆mailBoxでもない → 通常のログイン待機
             if not wait_for_login(xone_page, "mailBox", "Xone", TARGET_URL):
                 print("❌ Xoneログイン失敗。終了します。")
                 return

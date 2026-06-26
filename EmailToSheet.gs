@@ -1,0 +1,569 @@
+// ===================================================
+// メイン関数（東京表で実行、東京＋高知両方処理）
+// ===================================================
+function processEmailTransferCombined() {
+
+  // ===== 東京表（メイン） =====
+  const tokyoSS      = SpreadsheetApp.openById("1_UYE23Tox44_iXHIqXQ_WS2QzvcEvxPE1OiSs-JkOxo");
+  const transferSheet = tokyoSS.getSheetByName("メール中転");
+  const tokyoMain    = tokyoSS.getSheetByName("【26_6月】案件管理表");
+  const tokyoMember  = tokyoSS.getSheetByName("メンバー表");
+
+  // ===== 高知表（跨表） =====
+  const kochiSS      = SpreadsheetApp.openById("1iIR-0eTA2FbCNUpgVs1b_5Yjuh66RcVKim00n8vTfPY");
+  const kochiMain    = kochiSS.getSheetByName("東京");
+  const kochiMember  = kochiSS.getSheetByName("メンバーリスト");
+
+  // ===== 列マップ取得 =====
+  const tokyoColMap = getColumnMap(tokyoMain, 3);
+  const kochiColMap = getColumnMap(kochiMain, 8);
+
+  const lastRow = transferSheet.getLastRow();
+  if (lastRow < 2) return;
+
+  const data = transferSheet.getRange(2, 1, lastRow - 1, 6).getValues();
+
+  for (let i = 0; i < data.length; i++) {
+    const rowIndex     = i + 2;
+    const receivedTime = data[i][0];
+    const subject      = data[i][1];
+    const senderEmail  = data[i][2];
+    const body         = data[i][3];
+    const status       = data[i][4];
+
+    if (status === "処理済み" || status.toString().startsWith("不符合条件") || status.toString().startsWith("ご確認")) continue;
+
+    const subjectStr = subject.toString().trim();
+    const bodyStr    = body.toString();
+
+    // ===== LINE【アカウント開設依頼】除外 =====
+    if (/LINE【アカウント開設依頼/.test(subjectStr)) {
+      transferSheet.getRange(rowIndex, 5).setValue("不符合条件：LINE開設依頼は対象外");
+      continue;
+    }
+
+    // ===== 東京 or 高知 判定 =====
+    const isKochi = /\[?SNS-\d+\]?/.test(subjectStr);
+
+    // ===== NGワード判定 =====
+    const beforeNyuukou = subjectStr.split('【入稿依頼')[0];
+    const hasNG         = /Wチェック|設定完了/.test(beforeNyuukou);
+    const hasNyuukou    = /【入稿依頼/.test(subjectStr);
+
+    if (isKochi) {
+      // =============================================
+      // 高知処理
+      // =============================================
+      const mediaType = getKochiMediaType(subjectStr);
+
+      if (!hasNyuukou || !mediaType || hasNG) {
+        let reason = "不符合条件：";
+        if (!hasNyuukou) reason += "【入稿依頼なし ";
+        if (!mediaType)  reason += "媒体キーワードなし ";
+        if (hasNG)       reason += "NGワード含む(" + (beforeNyuukou.match(/Wチェック|設定完了/) || [""])[0] + ")";
+        transferSheet.getRange(rowIndex, 5).setValue(reason);
+        continue;
+      }
+
+      // 再送判定（高知）
+      const isResubmission = /^※再/.test(subjectStr);
+      if (isResubmission) {
+        const snsMatch = subjectStr.match(/\[SNS-(\d+)\]/);
+
+        // ===== 修正①：SNS番号が見つからない場合 =====
+        if (!snsMatch) {
+          transferSheet.getRange(rowIndex, 5).setValue("ご確認ください：再送だがSNS番号が見つからない");
+          continue;
+        }
+
+        const snsNo      = snsMatch[0];
+        const subjectCol = kochiColMap["件名"];
+        if (subjectCol) {
+          const mainLastRow   = kochiMain.getLastRow();
+          const subjectValues = kochiMain.getRange(1, subjectCol, mainLastRow, 1).getValues();
+          let targetRow = -1;
+          for (let j = 0; j < subjectValues.length; j++) {
+            if (subjectValues[j][0].toString().includes(snsNo)) targetRow = j + 1;
+          }
+          if (targetRow !== -1) {
+            const currentValue = kochiMain.getRange(targetRow, subjectCol).getValue().toString();
+            const newValue = currentValue ? currentValue + "\n" + subjectStr : subjectStr;
+            kochiMain.getRange(targetRow, subjectCol).setValue(newValue);
+          } else {
+            writeKochiNewRow(kochiMain, kochiColMap, kochiMember, senderEmail, receivedTime, subjectStr, bodyStr, mediaType, false);
+          }
+        }
+        transferSheet.getRange(rowIndex, 6).setValue("IREP案件");
+        transferSheet.getRange(rowIndex, 5).setValue("処理済み");
+        continue;
+      }
+
+      // 件名重複チェック（高知）
+      const kochiSubjectCol = kochiColMap["件名"];
+      if (kochiSubjectCol) {
+        const mainLastRow = kochiMain.getLastRow();
+        if (mainLastRow >= 10) {
+          const existingSubjects = kochiMain.getRange(10, kochiSubjectCol, mainLastRow - 9, 1).getValues();
+          const isDuplicate = existingSubjects.some(row => row[0].toString().trim() === subjectStr);
+          if (isDuplicate) {
+            transferSheet.getRange(rowIndex, 6).setValue("IREP案件");
+            transferSheet.getRange(rowIndex, 5).setValue("処理済み：件名重複のためスキップ");
+            continue;
+          }
+        }
+      }
+
+      // 通常書き込み（高知）
+      const isFailed = (status === "失敗");
+      transferSheet.getRange(rowIndex, 6).setValue("IREP案件");
+      writeKochiNewRow(kochiMain, kochiColMap, kochiMember, senderEmail, receivedTime, subjectStr, bodyStr, mediaType, isFailed);
+      transferSheet.getRange(rowIndex, 5).setValue("処理済み");
+
+    } else {
+      // =============================================
+      // 東京処理
+      // =============================================
+      const businessType = getTokyoBusinessType(subjectStr);
+
+      if (!hasNyuukou || !businessType || hasNG) {
+        let reason = "不符合条件：";
+        if (!hasNyuukou)   reason += "【入稿依頼なし ";
+        if (!businessType) reason += "媒体キーワードなし ";
+        if (hasNG)         reason += "NGワード含む(" + (beforeNyuukou.match(/Wチェック|設定完了/) || [""])[0] + ")";
+        transferSheet.getRange(rowIndex, 5).setValue(reason);
+        continue;
+      }
+
+      // 再送判定（東京）
+      const isResubmission = /^※再/.test(subjectStr);
+      if (isResubmission) {
+        const jnoMatch = subjectStr.match(/J\d{10}/);
+
+        // ===== 修正①：JNOが見つからない場合 =====
+        if (!jnoMatch) {
+          transferSheet.getRange(rowIndex, 5).setValue("ご確認ください：再送だがJNOが見つからない");
+          continue;
+        }
+
+        const jno        = jnoMatch[0];
+        const jnoCol     = tokyoColMap["JNO"];
+        const subjectCol = tokyoColMap["メール件名"];
+        if (jnoCol && subjectCol) {
+          const mainLastRow = tokyoMain.getLastRow();
+          const jnoValues   = tokyoMain.getRange(1, jnoCol, mainLastRow, 1).getValues();
+          let targetRow = -1;
+          for (let j = 0; j < jnoValues.length; j++) {
+            if (jnoValues[j][0].toString() === jno) targetRow = j + 1;
+          }
+          if (targetRow !== -1) {
+            const currentValue = tokyoMain.getRange(targetRow, subjectCol).getValue().toString();
+            const newValue = currentValue ? currentValue + "\n" + subjectStr : subjectStr;
+            tokyoMain.getRange(targetRow, subjectCol).setValue(newValue);
+          } else {
+            writeTokyoNewRow(tokyoMain, tokyoColMap, tokyoMember, senderEmail, receivedTime, subjectStr, bodyStr, businessType, false);
+          }
+        }
+        transferSheet.getRange(rowIndex, 6).setValue("東京");
+        transferSheet.getRange(rowIndex, 5).setValue("処理済み");
+        continue;
+      }
+
+      // 件名重複チェック（東京）
+      const tokyoSubjectCol = tokyoColMap["メール件名"];
+      if (tokyoSubjectCol) {
+        const mainLastRow = tokyoMain.getLastRow();
+        if (mainLastRow >= 5) {
+          const existingSubjects = tokyoMain.getRange(5, tokyoSubjectCol, mainLastRow - 4, 1).getValues();
+          const isDuplicate = existingSubjects.some(row => row[0].toString().trim() === subjectStr);
+          if (isDuplicate) {
+            transferSheet.getRange(rowIndex, 6).setValue("東京");
+            transferSheet.getRange(rowIndex, 5).setValue("処理済み：件名重複のためスキップ");
+            continue;
+          }
+        }
+      }
+
+      // 通常書き込み（東京）
+      const isFailed = (status === "失敗");
+      transferSheet.getRange(rowIndex, 6).setValue("東京");
+      writeTokyoNewRow(tokyoMain, tokyoColMap, tokyoMember, senderEmail, receivedTime, subjectStr, bodyStr, businessType, isFailed);
+      transferSheet.getRange(rowIndex, 5).setValue("処理済み");
+    }
+  }
+}
+
+// ===================================================
+// 東京：新規行書き込み
+// ===================================================
+function writeTokyoNewRow(mainSheet, colMap, memberSheet, senderEmail, receivedTime, subjectStr, bodyStr, businessType, isFailed) {
+
+  const memberInfo     = getTokyoMemberInfo(memberSheet, senderEmail.toString());
+  const valDepartment  = memberInfo.department;
+  const valRequester   = isFailed ? "" : memberInfo.requester;
+  const valRequestDate = receivedTime;
+
+  // JNO抽出
+  let jnoList = [];
+  const jnoMatchesSubject = subjectStr.match(/J\d{10}/g);
+  if (jnoMatchesSubject) jnoList = jnoList.concat(jnoMatchesSubject);
+
+  const localioMatch = subjectStr.match(/\[([A-Z]+[_-][A-Z]+-\d+)\]/i);
+  if (localioMatch) {
+    // ===== 修正④：LOCALIO案件の場合、正文からのJNO抽出をスキップ =====
+    jnoList.push(localioMatch[1]);
+  } else {
+    // LOCALIO案件でない場合のみ正文からJNOを抽出
+    const jnoMatchesBody = bodyStr.match(/J\d{10}/g);
+    if (jnoMatchesBody) jnoList = jnoList.concat(jnoMatchesBody);
+  }
+
+  const valJno = [...new Set(jnoList)].join(', ');
+
+  // 納期メモ：①納期厳守 ②Sprinklr ③▼設定スケジュール の順
+  let valDeadlineMemo = "";
+  if (isFailed) {
+    valDeadlineMemo = "文件内容失敗，需要手動汇总";
+  } else {
+    const parts = [];
+
+    // ①納期厳守
+    if (/【納期厳守】/.test(subjectStr)) parts.push("納期厳守");
+
+    // ②Sprinklr
+    if (/Sprinklr/i.test(bodyStr) || /Sprinklr/i.test(subjectStr)) parts.push("Sprinklr");
+
+    // ③スケジュール（▼設定スケジュール など）
+    const schedule = extractSchedule(bodyStr);
+    if (schedule) parts.push(schedule);
+
+    valDeadlineMemo = parts.join(" / ");
+  }
+
+  const valSetCount = isFailed ? "" : extractSetCount(bodyStr);
+  const valAdCount  = isFailed ? "" : extractAdCount(bodyStr);
+
+  // 複数納期対応
+  const deadlines    = extractDeadlines(subjectStr);
+  const writeTargets = deadlines.length > 0 ? deadlines : [{ date: "", time: "" }];
+
+  for (const dl of writeTargets) {
+    // ===== 修正③：東京空行判定をG列(7)に変更 =====
+    const writeRow = getNextEmptyRow(mainSheet, 5, 7);
+    writeCell(mainSheet, writeRow, colMap["業務名"],    businessType);
+    writeCell(mainSheet, writeRow, colMap["部署"],      valDepartment);
+    writeCell(mainSheet, writeRow, colMap["依頼日"],    valRequestDate);
+    writeCell(mainSheet, writeRow, colMap["日本依頼者"], valRequester);
+    writeCell(mainSheet, writeRow, colMap["JNO"],       valJno);
+    writeCell(mainSheet, writeRow, colMap["メール件名"], subjectStr);
+    writeCell(mainSheet, writeRow, colMap["納期日"],    dl.date);
+    writeCell(mainSheet, writeRow, colMap["納期時間"],  dl.time);
+    writeCell(mainSheet, writeRow, colMap["納期メモ"],  valDeadlineMemo);
+    writeCell(mainSheet, writeRow, colMap["セット数"],  valSetCount);
+    writeCell(mainSheet, writeRow, colMap["広告数"],    valAdCount);
+
+    // 依頼種別
+    let valIraiShubetsu = "";
+    if (valSetCount) {
+      valIraiShubetsu = "新規";
+    } else if (valAdCount) {
+      valIraiShubetsu = "差替/追加";
+    } else {
+      valIraiShubetsu = "設定変更";
+    }
+    writeCell(mainSheet, writeRow, colMap["依頼種別"], valIraiShubetsu);
+  }
+}
+
+// ===================================================
+// 高知：新規行書き込み
+// ===================================================
+function writeKochiNewRow(mainSheet, colMap, memberSheet, senderEmail, receivedTime, subjectStr, bodyStr, mediaType, isFailed) {
+
+  const valRequester   = isFailed ? "" : getKochiRequester(memberSheet, senderEmail.toString());
+  const valRequestDate = receivedTime;
+
+  let valClient = "";
+  const clientMatch = subjectStr.match(/】([^】]+?)(?:（|　氏名|$)/);
+  if (clientMatch) valClient = clientMatch[1].trim();
+
+  const valSetCount = isFailed ? "" : extractSetCount(bodyStr);
+  const valAdCount  = isFailed ? "" : extractAdCount(bodyStr);
+
+  // 複数納期対応
+  const deadlines    = extractDeadlines(subjectStr);
+  const writeTargets = deadlines.length > 0 ? deadlines : [{ date: "", time: "" }];
+
+  for (const dl of writeTargets) {
+    // ===== 修正③：高知空行判定をJ列(10)に変更 =====
+    const writeRow = getNextEmptyRow(mainSheet, 10, 10);
+    writeCell(mainSheet, writeRow, colMap["媒体"],                  mediaType);
+    writeCell(mainSheet, writeRow, colMap["依頼者"],                valRequester);
+    writeCell(mainSheet, writeRow, colMap["依頼日"],                valRequestDate);
+    writeCell(mainSheet, writeRow, colMap["納期日"],                dl.date);
+    writeCell(mainSheet, writeRow, colMap["納期時間"],              dl.time);
+    writeCell(mainSheet, writeRow, colMap["ステータス"],            "未対応");
+    writeCell(mainSheet, writeRow, colMap["クライアント名"],        valClient);
+    writeCell(mainSheet, writeRow, colMap["件名"],                  subjectStr);
+    writeCell(mainSheet, writeRow, colMap["Fセット/Tキャンペーン"], valSetCount);
+    writeCell(mainSheet, writeRow, colMap["F広告数/Tツイート数"],   valAdCount);
+  }
+}
+
+// ===================================================
+// 共通：ヘッダー行から列番号マップ取得
+// ===================================================
+function getColumnMap(sheet, headerRowNum) {
+  const headerRow = sheet.getRange(headerRowNum, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const map = {};
+  for (let i = 0; i < headerRow.length; i++) {
+    const key = headerRow[i].toString().replace(/\n/g,'').replace(/\r/g,'').trim();
+    if (key) map[key] = i + 1;
+  }
+  return map;
+}
+
+// ===================================================
+// 共通：最初の空行を取得
+// ===================================================
+function getNextEmptyRow(sheet, startRow, checkCol) {
+  const values = sheet.getRange(startRow, checkCol, sheet.getMaxRows() - startRow + 1, 1).getValues();
+  for (let i = 0; i < values.length; i++) {
+    if (values[i][0].toString().trim() === "") return startRow + i;
+  }
+  return sheet.getMaxRows() + 1;
+}
+
+// ===================================================
+// 共通：安全書き込み
+// ===================================================
+function writeCell(sheet, row, col, value) {
+  if (!col) return;
+  sheet.getRange(row, col).setValue(value);
+}
+
+// ===================================================
+// 東京：媒体判定
+// ===================================================
+function getTokyoBusinessType(subject) {
+  if (/Meta|FB|Facebook/i.test(subject)) return "FB_設定";
+  if (/\bX\b|TW|Twitter/i.test(subject)) return "TW_設定";
+  if (/LINE/i.test(subject))             return "LINE_設定";
+  if (/Pinterest|PIN/i.test(subject))    return "PIN_設定";
+  if (/TikTok|TIK/i.test(subject))       return "TIK_設定";
+  return null;
+}
+
+// ===================================================
+// 高知：媒体判定
+// ===================================================
+function getKochiMediaType(subject) {
+  if (/Meta|FB|Facebook/i.test(subject)) return "Facebook";
+  if (/\bX\b|TW|Twitter/i.test(subject)) return "Twitter";
+  if (/LINE【入稿依頼/.test(subject))     return "LAP";
+  if (/Pinterest|PIN/i.test(subject))    return "Pinterest";
+  if (/TikTok|TIK/i.test(subject))       return "Tik";
+  return null;
+}
+
+// ===================================================
+// 東京：部署・依頼者名取得
+// ===================================================
+function getTokyoMemberInfo(memberSheet, senderEmail) {
+  const memberData = memberSheet.getRange("A6:D100").getValues();
+  const emailLower = senderEmail.toLowerCase().trim();
+
+  for (let i = 0; i < memberData.length; i++) {
+    const ebisuCell = memberData[i][0].toString().trim();
+    if (ebisuCell) {
+      const ebisuEmail = extractEmail(ebisuCell);
+      if (ebisuEmail && ebisuEmail.toLowerCase() === emailLower) {
+        return { department: "恵比寿", requester: extractNameBeforeEmail(ebisuCell) };
+      }
+    }
+    const akasakaCell = memberData[i][3].toString().trim();
+    if (akasakaCell) {
+      const akasakaEmail = extractEmail(akasakaCell);
+      if (akasakaEmail && akasakaEmail.toLowerCase() === emailLower) {
+        return { department: "赤坂", requester: extractNameBeforeEmail(akasakaCell) };
+      }
+    }
+  }
+  return { department: "", requester: "" };
+}
+
+// ===================================================
+// 高知：依頼者名取得
+// ===================================================
+function getKochiRequester(memberSheet, senderEmail) {
+  const memberData = memberSheet.getRange("A4:D300").getValues();
+  const emailLower = senderEmail.toLowerCase().trim();
+  for (let i = 0; i < memberData.length; i++) {
+    const colC = memberData[i][2].toString().toLowerCase().trim();
+    const colD = memberData[i][3].toString().toLowerCase().trim();
+    if (colC === emailLower || colD === emailLower) {
+      return memberData[i][1].toString().trim();
+    }
+  }
+  return "";
+}
+
+// ===================================================
+// メールアドレス抽出
+// ===================================================
+function extractEmail(cellValue) {
+  const match = cellValue.match(/<([^>]+)>/);
+  return match ? match[1].trim() : cellValue.trim();
+}
+
+// ===================================================
+// <前の名前を抽出
+// ===================================================
+function extractNameBeforeEmail(cellValue) {
+  const match = cellValue.match(/^(.+?)\s*</);
+  return match ? match[1].trim() : "";
+}
+
+// ===================================================
+// 納期リスト抽出（複数納期対応）
+// ===================================================
+function extractDeadlines(subjectStr) {
+  const deadlines = [];
+
+  const nyuukouMatch = subjectStr.match(/【入稿依頼([^】]*)】/);
+  const targetStr = nyuukouMatch ? nyuukouMatch[1] : subjectStr;
+
+  // 複数納期パターン
+  const multiPattern = /納期[①②③④⑤⑥⑦⑧⑨\d]?(?:[（(][^）)]*[）)])?[：:]\s*(\d{1,2})\/(\d{1,2})([^\/／【\n]*)/g;
+
+  let match;
+  while ((match = multiPattern.exec(targetStr)) !== null) {
+    const month = match[1].padStart(2, '0');
+    const day   = match[2].padStart(2, '0');
+    const rest  = match[3] || "";
+
+    let time = "";
+    const timeHalfMatch = rest.match(/(\d{1,2})時半まで/);
+    const timeMatch     = rest.match(/(\d{1,2})時まで/);
+
+    if (timeHalfMatch) {
+      time = timeHalfMatch[1].padStart(2, '0') + ":30";
+    } else if (timeMatch) {
+      time = timeMatch[1].padStart(2, '0') + ":00";
+    } else if (/AM/i.test(rest)) {
+      time = "12:00";
+    }
+
+    deadlines.push({ date: month + "/" + day, time: time });
+  }
+
+  // 単一納期パターン
+  if (deadlines.length === 0) {
+    let date = "";
+    let time = "";
+
+    const dateMatch = targetStr.match(/納期[①②③④⑤⑥⑦⑧⑨\d]?[：:）)]\s*(\d{1,2})\/(\d{1,2})/);
+    if (dateMatch) {
+      date = dateMatch[1].padStart(2, '0') + "/" + dateMatch[2].padStart(2, '0');
+    } else {
+      const dateMatch2 = targetStr.match(/】\s*(\d{1,2})\/(\d{1,2})/);
+      if (dateMatch2) date = dateMatch2[1].padStart(2, '0') + "/" + dateMatch2[2].padStart(2, '0');
+    }
+
+    const timeHalfMatch = targetStr.match(/(\d{1,2})時半まで/);
+    const timeMatch     = targetStr.match(/(\d{1,2})時まで/);
+
+    if (timeHalfMatch) {
+      time = timeHalfMatch[1].padStart(2, '0') + ":30";
+    } else if (timeMatch) {
+      time = timeMatch[1].padStart(2, '0') + ":00";
+    } else if (/AM(?:中)?まで|(\d{1,2})\/(\d{1,2})\s*AM/i.test(targetStr)) {
+      time = "12:00";
+    }
+
+    if (date) deadlines.push({ date: date, time: time });
+  }
+
+  return deadlines;
+}
+
+// ===================================================
+// 設定スケジュール抽出（東京用）
+// ===================================================
+function extractSchedule(body) {
+  const match = body.match(/[▼▶＞]?設定スケジュール[^\n]*([\s\S]*?)(?:\n\s*\n|={3,}|【|$)/);
+  if (match) {
+    const content = ("▼設定スケジュール" + match[1]).trim();
+    if (content !== "▼設定スケジュール") return content;
+  }
+  const fallback = body.match(/スケジュール[^\n]*([\s\S]*?)(?:\n\s*\n|={3,}|【|$)/);
+  if (fallback) {
+    const content = ("▼設定スケジュール\n" + fallback[1]).trim();
+    if (content !== "▼設定スケジュール") return content;
+  }
+  return "";
+}
+
+// ===================================================
+// セット数抽出（共通）
+// ===================================================
+function extractSetCount(body) {
+  const normalizedBody = body.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+
+  const patterns = [
+    /・GP本数[：:]\s*(\d+)/,
+    /・グループ本数[：:]\s*(\d+)/,
+    /・セット本数[：:]\s*(\d+)/,
+    /設定依頼本数[^\n]*セット(\d+)本/,
+    /設定依頼本数[：:]\s*セット(\d+)本/,
+  ];
+  for (const p of patterns) {
+    const m = normalizedBody.match(p);
+    if (m) return m[1];
+  }
+  return 0;
+}
+
+// ===================================================
+// 広告数抽出（共通）
+// ===================================================
+function extractAdCount(body) {
+  const normalizedBody = body
+    .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+    .replace(/[：]/g, ':')
+    .replace(/[（]/g, '(')
+    .replace(/[）]/g, ')');
+
+  const patterns = [
+    /・?広告本数[：:]\s*(\d+)/,
+    /・?追加広告本数[：:]\s*(\d+)/,
+    /・?ポスト本数[：:]\s*(\d+)/,
+    /設定依頼本数[：:]\s*広告(\d+)本/,
+    /設定依頼本数[^\n]*広告(\d+)(?:本|広告)/,
+    /セット\d+本[\s\S]{0,20}?広告(\d+)本/,
+    /^[\s　]*広告(\d+)本/m,
+  ];
+
+  for (const p of patterns) {
+    const m = normalizedBody.match(p);
+    if (m) return m[1];
+  }
+  return 0;
+}
+
+// ===================================================
+// 定時トリガー設定
+// ===================================================
+function setTrigger() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'processEmailTransferCombined') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  ScriptApp.newTrigger('processEmailTransferCombined')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+
+  Logger.log('トリガー設定完了');
+}
