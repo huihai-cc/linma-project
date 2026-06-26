@@ -243,7 +243,7 @@ function writeTokyoNewRow(mainSheet, colMap, memberSheet, senderEmail, receivedT
   const valAdCount  = isFailed ? "" : extractAdCount(bodyStr);
 
   // 複数納期対応
-  const deadlines    = extractDeadlines(subjectStr);
+  const deadlines    = extractDeadlines(subjectStr, bodyStr);
   const writeTargets = deadlines.length > 0 ? deadlines : [{ date: "", time: "" }];
 
   for (const dl of writeTargets) {
@@ -290,7 +290,7 @@ function writeKochiNewRow(mainSheet, colMap, memberSheet, senderEmail, receivedT
   const valAdCount  = isFailed ? "" : extractAdCount(bodyStr);
 
   // 複数納期対応
-  const deadlines    = extractDeadlines(subjectStr);
+  const deadlines    = extractDeadlines(subjectStr, bodyStr);
   const writeTargets = deadlines.length > 0 ? deadlines : [{ date: "", time: "" }];
 
   for (const dl of writeTargets) {
@@ -424,32 +424,56 @@ function extractNameBeforeEmail(cellValue) {
 }
 
 // ===================================================
+// スケジュールから 時間→日付 マップ作成（納期日付補完用）
+// ===================================================
+function buildScheduleDateMap(bodyStr) {
+  const map = {};
+
+  // ▼設定スケジュール セクションを抽出
+  const scheduleMatch = bodyStr.match(/[▼▶＞]?設定スケジュール[\s\S]*?(?:\n\s*\n|={3,}|【|$)/);
+  if (!scheduleMatch) return map;
+
+  const scheduleText = scheduleMatch[0];
+
+  // 各行から「M/D 時間(半)?(まで|以降)」パターンを抽出
+  const linePattern = /(\d{1,2})\/(\d{1,2})[\s　]+(\d{1,2})時(半)?(まで|以降)/g;
+
+  let match;
+  while ((match = linePattern.exec(scheduleText)) !== null) {
+    const month   = match[1].padStart(2, '0');
+    const day     = match[2].padStart(2, '0');
+    const hour    = match[3].padStart(2, '0');
+    const isHalf  = match[4] === '半';
+    const dateStr = month + "/" + day;
+    const timeStr = hour + ":" + (isHalf ? "30" : "00");
+
+    map[timeStr] = dateStr;
+  }
+
+  return map;
+}
+
+// ===================================================
 // 納期リスト抽出（複数納期対応）
 // ===================================================
-function extractDeadlines(subjectStr) {
+function extractDeadlines(subjectStr, bodyStr) {
   const deadlines = [];
 
   const nyuukouMatch = subjectStr.match(/【入稿依頼([^】]*)】/);
   const targetStr = nyuukouMatch ? nyuukouMatch[1] : subjectStr;
 
-  // 複数納期パターン（日付は任意 = ②以降で省略された場合、前の日付を継承）
+  // スケジュールから 時間→日付 マップ（日付補完用）
+  const scheduleMap = bodyStr ? buildScheduleDateMap(bodyStr) : {};
+
+  // 複数納期パターン（日付は任意 = 日付省略時はスケジュールから補完→なければ请确日期）
   const multiPattern = /納期[①②③④⑤⑥⑦⑧⑨\d]?(?:[（(][^）)]*[）)])?[：:]\s*(?:(\d{1,2})\/(\d{1,2}))?([^\/／【\n]*)/g;
 
   let match;
-  let lastDate = "";  // 直前の納期の日付を保持（日付省略時に継承）
   while ((match = multiPattern.exec(targetStr)) !== null) {
-    let month, day;
+    let dateStr;
     if (match[1] !== undefined && match[2] !== undefined) {
-      // 日付あり → そのまま使って lastDate も更新
-      month = match[1].padStart(2, '0');
-      day   = match[2].padStart(2, '0');
-      lastDate = month + "/" + day;
-    } else if (lastDate) {
-      // 日付なし → 前の納期の日付を継承（例：納期②は納期①の6/29を使う）
-      [month, day] = lastDate.split('/');
-    } else {
-      // 日付も前の日付もない → スキップ
-      continue;
+      // 日付あり → そのまま使用
+      dateStr = match[1].padStart(2, '0') + "/" + match[2].padStart(2, '0');
     }
     const rest = match[3] || "";
 
@@ -465,7 +489,16 @@ function extractDeadlines(subjectStr) {
       time = "12:00";
     }
 
-    deadlines.push({ date: month + "/" + day, time: time });
+    // 日付がなく、時間が取れた場合 → スケジュールから補完を試みる
+    if (!dateStr && time && scheduleMap[time]) {
+      dateStr = scheduleMap[time];
+    }
+    // それでも日付がない → 请确日期
+    if (!dateStr) {
+      dateStr = "请确日期";
+    }
+
+    deadlines.push({ date: dateStr, time: time });
   }
 
   // 単一納期パターン
