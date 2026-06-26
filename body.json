@@ -1,0 +1,10 @@
+﻿{
+  "model": "deepseek-chat",
+  "messages": [
+    {
+      "role": "user",
+      "content": "只回复ok"
+    }
+  ],
+  "stream": false
+}
