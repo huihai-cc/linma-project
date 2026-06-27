@@ -1613,16 +1613,9 @@ const DL_COLUMNS_VIDEO = [
 },
     { key:'Targeting - Content', ja:'コンテンツ(Rating)',
   checkFn:(s,v) => {
-    const sc = (s.content || '').toLowerCase();
-    const dv = (v || '').toLowerCase();
-    // 設定表が空 → 比対スキップ
-    if(!sc) return null;
-    // MPデフォルト除外 → Ratings:TWITCH_EXPANDED は一致
-    if(sc.includes('mpデフォルト') || sc.includes('mpデフォルト')){
-      if(dv.includes('twitch_expanded') || !dv) return true;
-      return null;
-    }
-    if(!sc) return null;
+    const dv = (v||'').trim().toLowerCase();
+    if(!dv || dv.includes('twitch_expanded')) return true;   // ✅ 正常
+    return null;                                              // ☞ 開発者連絡
   }
 },
 
@@ -2253,6 +2246,23 @@ function findDSPSegmentBlock(blocks, liName) {
     return null;
 }
 
+// ===== DSP用 KWシート解析 =====
+function readKWSheet(wb) {
+    const sheetName = wb.SheetNames.find(n =>
+        n === 'KW' || n.includes('KW')
+    );
+    if (!sheetName) return null;
+    const ws = wb.Sheets[sheetName];
+    if (!ws || !ws['!ref']) return null;
+    const allRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+    const keywords = [];
+    for (const row of allRows) {
+        const val = String(row[0] || '').trim();
+        if (val && val.length > 0) keywords.push(val);
+    }
+    return keywords.length > 0 ? keywords : null;
+}
+
 // DSPセグメントsheet vs 後台 Audience対比
 function compareDSPSegment(block, dlRow) {
     if (!block) return { matched: null, diffs: ['セグメントsheetに対応するLIブロックが見つかりません'] };
@@ -2393,6 +2403,7 @@ function compareDSPSegment(block, dlRow) {
 function readSettingTableDSP(wb){
     // ★ セグメントsheetを事前解析（wb全体で1回）
     const _dspSegBlocks = readDSPSegmentSheet(wb);
+    const _kwData        = readKWSheet(wb);  // ★ KWシートを事前解析
     const SKIP_KW = ['入稿物','ブラックリスト','選択','ASIN','ReC','ABC','BSC',
                      '馬さん','Instructions','Reference','セグメント',
                      'Deal','デモグラ'];
@@ -2450,6 +2461,7 @@ function readSettingTableDSP(wb){
             location:['配信地域','Location'],language:['Language'],
             domain_bl:['Domain'],mobile_app:['Mobile app targeting','Mobile app'],
             daypart:['配信時間帯','Daypart'],viewability_pct:['Viewability'],
+            keyword:['Keyword','キーワード'],
             content:['コンテンツ','Content','IAB'],
         };
         headers.forEach((h,i)=>{
@@ -2490,6 +2502,8 @@ function readSettingTableDSP(wb){
                 daypart:g(colIdx.daypart),domain_bl:g(colIdx.domain_bl),
                 mobile_app:g(colIdx.mobile_app),
                 content:g(colIdx.content),
+                keyword:g(colIdx.keyword),
+                __KW_DATA__:_kwData,
             });
         }
     }
@@ -2663,8 +2677,69 @@ const DL_COLUMNS = [
     return true;                      // ✅ 正常
   }
 },
-    { key:'Targeting by Keywords',                 ja:'キーワードターゲティング',     checkFn:null, autoHide:true },
-    { key:'Target Keywords using only contextual signals?', ja:'KWのみコンテキスト', checkFn:null, autoHide:true },
+    { key:'Targeting by Keywords',                 ja:'Keyword',
+  checkFn:(s, v, dRow) => {
+    const setting = (s.keyword||'').trim();
+    console.log('★Keyword check: LI='+s.__LI_NAME__+' setting='+setting+' hasKWData='+!!(s.__KW_DATA__&&s.__KW_DATA__.length));
+    // 設定表のKWリストを取得
+    let sKws = [];
+    // None または空 → KWなし
+    if(!setting || setting.toLowerCase() === 'none'){
+        sKws = [];  // Noneまたは空 → KWなし
+    } else if(setting.toLowerCase().includes('kw')){
+        // ★ 別紙「KW」参照 → KW sheetを使う（sheetがない場合は空）
+        sKws = (s.__KW_DATA__ && s.__KW_DATA__.length > 0) ? s.__KW_DATA__.slice() : [];
+    } else {
+        // セル直書きKW
+        sKws = setting.split(/[;\n\r]+/).map(k=>k.trim()).filter(Boolean);
+    }
+    // ■KWターゲティングリスト は除外
+    sKws = sKws.filter(k => k !== '■KWターゲティングリスト');
+    // 全角スペース→半角に正規化してソート
+    sKws = sKws.map(k => k.replace(/　/g, ' '));
+    sKws.sort();
+    // ダウンロードのKWリスト（;区切り）
+    let dKws = (v||'').split(';').map(k=>k.trim()).filter(Boolean);
+    dKws = dKws.map(k => k.replace(/　/g, ' '));
+    dKws.sort();
+
+    console.log('★Keyword: sKws=['+sKws.join('|')+'] dKws=['+dKws.join('|')+'] sLen='+sKws.length+' dLen='+dKws.length);
+
+    if(sKws.length === 0 && dKws.length === 0){ console.log('★Keyword: -> TRUE (both empty)'); return true; }
+    if(sKws.length > 0 && dKws.length === 0){
+        s.__keyword_diff__ = '❌ 設定表にKWがあるが後台が空（' + sKws.length + '件）';
+        console.log('★Keyword: -> FALSE (s has, d empty)');
+        return false;
+    }
+    if(sKws.length === 0 && dKws.length > 0){ console.log('★Keyword: -> NULL (s empty, d has)'); return null; }
+    // 並び替え後完全一致判定
+    const onlyS = sKws.filter(k => !dKws.includes(k));
+    const onlyD = dKws.filter(k => !sKws.includes(k));
+    console.log('★Keyword: onlyS=['+onlyS.join('|')+'] onlyD=['+onlyD.join('|')+']');
+    if(onlyS.length > 0 || onlyD.length > 0){
+        const parts = [];
+        if(onlyS.length > 0) parts.push('設定表のみ: ' + onlyS.join(', '));
+        if(onlyD.length > 0) parts.push('DLのみ: ' + onlyD.join(', '));
+        s.__keyword_diff__ = '❌ ' + parts.join(' | ');
+        console.log('★Keyword: -> FALSE (diff)');
+        return false;
+    }
+    console.log('★Keyword: -> TRUE (match)');
+    return true;                                               // ✅ 完全一致
+  }
+},
+    { key:'Target Keywords using only contextual signals?', ja:'KW_only',
+  checkFn:(s, v, dRow) => {
+    const afVal = dRow ? String(dRow['Targeting by Keywords']||'').trim() : '';
+    const agVal = (v||'').trim().toLowerCase();
+    const setting = (s.keyword||'').trim();
+    // AF列に内容あり＋AG=YES → ✅
+    if(afVal && agVal === 'yes') return true;
+    // 設定表Keyword空＋AF空 → ✅
+    if(!setting && !afVal) return true;
+    return null;   // ☞ 要確認
+  }
+},
     { key:'Targeting - Content',                   ja:'コンテンツターゲティング',
   checkFn:(s,v)=>{
     const dv = (v||'').trim().toLowerCase();
@@ -3276,6 +3351,18 @@ function _getSettingValForCol(key, sRow){
         'Mobile app targeting - include or exclude':sRow.mobile_app,
         'Mobile app group ID targeting':sRow.mobile_app,
         'IAB content categories':sRow.content,
+        'Targeting by Keywords':(()=>{
+            const kw = (sRow.keyword||'').trim();
+            // None または空 → そのまま表示
+            if(!kw || kw.toLowerCase() === 'none') return kw || '';
+            // KW参照あり → KW sheet表示
+            if(kw.toLowerCase().includes('kw') && sRow.__KW_DATA__ && sRow.__KW_DATA__.length > 0){
+                return '[KW sheet] ' + sRow.__KW_DATA__.join(' ; ');
+            }
+            // セル直書き
+            const kws = kw.split(/[;\n\r]+/).map(k=>k.trim()).filter(Boolean);
+            return kws.join(' ; ');
+        })(),
     };
     return map[key]!==undefined?String(map[key]||''):'';
 }
@@ -3335,7 +3422,7 @@ function matchAndCompareDSP(settingData, downloadMap, system){
     let result = null;
     if(found && col.checkFn){
         try{ result = col.checkFn(sRow, dVal, dRow); }  // ← 加第3个参数 dRow
-        catch(e){ result = null; }
+        catch(e){ console.error('★checkFn error:', col.key, e.message, e.stack); result = null; }
     }
     return { key:col.key, ja:col.ja, sVal, dVal, result };
 });
@@ -3357,6 +3444,7 @@ function matchAndCompareDSP(settingData, downloadMap, system){
     __location_diff__:      sRow.__location_diff__      || '',
     __location_excl_diff__: sRow.__location_excl_diff__ || '',
     __daypart_diff__:       sRow.__daypart_diff__        || '',
+    __keyword_diff__:       sRow.__keyword_diff__        || '',
     __brand_content_note__: sRow.__brand_content_note__ || '',
     __brand_tier_note__:    sRow.__brand_tier_note__     || '',
 });
@@ -3814,6 +3902,7 @@ const visibleCols = activeCols.filter(col=>{
                                white-space:nowrap;text-overflow:ellipsis;text-align:left !important;${hideStyle}"
                         title="${esc([dVal, item[col.key==='Brand suitability content exclusion categories'?'__brand_content_note__':
 col.key==='Brand suitability inventory tier'?'__brand_tier_note__':
+col.key==='Targeting by Keywords'?'__keyword_diff__':
 col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n'))}"
                         ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'28px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
                         <span style="font-size:0.73rem;text-align:left;display:block;${effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':'color:#856404'};">
@@ -3825,6 +3914,8 @@ col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n
         ? '__brand_content_note__'
         : col.key === 'Brand suitability inventory tier'
         ? '__brand_tier_note__'
+        : col.key === 'Targeting by Keywords'
+        ? '__keyword_diff__'
         : col.key === 'Audience names'
         ? '__audience_diff__'
         : null;
