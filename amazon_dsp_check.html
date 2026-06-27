@@ -2680,7 +2680,6 @@ const DL_COLUMNS = [
     { key:'Targeting by Keywords',                 ja:'Keyword',
   checkFn:(s, v, dRow) => {
     const setting = (s.keyword||'').trim();
-    console.log('★Keyword check: LI='+s.__LI_NAME__+' setting='+setting+' hasKWData='+!!(s.__KW_DATA__&&s.__KW_DATA__.length));
     // 設定表のKWリストを取得
     let sKws = [];
     // None または空 → KWなし
@@ -2703,31 +2702,22 @@ const DL_COLUMNS = [
     dKws = dKws.map(k => k.replace(/　/g, ' '));
     dKws.sort();
 
-    console.log('★Keyword: sKws=['+sKws.join('|')+'] dKws=['+dKws.join('|')+'] sLen='+sKws.length+' dLen='+dKws.length);
 
-    if(sKws.length === 0 && dKws.length === 0){ console.log('★Keyword: -> TRUE (both empty)'); return true; }
+    if(sKws.length === 0 && dKws.length === 0){ return true; }
     if(sKws.length > 0 && dKws.length === 0){
         s.__keyword_diff__ = '❌ 設定表にKWがあるが後台が空（' + sKws.length + '件）';
-        console.log('★Keyword: -> FALSE (s has, d empty)');
-        return false;
     }
-    if(sKws.length === 0 && dKws.length > 0){ console.log('★Keyword: -> NULL (s empty, d has)'); return null; }
+    if(sKws.length === 0 && dKws.length > 0){ return null; }
     // 並び替え後完全一致判定
     const onlyS = sKws.filter(k => !dKws.includes(k));
     const onlyD = dKws.filter(k => !sKws.includes(k));
-    console.log('★Keyword: onlyS=['+onlyS.join('|')+'] onlyD=['+onlyD.join('|')+']');
     if(onlyS.length > 0 || onlyD.length > 0){
         const parts = [];
         if(onlyS.length > 0) parts.push('設定表のみ: ' + onlyS.join(', '));
         if(onlyD.length > 0) parts.push('DLのみ: ' + onlyD.join(', '));
         s.__keyword_diff__ = '❌ ' + parts.join(' | ');
-        console.log('★Keyword: -> FALSE (diff)');
-        return false;
     }
-    console.log('★Keyword: -> TRUE (match)');
-    return true;                                               // ✅ 完全一致
   }
-},
     { key:'Target Keywords using only contextual signals?', ja:'KW_only',
   checkFn:(s, v, dRow) => {
     const afVal = dRow ? String(dRow['Targeting by Keywords']||'').trim() : '';
@@ -3422,7 +3412,7 @@ function matchAndCompareDSP(settingData, downloadMap, system){
     let result = null;
     if(found && col.checkFn){
         try{ result = col.checkFn(sRow, dVal, dRow); }  // ← 加第3个参数 dRow
-        catch(e){ console.error('★checkFn error:', col.key, e.message, e.stack); result = null; }
+        catch(e){ result = null; }
     }
     return { key:col.key, ja:col.ja, sVal, dVal, result };
 });
