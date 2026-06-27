@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>惠海 QC ツール</title>
+    <title>惠海 QC ポータル</title>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
@@ -14,160 +14,173 @@
         }
 
         header {
-            background: #2c3e50;
+            background: #1a252f;
             color: white;
-            padding: 18px 28px;
+            padding: 20px 32px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
-        header h1 { font-size: 1.25rem; letter-spacing: 1px; }
-        .badge {
-            background: #27ae60;
-            border-radius: 12px;
-            padding: 3px 12px;
-            font-size: 0.75rem;
-        }
+        header h1 { font-size: 1.3rem; letter-spacing: 1px; font-weight: 700; }
 
         .container {
-            max-width: 900px;
-            margin: 36px auto;
+            max-width: 960px;
+            margin: 32px auto;
             padding: 0 24px;
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 14px;
         }
 
-        /* ===== セクション ===== */
-        .section {}
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 12px;
-        }
-        .section-title {
-            font-size: 0.82rem;
-            font-weight: bold;
-            color: #7f8c8d;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-        }
-        .section-line {
-            flex: 1;
-            height: 1px;
-            background: #ddd;
-        }
-
-        /* ===== カードグリッド ===== */
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 12px;
-        }
-
-        .card {
+        /* ===== 手风琴 ===== */
+        .accordion {
             background: white;
             border: 1px solid #e4e8ed;
             border-radius: 10px;
-            padding: 18px 16px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+
+        .accordion-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s;
+        }
+        .accordion-header:hover { background: #f8f9fa; }
+
+        .accordion-arrow {
+            font-size: 0.75rem;
+            color: #7f8c8d;
+            transition: transform 0.2s;
+            width: 16px;
+            text-align: center;
+        }
+        .accordion.collapsed .accordion-arrow { transform: rotate(-90deg); }
+
+        .accordion-label {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 6px;
+            padding: 3px 12px;
+            font-size: 0.78rem;
+            font-weight: bold;
+            color: white;
+            letter-spacing: 0.5px;
+            min-width: 48px;
+            justify-content: center;
+        }
+        .label-common { background: #636e72; }
+        .label-1 { background: #2980b9; }
+        .label-2 { background: #27ae60; }
+        .label-3 { background: #8e44ad; }
+        .label-4 { background: #e67e22; }
+        .label-5 { background: #c0392b; }
+        .label-6 { background: #16a085; }
+
+        .accordion-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .accordion-sub {
+            font-size: 0.72rem;
+            color: #95a5a6;
+            margin-left: auto;
+        }
+
+        .accordion-body {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            padding: 0 20px 18px;
+            transition: all 0.25s;
+        }
+        .accordion.collapsed .accordion-body { display: none; }
+
+        /* ===== 卡片 ===== */
+        .card {
+            background: #fafbfc;
+            border: 1px solid #e4e8ed;
+            border-radius: 8px;
+            padding: 16px 14px;
             text-decoration: none;
             color: #333;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             transition: all 0.18s;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
             cursor: pointer;
             position: relative;
         }
         .card:hover {
+            background: white;
             border-color: #3498db;
-            box-shadow: 0 4px 14px rgba(52,152,219,0.15);
-            transform: translateY(-2px);
+            box-shadow: 0 3px 12px rgba(52,152,219,0.12);
+            transform: translateY(-1px);
         }
         .card.disabled {
-            opacity: 0.55;
+            opacity: 0.5;
             cursor: default;
             pointer-events: none;
-        }
-        .card.legacy {
-            border-style: dashed;
-            border-color: #bbb;
-            background: #fafafa;
-        }
-        .card.legacy:hover {
-            border-color: #95a5a6;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+            background: #f5f5f5;
         }
 
         .card-icon {
-            font-size: 1.6rem;
+            font-size: 1.4rem;
             line-height: 1;
         }
         .card-name {
-            font-size: 0.88rem;
+            font-size: 0.85rem;
             font-weight: 600;
             line-height: 1.4;
         }
         .card-desc {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             color: #999;
             line-height: 1.4;
         }
 
-        .dev-badge {
-            display: inline-block;
+        .dev-tag {
+            position: absolute;
+            top: 8px;
+            right: 8px;
             background: #f39c12;
             color: white;
             border-radius: 4px;
             padding: 1px 7px;
-            font-size: 0.68rem;
+            font-size: 0.65rem;
             font-weight: bold;
-            position: absolute;
-            top: 10px;
-            right: 10px;
-        }
-        .legacy-badge {
-            display: inline-block;
-            background: #95a5a6;
-            color: white;
-            border-radius: 4px;
-            padding: 1px 7px;
-            font-size: 0.68rem;
-            font-weight: bold;
-            position: absolute;
-            top: 10px;
-            right: 10px;
         }
 
-        /* 課ラベル */
-        .ka-label {
-            display: inline-flex;
+        .placeholder-card {
+            background: #fafafa;
+            border: 1px dashed #ddd;
+            border-radius: 8px;
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: #2c3e50;
-            color: white;
-            border-radius: 6px;
-            padding: 2px 10px;
-            font-size: 0.78rem;
-            font-weight: bold;
-            letter-spacing: 0.5px;
+            gap: 6px;
+            color: #bbb;
+            min-height: 80px;
         }
-        .ka-label.ka-1 { background: #2980b9; }
-        .ka-label.ka-2 { background: #27ae60; }
-        .ka-label.ka-3 { background: #8e44ad; }
-        .ka-label.ka-common { background: #7f8c8d; }
-        .ka-label.ka-legacy { background: #95a5a6; }
+        .placeholder-icon { font-size: 1.4rem; }
+        .placeholder-text { font-size: 0.78rem; }
 
         @media (max-width: 540px) {
-            .card-grid { grid-template-columns: repeat(2, 1fr); }
-            .container { margin: 20px auto; padding: 0 14px; }
+            .accordion-body { grid-template-columns: repeat(2, 1fr); }
+            .container { margin: 20px auto; padding: 0 12px; }
+            header { padding: 16px 20px; }
+            header h1 { font-size: 1.1rem; }
         }
         @media (max-width: 360px) {
-            .card-grid { grid-template-columns: 1fr; }
+            .accordion-body { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -193,20 +206,19 @@
 </script>
 
 <header>
-    <h1>🔍 惠海 QC ツール</h1>
-    <span class="badge">🔒 完全本地运行</span>
+    <h1>🛠️ 惠海 QC ポータル</h1>
 </header>
 
 <div class="container">
 
     <!-- ===== 共通ツール ===== -->
-    <div class="section">
-        <div class="section-header">
-            <span class="ka-label ka-common">共通</span>
-            <span class="section-title">共通ツール</span>
-            <div class="section-line"></div>
+    <div class="accordion" id="acc-common">
+        <div class="accordion-header" onclick="toggleAccordion('acc-common')">
+            <span class="accordion-arrow">▼</span>
+            <span class="accordion-label label-common">共通</span>
+            <span class="accordion-title">共通ツール</span>
         </div>
-        <div class="card-grid">
+        <div class="accordion-body">
             <a class="card" href="tools_text.html" target="_blank">
                 <span class="card-icon">🔍</span>
                 <span class="card-name">文本对比工具</span>
@@ -231,20 +243,20 @@
     </div>
 
     <!-- ===== 1課 ===== -->
-    <div class="section">
-        <div class="section-header">
-            <span class="ka-label ka-1">1課</span>
-            <span class="section-title">広告設定チェック・入稿</span>
-            <div class="section-line"></div>
+    <div class="accordion" id="acc-ka1">
+        <div class="accordion-header" onclick="toggleAccordion('acc-ka1')">
+            <span class="accordion-arrow">▼</span>
+            <span class="accordion-label label-1">1課</span>
+            <span class="accordion-title">広告設定チェック・入稿</span>
         </div>
-        <div class="card-grid">
+        <div class="accordion-body">
             <a class="card" href="amazon_dsp_check.html" target="_blank">
                 <span class="card-icon">📋</span>
                 <span class="card-name">Amazon DSP 設定チェック</span>
                 <span class="card-desc">Display / PVA / OTT 対応</span>
             </a>
             <a class="card disabled">
-                <span class="dev-badge">开发中</span>
+                <span class="dev-tag">开发中</span>
                 <span class="card-icon">📈</span>
                 <span class="card-name">DV360 設定チェック</span>
                 <span class="card-desc">準備中</span>
@@ -262,23 +274,87 @@
         </div>
     </div>
 
-    <!-- ===== 統合版（保留中） ===== -->
-    <div class="section">
-        <div class="section-header">
-            <span class="ka-label ka-legacy">保留</span>
-            <span class="section-title">統合版（保留中）</span>
-            <div class="section-line"></div>
+    <!-- ===== 2課 ===== -->
+    <div class="accordion" id="acc-ka2">
+        <div class="accordion-header" onclick="toggleAccordion('acc-ka2')">
+            <span class="accordion-arrow">▼</span>
+            <span class="accordion-label label-2">2課</span>
+            <span class="accordion-title">2課 ツール</span>
         </div>
-        <div class="card-grid">
-            <a class="card legacy" href="index_legacy.html" target="_blank">
-                <span class="legacy-badge">保留中</span>
-                <span class="card-icon">📄</span>
-                <span class="card-name">統合版（保留中）</span>
-                <span class="card-desc">index_legacy — 問題なければ削除予定</span>
-            </a>
+        <div class="accordion-body">
+            <div class="placeholder-card">
+                <span class="placeholder-icon">📦</span>
+                <span class="placeholder-text">準備中</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 3課 ===== -->
+    <div class="accordion" id="acc-ka3">
+        <div class="accordion-header" onclick="toggleAccordion('acc-ka3')">
+            <span class="accordion-arrow">▼</span>
+            <span class="accordion-label label-3">3課</span>
+            <span class="accordion-title">3課 ツール</span>
+        </div>
+        <div class="accordion-body">
+            <div class="placeholder-card">
+                <span class="placeholder-icon">📦</span>
+                <span class="placeholder-text">準備中</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 4課 ===== -->
+    <div class="accordion" id="acc-ka4">
+        <div class="accordion-header" onclick="toggleAccordion('acc-ka4')">
+            <span class="accordion-arrow">▼</span>
+            <span class="accordion-label label-4">4課</span>
+            <span class="accordion-title">4課 ツール</span>
+        </div>
+        <div class="accordion-body">
+            <div class="placeholder-card">
+                <span class="placeholder-icon">📦</span>
+                <span class="placeholder-text">準備中</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 5課 ===== -->
+    <div class="accordion" id="acc-ka5">
+        <div class="accordion-header" onclick="toggleAccordion('acc-ka5')">
+            <span class="accordion-arrow">▼</span>
+            <span class="accordion-label label-5">5課</span>
+            <span class="accordion-title">5課 ツール</span>
+        </div>
+        <div class="accordion-body">
+            <div class="placeholder-card">
+                <span class="placeholder-icon">📦</span>
+                <span class="placeholder-text">準備中</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 6課 ===== -->
+    <div class="accordion" id="acc-ka6">
+        <div class="accordion-header" onclick="toggleAccordion('acc-ka6')">
+            <span class="accordion-arrow">▼</span>
+            <span class="accordion-label label-6">6課</span>
+            <span class="accordion-title">6課 ツール</span>
+        </div>
+        <div class="accordion-body">
+            <div class="placeholder-card">
+                <span class="placeholder-icon">📦</span>
+                <span class="placeholder-text">準備中</span>
+            </div>
         </div>
     </div>
 
 </div>
+
+<script>
+function toggleAccordion(id) {
+    document.getElementById(id).classList.toggle('collapsed');
+}
+</script>
 </body>
 </html>
