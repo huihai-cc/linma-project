@@ -2448,8 +2448,9 @@ function readSettingTableDSP(wb){
             ssp_third:['Third Party Exchanges'],mobile_os:['Mobile OS'],
             device_type:['Device type'],audience:['セグメント','Audience'],
             location:['配信地域','Location'],language:['Language'],
-            domain_bl:['Domain'],mobile_app:['Mobile app targeting'],
+            domain_bl:['Domain'],mobile_app:['Mobile app targeting','Mobile app'],
             daypart:['配信時間帯','Daypart'],viewability_pct:['Viewability'],
+            content:['コンテンツ','Content','IAB'],
         };
         headers.forEach((h,i)=>{
             const hFull=String(h);
@@ -2488,6 +2489,7 @@ function readSettingTableDSP(wb){
                 viewability_excl:g(colIdx.viewability_excl),
                 daypart:g(colIdx.daypart),domain_bl:g(colIdx.domain_bl),
                 mobile_app:g(colIdx.mobile_app),
+                content:g(colIdx.content),
             });
         }
     }
@@ -2644,14 +2646,32 @@ const DL_COLUMNS = [
   }
 },
     { key:'Contextual targeting by categories',    ja:'In-market categories（Contextual）',    checkFn:null, autoHide:true },
-    { key:'Target Categories using only contextual signals?', ja:'Only use contextual', checkFn:null, autoHide:true },
+    { key:'Target Categories using only contextual signals?', ja:'Only use contextual',
+  checkFn:(s,v)=>{
+    const dv = (v||'').trim().toLowerCase();
+    if(dv === 'yes') return true;    // ✅ 正常（大多数案件都是YES）
+    return null;                      // ☞ 開発者連絡（特殊案件，需确认）
+  }
+},
     { key:'Contextual excluding by categories',    ja:'コンテキスト除外（カテゴリ）', checkFn:null, autoHide:true },
     { key:'Contextual targeting by products',      ja:'コンテキスト（商品）',         checkFn:null, autoHide:true },
     { key:'Contextual excluding by products',      ja:'コンテキスト除外（商品）',     checkFn:null, autoHide:true },
-    { key:'Contextual targeting (on Amazon)',       ja:'コンテキスト（Amazon内）',     checkFn:null, autoHide:true },
+    { key:'Contextual targeting (on Amazon)',       ja:'コンテキスト（Amazon内）',
+  checkFn:(s,v)=>{
+    const dv = (v||'').trim().toLowerCase();
+    if(dv === 'yes') return null;    // ☞ 開発者連絡（需确认Amazon内商品页面定向是否正确）
+    return true;                      // ✅ 正常
+  }
+},
     { key:'Targeting by Keywords',                 ja:'キーワードターゲティング',     checkFn:null, autoHide:true },
     { key:'Target Keywords using only contextual signals?', ja:'KWのみコンテキスト', checkFn:null, autoHide:true },
-    { key:'Targeting - Content',                   ja:'コンテンツターゲティング',     checkFn:null, autoHide:true },
+    { key:'Targeting - Content',                   ja:'コンテンツターゲティング',
+  checkFn:(s,v)=>{
+    const dv = (v||'').trim().toLowerCase();
+    if(!dv || dv.includes('twitch_expanded')) return true;   // ✅ 正常（空或TWITCH_EXPANDED）
+    return null;                                              // ☞ 開発者連絡（特殊Rating需确认）
+  }
+},
     { key:'Brand suitability content exclusion categories', ja:'content exclusion categories',
   checkFn:(s,v)=>{
     // 判断SSP设定
@@ -2868,25 +2888,10 @@ const DL_COLUMNS = [
     { key:'Audiences - include',      ja:'オーディエンスID',      checkFn:null, autoHide:true },
     { key:'Reach similar audiences', ja:'類似オーディエンス',
   checkFn:(s,v)=>{
-    const sP = parseAudienceS(s.audience);
-    const hasAudFromText = sP.groups.length > 0 || sP.notItems.length > 0;
-    let hasAud = hasAudFromText;
-    if(!hasAud && s.__SEGMENT_SHEET_DSP__){
-        const block = findDSPSegmentBlock(s.__SEGMENT_SHEET_DSP__, s.__LI_NAME__);
-        if(block && (block.groups.length > 0 || block.notItems.length > 0)){
-            hasAud = true;
-        }
-    }
     const dv = (v||'').trim().toUpperCase();
-    if(hasAud){
-        if(dv === 'NO') return true;
-        else if(!dv || dv === 'YES') return false;
-        else return null;
-    } else {
-        if(!dv || dv === 'YES') return true;
-        else return null;
-    }
-}
+    if(dv === 'NO') return true;     // ✅ 正常（类似オーディエンス不使用）
+    return null;                      // ☞ 開発者連絡（特殊案件，需确认）
+  }
 },
     { key:'Audience names', ja:'オーディエンス名',
   checkFn:(s, v, dlRow)=>{
@@ -3049,7 +3054,16 @@ const DL_COLUMNS = [
     return false; // ❌ 不一致
   }
 },
-    { key:'IAB content categories',   ja:'IABカテゴリ',           checkFn:null, autoHide:true },
+    { key:'IAB content categories',   ja:'IABカテゴリ',
+  checkFn:(s,v)=>{
+    const setting = (s.content||'').trim();
+    const dv = (v||'').trim();
+    if(setting && dv) return null;        // ☞ 要確認（两边都有，需确认IAB分类一致性）
+    if(setting && !dv) return false;      // ❌ 不一致（设定表有IAB设定，下载无）
+    if(!setting && dv) return null;       // ☞ 要確認（设定表无，下载有IAB设定）
+    return true;                           // ✅ 正常
+  }
+},
     { key:'Fold position',            ja:'フォールドポジション',  checkFn:null, autoHide:true },
     { key:'Native content position',  ja:'ネイティブポジション',  checkFn:null, autoHide:true },
     { key:'Automated optimization',   ja:'自動最適化',
@@ -3135,29 +3149,52 @@ const DL_COLUMNS = [
   }
 },
     { key:'Orientation',              ja:'オリエンテーション',    checkFn:null, autoHide:true },
-    { key:'Mobile app targeting - include or exclude', ja:'アプリターゲティング', 
+    { key:'Mobile app targeting - include or exclude', ja:'アプリターゲティング',
   checkFn:(s,v)=>{
     const setting = (s.mobile_app||'').trim();
     const dv = (v||'').trim().toLowerCase();
+    const isExclude = (!dv || dv === 'exclude');
 
-    // 設定表が空の場合 → 下载=Excludeが正しい
-    if(!setting){
-        if(dv === 'exclude'){
-            return true;   // ✅ 正常
-        } else if(!dv){
-            return true;   // ✅ 空も正常
-        } else {
-            return null;   // ☞ 要確認
-        }
+    if(setting.includes('WL')){
+        // 白名单 → 期望Include
+        if(dv === 'include') return true;   // ✅ 正常
+        else return false;                   // ❌ 不一致（WL→Includeだが下载≠Include）
+    } else if(setting.includes('BL') || setting.includes('別紙')){
+        // 黑名单 → 期望Exclude
+        if(isExclude) return true;           // ✅ 正常
+        else return false;                   // ❌ 不一致（BL→Excludeだが下载=Include）
+    } else if(!setting){
+        // 空 → デフォルトExclude
+        if(isExclude) return true;           // ✅ 正常
+        else return null;                    // ☞ 要確認（空白默认为Exclude但下载=Include）
+    } else {
+        return null;                         // ☞ 要確認
     }
-
-    // 設定表に値がある場合 → 要確認
-    return null;
   }
 },
     { key:'App IDs 1 of 2',           ja:'アプリID①',             checkFn:null, autoHide:true },
     { key:'App IDs 2 of 2',           ja:'アプリID②',             checkFn:null, autoHide:true },
-    { key:'Mobile app group ID targeting', ja:'アプリグループID', checkFn:null, autoHide:true },
+    { key:'Mobile app group ID targeting', ja:'アプリグループID',
+  checkFn:(s,v)=>{
+    const setting = (s.mobile_app||'').trim();
+    const hasTargeting = setting.includes('BL') || setting.includes('別紙') || setting.includes('WL');
+    const dv = (v||'').trim();
+
+    if(hasTargeting && dv){
+        // 設定表有BL/WL + 下载有内容 → 管理画面确认名称是否一致
+        return null;   // ☞ 要確認
+    } else if(hasTargeting && !dv){
+        // 設定表有BL/WL + 下载为空 → ❌ 不一致
+        return false;
+    } else if(!hasTargeting && dv){
+        // 設定表为空 + 下载有内容 → ☞ 要確認
+        return null;
+    } else {
+        // 設定表为空 + 下载为空 → ✅ 正常
+        return true;
+    }
+  }
+},
     { key:"Advertiser's domain targeting - (CREATE ONLY)", ja:'広告主ドメイン', checkFn:null, autoHide:true },
     { key:'Line item domain targeting - (CREATE ONLY)', ja:'LIドメイン',       checkFn:null, autoHide:true },
     { key:'Domains - (CREATE ONLY)',  ja:'ドメインリスト',         checkFn:null, autoHide:true },
@@ -3237,6 +3274,8 @@ function _getSettingValForCol(key, sRow){
         'Maximum average CPM':sRow.max_cpm,
         'Domain Targeting - (READ ONLY)':sRow.domain_bl,
         'Mobile app targeting - include or exclude':sRow.mobile_app,
+        'Mobile app group ID targeting':sRow.mobile_app,
+        'IAB content categories':sRow.content,
     };
     return map[key]!==undefined?String(map[key]||''):'';
 }
@@ -3748,7 +3787,7 @@ const visibleCols = activeCols.filter(col=>{
                                vertical-align:middle;height:28px;overflow:hidden;
                                white-space:nowrap;text-overflow:ellipsis;text-align:left !important;${hideStyle}"
                         title="${esc(sVal)}"
-                        onclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'28px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
+                        ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'28px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
                         <span style="font-size:0.73rem;color:${color};text-align:left;display:block;">
                             ${sVal||'<span style="color:#ccc;">—</span>'}
                         </span>
@@ -3776,7 +3815,7 @@ const visibleCols = activeCols.filter(col=>{
                         title="${esc([dVal, item[col.key==='Brand suitability content exclusion categories'?'__brand_content_note__':
 col.key==='Brand suitability inventory tier'?'__brand_tier_note__':
 col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n'))}"
-                        onclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'28px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
+                        ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'28px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
                         <span style="font-size:0.73rem;text-align:left;display:block;${effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':'color:#856404'};">
                             ${dVal||'<span style="color:#ccc;">—</span>'}
                         </span>

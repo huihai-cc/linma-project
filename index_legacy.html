@@ -8567,7 +8567,27 @@ const DL_COLUMNS = [
 },
     { key:'App IDs 1 of 2',           ja:'アプリID①',             checkFn:null, autoHide:true },
     { key:'App IDs 2 of 2',           ja:'アプリID②',             checkFn:null, autoHide:true },
-    { key:'Mobile app group ID targeting', ja:'アプリグループID', checkFn:null, autoHide:true },
+    { key:'Mobile app group ID targeting', ja:'アプリグループID',
+  checkFn:(s,v)=>{
+    const setting = (s.mobile_app||'').trim();
+    const hasBL = setting.includes('BL') || setting.includes('別紙');
+    const dv = (v||'').trim();
+
+    if(hasBL && dv){
+        // 設定表有BL + 下载有内容 → 管理画面确认名称是否一致
+        return null;   // ☞ 要確認
+    } else if(hasBL && !dv){
+        // 設定表有BL + 下载为空 → ❌ 不一致
+        return false;
+    } else if(!hasBL && !setting && dv){
+        // 設定表为空 + 下载有内容 → ☞ 要確認
+        return null;
+    } else {
+        // 設定表为空 + 下载为空 → ✅ 正常
+        return true;
+    }
+  }
+},
     { key:"Advertiser's domain targeting - (CREATE ONLY)", ja:'広告主ドメイン', checkFn:null, autoHide:true },
     { key:'Line item domain targeting - (CREATE ONLY)', ja:'LIドメイン',       checkFn:null, autoHide:true },
     { key:'Domains - (CREATE ONLY)',  ja:'ドメインリスト',         checkFn:null, autoHide:true },
@@ -8647,6 +8667,7 @@ function _getSettingValForCol(key, sRow){
         'Maximum average CPM':sRow.max_cpm,
         'Domain Targeting - (READ ONLY)':sRow.domain_bl,
         'Mobile app targeting - include or exclude':sRow.mobile_app,
+        'Mobile app group ID targeting':sRow.mobile_app,
     };
     return map[key]!==undefined?String(map[key]||''):'';
 }
