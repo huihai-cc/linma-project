@@ -2703,11 +2703,12 @@ const DL_COLUMNS = [
     dKws.sort();
 
 
-    if(sKws.length === 0 && dKws.length === 0){ return true; }
+    if(sKws.length === 0 && dKws.length === 0) return true;   // ✅ 両方空
     if(sKws.length > 0 && dKws.length === 0){
         s.__keyword_diff__ = '❌ 設定表にKWがあるが後台が空（' + sKws.length + '件）';
+        return false;
     }
-    if(sKws.length === 0 && dKws.length > 0){ return null; }
+    if(sKws.length === 0 && dKws.length > 0) return null;     // ☞ 設定表にKW記載なし、DLにあり
     // 並び替え後完全一致判定
     const onlyS = sKws.filter(k => !dKws.includes(k));
     const onlyD = dKws.filter(k => !sKws.includes(k));
@@ -2716,8 +2717,11 @@ const DL_COLUMNS = [
         if(onlyS.length > 0) parts.push('設定表のみ: ' + onlyS.join(', '));
         if(onlyD.length > 0) parts.push('DLのみ: ' + onlyD.join(', '));
         s.__keyword_diff__ = '❌ ' + parts.join(' | ');
+        return false;
     }
+    return true;                                               // ✅ 完全一致
   }
+},
     { key:'Target Keywords using only contextual signals?', ja:'KW_only',
   checkFn:(s, v, dRow) => {
     const afVal = dRow ? String(dRow['Targeting by Keywords']||'').trim() : '';

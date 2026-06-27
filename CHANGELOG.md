@@ -113,3 +113,50 @@ yomiko_kanri.html
 xlsx.full.min.js
 jszip.min.js
 ```
+
+---
+
+## 7. PVA/OTT コンテンツターゲティング統一
+
+**対象**：`amazon_dsp_check.html`
+
+- `DL_COLUMNS_VIDEO` の `Targeting - Content` を DSP と同じロジックに統一
+- TWITCH_EXPANDED / 空 → ✅ / 以外 → ☞開発者連絡
+
+---
+
+## 8. Keyword 対比機能
+
+**対象**：`amazon_dsp_check.html`
+
+### 8-1. KW sheet 読み取り
+- `readKWSheet()` 関数追加：名称に「KW」を含むシートの A 列を抽出
+- `readSettingTableDSP` にて Keyword 列（`keyword:['Keyword','キーワード']`）と KW sheet を読み取り
+- `sRow.keyword` と `sRow.__KW_DATA__` に保存
+
+### 8-2. Targeting by Keywords（ja: Keyword）
+- `checkFn` 追加：
+  - None/空 → sKws=[] → DL空なら✅
+  - 別紙「KW」参照 → KW sheet 使用
+  - セル直書き → split で抽出
+  - ■KWターゲティングリスト は比較対象から除外
+  - 全角スペース→半角スペースに正規化
+  - sort 後完全一致→✅ / 不一致→❌（差異を `__keyword_diff__` に保存）
+- レンダリングに `__keyword_diff__` 表示対応追加
+
+### 8-3. Target Keywords using only contextual signals?（ja: KW_only）
+- `checkFn` 追加：AF 列に内容あり＋AG=YES→✅ / 設定表空＋AF 空→✅ / 以外☞
+
+### 8-4. バグ修正
+- `const dKws` → `let dKws`（再代入不可エラー修正）
+- sed による誤削除を修復（`return false` / `return true` / 列ヘッダー欠落）
+
+---
+
+## 9. セル展開のダブルクリック化
+
+**対象**：`amazon_dsp_check.html`
+
+- データセルの `onclick` → `ondblclick` に変更
+- シングルクリック誤展開防止（コピー操作対策）
+- DSP/PVA/OTT 全タイプ共通
