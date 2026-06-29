@@ -1082,13 +1082,40 @@ function readAllSegmentSheets(wb) {
     return segMap;
 }
 
-function _findSegmentForLI(audienceVal, segMap) {
+function _findSegmentForLI(audienceVal, segMap, liName) {
     if (!audienceVal || !audienceVal.includes('セグメントシート')) {
         return { groups: [], groupOps: [] };
     }
+    // ★ 「セグメントシート（CTV）」など括弧内のキーワードを抽出
     const m = audienceVal.match(/セグメントシート[（(「]([^）)」]+)[）)」]/);
-    if (!m) return { groups: [], groupOps: [] };
-    const keyword = m[1].trim();
+    let keyword = m ? m[1].trim() : '';
+
+    // ★ キーワードが取れない場合（「セグメントシート」で指定 など）
+    //    LI名からキーワードを推測（例：PVA_demo_CTV_30s → CTV）
+    if(!keyword && liName){
+        // LI名の _ 区切りパーツから、セグメントシート名に含まれるものを探す
+        const liParts = liName.split(/[_\-]/).map(p => p.trim()).filter(p => p.length >= 2);
+        for(const [sheetName, data] of Object.entries(segMap)){
+            // シート名の括弧内の文字列を抽出（例：セグメントシート（CTV）→ CTV）
+            const sm = sheetName.match(/[（(]([^）)]+)[）)]/);
+            const sheetKey = sm ? sm[1].trim() : '';
+            if(sheetKey && liParts.some(p =>
+                p.toLowerCase() === sheetKey.toLowerCase() ||
+                sheetKey.toLowerCase().includes(p.toLowerCase())
+            )){
+                return data;
+            }
+        }
+        // フォールバック：LI名の全パーツについてシート名に含まれるかチェック
+        for(const [sheetName, data] of Object.entries(segMap)){
+            if(liParts.some(p => p.length >= 2 && sheetName.toLowerCase().includes(p.toLowerCase()))){
+                return data;
+            }
+        }
+        return { groups: [], groupOps: [] };
+    }
+
+    if (!keyword) return { groups: [], groupOps: [] };
     for (const [sheetName, data] of Object.entries(segMap)) {
         if (sheetName.includes(keyword)) return data;
     }
@@ -1300,9 +1327,12 @@ function readSettingTableVideo(wb, system){
             if(rs.includes('ラインアイテム名') || rs.includes('Line Item Name')){
                 headerRowIdx = i;
                 // 次の行にStart day等があればそちらをヘッダーに
+                // ★ 「Device type」「Start day」でチェック（「Device」のみだと
+                //    データ行の "Phones & Portable Media Devices" 等に誤一致するため）
                 for(let j=i+1; j<Math.min(i+5,allRows.length); j++){
                     const rs2 = allRows[j].join(' ');
-                    if(rs2.includes('Start day') || rs2.includes('Device') || rs2.includes('Type')){
+                    if(rs2.includes('Start day') || rs2.includes('Start time') || rs2.includes('End day')
+                       || rs2.includes('Device type') || rs2.includes('Mobile environment')){
                         headerRowIdx = j; break;
                     }
                 }
@@ -1425,7 +1455,7 @@ function readSettingTableVideo(wb, system){
                 ssp:           g(colIdx.ssp),
                 region:        g(colIdx.region),
                 __AREA_SHEET__: areaSheetData,  // ★ エリアシートデータ
-                __SEGMENT_SHEET__: _findSegmentForLI(g(colIdx.audience), allSegmentSheets),  // ★ LIごとに対応セグメントシートを取得
+                __SEGMENT_SHEET__: _findSegmentForLI(g(colIdx.audience), allSegmentSheets, liName),  // ★ LIごとに対応セグメントシートを取得
                 // Display互換
                 product_big:   '',
                 ssp_owned:     '',
@@ -1779,12 +1809,21 @@ const DL_COLUMNS_VIDEO = [
         }
 
         // 全セグメント名が後台に存在するか確認（順不同）
+        // ★ 両側を _normalizeAudienceName で正規化してから比較
+        //    （設定表: "Demographic > Age > AudienceOne: Age 20-21"
+        //      後台:   "Demo - AudienceOne: Age 20-21" → 正規化で "AudienceOne: Age 20-21"）
         const allSettingSegs = seg.groups.flatMap(g => g.segments);
+        const normalizedDNames = rawNames.map(d => ({
+            orig: d,
+            norm: _normalizeAudienceName(d).toLowerCase(),
+        }));
         const missing = allSettingSegs.filter(segName => {
-            // 後台の名前リストに部分一致で確認
-            return !rawNames.some(dName =>
-                dName.toLowerCase().includes(segName.toLowerCase()) ||
-                segName.toLowerCase().includes(dName.toLowerCase())
+            const normS = _normalizeAudienceName(segName).toLowerCase();
+            // 階層区切り > の最終部分も比較用に抽出（"Demographic > Age > X" → "X"）
+            const lastPart = normS.includes('>') ? normS.split('>').pop().trim() : '';
+            return !normalizedDNames.some(({norm: normD}) =>
+                normD.includes(normS) || normS.includes(normD) ||
+                (lastPart && (normD.includes(lastPart) || lastPart.includes(normD)))
             );
         });
 
@@ -2437,7 +2476,8 @@ function readSettingTableDSP(wb){
                 headerRowIdx=i;
                 for(let j=i+1;j<Math.min(i+5,allRows.length);j++){
                     const rs2=allRows[j].join(' ');
-                    if(rs2.includes('Type')||rs2.includes('Device')||rs2.includes('Start day')){
+                    if(rs2.includes('Start day')||rs2.includes('Start time')||rs2.includes('End day')
+                       ||rs2.includes('Device type')||rs2.includes('Mobile environment')){
                         headerRowIdx=j; break;
                     }
                 }
@@ -3548,7 +3588,11 @@ function renderScResult(){
     </div>`:'';
 
     // 寄存LI
+    // ★ 設定表と完全一致しないLIを「寄存」候補に。
+    //    items の matchedName（後台側の実際のLI名）も除外対象に含める。
+    //    ファジーマッチで設定表のLI名≠後台LI名でもマッチできたケースを考慮
     const settingNames=new Set(items.map(i=>i.liName));
+    items.forEach(i=>{ if(i.matchedName) settingNames.add(i.matchedName); });
     const kissonLIs=[];
     const JUNK_PATTERN=/Follow instructions|Choose from|Don't delete|READ ONLY|informational|Use letters|Enter a number|Leave blank|Choose from dropdown/i;
     if(downloadData){
@@ -3680,14 +3724,14 @@ const visibleCols = activeCols.filter(col=>{
 <div id="sc-outer-wrap"
      style="position:relative;border:1px solid #ddd;border-top:none;
             border-radius:0 0 8px 8px;max-height:75vh;
-            overflow-y:auto;overflow-x:hidden;
+            overflow:auto;
             overflow-anchor:none;">
 
     <!-- ★ 表头单独放在sc-body-scroll外面，相对sc-outer-wrap做sticky -->
     <div id="sc-thead-container"
-     style="position:sticky;top:0;z-index:50;overflow:hidden;
+     style="position:sticky;top:0;z-index:50;
             background:#1a252f;">
-        <div id="sc-thead-scroller" style="overflow:hidden;display:block;">
+        <div id="sc-thead-scroller" style="display:block;">
         <table id="sc-head-table"
                style="border-collapse:collapse;font-size:0.76rem;
                       font-family:'Segoe UI','Noto Sans JP',sans-serif;
@@ -3742,7 +3786,7 @@ const visibleCols = activeCols.filter(col=>{
     </div>
 
     <!-- ★ データ本体：水平スクロールはここで処理 -->
-    <div id="sc-body-scroll" style="width:100%;position:relative;overflow-x:auto;">
+    <div id="sc-body-scroll" style="width:100%;position:relative;">
     <table id="sc-main-table"
            style="border-collapse:collapse;font-size:0.76rem;
                   font-family:'Segoe UI','Noto Sans JP',sans-serif;
@@ -3981,17 +4025,10 @@ col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n
         const dummyHead=document.getElementById('sc-dummy-head');
         if(!bodyScroll||!outerWrap) return;
 
-        function updateStickycols(){
-    // ★ 水平スクロール同期：データ本体 → 固定表頭
-    const scrollLeft = bodyScroll.scrollLeft;
-    const theadScroller = document.getElementById('sc-thead-scroller');
-    if(theadScroller){
-        theadScroller.scrollLeft = scrollLeft;
-    }
-    // ★ No./LI名称列の固定はCSS sticky に任せる（transformは不要）
-}
-
-        bodyScroll.addEventListener('scroll',()=>{updateStickycols();updateFixedHead();},{passive:true});
+        // ★ 水平・垂直スクロールは sc-outer-wrap で統一。
+        //    ヘッダーとボディが同じスクロールコンテナ内にあるため、
+        //    水平スクロール同期は不要（自然に連動する）
+        outerWrap.addEventListener('scroll',()=>{updateFixedHead();},{passive:true});
 
         function syncHeadWidth(){
     const theadContainer = document.getElementById('sc-thead-container');

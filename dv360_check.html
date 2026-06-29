@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DV360 設定チェック</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:#f0f2f5;color:#333;min-height:100vh;}
+
+/* ===== Header ===== */
+header{background:#1a252f;color:white;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
+.badge{background:#3498db;border-radius:12px;padding:3px 12px;font-size:0.72rem;white-space:nowrap;}
+.back-nav{background:#2c3e50;padding:6px 20px;display:flex;align-items:center;gap:12px;}
+.back-btn{background:#2980b9;color:white;border:none;border-radius:4px;padding:4px 12px;font-size:0.8rem;cursor:pointer;text-decoration:none;}
+.back-btn:hover{background:#1a6fa8;}
+
+/* ===== Upload Zone ===== */
+.upload-section{padding:16px 20px;}
+.upload-grid{display:grid;grid-template-columns:1fr;gap:12px;max-width:900px;}
+.multi-upload-zone{
+  border:2px dashed #3498db;border-radius:10px;padding:24px;
+  text-align:center;cursor:pointer;background:#f8fbfe;
+  min-height:120px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;transition:all 0.2s;
+}
+.multi-upload-zone:hover,.multi-upload-zone.dragover{border-color:#1a6fa8;background:#eaf2fb;}
+.multi-upload-zone.has-files{border-style:solid;border-color:#27ae60;background:#f0fff4;}
+.upload-icon{font-size:2.2rem;margin-bottom:6px;}
+.upload-text{color:#2980b9;font-size:0.95rem;font-weight:bold;}
+.upload-sub{color:#999;font-size:0.75rem;margin-top:4px;}
+#file-list{width:100%;max-width:900px;margin-top:8px;}
+#file-list .file-list{padding:4px 0;}
+.file-item{display:flex;align-items:center;gap:6px;background:white;border:1px solid #d0e8d0;
+  border-radius:4px;padding:4px 10px;margin-bottom:3px;font-size:0.78rem;}
+.file-item .remove-btn{background:#e74c3c;color:white;border:none;border-radius:3px;
+  padding:1px 6px;font-size:0.7rem;cursor:pointer;margin-left:auto;flex-shrink:0;}
+
+/* ===== Controls ===== */
+.control-bar{display:none;align-items:center;gap:10px;padding:8px 20px;flex-wrap:wrap;}
+.control-bar.show{display:flex;}
+.btn{padding:7px 16px;border:none;border-radius:5px;font-size:0.82rem;font-weight:bold;cursor:pointer;transition:all 0.15s;}
+.btn-check{background:#e74c3c;color:white;}
+.btn-check:hover{background:#c0392b;}
+.btn-reset{background:#95a5a6;color:white;}
+.btn-reset:hover{background:#7f8c8d;}
+.btn-sm{padding:4px 10px;font-size:0.72rem;}
+
+/* ===== Top Stats Bar ===== */
+.stats-bar{display:none;background:#1a252f;color:white;padding:8px 20px;align-items:center;gap:16px;flex-wrap:wrap;font-size:0.8rem;}
+.stats-bar.show{display:flex;}
+.stat-item{display:flex;align-items:center;gap:4px;}
+.stat-dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.stat-dot.green{background:#2ecc71;}
+.stat-dot.red{background:#e74c3c;}
+.stat-dot.yellow{background:#f39c12;}
+.stat-dot.gray{background:#95a5a6;}
+
+/* ===== Filter Bar ===== */
+.filter-bar{display:none;background:white;border-bottom:2px solid #e0e0e0;padding:8px 20px;align-items:center;gap:12px;flex-wrap:wrap;}
+.filter-bar.show{display:flex;}
+.filter-group{display:flex;align-items:center;gap:5px;}
+.filter-group span{font-size:0.75rem;color:#888;white-space:nowrap;}
+.filter-btn{padding:3px 10px;border:1px solid #ddd;border-radius:4px;background:white;font-size:0.72rem;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.filter-btn:hover{border-color:#3498db;}
+.filter-btn.active{background:#3498db;color:white;border-color:#3498db;}
+.filter-btn.active.mismatch{background:#e74c3c;border-color:#e74c3c;}
+.filter-btn.active.match{background:#2ecc71;border-color:#2ecc71;}
+.filter-btn.active.warn{background:#f39c12;border-color:#f39c12;}
+.filter-btn.active.notfound{background:#95a5a6;border-color:#95a5a6;}
+
+/* ===== Progress ===== */
+.progress-bar{display:none;background:#e8f0ff;border:1px solid #3498db;border-radius:6px;padding:10px 16px;margin:8px 20px;font-size:0.82rem;color:#1a5276;}
+.progress-bar.show{display:block;}
+
+/* ===== Tree Container ===== */
+.tree-container{display:none;margin:12px 20px;background:white;border-radius:8px;border:1px solid #e4e8ed;overflow:hidden;max-height:60vh;overflow-y:auto;}
+.tree-container.show{display:block;}
+
+.tree-node{padding:0;border-bottom:1px solid #f0f0f0;user-select:none;}
+.tree-node:last-child{border-bottom:none;}
+.tree-row{display:flex;align-items:center;gap:6px;padding:6px 12px;cursor:pointer;transition:background 0.1s;min-height:34px;}
+.tree-row:hover{background:#f5f8fc;}
+.tree-row.selected{background:#e8f4fd;outline:1px solid #3498db;outline-offset:-1px;}
+
+.tree-indent{display:inline-block;flex-shrink:0;}
+.tree-toggle{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.65rem;color:#888;border-radius:3px;transition:transform 0.15s;}
+.tree-toggle.expanded{transform:rotate(90deg);}
+.tree-toggle.leaf{visibility:hidden;}
+
+/* Level badges */
+.lvl-badge{flex-shrink:0;border-radius:4px;padding:1px 6px;font-size:0.65rem;font-weight:bold;color:white;min-width:28px;text-align:center;}
+.lvl-CP{background:#8e44ad;}
+.lvl-IO{background:#2980b9;}
+.lvl-LI{background:#27ae60;}
+.lvl-GP{background:#e67e22;}
+.lvl-CR{background:#c0392b;}
+
+/* Status icons */
+.status-icon{flex-shrink:0;font-size:0.9rem;}
+.status-ok{color:#2ecc71;}
+.status-mismatch{color:#e74c3c;}
+.status-warning{color:#f39c12;}
+.status-notfound{color:#95a5a6;}
+
+.tree-name{flex:1;font-size:0.8rem;word-break:break-all;min-width:0;}
+.tree-name.notfound{color:#bbb;font-style:italic;}
+.tree-counter{flex-shrink:0;font-size:0.7rem;padding:1px 8px;border-radius:10px;font-weight:bold;white-space:nowrap;}
+.counter-ok{background:#d5f5e3;color:#27ae60;}
+.counter-warn{background:#fef5e7;color:#e67e22;}
+.counter-bad{background:#fadbd8;color:#e74c3c;}
+.counter-none{background:#f0f0f0;color:#999;}
+
+.tree-children{display:none;}
+.tree-children.expanded{display:block;}
+
+.issue-row:hover{background:#f8f9fa;}
+
+/* Download-only nodes */
+.dl-only-section{margin-top:8px;border-top:2px dashed #e0e0e0;padding-top:8px;}
+.dl-only-header{font-size:0.75rem;color:#888;padding:4px 12px;font-weight:bold;}
+
+/* ===== Detail Panel ===== */
+.detail-panel{display:none;margin:12px 20px;background:white;border-radius:8px;border:1px solid #e4e8ed;}
+.detail-panel.show{display:block;}
+.detail-header{background:#f8f9fa;padding:10px 16px;border-bottom:1px solid #e4e8ed;display:flex;align-items:center;gap:10px;}
+.detail-title{font-size:0.88rem;font-weight:bold;color:#2c3e50;}
+.detail-close{background:transparent;border:none;font-size:1.1rem;cursor:pointer;color:#999;margin-left:auto;}
+.detail-table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+.detail-table th{background:#f0f3f7;padding:7px 12px;text-align:left;font-size:0.72rem;color:#666;border-bottom:2px solid #d0d0d0;position:sticky;top:0;}
+.detail-table td{padding:6px 12px;border-bottom:1px solid #f0f0f0;}
+.detail-table tr.row-ok{background:#f8fff8;}
+.detail-table tr.row-mismatch{background:#fff5f5;}
+.detail-table tr.row-warning{background:#fffdf5;}
+.detail-table .cell-s{max-width:300px;word-break:break-all;}
+.detail-table .cell-d{max-width:300px;word-break:break-all;}
+.detail-table .cell-status{text-align:center;white-space:nowrap;}
+
+/* ===== Summary at bottom ===== */
+.empty-state{padding:40px;text-align:center;color:#aaa;}
+.empty-state .icon{font-size:3rem;margin-bottom:12px;}
+
+/* ===== Status Dialog Modal ===== */
+.modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:999;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:white;border-radius:10px;padding:24px 28px;max-width:520px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.25);max-height:90vh;overflow-y:auto;}
+.modal-box h2{font-size:1rem;color:#2c3e50;margin-bottom:6px;}
+.modal-box .modal-desc{font-size:0.75rem;color:#888;margin-bottom:16px;}
+.modal-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;}
+.modal-row .lvl-label{width:40px;flex-shrink:0;text-align:center;}
+.modal-row .lvl-label span{font-size:0.7rem;font-weight:bold;color:white;border-radius:4px;padding:2px 8px;}
+.modal-row .radio-group{display:flex;gap:12px;flex-wrap:wrap;}
+.modal-row .radio-group label{font-size:0.78rem;cursor:pointer;display:flex;align-items:center;gap:3px;white-space:nowrap;}
+.modal-row .radio-group input[type="radio"]{cursor:pointer;}
+.modal-quick-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.modal-quick-btns button{padding:5px 12px;border:1px solid #ddd;border-radius:4px;background:white;font-size:0.72rem;cursor:pointer;transition:all 0.15s;}
+.modal-quick-btns button:hover{background:#f0f5ff;border-color:#3498db;}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+.modal-actions button{padding:8px 20px;border:none;border-radius:5px;font-size:0.82rem;font-weight:bold;cursor:pointer;transition:all 0.15s;}
+.modal-btn-cancel{background:#ecf0f1;color:#666;}
+.modal-btn-cancel:hover{background:#ddd;}
+.modal-btn-go{background:#e74c3c;color:white;}
+.modal-btn-go:hover{background:#c0392b;}
+
+/* ===== Level Tab Bar ===== */
+.level-tab-bar{display:none;background:white;border-bottom:2px solid #e0e0e0;padding:8px 20px 0;align-items:flex-end;gap:2px;flex-wrap:wrap;}
+.level-tab-bar.show{display:flex;}
+.level-tab{padding:7px 18px;border:1px solid #ddd;border-bottom:none;border-radius:6px 6px 0 0;background:#f0f0f0;font-size:0.78rem;font-weight:bold;cursor:pointer;transition:all 0.15s;color:#888;}
+.level-tab:hover{background:#e8f4fd;color:#2980b9;}
+.level-tab.active{background:#1a252f;color:white;border-color:#1a252f;}
+.level-tab .tab-counter{font-size:0.65rem;opacity:0.7;margin-left:4px;}
+
+/* ===== Result Table ===== */
+.result-table-wrap{display:none;margin:0 20px 12px;background:white;border:1px solid #ddd;border-radius:0 0 8px 8px;max-height:70vh;overflow:auto;}
+.result-table-wrap.show{display:block;}
+.result-table{width:100%;border-collapse:collapse;font-size:0.74rem;font-family:'Segoe UI','Noto Sans JP',sans-serif;table-layout:auto;}
+.result-table thead{position:sticky;top:0;z-index:20;}
+.result-table thead th{background:#1a252f;color:white;padding:7px 8px;border:1px solid #334455;text-align:center;vertical-align:middle;white-space:nowrap;font-size:0.72rem;}
+.result-table tbody td{padding:4px 7px;border:1px solid #e4e4e4;vertical-align:middle;word-break:break-all;max-width:220px;}
+.result-table .col-no{width:40px;text-align:center;position:sticky;left:0;z-index:10;background:#2c3e50;color:white;font-weight:bold;font-size:0.82rem;}
+.result-table .col-name{width:180px;position:sticky;left:40px;z-index:10;background:white;box-shadow:2px 0 4px rgba(0,0,0,0.08);}
+.result-table .col-status{width:85px;text-align:center;white-space:nowrap;}
+
+/* Cell backgrounds */
+.cell-ok{background:#f0fff4;}
+.cell-mismatch{background:#fff0f0;}
+.cell-warn{background:#fffef0;}
+.cell-empty{background:#fafafa;}
+
+/* Cell sub-rows (S=設定表 / D=ダウンロード) */
+.cell-s-row{font-size:0.7rem;color:#444;min-height:20px;line-height:1.4;}
+.cell-d-row{font-size:0.7rem;color:#1a5276;min-height:20px;line-height:1.4;border-top:1px dashed #e8e8e8;padding-top:1px;}
+.cell-s-label{font-size:0.6rem;color:#aaa;margin-right:2px;}
+.cell-d-label{font-size:0.6rem;color:#85c1e9;margin-right:2px;}
+
+/* Row group (設定表行 + ダウンロード行) */
+.row-setting{border-bottom:1px solid #eee;}
+.row-download{border-bottom:2px solid #d0d0d0;}
+.row-notfound{background:#fcfcfc;color:#bbb;}
+
+/* Responsive */
+@media(max-width:768px){
+  .result-table{font-size:0.68rem;}
+  .result-table thead th{font-size:0.65rem;padding:5px 4px;}
+  .result-table tbody td{padding:3px 4px;max-width:140px;}
+}
+
+/* ===== Responsive (original) ===== */
+@media(max-width:768px){
+  .tree-row{padding:5px 8px;gap:3px;}
+  .tree-name{font-size:0.72rem;}
+  .lvl-badge{font-size:0.6rem;padding:1px 4px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📈 DV360 設定チェック</h1>
+  <span class="badge">🔒 完全本地运行</span>
+</header>
+
+<div class="back-nav">
+  <a href="index.html" class="back-btn">← 返回导航页</a>
+  <span style="color:#bdc3c7;font-size:0.8rem;">DV360 広告設定の自動チェック — Youtube優先</span>
+</div>
+
+<!-- Upload Zone -->
+<div class="upload-section">
+  <div class="upload-grid">
+    <div id="upload-zone" class="multi-upload-zone">
+      <div class="upload-icon">📦</div>
+      <div class="upload-text">拖入文件到此区域（可同时拖入多个）</div>
+      <div class="upload-sub">支持：ZIP批量上传 / 設定表 .xlsx / SDF .zip / .csv<br>点击此处选择文件</div>
+    </div>
+    <input type="file" id="file-input" multiple accept=".zip,.xlsx,.xls,.csv" style="display:none;">
+    <div id="file-list" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div id="control-bar" class="control-bar">
+  <button class="btn btn-check" onclick="runCheck()">🔍 チェック開始</button>
+  <button class="btn btn-reset" onclick="resetAll()">🗑️ リセット</button>
+  <span id="control-info" style="font-size:0.78rem;color:#888;"></span>
+</div>
+
+<div id="progress" class="progress-bar"></div>
+
+<!-- Stats Bar -->
+<div id="stats-bar" class="stats-bar"></div>
+
+<!-- Filter Bar -->
+<div id="filter-bar" class="filter-bar">
+  <div class="filter-group">
+    <span>状態：</span>
+    <button class="filter-btn active" data-filter="all" onclick="setStatusFilter('all',this)">全部</button>
+    <button class="filter-btn" data-filter="mismatch" onclick="setStatusFilter('mismatch',this)">❌ 不一致</button>
+    <button class="filter-btn" data-filter="warning" onclick="setStatusFilter('warning',this)">⚠ 需確認</button>
+    <button class="filter-btn" data-filter="ok" onclick="setStatusFilter('ok',this)">✅ 一致</button>
+    <button class="filter-btn" data-filter="notfound" onclick="setStatusFilter('notfound',this)">⬜ 未匹配</button>
+  </div>
+  <div class="filter-group">
+    <span>層級：</span>
+    <button class="filter-btn active" data-lvl="CP" onclick="toggleLevel('CP',this)">CP</button>
+    <button class="filter-btn active" data-lvl="IO" onclick="toggleLevel('IO',this)">IO</button>
+    <button class="filter-btn active" data-lvl="LI" onclick="toggleLevel('LI',this)">LI</button>
+    <button class="filter-btn active" data-lvl="GP" onclick="toggleLevel('GP',this)">GP</button>
+    <button class="filter-btn active" data-lvl="CR" onclick="toggleLevel('CR',this)">CR</button>
+  </div>
+  <div class="filter-group">
+    <button class="btn-sm" style="background:#ecf0f1;border:1px solid #ddd;" onclick="setStatusFilter('all',document.querySelector('.filter-btn[data-filter=all]'));">🔄 全表示</button>
+    <button class="btn-sm" style="background:#fff5f5;border:1px solid #e74c3c;color:#c0392b;" onclick="setStatusFilter('mismatch',document.querySelector('.filter-btn[data-filter=mismatch]'));">🔍 問題のみ</button>
+  </div>
+</div>
+
+<!-- Result Summary -->
+<div id="result-summary" class="result-summary" style="display:none;margin:12px 20px 0;background:#f8f9fa;border:1px dashed #3498db;border-radius:8px;padding:10px 16px;font-size:0.8rem;color:#2c3e50;">
+  <span style="font-weight:bold;">💡 操作提示：</span>点击下方任意节点可查看 <span style="color:#2980b9;">设定表</span> vs <span style="color:#e67e22;">下载数据</span> 的字段级比对结果。状态：✅一致  ❌不一致  ⚠需确认  ⬜未匹配
+</div>
+
+<!-- Issues Summary -->
+<div id="result-issues" class="result-issues" style="display:none;margin:8px 20px 0;background:white;border:1px solid #e4e8ed;border-radius:8px;padding:12px 16px;font-size:0.78rem;max-height:300px;overflow-y:auto;">
+  <div id="result-issues-content"></div>
+</div>
+
+<!-- Level Tab Bar -->
+<div id="level-tab-bar" class="level-tab-bar">
+  <button class="level-tab active" data-lvl="CP" onclick="switchLevel('CP')">CP<span class="tab-counter"></span></button>
+  <button class="level-tab" data-lvl="IO" onclick="switchLevel('IO')">IO<span class="tab-counter"></span></button>
+  <button class="level-tab" data-lvl="LI" onclick="switchLevel('LI')">LI<span class="tab-counter"></span></button>
+  <button class="level-tab" data-lvl="GP" onclick="switchLevel('GP')">GP<span class="tab-counter"></span></button>
+  <button class="level-tab" data-lvl="CR" onclick="switchLevel('CR')">CR<span class="tab-counter"></span></button>
+</div>
+
+<!-- Result Table Container -->
+<div id="result-table-wrap" class="result-table-wrap">
+  <div class="empty-state"><div class="icon">📂</div>上传文件后点击「チェック開始」</div>
+</div>
+
+<!-- Status Dialog Modal -->
+<div id="status-modal" class="modal-overlay">
+  <div class="modal-box">
+    <h2>📋 各階層の想定ステータスを選択</h2>
+    <div class="modal-desc">設定表には各階層のステータスが記載されていません。ダウンロードデータのステータスが正しいか確認するため、各階層のあるべきステータスを選択してください。</div>
+    <div id="status-modal-rows"></div>
+    <div class="modal-quick-btns">
+      <button onclick="setAllStatuses('Paused')">🔒 全てPaused</button>
+      <button onclick="setAllStatuses('Active')">▶ 全てActive</button>
+      <button onclick="setAllStatuses('Draft')">📝 全てDraft</button>
+      <button onclick="setAllStatuses('')">🚫 確認不要</button>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn-cancel" onclick="cancelStatusDialog()">キャンセル</button>
+      <button class="modal-btn-go" onclick="confirmStatusDialog()">✅ チェック開始</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== SCRIPTS ========== -->
+<script src="jszip.min.js"></script>
+<script src="xlsx.full.min.js"></script>
+<script src="encoding.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+// ===== STATE =====
+let uploadedFiles   = [];
+let settingFiles    = [];
+let downloadFiles   = [];
+let mediaType       = '';
+let treeRoots       = [];
+let statusFilter    = 'all';
+let visibleLevels   = new Set(['CP','IO','LI','GP','CR']);
+let selectedNodeId  = null;
+let allComparisonData = null;
+let expectedStatuses = {CP:'Paused',IO:'Paused',LI:'Paused',GP:'Paused',CR:'Paused'};
+let statusDialogResolve = null;
+let currentLevel = 'CP';
+
+// ===== UTILS =====
+function esc(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function normStr(s){
+  if(!s) return '';
+  return String(s).replace(/\s+/g,' ').trim().toLowerCase();
+}
+
+// ── 修正2: 模糊閾値を 0.6 に下げ、部分一致も拾う ──
+function fuzzyMatch(a,b){
+  const na=normStr(a), nb=normStr(b);
+  if(!na&&!nb) return 1;
+  if(!na||!nb) return 0;
+  if(na===nb) return 1.0;
+  if(na.includes(nb)||nb.includes(na)){
+    const shorter=Math.min(na.length,nb.length);
+    const longer =Math.max(na.length,nb.length);
+    return longer>0 ? shorter/longer : 0;
+  }
+  return 0;
+}
+
+// ===== UPLOAD =====
+const uploadZone = document.getElementById('upload-zone');
+const fileInput  = document.getElementById('file-input');
+const fileListEl = document.getElementById('file-list');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', e => {
+  if(e.target.files && e.target.files.length){
+    handleFiles(Array.from(e.target.files));
+    fileInput.value = '';
+  }
+});
+
+uploadZone.addEventListener('dragover',  e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', ()  => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if(e.dataTransfer.files && e.dataTransfer.files.length){
+    handleFiles(Array.from(e.dataTransfer.files));
+  }
+});
+
+function handleFiles(files){
+  const valid = files.filter(f => {
+    const n = f.name.toLowerCase();
+    return n.endsWith('.zip')||n.endsWith('.xlsx')||n.endsWith('.xls')||n.endsWith('.csv');
+  });
+  if(!valid.length){ alert('支持 .zip / .xlsx / .xls / .csv 文件'); return; }
+
+  valid.forEach(f => {
+    if(!uploadedFiles.find(u => u.name === f.name)){
+      uploadedFiles.push({
+        name : f.name,
+        blob : f,
+        type : f.name.toLowerCase().endsWith('.zip') ? 'zip'
+             : f.name.toLowerCase().endsWith('.csv') ? 'csv' : 'xlsx'
+      });
+    }
+  });
+  renderFileList();
+  updateControls();
+}
+
+function removeFile(idx){
+  uploadedFiles.splice(idx,1);
+  renderFileList();
+  updateControls();
+}
+window.removeFile = removeFile;
+
+function renderFileList(){
+  if(uploadedFiles.length===0){
+    uploadZone.className = 'multi-upload-zone';
+    fileListEl.style.display = 'none';
+    fileListEl.innerHTML = '';
+    return;
+  }
+  uploadZone.className = 'multi-upload-zone has-files';
+  const listHtml = uploadedFiles.map((f,i) => `
+    <div class="file-item">
+      <span>${f.name.endsWith('.zip')?'📦':f.name.endsWith('.csv')?'📄':'📊'}</span>
+      <span style="flex:1;word-break:break-all;">${esc(f.name)}</span>
+      <span style="color:#999;flex-shrink:0;">${(f.blob.size/1024).toFixed(0)}KB</span>
+      <button class="remove-btn" onclick="event.stopPropagation();removeFile(${i})">✕</button>
+    </div>`).join('');
+  fileListEl.style.display = 'block';
+  fileListEl.innerHTML = `
+    <div class="file-list">${listHtml}</div>
+    <div style="margin-top:6px;font-size:0.75rem;color:#27ae60;font-weight:bold;text-align:center;">
+      📎 ${uploadedFiles.length}件 ／ クリックして追加
+    </div>`;
+}
+
+function updateControls(){
+  const bar  = document.getElementById('control-bar');
+  const info = document.getElementById('control-info');
+  if(uploadedFiles.length>0){
+    bar.classList.add('show');
+    const xlsxCount = uploadedFiles.filter(f=>f.type==='xlsx').length;
+    const zipCount  = uploadedFiles.filter(f=>f.type==='zip').length;
+    const csvCount  = uploadedFiles.filter(f=>f.type==='csv').length;
+    info.textContent = `設定Excel:${xlsxCount}件  ZIP:${zipCount}件  CSV:${csvCount}件`;
+  } else {
+    bar.classList.remove('show');
+    info.textContent = '';
+  }
+}
+
+// ===== STATUS DIALOG =====
+const STATUS_OPTIONS = ['Paused','Active','Draft'];
+function buildStatusModalRows(){
+  const container = document.getElementById('status-modal-rows');
+  const levels = ['CP','IO','LI','GP','CR'];
+  const levelNames = {CP:'キャンペーン',IO:'IO',LI:'LI',GP:'広告グループ',CR:'クリエイティブ'};
+  container.innerHTML = levels.map(lvl => {
+    const radios = STATUS_OPTIONS.map(opt => `
+      <label><input type="radio" name="status-${lvl}" value="${opt}"
+        ${expectedStatuses[lvl]===opt?'checked':''}
+        onchange="expectedStatuses['${lvl}']='${opt}'"> ${opt}</label>
+    `).join('');
+    const ignoreChecked = !expectedStatuses[lvl] || expectedStatuses[lvl]==='' ? 'checked' : '';
+    return `<div class="modal-row">
+      <div class="lvl-label"><span class="lvl-badge lvl-${lvl}">${lvl}</span></div>
+      <span style="font-size:0.72rem;color:#888;width:70px;flex-shrink:0;">${levelNames[lvl]}</span>
+      <div class="radio-group">
+        ${radios}
+        <label><input type="radio" name="status-${lvl}" value="" ${ignoreChecked}
+          onchange="expectedStatuses['${lvl}']=''"> 確認不要</label>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showStatusDialog(){
+  return new Promise((resolve) => {
+    statusDialogResolve = resolve;
+    buildStatusModalRows();
+    document.getElementById('status-modal').classList.add('show');
+  });
+}
+
+window.setAllStatuses = function(st){
+  ['CP','IO','LI','GP','CR'].forEach(lvl => {
+    expectedStatuses[lvl] = st;
+  });
+  buildStatusModalRows();
+};
+
+window.cancelStatusDialog = function(){
+  document.getElementById('status-modal').classList.remove('show');
+  if(statusDialogResolve){ statusDialogResolve(null); statusDialogResolve=null; }
+};
+
+window.confirmStatusDialog = function(){
+  document.getElementById('status-modal').classList.remove('show');
+  if(statusDialogResolve){ statusDialogResolve({...expectedStatuses}); statusDialogResolve=null; }
+};
+
+// ===== FILE READING =====
+function readAsArrayBuffer(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload  = e => resolve(new Uint8Array(e.target.result));
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function extractZip(fileBlob){
+  const data = await readAsArrayBuffer(fileBlob);
+  const zip  = await JSZip.loadAsync(data);
+  const files=[], promises=[];
+  zip.forEach((relPath,entry)=>{
+    if(entry.dir) return;
+    const name = relPath.split('/').pop();
+    if(name.startsWith('~$')||name.startsWith('.')) return;
+    promises.push((async()=>{
+      const blob = await entry.async('blob');
+      const nl = name.toLowerCase();
+      const type = nl.endsWith('.zip')?'zip': nl.endsWith('.csv')?'csv':'xlsx';
+      files.push({name, blob, type, path:relPath});
+    })());
+  });
+  await Promise.all(promises);
+  return files;
+}
+
+async function parseXlsx(blob){
+  const data = await readAsArrayBuffer(blob);
+  const wb   = XLSX.read(data,{type:'array',cellStyles:false,cellNF:false,cellDates:true});
+  const sheets={};
+  wb.SheetNames.forEach(sname=>{
+    const ws=wb.Sheets[sname];
+    if(!ws||!ws['!ref']){sheets[sname]=[];return;}
+    sheets[sname]=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+  });
+  return {sheetNames:wb.SheetNames, sheets};
+}
+
+function hasJapanese(text){
+  // 平假名、片假名、CJK 统一表意文字
+  return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text);
+}
+
+function detectAndDecodeCSV(uint8Arr){
+  // DV360 下载的 SDF CSV 常见编码：Shift_JIS / CP932 / EUC-JP / UTF-8
+  // 1) 先移除 BOM；2) 若 buffer 是合法 UTF-8 且包含 SDF 英文表头，直接采用 UTF-8；
+  // 3) 否则使用 encoding-japanese 检测；4) 检测失败时兜底尝试 Shift_JIS / EUC-JP。
+
+  if(typeof Encoding==='undefined'){
+    console.warn('[DV360] encoding.min.js 未加载，将按 UTF-8 解码；若日文乱码请检查脚本是否加载成功。');
+    return stripBomAndDecode(uint8Arr, 'utf-8');
+  }
+
+  const buf = stripBom(uint8Arr);
+  const headerRe = /\b(Io Id|Campaign Id|Line Item Id|Ad Group Id|Ad Id|Line Item Type|Ad Group Type)\b/i;
+
+  // 快速通道：合法 UTF-8 且包含 SDF 表头 => 直接返回
+  try {
+    const utf8 = new TextDecoder('utf-8', {fatal:true}).decode(buf);
+    if(headerRe.test(utf8)){
+      console.log('[DV360] CSV 编码检测: UTF8');
+      return utf8;
+    }
+  } catch(e){}
+
+  // 使用 encoding-japanese 检测
+  const detected = Encoding.detect(buf);
+  if(detected){
+    const d = detected.toUpperCase();
+    if(d!=='UTF8' && d!=='UNICODE' && d!=='ASCII'){
+      console.log('[DV360] CSV 编码检测:', detected);
+      return Encoding.convert(buf, {to:'UNICODE', from:detected, type:'string'});
+    }
+  }
+
+  // 兜底：高位字节存在时，按 Shift_JIS / EUC-JP 尝试，并以日文存在性作为回退依据
+  const hasHighBytes = buf.some(b => b > 127);
+  if(hasHighBytes){
+    const sjis = Encoding.convert(buf, {to:'UNICODE', from:'SJIS', type:'string'});
+    if(hasJapanese(sjis)){
+      console.log('[DV360] CSV 编码检测: SJIS (fallback)');
+      return sjis;
+    }
+    const eucjp = Encoding.convert(buf, {to:'UNICODE', from:'EUCJP', type:'string'});
+    if(hasJapanese(eucjp)){
+      console.log('[DV360] CSV 编码检测: EUCJP (fallback)');
+      return eucjp;
+    }
+  }
+
+  console.log('[DV360] CSV 编码检测: UTF8 (fallback)');
+  return stripBomAndDecode(buf, 'utf-8');
+}
+
+function stripBom(uint8Arr){
+  if(uint8Arr.length >= 3 && uint8Arr[0]===0xEF && uint8Arr[1]===0xBB && uint8Arr[2]===0xBF){
+    return uint8Arr.slice(3);
+  }
+  if(uint8Arr.length >= 2 && uint8Arr[0]===0xFF && uint8Arr[1]===0xFE){
+    return uint8Arr.slice(2);
+  }
+  if(uint8Arr.length >= 2 && uint8Arr[0]===0xFE && uint8Arr[1]===0xFF){
+    return uint8Arr.slice(2);
+  }
+  return uint8Arr;
+}
+
+function stripBomAndDecode(uint8Arr, encoding){
+  const buf = stripBom(uint8Arr);
+  return new TextDecoder(encoding, {fatal:false}).decode(buf);
+}
+
+async function parseCsv(blob){
+  const data = await readAsArrayBuffer(blob);
+  const csvText = detectAndDecodeCSV(data);
+  const wb = XLSX.read(csvText, {type:'string'});
+  if(!wb.SheetNames.length) return [];
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  if(!ws||!ws['!ref']) return [];
+  return XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+}
+
+// ===== MEDIA TYPE =====
+function detectMediaType(sheetNames){
+  const all = sheetNames.join(' ');
+  if(all.includes('TrueView')||all.includes('Youtube')||all.includes('VRC')||
+     all.includes('VVC')||all.includes('運用者')||all.includes('業推')) return 'youtube';
+  if(all.includes('OTT')||all.includes('Netflix')) return 'ott';
+  if(all.includes('Display')||all.includes('DV360')||all.includes('設定シート')) return 'display';
+  return 'youtube';
+}
+
+// ===== YOUTUBE SETTING PARSER =====
+function parseYoutubeSetting(sheets, sheetNames, fileName){
+  const cpList=[],ioList=[],liList=[],gpList=[],crList=[];
+
+  // ── 運用者用設定シート ──
+  const opSheet = sheetNames.find(n=>
+    n.includes('運用者用')||(n.includes('設定シート')&&!n.includes('PMP')&&!n.includes('OTT')&&!n.includes('複製')));
+  let cpName='',cpGoal='',cpKpi='',cpKpiVal='',cpStartDate='',cpEndDate='';
+  const opIORows=[];
+
+  if(opSheet && sheets[opSheet]){
+    const rows=sheets[opSheet];
+    for(let i=0;i<Math.min(25,rows.length);i++){
+      const r=rows[i];
+      const label=String(r[1]||'').trim();
+      const val  =String(r[3]||'').trim();
+      if(label.includes('キャンペーン名')) cpName=val;
+      if(label.includes('全体目標'))       cpGoal=val;
+      if(label.includes('目標')&&!label.includes('全体')){ cpKpi=val; cpKpiVal=String(r[4]||'').trim(); }
+      // CP開始日・終了日: D20/E20付近、ラベルはB列
+      if(label.includes('開始日')||label.includes('掲載開始')) cpStartDate=val;
+      if(label.includes('終了日')||label.includes('掲載終了')) cpEndDate=String(r[4]||'').trim();
+    }
+    if(cpName) cpList.push({name:cpName,sheet:opSheet,fileName,fields:{goal:cpGoal,kpi:cpKpi,kpiVal:cpKpiVal,startDate:cpStartDate,endDate:cpEndDate}});
+
+    // IO テーブルヘッダ検索
+    let ioHdr=-1;
+    for(let i=20;i<Math.min(40,rows.length);i++){
+      const rstr=rows[i].join(' ');
+      if(rstr.includes('IO名')&&(rstr.includes('目標')||rstr.includes('予算'))){ioHdr=i;break;}
+    }
+    if(ioHdr>=0){
+      const hdr=rows[ioHdr];
+      const col={no:1,ioName:2,ioType:3,goal:4,budget:5,budgetPct:6,
+                 startDate:9,startTime:10,endDate:11,endTime:12,
+                 pacing:14,kpi:16,kpiVal:17,optimize:18,fq:19,margin:20,quality:21,
+                 liName:23,typeName:24};
+      hdr.forEach((h,i)=>{
+        const hs=String(h||'');
+        if(hs.includes('IO名')&&!hs.includes('タイプ'))     col.ioName=i;
+        if(hs.includes('IOタイプ'))                          col.ioType=i;
+        if((hs.includes('目標')||hs.includes('目的'))&&i<10) col.goal=i;
+        if(hs.includes('全体予算'))                          col.budget=i;
+        if(hs.includes('予算')&&hs.includes('％'))           col.budgetPct=i;
+        if(hs.includes('開始日')&&hs.includes('時間'))       col.startDate=i;
+        if(hs.includes('開始')&&hs.includes('時間')&&!hs.includes('日')) col.startTime=i;
+        if(hs.includes('終了日')&&hs.includes('時間'))       col.endDate=i;
+        if(hs.includes('終了')&&hs.includes('時間')&&!hs.includes('日')) col.endTime=i;
+        if(hs.includes('ペース')&&!hs.includes('予算'))      col.pacing=i;
+        if(hs.includes('KPI')&&i>10)                        col.kpi=i;
+        if(hs.includes('最適化'))                            col.optimize=i;
+        if(hs.includes('FQ')||hs.includes('フリークエンシー')) col.fq=i;
+        if(hs.includes('マージン'))                          col.margin=i;
+        if(hs.includes('品質'))                              col.quality=i;
+        if(hs.includes('広告申込情報名'))                    col.liName=i;
+        if(hs.includes('タイプ')&&!hs.includes('サブ')&&i>20) col.typeName=i;
+      });
+
+      // ── 修正5: IO ごとに最初の行のフィールドを確定して保存 ──
+      let lastIOName='';
+      let lastIOFields={};
+      for(let i=ioHdr+1;i<rows.length;i++){
+        const r=rows[i];
+        const noVal  =String(r[col.no]||'').trim();
+        let   ioName =String(r[col.ioName]||'').trim();
+        if(!noVal||!/^\d+$/.test(noVal)) continue;
+        if(!ioName) ioName=lastIOName;
+        if(!ioName) continue;
+        // ── テンプレート行を除外: IO名に「-_-_」や「▼選択」が含まれる行はスキップ ──
+        if(ioName.includes('-_-_')||ioName.includes('▼選択')||/^[-_]+$/.test(ioName)) continue;
+
+        // IO が変わったときだけフィールドを更新
+        if(ioName!==lastIOName){
+          lastIOFields={
+            ioType   :String(r[col.ioType]||'').trim(),
+            goal     :String(r[col.goal]||'').trim(),
+            budget   :String(r[col.budget]||'').trim(),
+            budgetPct:String(r[col.budgetPct]||'').trim(),
+            startDate:String(r[col.startDate]||'').trim(),
+            startTime:String(r[col.startTime]||'').trim(),
+            endDate  :String(r[col.endDate]||'').trim(),
+            endTime  :String(r[col.endTime]||'').trim(),
+            pacing   :String(r[col.pacing]||'').trim(),
+            kpi      :String(r[col.kpi]||'').trim(),
+            kpiVal   :String(r[col.kpiVal]||'').trim(),
+            optimize :String(r[col.optimize]||'').trim(),
+            fq       :String(r[col.fq]||'').trim(),
+            margin   :String(r[col.margin]||'').trim(),
+            quality  :String(r[col.quality]||'').trim(),
+            typeName :String(r[col.typeName]||'').trim(),
+          };
+          lastIOName=ioName;
+        }
+
+        const opLiName=String(r[col.liName]||'').trim();
+        opIORows.push({ioName, opLiName, fields:lastIOFields});
+      }
+    }
+  }
+
+  // IO マップ構築
+  const ioMap       =new Map();
+  const opLiToIOMap =new Map();
+  opIORows.forEach(({ioName,opLiName,fields})=>{
+    if(!ioMap.has(ioName)){
+      ioMap.set(ioName,{ioObj:{name:ioName,cpName,sheet:opSheet,fileName,fields},liNames:[]});
+    }
+    if(opLiName&&opLiName!=='FALSE'){
+      ioMap.get(ioName).liNames.push(opLiName);
+      opLiToIOMap.set(opLiName,ioName);
+    }
+  });
+  ioMap.forEach(v=>ioList.push(v.ioObj));
+
+  // ── 営業・業推記入用シート ──
+  const salesSheet=sheetNames.find(n=>n.includes('営業')||n.includes('業推')||n.includes('記入欄'));
+  if(salesSheet && sheets[salesSheet]){
+    const rows=sheets[salesSheet];
+    let hdrRow=-1;
+    for(let i=0;i<Math.min(30,rows.length);i++){
+      if(rows[i].join(' ').includes('J.No')&&rows[i].join(' ').includes('配信目的')){hdrRow=i;break;}
+    }
+    if(hdrRow>=0){
+      const hdr=rows[hdrRow];
+      const col={io:4,seg:5,videoType:6,targeting:7,duration:8,material:9,
+                 budgetGross:10,budgetPct:11,pacing:12,brandLift:13,
+                 timeSpec:14,startDate:15,startTime:16,endDate:17,endTime:18,
+                 billing:19,bidCap:20,typeName:21,inventory:22,gvp:23,googleTv:24};
+      hdr.forEach((h,i)=>{
+        const hs=String(h||'');
+        if(hs.includes('IO名'))                                   col.io=i;
+        if(hs.includes('セグメント内容'))                    col.seg=i;
+        if(hs.includes('動画タイプ'))                             col.videoType=i;
+        if(hs.includes('ターゲティング')&&!hs.includes('カテゴリ')) col.targeting=i;
+        if(hs.includes('秒数'))                                   col.duration=i;
+        if(hs.includes('素材'))                                   col.material=i;
+        if(hs.includes('予算')&&hs.includes('グロス'))            col.budgetGross=i;
+        if(hs.includes('予算')&&hs.includes('％'))               col.budgetPct=i;
+        if(hs.includes('ペース'))                                 col.pacing=i;
+        if(hs.includes('ブランドリフト'))                         col.brandLift=i;
+        if(hs.includes('時間指定'))                               col.timeSpec=i;
+        if(hs.includes('開始日'))                               col.startDate=i;
+        if(hs.includes('開始')&&hs.includes('時間')&&!hs.includes('日')) col.startTime=i;
+        if(hs.includes('終了日'))                               col.endDate=i;
+        if(hs.includes('終了')&&hs.includes('時間')&&!hs.includes('日')) col.endTime=i;
+        if(hs.includes('課金'))                                   col.billing=i;
+        if(hs.includes('入札'))                                   col.bidCap=i;
+        if(hs.includes('タイプ')&&i>15)                           col.typeName=i;
+        if(hs.includes('広告枠')||hs.includes('ソース'))          col.inventory=i;
+        if(hs.includes('GVP'))                                    col.gvp=i;
+        if(hs.includes('GoogleTV')||hs.includes('Google TV'))     col.googleTv=i;
+      });
+
+      for(let i=hdrRow+1;i<rows.length;i++){
+        const r=rows[i];
+        const idxVal    =String(r[0]||'').trim();
+        if(!idxVal||!/^\d+$/.test(idxVal)) continue;
+        const salesIOName=String(r[col.io]||'').trim();
+        const segName    =String(r[col.seg]||'').trim();
+        if(!salesIOName&&!segName) continue;
+
+        // opLiName とのマッチ
+        let matchedOpLiName=null;
+        const candidates=salesIOName&&ioMap.has(salesIOName)
+          ?[ioMap.get(salesIOName)]:[...ioMap.values()];
+        for(const ioData of candidates){
+          for(const opLiName of ioData.liNames){
+            if(segName&&opLiName&&(
+              opLiName.includes(segName)||segName.includes(opLiName)||
+              normStr(opLiName).includes(normStr(segName))||normStr(segName).includes(normStr(opLiName))
+            )){ matchedOpLiName=opLiName; break; }
+          }
+          if(matchedOpLiName) break;
+        }
+
+        // ── 修正: matchedOpLiName（SDFと一致する完全名）を優先、segNameは補助表示用 ──
+        const primaryLIName =matchedOpLiName||segName||`LI_${idxVal}`;
+        const displaySegName =segName||matchedOpLiName||'';
+        // ── 修正: 運用者用IO名を優先（SDF IO名と一致するため）──
+        const primaryIOName =(matchedOpLiName?opLiToIOMap.get(matchedOpLiName):'')||salesIOName||'';
+
+        // ── 修正5: ioName が空でも name が同じなら重複とみなす ──
+        if(liList.find(l=>l.name===primaryLIName)) continue;
+
+        liList.push({
+          name:primaryLIName, ioName:primaryIOName,
+          sheet:salesSheet,   fileName,
+          fields:{
+            segmentName:segName,
+            videoType  :String(r[col.videoType]||'').trim(),
+            targeting  :String(r[col.targeting]||'').trim(),
+            duration   :String(r[col.duration]||'').trim(),
+            material   :String(r[col.material]||'').trim(),
+            budgetGross:String(r[col.budgetGross]||'').trim(),
+            budgetPct  :String(r[col.budgetPct]||'').trim(),
+            pacing     :String(r[col.pacing]||'').trim(),
+            brandLift  :String(r[col.brandLift]||'').trim(),
+            timeSpec   :String(r[col.timeSpec]||'').trim(),
+            startDate  :String(r[col.startDate]||'').trim(),
+            startTime  :String(r[col.startTime]||'').trim(),
+            endDate    :String(r[col.endDate]||'').trim(),
+            endTime    :String(r[col.endTime]||'').trim(),
+            billing    :String(r[col.billing]||'').trim(),
+            bidCap     :String(r[col.bidCap]||'').trim(),
+            typeName   :String(r[col.typeName]||'').trim(),
+            inventory  :String(r[col.inventory]||'').trim(),
+            gvp        :String(r[col.gvp]||'').trim(),
+            googleTv   :String(r[col.googleTv]||'').trim(),
+          }
+        });
+      }
+    }
+  }
+
+  // ── 入稿物管理表 ──
+  for(const sname of sheetNames){
+    if(!sname.includes('入稿物管理表')) continue;
+    const rows=sheets[sname];
+    if(!rows||rows.length<6) continue;
+    let crHdr=-1;
+    for(let i=3;i<Math.min(10,rows.length);i++){
+      const rstr=rows[i].join(' ');
+      if((rstr.includes('IO')||rstr.includes('オーダー'))&&
+         (rstr.includes('LI')||rstr.includes('広告申込')||rstr.includes('グループ'))){crHdr=i;break;}
+    }
+    if(crHdr<0) continue;
+    const hdr=rows[crHdr];
+    const col={io:3,li:4,gp:5,cr:6,startDate:7,endDate:8,videoUrl:9,landingUrl:11,displayUrl:10,cta:15,headline:17};
+    hdr.forEach((h,i)=>{
+      const hs=String(h||'');
+      if(hs.includes('オーダー')||(hs==='IO'&&!hs.includes('タイプ')))  col.io=i;
+      if(hs.includes('申込情報')||hs==='LI')                            col.li=i;
+      if(hs.includes('グループ')||hs==='GP'||hs.includes('広告グループ')) col.gp=i;
+      if(hs.includes('広告名')||(hs.includes('タイトル')&&!hs.includes('管理'))) col.cr=i;
+      if(hs.includes('開始日')||hs.includes('掲載開始'))  col.startDate=i;
+      if(hs.includes('終了日')||hs.includes('掲載終了'))  col.endDate=i;
+      if(hs.includes('動画URL')||hs.includes('Youtube動画')) col.videoUrl=i;
+      if(hs.includes('入稿用URL')||hs.includes('ランディング')) col.landingUrl=i;
+      if(hs.includes('表示URL')||hs.includes('第一ドメイン')) col.displayUrl=i;
+      if(hs.includes('促すフレーズ')||hs.includes('CTA'))  col.cta=i;
+      if((hs.includes('見出し')||hs.includes('タイトル'))&&i>10) col.headline=i;
+    });
+    for(let i=crHdr+1;i<rows.length;i++){
+      const r=rows[i];
+      const crIoName=String(r[col.io]||'').trim();
+      const crLiName=String(r[col.li]||'').trim();
+      const gpName  =String(r[col.gp]||'').trim();
+      const crName  =String(r[col.cr]||'').trim();
+      if(!crName) continue;
+      if(crName.includes('見本')||crName.includes('例）')||crName.includes('※')) continue;
+      let matchedLiName=crLiName;
+      if(crLiName&&!liList.find(l=>l.name===crLiName)){
+        for(const l of liList){
+          if(normStr(l.name).includes(normStr(crLiName))||normStr(crLiName).includes(normStr(l.name))){
+            matchedLiName=l.name; break;
+          }
+        }
+      }
+      crList.push({
+        name:crName, ioName:crIoName, lpName:matchedLiName, gpName,
+        sheet:sname, fileName,
+        fields:{
+          startDate :String(r[col.startDate]||'').trim(),
+          endDate   :String(r[col.endDate]||'').trim(),
+          videoUrl  :String(r[col.videoUrl]||'').trim(),
+          landingUrl:String(r[col.landingUrl]||'').trim(),
+          displayUrl:String(r[col.displayUrl]||'').trim(),
+          cta       :String(r[col.cta]||'').trim(),
+          headline  :String(r[col.headline]||'').trim(),
+        }
+      });
+    }
+  }
+
+  return {cpList,ioList,liList,gpList,crList};
+}
+
+// ===== SDF DOWNLOAD PARSER =====
+function parseSdfData(csvFiles){
+  const cpList=[],ioList=[],liList=[],gpList=[],crList=[];
+  for(const {name,rows} of csvFiles){
+    if(!rows||rows.length<2) continue;
+    const hdr=rows[0].map(h=>String(h||'').trim());
+    const base=name.replace(/^SDF-/,'').replace(/\.csv$/i,'');
+    for(let i=1;i<rows.length;i++){
+      const r=rows[i];
+      if(!r||!r.some(c=>c&&c.trim())) continue;
+      const obj={};
+      hdr.forEach((h,j)=>{obj[h]=r[j]!==undefined?String(r[j]).trim():'';});
+      if(base==='Campaigns'){
+        cpList.push({name:obj['Name']||'',id:obj['Campaign Id']||'',fields:{
+          status:obj['Status']||'',goal:obj['Campaign Goal']||'',
+          goalKpi:obj['Campaign Goal KPI']||'',goalKpiVal:obj['Campaign Goal KPI Value']||'',
+          budget:obj['Campaign Budget']||'',startDate:obj['Campaign Start Date']||'',endDate:obj['Campaign End Date']||'',
+          creativeTypes:obj['Creative Types']||'',
+          frequencyEnabled:obj['Frequency Enabled']||'',frequencyExposures:obj['Frequency Exposures']||'',
+          frequencyPeriod:obj['Frequency Period']||'',
+        }});
+      } else if(base==='InsertionOrders'){
+        ioList.push({name:obj['Name']||'',id:obj['Io Id']||'',cpId:obj['Campaign Id']||'',fields:{
+          status:obj['Status']||'',ioType:obj['Io Type']||'',ioSubtype:obj['Io Subtype']||'',
+          pacing:obj['Pacing']||'',pacingRate:obj['Pacing Rate']||'',pacingAmount:obj['Pacing Amount']||'',
+          frequencyEnabled:obj['Frequency Enabled']||'',frequencyExposures:obj['Frequency Exposures']||'',
+          frequencyPeriod:obj['Frequency Period']||'',kpiType:obj['Kpi Type']||'',kpiValue:obj['Kpi Value']||'',
+          budgetType:obj['Budget Type']||'',budgetSegments:obj['Budget Segments']||'',
+          fees:obj['Fees']||'',brandSafety:obj['Brand Safety Sensitivity Setting']||'',
+          startDate:obj['Io Start Date']||'',endDate:obj['Io End Date']||'',
+        }});
+      } else if(base==='LineItems'){
+        liList.push({name:obj['Name']||'',id:obj['Line Item Id']||'',ioId:obj['Io Id']||'',ioName:obj['Io Name']||'',fields:{
+          type:obj['Type']||'',subtype:obj['Subtype']||'',status:obj['Status']||'',
+          startDate:obj['Start Date']||'',endDate:obj['End Date']||'',
+          budgetType:obj['Budget Type']||'',budgetAmount:obj['Budget Amount']||'',
+          pacing:obj['Pacing']||'',pacingRate:obj['Pacing Rate']||'',pacingAmount:obj['Pacing Amount']||'',
+          frequencyEnabled:obj['Frequency Enabled']||'',frequencyExposures:obj['Frequency Exposures']||'',
+          frequencyPeriod:obj['Frequency Period']||'',
+          bidStrategyType :obj['TrueView Bid Strategy Type']||obj['Bid Strategy Type']||'',
+          bidStrategyValue:obj['TrueView Bid Strategy Value']||obj['Bid Strategy Value']||'',
+          videoAdFormats  :obj['TrueView Video Ad Formats']||'',
+          inventorySource :obj['TrueView Inventory Source Targeting']||obj['Inventory Source Targeting - Include']||'',
+          deviceTargeting :obj['Device Targeting - Include']||'',
+          geographyTargeting:obj['Geography Targeting - Include']||'',
+          languageTargeting :obj['Language Targeting - Include']||'',
+          audienceTargeting :obj['Audience Targeting - Include']||'',
+          brandSafety       :obj['Brand Safety Sensitivity Setting']||'',
+        }});
+      } else if(base==='AdGroups'){
+        gpList.push({name:obj['Name']||'',id:obj['Ad Group Id']||'',liId:obj['Line Item Id']||'',liName:obj['Line Item Name']||'',fields:{
+          status:obj['Status']||'',videoAdFormat:obj['Video Ad Format']||'',bidCost:obj['Bid Cost']||'',
+          demographicGender:obj['Demographic Targeting Gender']||'',demographicAge:obj['Demographic Targeting Age']||'',
+          demographicIncome:obj['Demographic Targeting Household Income']||'',
+          demographicParental:obj['Demographic Targeting Parental Status']||'',
+          optimizedTargeting:obj['Optimized Targeting']||'',
+          audienceInclude:obj['Audience Targeting - Include']||'',audienceExclude:obj['Audience Targeting - Exclude']||'',
+          geographyInclude:obj['Geography Targeting - Include']||'',geographyExclude:obj['Geography Targeting - Exclude']||'',
+          languageTargeting:obj['Language Targeting - Include']||'',
+        }});
+      } else if(base==='AdGroupAds'){
+        crList.push({name:obj['Name']||'',id:obj['Ad Id']||'',gpId:obj['Ad Group Id']||'',gpName:obj['Ad Group Name']||'',fields:{
+          status:obj['Status']||'',adType:obj['Ad Type']||'',videoId:obj['Video Id']||'',
+          displayUrl:obj['Display URL']||'',landingPageUrl:obj['Landing Page URL']||'',
+          callToAction:obj['Call to Action']||'',headline:obj['Headline']||'',
+          description1:obj['Description 1']||'',description2:obj['Description 2']||'',businessName:obj['Business Name']||'',
+        }});
+      }
+    }
+  }
+  return {cpList,ioList,liList,gpList,crList};
+}
+
+// ===== RUN CHECK =====
+async function runCheck(){
+  if(!uploadedFiles.length){ alert('ファイルをアップロードしてください'); return; }
+
+  // ステータスダイアログ表示 → ユーザーが各階層の想定ステータスを選択
+  const statusResult = await showStatusDialog();
+  console.log('[DV360] statusDialog result:', statusResult);
+  if(statusResult === null){ console.log('[DV360] ステータスダイアログ キャンセル'); return; } // キャンセル
+  expectedStatuses = statusResult;
+  console.log('[DV360] expectedStatuses set:', expectedStatuses);
+
+  const progress=document.getElementById('progress');
+  const log=(msg)=>{console.log('[DV360]',msg);progress.textContent='⏳ '+msg;};
+
+  progress.classList.add('show');
+  ['result-table-wrap','stats-bar','filter-bar','level-tab-bar'].forEach(id=>
+    document.getElementById(id).classList.remove('show'));
+
+  try{
+    // Step 1: 解凍
+    log('ZIP解凍中...');
+    const allFiles=[];
+    for(const uf of uploadedFiles){
+      if(uf.type==='zip'){
+        const extracted=await extractZip(uf.blob);
+        log(` 解凍: ${uf.name} → ${extracted.length}ファイル`);
+        extracted.forEach(f=>f.parentZip=uf.name);
+        allFiles.push(...extracted);
+      } else {
+        allFiles.push({name:uf.name,blob:uf.blob,type:uf.type,path:uf.name});
+      }
+    }
+    console.log('[DV360] allFiles:',allFiles.length,'件',
+      allFiles.map(f=>`${f.type}:${f.name}`));
+
+    // Step 2: ファイル分類
+    log('ファイル読み込み中...');
+    settingFiles=[];
+    const csvFiles=[];
+    let xlsxCount=0, csvCount=0, innerZipCount=0;
+
+    for(const f of allFiles){
+      if(f.type==='xlsx'){
+        try{
+          const parsed=await parseXlsx(f.blob);
+          settingFiles.push({...parsed,fileName:f.name,path:f.path,parentZip:f.parentZip});
+          xlsxCount++;
+          console.log('[DV360] XLSX解析:',f.name,'sheets=',parsed.sheetNames.join(','));
+        }catch(e){console.error('[DV360] XLSX解析失敗:',f.name,e);}
+      } else if(f.type==='csv'){
+        try{
+          const rows=await parseCsv(f.blob);
+          csvFiles.push({name:f.name,rows,path:f.path||'',parentZip:f.parentZip||''});
+          csvCount++;
+          console.log('[DV360] CSV解析:',f.name,'rows=',rows.length);
+        }catch(e){console.error('[DV360] CSV解析失敗:',f.name,e);}
+      } else if(f.type==='zip'){
+        // 内側のZIP（SDF.zip等）
+        try{
+          const sdfFiles=await extractZip(f.blob);
+          innerZipCount++;
+          console.log('[DV360] 内側ZIP解凍:',f.name,'→',sdfFiles.length,'ファイル','path:',f.path);
+          for(const sf of sdfFiles){
+            if(sf.type==='csv'){
+              try{
+                const rows=await parseCsv(sf.blob);
+                csvFiles.push({name:sf.name,rows,path:f.path||'',parentZip:f.parentZip||''});
+                csvCount++;
+                console.log('[DV360]   CSV解析:',sf.name,'rows=',rows.length);
+              }catch(e){console.error('[DV360]   CSV解析失敗:',sf.name,e);}
+            }
+          }
+        }catch(e){console.error('[DV360] 内側ZIP解凍失敗:',f.name,e);}
+      }
+    }
+
+    log(`XLSX:${xlsxCount}件 CSV:${csvCount}件 内側ZIP:${innerZipCount}件`);
+
+    if(!settingFiles.length) throw new Error('設定表（.xlsx）が見つかりません。アップロードしたファイルに .xlsx が含まれているか確認してください');
+    if(!csvFiles.length)     throw new Error('ダウンロードデータ（CSV/SDF）が見つかりません。SDF.zip が含まれているか確認してください');
+
+    // Step 3: メディア判定 & 設定解析
+    const allSheetNames=settingFiles.flatMap(sf=>sf.sheetNames);
+    mediaType=detectMediaType(allSheetNames);
+    log(`メディア判定: ${mediaType} / 設定ファイル:${settingFiles.length}件 / CSV:${csvFiles.length}件`);
+
+    // ── メディアタイプに応じてSDF CSVをフィルタ（異なる媒体のデータ混入を防ぐ）──
+    const mediaFolder=mediaType==='youtube'?'youtube':mediaType==='ott'?'ott':mediaType==='display'?'display':'';
+    let filteredCsvFiles=mediaFolder
+      ? csvFiles.filter(cf=>{
+          const p=(cf.path||'').toLowerCase();
+          // パス情報があれば媒体フォルダでフィルタ、なければ（個別アップロード時）全件通す
+          if(!p) return true;
+          if(p.includes('/'+mediaFolder+'/')||p.startsWith(mediaFolder+'/')) return true;
+          // 親ZIP名にも媒体名が含まれているか
+          const pz=(cf.parentZip||'').toLowerCase();
+          if(pz&&pz.includes(mediaFolder)) return true;
+          // SDFファイル名にメディアフォルダ情報がない場合は通す（フラット構造対応）
+          if(!p.includes('/')&&!pz.includes('/')) return true;
+          return false;
+        })
+      : csvFiles;
+    // フィルタ結果が0件の場合、全件採用（フォールバック）
+    if(filteredCsvFiles.length===0 && csvFiles.length>0){
+      console.log('[DV360] SDFフィルタ結果が0件のため全件採用にフォールバック');
+      filteredCsvFiles.push(...csvFiles);
+    }
+    if(filteredCsvFiles.length!==csvFiles.length){
+      console.log('[DV360] SDFフィルタ:',mediaFolder,'→',filteredCsvFiles.length,'/',csvFiles.length,'件を採用');
+    }
+
+    let allSettingCP=[],allSettingIO=[],allSettingLI=[],allSettingGP=[],allSettingCR=[];
+    for(const sf of settingFiles){
+      if(mediaType==='youtube'){
+        const p=parseYoutubeSetting(sf.sheets,sf.sheetNames,sf.fileName);
+        console.log('[DV360] 設定解析:',sf.fileName,
+          `CP=${p.cpList.length} IO=${p.ioList.length} LI=${p.liList.length} GP=${p.gpList.length} CR=${p.crList.length}`);
+        allSettingCP.push(...p.cpList);
+        allSettingIO.push(...p.ioList);
+        allSettingLI.push(...p.liList);
+        allSettingGP.push(...p.gpList);
+        allSettingCR.push(...p.crList);
+      }
+    }
+    console.log('[DV360] 設定 合計:',
+      `CP=${allSettingCP.length} IO=${allSettingIO.length} LI=${allSettingLI.length} GP=${allSettingGP.length} CR=${allSettingCR.length}`);
+
+    // Step 4: SDF解析
+    const sdfData=parseSdfData(filteredCsvFiles);
+    console.log('[DV360] SDF 合計:',
+      `CP=${sdfData.cpList.length} IO=${sdfData.ioList.length} LI=${sdfData.liList.length} GP=${sdfData.gpList.length} CR=${sdfData.crList.length}`);
+
+    // Step 5: マッチング & 比較
+    log('マッチング・比較中...');
+    const result=buildComparisonTree(
+      {cp:allSettingCP,io:allSettingIO,li:allSettingLI,gp:allSettingGP,cr:allSettingCR},
+      {cp:sdfData.cpList,io:sdfData.ioList,li:sdfData.liList,gp:sdfData.gpList,cr:sdfData.crList},
+      expectedStatuses
+    );
+    console.log('[DV360] Tree roots:',result.roots.length,' DL only:',result.dlOnly.length);
+
+    allComparisonData=result;
+    treeRoots=result.roots;
+    progress.classList.remove('show');
+    renderAll();
+  } catch(err){
+    progress.textContent='❌ エラー: '+err.message;
+    console.error('[DV360]',err);
+  }
+}
+
+// ===== COMPARISON ENGINE =====
+function normDate(s){
+  if(!s) return '';
+  const t=String(s).trim();
+  let m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  m=t.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+  if(/^\d{5}$/.test(t)){
+    try{
+      const d=new Date((parseInt(t)-25569)*86400*1000);
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+    }catch(e){}
+  }
+  return t;
+}
+
+function normNum(s){
+  if(!s) return '';
+  const t=String(s).replace(/[,，¥￥$€%\s]/g,'').trim();
+  const f=parseFloat(t);
+  return isNaN(f)?t.toLowerCase():String(Math.round(f*100)/100);
+}
+
+// ── TrueView 比較用 正規化ヘルパー ──
+function normBilling(v){
+  if(!v) return '';
+  const s=normStr(v);
+  if(s.includes('cpm')) return 'cpm';
+  if(s.includes('cpv')) return 'cpv';
+  if(s.includes('cpa')) return 'cpa';
+  return s;
+}
+function normBidStrategy(v){
+  if(!v) return '';
+  const s=normStr(v);
+  if(s.includes('target cpm')||s.includes('tcpm')) return 'targetcpm';
+  if(s.includes('target cpv')||s.includes('tcpv')) return 'targetcpv';
+  if(s.includes('maximize')||s.includes('最大化')) return 'maximize';
+  return s;
+}
+function extractYoutubeVideoId(url){
+  if(!url) return '';
+  const s=String(url).trim();
+  let m=s.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+  if(m) return m[1];
+  m=s.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+  if(m) return m[1];
+  m=s.match(/embed\/([a-zA-Z0-9_-]+)/);
+  if(m) return m[1];
+  if(/^[a-zA-Z0-9_-]{11}$/.test(s)) return s;
+  return s;
+}
+// ── 日英マッピング正規化ヘルパー ──
+function normPacing(v){
+  if(!v) return '';
+  const s=normStr(v);
+  if(s.includes('even')||s.includes('均等')) return 'even';
+  if(s.includes('flight')||s.includes('掲載期間')||s.includes('フライト')) return 'flight';
+  if(s.includes('asap')||s.includes('できるだけ早く')) return 'asap';
+  return s;
+}
+function normVideoType(v){
+  if(!v) return '';
+  const s=normStr(v);
+  if(s.includes('vrc')&&s.includes('non')) return 'vrc_nonskippable';
+  if(s.includes('vrc')&&(s.includes('skip')||s.includes('(s)'))) return 'vrc_skippable';
+  if(s.includes('trueview')&&s.includes('reach')) return 'vrc_skippable';
+  if(s.includes('vvc')||s.includes('viewable')) return 'vvc';
+  if(s.includes('bumper')) return 'bumper';
+  if(s.includes('trueview')&&s.includes('action')) return 'vrc_action';
+  if(s.includes('ytn')||s.includes('ネクスト')) return 'ytn';
+  return s;
+}
+function normIoType(v){
+  if(!v) return '';
+  const s=normStr(v);
+  if(s.includes('standard')||s.includes('スタンダード')||s.includes('標準')) return 'standard';
+  if(s.includes('guaranteed')||s.includes('保証')) return 'guaranteed';
+  return s;
+}
+function normInventory(v){
+  if(!v) return '';
+  const s=normStr(v).replace(/[;，、\s]+$/,'').replace(/[;，、]/g,',');
+  if(s.includes('youtube')) return 'youtube';
+  return s;
+}
+function normKpi(v){
+  if(!v) return '';
+  const s=normStr(v);
+  if(s.includes('cpm')||s.includes('インプレッション単価')||s.includes('imp単価')) return 'cpm';
+  if(s.includes('cpv')||s.includes('視聴単価')) return 'cpv';
+  if(s.includes('cpa')||s.includes('コンバージョン単価')||s.includes('cv単価')) return 'cpa';
+  if(s.includes('viewability')||s.includes('ビューアビリティ')) return 'viewability';
+  if(s.includes('reach')||s.includes('リーチ')) return 'reach';
+  return s;
+}
+function normGoal(v){
+  if(!v) return '';
+  const s=normStr(v);
+  if(s.includes('awareness')||s.includes('認知度向上')||s.includes('認知')) return 'awareness';
+  if(s.includes('consideration')||s.includes('関心')||s.includes('検討')) return 'consideration';
+  if(s.includes('action')||s.includes('コンバージョン')||s.includes('行動')) return 'action';
+  return s;
+}
+function formatDateTime(d,t){
+  const dd=normDate(d);
+  if(!dd) return '';
+  const tt=String(t||'').trim().replace(/\d{4}-\d{2}-\d{2}\s*/,'');
+  return tt?dd+' '+tt:dd;
+}
+
+function compareField(sVal,dVal){
+  const sv=String(sVal||'').trim(), dv=String(dVal||'').trim();
+  if(!sv&&!dv) return 'ok';
+  if(!sv||!dv) return 'warning';
+  if(normStr(sv)===normStr(dv)) return 'ok';
+  if(normNum(sv)&&normNum(dv)&&normNum(sv)===normNum(dv)) return 'ok';
+  const sd=normDate(sv),dd=normDate(dv);
+  if(sd&&dd&&sd===dd) return 'ok';
+  return 'mismatch';
+}
+
+function compareCP(s,d,expectedStatus){
+  console.log('[DV360] compareCP called: s=',s?s.name:'null','d=',d?d.name:'null','expectedStatus=',expectedStatus);
+  if(!s||!d) return [];
+  const sf=s.fields||{}, df=d.fields||{};
+  const items=[];
+
+  // 1. ステータス — ユーザー選択とDLデータを比較
+  if(expectedStatus && expectedStatus!==''){
+    items.push({
+      label:'ステータス',
+      sVal:'想定: '+expectedStatus,
+      dVal:df.status||'',
+      result: compareField(expectedStatus, df.status||'')
+    });
+  }
+
+  // 2. 全体目標 — 日英マッピング
+  items.push({
+    label:'全体目標',
+    sVal:sf.goal||'',
+    dVal:df.goal||'',
+    result: compareField(normGoal(sf.goal), normGoal(df.goal))
+  });
+
+  // 3. Campaign Goal KPI — 設定表D19付近 vs SDF G列
+  items.push({
+    label:'Campaign Goal KPI',
+    sVal:sf.kpi||'',
+    dVal:df.goalKpi||'',
+    result: compareField(normKpi(sf.kpi), normKpi(df.goalKpi))
+  });
+
+  // 4. Campaign Goal KPI Value — 設定表E19付近 vs SDF H列
+  items.push({
+    label:'Campaign Goal KPI Value',
+    sVal:sf.kpiVal||'',
+    dVal:df.goalKpiVal||'',
+    result: compareField(normNum(sf.kpiVal), normNum(df.goalKpiVal))
+  });
+
+  // 5. Creative Types — デフォルト値 display; video; audio;
+  const defaultCreative='display; video; audio;';
+  const dCreativeNorm=normStr(df.creativeTypes||'').replace(/\s+/g,' ').trim();
+  const defaultNorm=normStr(defaultCreative).replace(/\s+/g,' ').trim();
+  const creativeOk=(dCreativeNorm===defaultNorm)||(!df.creativeTypes);
+  items.push({
+    label:'Creative Types',
+    sVal:'(デフォルト) '+defaultCreative,
+    dVal:df.creativeTypes||'(空欄)',
+    result: creativeOk?'ok':'mismatch'
+  });
+
+  // 6. 開始日 — 設定表D20 vs SDF K列
+  const sStart=normDate(sf.startDate);
+  const dStart=normDate(df.startDate);
+  items.push({
+    label:'開始日',
+    sVal:sf.startDate||'',
+    dVal:df.startDate||'',
+    result: compareField(sStart, dStart)
+  });
+
+  // 7. 終了日 — 特殊: 管理画面不設定のため、DLに日付があれば❌
+  const dEnd=df.endDate||'';
+  items.push({
+    label:'終了日',
+    sVal:sf.endDate||'(管理画面では不設定)',
+    dVal:dEnd||'(空欄)',
+    result: dEnd?'mismatch':'ok'
+  });
+
+  return items;
+}
+
+function compareIO(s,d){
+  if(!s||!d) return [];
+  const sf=s.fields||{}, df=d.fields||{};
+  return [
+    {label:'IOタイプ',    sVal:sf.ioType||'',   dVal:(df.ioType||'')+(df.ioSubtype?'/'+df.ioSubtype:''), result:compareField(normIoType(sf.ioType),normIoType(df.ioType))},
+    {label:'開始日',      sVal:sf.startDate||'', dVal:df.startDate||'', result:compareField(normDate(sf.startDate),normDate(df.startDate))},
+    {label:'終了日',      sVal:sf.endDate||'',   dVal:df.endDate||'',   result:compareField(normDate(sf.endDate),normDate(df.endDate))},
+    {label:'ペース',      sVal:sf.pacing||'',    dVal:df.pacing||df.pacingRate||'', result:compareField(normPacing(sf.pacing),normPacing(df.pacing||df.pacingRate||''))},
+    {label:'KPI',         sVal:(sf.kpi||'')+' '+(sf.kpiVal||''), dVal:(df.kpiType||'')+' '+(df.kpiValue||''), result:compareField(normKpi(sf.kpi),normKpi(df.kpiType))},
+    {label:'フリークエンシー', sVal:sf.fq||'',
+      dVal:df.frequencyEnabled==='True'?(df.frequencyExposures+'回/'+df.frequencyPeriod):'なし', result:'ok'},
+    {label:'マージン',    sVal:sf.margin||'',    dVal:df.fees?String(df.fees).substring(0,60):'', result:'ok'},
+    {label:'Brand Safety',sVal:sf.quality||'',   dVal:df.brandSafety||'', result:'ok'},
+  ];
+}
+
+// ── 修正1: compareLI の dVal 記述ミスを全修正 ──
+function compareLI(s,d){
+  if(!s||!d) return [];
+  const sf=s.fields||{}, df=d.fields||{};
+  const dPacing=df.pacingRate||df.pacing||'';
+  const items=[
+    {label:'動画タイプ',   sVal:sf.videoType||'',  dVal:(df.type||'')+(df.subtype?'/'+df.subtype:''), result:compareField(normVideoType(sf.videoType),normVideoType(df.type+'/'+(df.subtype||'')))},
+    {label:'開始日',       sVal:sf.startDate||'',  dVal:df.startDate||'',   result:compareField(normDate(sf.startDate),normDate(df.startDate))},
+    {label:'終了日',       sVal:sf.endDate||'',    dVal:df.endDate||'',     result:compareField(normDate(sf.endDate),normDate(df.endDate))},
+    // ── 修正4: 予算は gross を優先し amount と比較 ──
+    {label:'予算(グロス)', sVal:sf.budgetGross||'',dVal:df.budgetAmount||'',result:compareField(sf.budgetGross,df.budgetAmount)},
+    {label:'配信ペース',   sVal:sf.pacing||'',     dVal:dPacing,            result:compareField(normPacing(sf.pacing),normPacing(dPacing))},
+  ];
+
+  // ── 修正: 課金形態は billing(CPM/CPV) と SDF bidStrategyType(Target CPM/CPV) を比較 ──
+  const sBilling=normBilling(sf.billing);
+  const dBidStrat=normBidStrategy(df.bidStrategyType);
+  let billingResult='warning';
+  if(sBilling&&dBidStrat){
+    if((sBilling==='cpm'&&dBidStrat==='targetcpm')||
+       (sBilling==='cpv'&&dBidStrat==='targetcpv')) billingResult='ok';
+    else billingResult='mismatch';
+  } else if(!sBilling&&!dBidStrat) billingResult='ok';
+  items.push({label:'課金形態', sVal:sf.billing||'', dVal:df.bidStrategyType||'', result:billingResult});
+
+  // ── 修正: 入札単価は bidCap と bidStrategyValue を比較、ただし SDF値が0/空なら AdGroup で確認のため warning ──
+  const sBidCap=normNum(sf.bidCap);
+  const dBidVal=normNum(df.bidStrategyValue);
+  let bidResult='warning', bidDVal=df.bidStrategyValue||'';
+  if(dBidVal&&dBidVal!=='0'){
+    bidResult=(sBidCap&&sBidCap===dBidVal)?'ok':(sBidCap?'mismatch':'warning');
+  } else {
+    bidDVal=df.bidStrategyValue||'(AdGroupで確認)';
+    bidResult=sBidCap?'warning':'ok';
+  }
+  items.push({label:'入札単価', sVal:sf.bidCap||'', dVal:bidDVal, result:bidResult});
+
+  items.push({label:'フリークエンシー', sVal:'',
+    dVal:df.frequencyEnabled==='True'?(df.frequencyExposures+'回/'+df.frequencyPeriod):'', result:'ok'});
+  items.push({label:'広告枠ソース', sVal:sf.inventory||'',  dVal:df.inventorySource||'', result:compareField(normInventory(sf.inventory),normInventory(df.inventorySource))});
+  return items;
+}
+
+function compareGP(s,d){
+  if(!d) return [];
+  const sf=s?s.fields||{}:{}, df=d.fields||{};
+  const items=[];
+  if(sf.videoAdFormat||df.videoAdFormat) items.push({label:'動画フォーマット',sVal:sf.videoAdFormat||'',dVal:df.videoAdFormat||'',result:compareField(sf.videoAdFormat,df.videoAdFormat)});
+  if(sf.bidCost||df.bidCost)             items.push({label:'入札単価',sVal:sf.bidCost||'',dVal:df.bidCost||'',result:compareField(sf.bidCost,df.bidCost)});
+  if(df.demographicGender)               items.push({label:'性別',sVal:'',dVal:df.demographicGender,result:'ok'});
+  if(df.demographicAge)                  items.push({label:'年齢',sVal:'',dVal:df.demographicAge,result:'ok'});
+  if(df.geographyInclude)                items.push({label:'地域',sVal:'',dVal:df.geographyInclude,result:'ok'});
+  items.push({label:'ステータス',sVal:'',dVal:df.status||'',result:'ok'});
+  return items;
+}
+
+function compareCR(s,d){
+  if(!d) return [];
+  const sf=s?s.fields||{}:{}, df=d.fields||{};
+  const items=[];
+  if(sf.videoUrl||df.videoId){
+    const sVid=extractYoutubeVideoId(sf.videoUrl);
+    const dVid=extractYoutubeVideoId(df.videoId);
+    items.push({label:'動画ID',sVal:sf.videoUrl?(sVid+' (元URL)'):'',dVal:df.videoId||'',result:compareField(sVid,dVid)});
+  }
+  if(sf.displayUrl||df.displayUrl)   items.push({label:'表示URL',sVal:sf.displayUrl||'',dVal:df.displayUrl||'',result:compareField(sf.displayUrl,df.displayUrl)});
+  if(sf.landingUrl||df.landingPageUrl) items.push({label:'LP URL',sVal:sf.landingUrl||'',dVal:df.landingPageUrl||'',result:compareField(sf.landingUrl,df.landingPageUrl)});
+  if(sf.cta||df.callToAction)        items.push({label:'CTA',sVal:sf.cta||'',dVal:df.callToAction||'',result:compareField(sf.cta,df.callToAction)});
+  if(sf.headline||df.headline)       items.push({label:'見出し',sVal:sf.headline||'',dVal:df.headline||'',result:compareField(sf.headline,df.headline)});
+  items.push({label:'ステータス',sVal:'',dVal:df.status||'',result:'ok'});
+  return items;
+}
+
+function buildComparisonTree(setting, download, expectedStatuses){
+  const sCP=setting.cp,sIO=setting.io,sLI=setting.li,sGP=setting.gp,sCR=setting.cr;
+  const dCP=download.cp,dIO=download.io,dLI=download.li,dGP=download.gp,dCR=download.cr;
+
+  const dCPMap=new Map(),dIOMap=new Map(),dLIMap=new Map(),dGPMap=new Map(),dCRMap=new Map();
+  dCP.forEach(d=>dCPMap.set(normStr(d.name),d));
+  dIO.forEach(d=>dIOMap.set(normStr(d.name),d));
+  dLI.forEach(d=>dLIMap.set(normStr(d.name),d));
+  dGP.forEach(d=>dGPMap.set(normStr(d.name),d));
+  dCR.forEach(d=>dCRMap.set(normStr(d.name),d));
+
+  // ── SDF fallback 用: LI名→[GP], GP名→[CR] のインデックス ──
+  const dGPByLI=new Map(), dCRByGP=new Map();
+  dGP.forEach(gp=>{const ln=gp.liName||''; if(!dGPByLI.has(ln)) dGPByLI.set(ln,[]); dGPByLI.get(ln).push(gp);});
+  dCR.forEach(cr=>{const gn=cr.gpName||''; if(!dCRByGP.has(gn)) dCRByGP.set(gn,[]); dCRByGP.get(gn).push(cr);});
+
+  const matchedDCP=new Set(),matchedDIO=new Set(),matchedDLI=new Set(),matchedDGP=new Set(),matchedDCR=new Set();
+
+  // ── 修正2: 閾値 0.6 ＋ 包含フォールバック（全レベル）──
+  function findBest(name,map){
+    const key=normStr(name);
+    if(!key) return null;
+    if(map.has(key)) return {match:map.get(key),score:1};
+    let best=null,bestScore=0;
+    for(const [k,v] of map){
+      const score=fuzzyMatch(name,k);
+      if(score>bestScore&&score>=0.6){bestScore=score;best=v;}
+    }
+    // 一般包含フォールバック: 片方がもう片方に完全に含まれる
+    if(!best){
+      for(const [k,v] of map){
+        if(k.includes(key)||key.includes(k)) return {match:v,score:0.85};
+      }
+    }
+    return best?{match:best,score:bestScore}:null;
+  }
+
+  const roots=[];
+
+  sCP.forEach(sCp=>{
+    const dCpMatch=findBest(sCp.name,dCPMap);
+    const cpNode={level:'CP',id:'cp_'+sCp.name,name:sCp.name,
+      found:!!dCpMatch,matchedName:dCpMatch?dCpMatch.match.name:null,
+      compItems:compareCP(sCp,dCpMatch?dCpMatch.match:null,expectedStatuses?expectedStatuses.CP:''),children:[]};
+    if(dCpMatch) matchedDCP.add(normStr(dCpMatch.match.name));
+
+    // IO グループ構築
+    const cpIOs=sIO.filter(io=>!io.cpName||normStr(io.cpName)===normStr(sCp.name));
+    const ioGroupMap=new Map();
+    cpIOs.forEach(io=>{if(!ioGroupMap.has(io.name)) ioGroupMap.set(io.name,{sIo:io,lis:[]});});
+    // LI 参照からも IO を追加
+    sLI.forEach(sLi=>{
+      const n=sLi.ioName||'';
+      if(!ioGroupMap.has(n)) ioGroupMap.set(n,{sIo:null,lis:[]});
+      ioGroupMap.get(n).lis.push(sLi);
+    });
+    // cpIOs に属さない LI を最初の IO へ
+    if(ioGroupMap.size===0&&sLI.length){
+      ioGroupMap.set('(IO未定義)',{sIo:null,lis:[...sLI]});
+    }
+
+    ioGroupMap.forEach((ioData,ioName)=>{
+      const dIoMatch=findBest(ioName,dIOMap);
+      const ioNode={level:'IO',id:'io_'+ioName,name:ioName,
+        found:!!dIoMatch,matchedName:dIoMatch?dIoMatch.match.name:null,
+        compItems:dIoMatch?compareIO(ioData.sIo||{fields:{}},dIoMatch.match):[],children:[]};
+      if(dIoMatch) matchedDIO.add(normStr(dIoMatch.match.name));
+
+      ioData.lis.forEach(sLi=>{
+        const dLiMatch=findBest(sLi.name,dLIMap);
+        const liNode={level:'LI',id:'li_'+sLi.name,name:sLi.name,
+          found:!!dLiMatch,matchedName:dLiMatch?dLiMatch.match.name:null,
+          compItems:dLiMatch?compareLI(sLi,dLiMatch.match):[],children:[]};
+        if(dLiMatch) matchedDLI.add(normStr(dLiMatch.match.name));
+
+        // GP グループ
+        const liGPs=sGP.filter(gp=>normStr(gp.liName)===normStr(sLi.name));
+        const gpGroupMap=new Map();
+        liGPs.forEach(gp=>{if(!gpGroupMap.has(gp.name)) gpGroupMap.set(gp.name,{sGp:gp,crs:[]});});
+        const liCRs=sCR.filter(cr=>normStr(cr.lpName)===normStr(sLi.name));
+        liCRs.forEach(sCr=>{
+          const gpName=sCr.gpName||'';
+          if(!gpGroupMap.has(gpName)) gpGroupMap.set(gpName,{sGp:null,crs:[]});
+          gpGroupMap.get(gpName).crs.push(sCr);
+        });
+        if(gpGroupMap.size===0&&liCRs.length) gpGroupMap.set('(GP未定義)',{sGp:null,crs:[...liCRs]});
+
+        // ── SDF fallback: 設定表にGPがないが、ダウンロードデータにAdGroupがある場合 ──
+        const matchedDLIName=dLiMatch?dLiMatch.match.name:'';
+        if(gpGroupMap.size===0 && dLiMatch && dGPByLI.has(matchedDLIName)){
+          dGPByLI.get(matchedDLIName).forEach(gp=>{
+            if(!gpGroupMap.has(gp.name)) gpGroupMap.set(gp.name,{sGp:null,crs:[],fromSdf:true});
+          });
+        }
+
+        gpGroupMap.forEach((gpData,gpName)=>{
+          const dGpMatch=findBest(gpName,dGPMap);
+          const gpNode={level:'GP',id:'gp_'+gpName+'_'+sLi.name,name:gpName,
+            found:!!dGpMatch,matchedName:dGpMatch?dGpMatch.match.name:null,
+            compItems:compareGP(gpData.sGp,dGpMatch?dGpMatch.match:null),children:[],fromSdf:!!gpData.fromSdf};
+          if(dGpMatch) matchedDGP.add(normStr(dGpMatch.match.name));
+
+          gpData.crs.forEach(sCr=>{
+            const dCrMatch=findBest(sCr.name,dCRMap);
+            const crNode={level:'CR',id:'cr_'+sCr.name,name:sCr.name,
+              found:!!dCrMatch,matchedName:dCrMatch?dCrMatch.match.name:null,
+              compItems:compareCR(sCr,dCrMatch?dCrMatch.match:null),children:[]};
+            if(dCrMatch) matchedDCR.add(normStr(dCrMatch.match.name));
+            // ── 修正7: 先に子を確定してから status 計算 ──
+            updateNodeStatus(crNode);
+            gpNode.children.push(crNode);
+          });
+
+          // ── SDF fallback CR: GPがSDF由来で、ダウンロードにAdがある場合 ──
+          if(gpData.fromSdf && dGpMatch && dCRByGP.has(dGpMatch.match.name)){
+            dCRByGP.get(dGpMatch.match.name).forEach(dCr=>{
+              const crNode={level:'CR',id:'cr_sdf_'+dCr.name+'_'+gpName,name:dCr.name,
+                found:true,matchedName:dCr.name,
+                compItems:compareCR(null,dCr),children:[],fromSdf:true};
+              matchedDCR.add(normStr(dCr.name));
+              updateNodeStatus(crNode);
+              gpNode.children.push(crNode);
+            });
+          }
+
+          updateNodeStatus(gpNode);
+          liNode.children.push(gpNode);
+        });
+
+        updateNodeStatus(liNode);
+        ioNode.children.push(liNode);
+      });
+
+      updateNodeStatus(ioNode);
+      cpNode.children.push(ioNode);
+    });
+
+    updateNodeStatus(cpNode);
+    roots.push(cpNode);
+  });
+
+  // 未マッチ DL アイテム
+  const dlOnly=[];
+  dCP.forEach(d=>{if(!matchedDCP.has(normStr(d.name))) dlOnly.push({level:'CP',name:d.name,id:d.id});});
+  dIO.forEach(d=>{if(!matchedDIO.has(normStr(d.name))) dlOnly.push({level:'IO',name:d.name,id:d.id});});
+  dLI.forEach(d=>{if(!matchedDLI.has(normStr(d.name))) dlOnly.push({level:'LI',name:d.name,id:d.id});});
+  dGP.forEach(d=>{if(!matchedDGP.has(normStr(d.name))) dlOnly.push({level:'GP',name:d.name,id:d.id});});
+  dCR.forEach(d=>{if(!matchedDCR.has(normStr(d.name))) dlOnly.push({level:'CR',name:d.name,id:d.id});});
+
+  return {roots, dlOnly, mediaType,
+    counts:{cp:sCP.length,io:sIO.length,li:sLI.length,gp:sGP.length,cr:sCR.length,
+            dcp:dCP.length,dio:dIO.length,dli:dLI.length,dgp:dGP.length,dcr:dCR.length}};
+}
+
+// ── 修正7: 子が先に確定しているので普通に集計できる ──
+function updateNodeStatus(node){
+  const hasChildMismatch=node.children.some(c=>c.status==='mismatch');
+  const hasChildWarning =node.children.some(c=>c.status==='warning');
+  const hasChildNotFound=node.children.some(c=>c.status==='notfound')&&!node.children.some(c=>c.status!=='notfound');
+  const ownMismatch=node.compItems.some(it=>it.result==='mismatch');
+  const ownWarning =node.compItems.some(it=>it.result==='warning');
+
+  // ── SDF fallback ノード: 設定表に対応データがないため warning ──
+  if(node.fromSdf && node.children.length===0){
+    node.status='warning';
+  } else if(!node.found&&node.children.length===0){
+    node.status='notfound';
+  } else if(hasChildMismatch||ownMismatch){
+    node.status='mismatch';
+  } else if(hasChildWarning||ownWarning){
+    node.status='warning';
+  } else if(hasChildNotFound&&node.children.length>0){
+    node.status='warning';
+  } else {
+    node.status=node.found?'ok':'notfound';
+  }
+  node.okCount   =node.children.filter(c=>c.status==='ok').length;
+  node.totalCount=node.children.length;
+}
+
+// ===== RENDER (TABLE VIEW) =====
+// ── 各レベルの列定義（compItemsのlabelと一致させる）──
+function getLevelColumns(level){
+  switch(level){
+    case 'CP': return [
+      {key:'ステータス', label:'ステータス'},
+      {key:'全体目標', label:'全体目標'},
+      {key:'Campaign Goal KPI', label:'Campaign\nGoal KPI'},
+      {key:'Campaign Goal KPI Value', label:'KPI Value'},
+      {key:'Creative Types', label:'Creative Types'},
+      {key:'開始日', label:'開始日'},
+      {key:'終了日', label:'終了日'},
+    ];
+    case 'IO': return [
+      {key:'IOタイプ', label:'IOタイプ'},
+      {key:'開始日', label:'開始日'},
+      {key:'終了日', label:'終了日'},
+      {key:'ペース', label:'ペース'},
+      {key:'KPI', label:'KPI'},
+      {key:'フリークエンシー', label:'フリークエンシー'},
+      {key:'マージン', label:'マージン'},
+      {key:'Brand Safety', label:'Brand Safety'},
+    ];
+    case 'LI': return [
+      {key:'動画タイプ', label:'動画タイプ'},
+      {key:'開始日', label:'開始日'},
+      {key:'終了日', label:'終了日'},
+      {key:'予算(グロス)', label:'予算(グロス)'},
+      {key:'配信ペース', label:'配信ペース'},
+      {key:'課金形態', label:'課金形態'},
+      {key:'入札単価', label:'入札単価'},
+      {key:'フリークエンシー', label:'フリークエンシー'},
+      {key:'広告枠ソース', label:'広告枠ソース'},
+    ];
+    case 'GP': return [
+      {key:'動画フォーマット', label:'動画フォーマット'},
+      {key:'入札単価', label:'入札単価'},
+      {key:'性別', label:'性別'},
+      {key:'年齢', label:'年齢'},
+      {key:'地域', label:'地域'},
+      {key:'ステータス', label:'ステータス'},
+    ];
+    case 'CR': return [
+      {key:'動画ID', label:'動画ID'},
+      {key:'表示URL', label:'表示URL'},
+      {key:'LP URL', label:'LP URL'},
+      {key:'CTA', label:'CTA'},
+      {key:'見出し', label:'見出し'},
+      {key:'ステータス', label:'ステータス'},
+    ];
+    default: return [];
+  }
+}
+
+// ── ツリーから指定レベルの全アイテムを収集 ──
+function collectLevelItems(level){
+  const items=[];
+  function traverse(node){
+    if(node.level===level){
+      items.push({
+        node:node,
+        name:node.name,
+        matchedName:node.matchedName,
+        found:node.found,
+        status:node.status,
+        compItems:node.compItems||[],
+        fromSdf:!!node.fromSdf
+      });
+    }
+    node.children.forEach(traverse);
+  }
+  treeRoots.forEach(traverse);
+  return items;
+}
+
+// ── レベル別カウンター更新 ──
+function updateTabCounters(){
+  ['CP','IO','LI','GP','CR'].forEach(lvl=>{
+    const items=collectLevelItems(lvl);
+    const tab=document.querySelector(`.level-tab[data-lvl="${lvl}"] .tab-counter`);
+    if(tab) tab.textContent=items.length?`(${items.length})`:'';
+  });
+}
+
+// ── レベル切替 ──
+window.switchLevel=function(level){
+  currentLevel=level;
+  document.querySelectorAll('.level-tab').forEach(t=>t.classList.remove('active'));
+  const tab=document.querySelector(`.level-tab[data-lvl="${level}"]`);
+  if(tab) tab.classList.add('active');
+  renderLevelTable(level);
+};
+
+// ── メインレンダリング ──
+function renderAll(){
+  renderStats();
+  renderIssueSummary();
+  document.getElementById('filter-bar').classList.add('show');
+  document.getElementById('result-summary').style.display='block';
+  document.getElementById('level-tab-bar').classList.add('show');
+  updateTabCounters();
+  // デフォルトでCP表示、CPがなければ最初のレベルを表示
+  const cpItems=collectLevelItems('CP');
+  const firstLevel=cpItems.length>0?'CP':
+    (collectLevelItems('IO').length>0?'IO':
+    (collectLevelItems('LI').length>0?'LI':
+    (collectLevelItems('GP').length>0?'GP':'CR')));
+  switchLevel(firstLevel);
+}
+
+// ── テーブルレンダリング ──
+function renderLevelTable(level){
+  const wrap=document.getElementById('result-table-wrap');
+  const items=collectLevelItems(level);
+  const cols=getLevelColumns(level);
+  const statusIcon={ok:'✅',mismatch:'❌',warning:'⚠',notfound:'⬜'};
+  const statusText={ok:'一致',mismatch:'不一致',warning:'需確認',notfound:'未匹配'};
+
+  if(!items.length){
+    wrap.innerHTML=`<div class="empty-state"><div class="icon">📭</div>${level}層にデータがありません</div>`;
+    wrap.classList.add('show');
+    return;
+  }
+
+  // フィルタ適用
+  let visibleItems=items;
+  if(statusFilter!=='all'){
+    visibleItems=items.filter(it=>it.status===statusFilter);
+  }
+
+  if(!visibleItems.length){
+    wrap.innerHTML=`<div class="empty-state"><div class="icon">🔍</div>該当する${level}項目がありません（フィルタ: ${statusFilter}）</div>`;
+    wrap.classList.add('show');
+    return;
+  }
+
+  let html=`<table class="result-table"><thead><tr>
+    <th class="col-no">No.</th>
+    <th class="col-name">${level}名称</th>
+    <th class="col-status">状態</th>`;
+  cols.forEach(c=>{ html+=`<th>${esc(c.label)}</th>`; });
+  html+=`</tr></thead><tbody>`;
+
+  // 階層パス表示用（IO以上の場合、親CP名を表示）
+  function getItemPath(item){
+    const paths=[];
+    function findPath(nodes, targetName, currentPath){
+      for(const n of nodes){
+        const p=currentPath?currentPath+' > '+n.name:n.name;
+        if(n.name===targetName && n.level===level) return p;
+        const found=findPath(n.children, targetName, p);
+        if(found) return found;
+      }
+      return null;
+    }
+    return findPath(treeRoots, item.name, '')||'';
+  }
+
+  visibleItems.forEach((item,idx)=>{
+    if(!item.found && !item.fromSdf){
+      // 未匹配行
+      html+=`<tr class="row-notfound">
+        <td class="col-no">${idx+1}</td>
+        <td class="col-name" style="color:#999;">${esc(item.name)}</td>
+        <td class="col-status" style="color:#999;">⬜ 未匹配</td>
+        <td colspan="${cols.length}" style="color:#bbb;text-align:center;font-size:0.72rem;">ダウンロードデータに見つかりませんでした</td>
+      </tr>`;
+      return;
+    }
+
+    const rowBg=item.status==='mismatch'?'#fff5f5':item.status==='warning'?'#fffef5':'';
+
+    // 設定表行
+    html+=`<tr class="row-setting" style="background:${rowBg};">
+      <td class="col-no" rowspan="2" style="background:#2c3e50;">${idx+1}</td>
+      <td class="col-name" rowspan="2" style="background:${rowBg||'white'};">
+        <div style="font-weight:bold;font-size:0.78rem;">${esc(item.name)}</div>`;
+    if(item.matchedName && item.matchedName!==item.name){
+      html+=`<div style="font-size:0.63rem;color:#888;">→ ${esc(item.matchedName)}</div>`;
+    }
+    if(item.fromSdf){
+      html+=`<span class="lvl-badge lvl-${level}" style="font-size:0.6rem;margin-top:2px;">SDF由来</span>`;
+    }
+    html+=`</td>
+      <td class="col-status" rowspan="2" style="text-align:center;font-weight:bold;font-size:0.78rem;
+        color:${item.status==='ok'?'#27ae60':item.status==='mismatch'?'#e74c3c':item.status==='warning'?'#e67e22':'#95a5a6'};">
+        ${statusIcon[item.status]||'❓'}<br><span style="font-size:0.6rem;">${statusText[item.status]||'-'}</span>
+      </td>`;
+
+    // 設定表値
+    cols.forEach(col=>{
+      const ci=item.compItems.find(c=>c.label===col.key);
+      const sVal=ci?ci.sVal:'';
+      const result=ci?ci.result:'ok';
+      html+=`<td class="cell-${result==='ok'?'ok':result==='mismatch'?'mismatch':'warn'}">
+        <div class="cell-s-row"><span class="cell-s-label">S:</span>${esc(sVal)||'—'}</div>
+      </td>`;
+    });
+    html+=`</tr>`;
+
+    // ダウンロード値行
+    html+=`<tr class="row-download" style="background:${rowBg};">
+      <td colspan="3" style="display:none;"></td>`;
+    cols.forEach(col=>{
+      const ci=item.compItems.find(c=>c.label===col.key);
+      const dVal=ci?ci.dVal:'';
+      const result=ci?ci.result:'ok';
+      html+=`<td class="cell-${result==='ok'?'ok':result==='mismatch'?'mismatch':'warn'}">
+        <div class="cell-d-row"><span class="cell-d-label">D:</span>${esc(dVal)||'—'}</div>
+      </td>`;
+    });
+    html+=`</tr>`;
+  });
+
+  html+=`</tbody></table>`;
+  wrap.innerHTML=html;
+  wrap.classList.add('show');
+}
+
+function renderIssueSummary(){
+  const box = document.getElementById('result-issues');
+  const content = document.getElementById('result-issues-content');
+  if(!allComparisonData || !treeRoots.length){
+    box.style.display='none';
+    return;
+  }
+  const issues=[];
+  const statusOrder={mismatch:1,warning:2,notfound:3,ok:4};
+  const statusIcon={ok:'✅',mismatch:'❌',warning:'⚠',notfound:'⬜'};
+  const statusText={ok:'一致',mismatch:'不一致',warning:'需確認',notfound:'未匹配'};
+  function collect(node){
+    if(node.status==='mismatch'||node.status==='warning'||node.status==='notfound'){
+      const badItems=(node.compItems||[]).filter(it=>it.result==='mismatch'||it.result==='warning'||it.result==='notfound');
+      issues.push({
+        level:node.level, name:node.name, id:node.id, status:node.status,
+        matchedName:node.matchedName, found:node.found,
+        items:badItems
+      });
+    }
+    node.children.forEach(collect);
+  }
+  treeRoots.forEach(collect);
+  allComparisonData.dlOnly.forEach(d=>{
+    issues.push({level:d.level, name:d.name, id:'dl_'+d.name, status:'notfound', found:false, matchedName:'', items:[]});
+  });
+  if(issues.length===0){
+    box.style.display='none';
+    return;
+  }
+  issues.sort((a,b)=>statusOrder[a.status]-statusOrder[b.status]);
+  let html=`<div style="font-weight:bold;margin-bottom:8px;color:#2c3e50;">📋 问题总览（点击行可跳转到对应阶层）</div>`;
+  html+=`<table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f0f3f7;">
+    <th style="text-align:left;padding:6px 8px;width:50px;">階層</th>
+    <th style="text-align:left;padding:6px 8px;">名称</th>
+    <th style="text-align:left;padding:6px 8px;width:90px;">状態</th>
+    <th style="text-align:left;padding:6px 8px;">不一致項目</th>
+  </tr></thead><tbody>`;
+  issues.forEach(iss=>{
+    const icon=statusIcon[iss.status]||'❓';
+    const txt=statusText[iss.status]||'-';
+    const color=iss.status==='mismatch'?'#e74c3c':iss.status==='warning'?'#f39c12':'#95a5a6';
+    const itemLabels=iss.items.map(it=>it.label).join('、') || (iss.status==='notfound'?'(未找到对应项目)':'');
+    html+=`<tr class="issue-row" data-issue-level="${esc(iss.level)}" data-issue-name="${esc(iss.name)}" style="cursor:pointer;border-bottom:1px solid #f0f0f0;">
+      <td style="padding:6px 8px;"><span class="lvl-badge lvl-${iss.level}">${iss.level}</span></td>
+      <td style="padding:6px 8px;word-break:break-all;">${esc(iss.name)}${iss.matchedName&&iss.matchedName!==iss.name?'<br><span style="color:#888;font-size:0.65rem;">→ '+esc(iss.matchedName)+'</span>':''}</td>
+      <td style="padding:6px 8px;color:${color};font-weight:bold;">${icon} ${txt}</td>
+      <td style="padding:6px 8px;color:#666;font-size:0.7rem;word-break:break-all;">${esc(itemLabels)}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  content.innerHTML=html;
+  box.style.display='block';
+}
+
+function renderStats(){
+  const bar=document.getElementById('stats-bar');
+  if(!allComparisonData){bar.classList.remove('show');return;}
+  bar.classList.add('show');
+  const stats={ok:0,mismatch:0,warning:0,notfound:0};
+  function countStatus(node){stats[node.status]=(stats[node.status]||0)+1;node.children.forEach(countStatus);}
+  treeRoots.forEach(countStatus);
+  bar.innerHTML=`
+    <span style="font-weight:bold;">📊 ${mediaType.toUpperCase()}</span>
+    ${allComparisonData.dlOnly.length?`<span class="stat-item"><span class="stat-dot gray"></span> DL未匹配:${allComparisonData.dlOnly.length}</span>`:''}
+    <span class="stat-item"><span class="stat-dot red"></span> 不一致:${stats.mismatch}</span>
+    <span class="stat-item"><span class="stat-dot yellow"></span> 需確認:${stats.warning}</span>
+    <span class="stat-item"><span class="stat-dot green"></span> 一致:${stats.ok}</span>
+    <span class="stat-item"><span class="stat-dot gray"></span> 未匹配:${stats.notfound}</span>
+    <span style="margin-left:auto;font-size:0.72rem;color:#bdc3c7;">
+      S:CP${allComparisonData.counts.cp}/IO${allComparisonData.counts.io}/LI${allComparisonData.counts.li}/GP${allComparisonData.counts.gp}/CR${allComparisonData.counts.cr}
+      &nbsp;D:CP${allComparisonData.counts.dcp}/IO${allComparisonData.counts.dio}/LI${allComparisonData.counts.dli}/GP${allComparisonData.counts.dgp}/CR${allComparisonData.counts.dcr}
+    </span>`;
+}
+
+// ===== FILTER CONTROLS =====
+window.setStatusFilter=function(filter,btn){
+  statusFilter=filter;
+  document.querySelectorAll('.filter-btn[data-filter]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLevelTable(currentLevel);
+};
+
+window.toggleLevel=function(lvl,btn){
+  if(visibleLevels.has(lvl)){visibleLevels.delete(lvl);btn.classList.remove('active');}
+  else{visibleLevels.add(lvl);btn.classList.add('active');}
+  // 現在のレベルが非表示なら自動切替
+  if(!visibleLevels.has(currentLevel)){
+    const available=['CP','IO','LI','GP','CR'].filter(l=>visibleLevels.has(l));
+    if(available.length) switchLevel(available[0]);
+  }
+  updateTabCounters();
+  renderLevelTable(currentLevel);
+};
+
+window.expandAll=function(){ /* テーブルビューでは不要 */ };
+window.collapseAll=function(){ /* テーブルビューでは不要 */ };
+window.expandProblems=function(){ /* テーブルビューでは不要 */ };
+
+window.resetAll=function(){
+  uploadedFiles=[];settingFiles=[];downloadFiles=[];
+  mediaType='';treeRoots=[];allComparisonData=null;
+  selectedNodeId=null;statusFilter='all';currentLevel='CP';
+  expectedStatuses={CP:'Paused',IO:'Paused',LI:'Paused',GP:'Paused',CR:'Paused'};
+  visibleLevels=new Set(['CP','IO','LI','GP','CR']);
+  renderFileList();
+  updateControls();
+  ['control-bar','progress','stats-bar','filter-bar','level-tab-bar','result-table-wrap'].forEach(id=>{
+    document.getElementById(id).classList.remove('show');
+  });
+  document.getElementById('result-summary').style.display='none';
+  document.getElementById('result-issues').style.display='none';
+  document.getElementById('result-table-wrap').innerHTML=
+    '<div class="empty-state"><div class="icon">📂</div>上传文件后点击「チェック開始」</div>';
+  document.querySelectorAll('.filter-btn').forEach(b=>{b.classList.add('active');});
+  document.querySelectorAll('.level-tab').forEach(t=>{t.classList.remove('active');});
+  const cpTab=document.querySelector('.level-tab[data-lvl="CP"]');
+  if(cpTab) cpTab.classList.add('active');
+};
+
+window.runCheck=runCheck;
+
+// result-issues 表格行点击跳转到对应阶层
+document.getElementById('result-issues').addEventListener('click', e=>{
+  const row=e.target.closest('.issue-row');
+  if(!row) return;
+  const level=row.dataset.issueLevel;
+  if(level){
+    switchLevel(level);
+    document.getElementById('result-table-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+});
+
+// 页面加载完成后检查编码库是否就绪
+if(typeof Encoding==='undefined'){
+  console.error('[DV360] encoding.min.js 加载失败，SDF CSV 日文可能会出现乱码。请确认 encoding.min.js 与 dv360_check.html 在同一目录且网络正常。');
+}
+
+})();
+</script>
+</body>
+</html>

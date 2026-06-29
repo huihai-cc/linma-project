@@ -1,1 +1,9 @@
 .vercel
+node_modules/
+*.zip
+*.xlsx
+_output.txt
+package-lock.json
+package.json
+deploy.bat
+_inspect.js
