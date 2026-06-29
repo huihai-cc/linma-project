@@ -302,14 +302,10 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
 <!-- Status Dialog Modal -->
 <div id="status-modal" class="modal-overlay">
   <div class="modal-box">
-    <h2>📋 各階層の想定ステータスを選択</h2>
-    <div class="modal-desc">設定表には各階層のステータスが記載されていません。ダウンロードデータのステータスが正しいか確認するため、各階層のあるべきステータスを選択してください。</div>
+    <h2>📋 案件タイプを選択</h2>
+    <div class="modal-desc">案件タイプに応じて、各階層の想定ステータスが自動設定されます。</div>
     <div id="status-modal-rows"></div>
     <div class="modal-quick-btns">
-      <button onclick="setAllStatuses('Paused')">🔒 全てPaused</button>
-      <button onclick="setAllStatuses('Active')">▶ 全てActive</button>
-      <button onclick="setAllStatuses('Draft')">📝 全てDraft</button>
-      <button onclick="setAllStatuses('')">🚫 確認不要</button>
     </div>
     <div class="modal-actions">
       <button class="modal-btn-cancel" onclick="cancelStatusDialog()">キャンセル</button>
@@ -337,8 +333,10 @@ let visibleLevels   = new Set(['CP','IO','LI','GP','CR']);
 let selectedNodeId  = null;
 let allComparisonData = null;
 let expectedStatuses = {CP:'Paused',IO:'Paused',LI:'Paused',GP:'Paused',CR:'Paused'};
+let skipLevels = [];
 let statusDialogResolve = null;
 let currentLevel = 'CP';
+let selectedCaseType = 'initial';
 
 // ===== UTILS =====
 function esc(s){
@@ -455,45 +453,66 @@ function updateControls(){
   }
 }
 
-// ===== STATUS DIALOG =====
-const STATUS_OPTIONS = ['Paused','Active','Draft'];
+// ===== STATUS DIALOG (案件タイプ選択) =====
+const CASE_TYPES = [
+  {id:'initial', label:'初期案件', desc:'CP:Paused / IO:Default / LI:Draft / GP:Active / CR:Active',
+   statuses:{CP:'Paused',IO:'Default',LI:'Draft',GP:'Active',CR:'Active'}, skipLevels:[]},
+  {id:'io_append', label:'IO追加案件', desc:'CP対象外（DLにCPなし） / IO確認 / LI:Draft / GP:Active / CR:Active',
+   statuses:{IO:'Default',LI:'Draft',GP:'Active',CR:'Active'}, skipLevels:['CP']},
+  {id:'li_append', label:'LI追加案件', desc:'LI:Draft / GP:Active / CR:Active',
+   statuses:{CP:'Paused',IO:'Default',LI:'Draft',GP:'Active',CR:'Active'}, skipLevels:[]},
+  {id:'gp_append', label:'GP追加案件', desc:'GP:Draft / CR:Active',
+   statuses:{CP:'Paused',IO:'Default',LI:'Draft',GP:'Draft',CR:'Active'}, skipLevels:[]},
+  {id:'cr_append', label:'CR追加案件', desc:'CR:Paused',
+   statuses:{CP:'Paused',IO:'Default',LI:'Draft',GP:'Active',CR:'Paused'}, skipLevels:[]}
+];
+
 function buildStatusModalRows(){
   const container = document.getElementById('status-modal-rows');
-  const levels = ['CP','IO','LI','GP','CR'];
-  const levelNames = {CP:'キャンペーン',IO:'IO',LI:'LI',GP:'広告グループ',CR:'クリエイティブ'};
-  container.innerHTML = levels.map(lvl => {
-    const radios = STATUS_OPTIONS.map(opt => `
-      <label><input type="radio" name="status-${lvl}" value="${opt}"
-        ${expectedStatuses[lvl]===opt?'checked':''}
-        onchange="expectedStatuses['${lvl}']='${opt}'"> ${opt}</label>
-    `).join('');
-    const ignoreChecked = !expectedStatuses[lvl] || expectedStatuses[lvl]==='' ? 'checked' : '';
-    return `<div class="modal-row">
-      <div class="lvl-label"><span class="lvl-badge lvl-${lvl}">${lvl}</span></div>
-      <span style="font-size:0.72rem;color:#888;width:70px;flex-shrink:0;">${levelNames[lvl]}</span>
-      <div class="radio-group">
-        ${radios}
-        <label><input type="radio" name="status-${lvl}" value="" ${ignoreChecked}
-          onchange="expectedStatuses['${lvl}']=''"> 確認不要</label>
+  container.innerHTML = CASE_TYPES.map(ct => {
+    const statusLines = ['CP','IO','LI','GP','CR'].map(lvl => {
+      const st = ct.statuses[lvl];
+      if(ct.skipLevels.includes(lvl)) return `<span style="color:#ccc;">${lvl}:対象外</span>`;
+      if(!st) return `<span style="color:#ccc;">${lvl}:—</span>`;
+      return `<span style="color:#2c3e50;">${lvl}:<b>${st}</b></span>`;
+    }).join(' / ');
+    return `<div class="modal-row" style="cursor:pointer;flex-direction:column;align-items:flex-start;gap:2px;"
+      onclick="selectCaseType('${ct.id}')" data-case="${ct.id}">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="radio" name="case-type" value="${ct.id}" ${selectedCaseType===ct.id?'checked':''}
+          onchange="selectCaseType('${ct.id}')" onclick="event.stopPropagation();">
+        <span style="font-weight:bold;font-size:0.85rem;">${ct.label}</span>
       </div>
+      <div style="font-size:0.7rem;color:#888;padding-left:22px;">${ct.desc}</div>
+      <div style="font-size:0.68rem;color:#666;padding-left:22px;display:flex;gap:6px;flex-wrap:wrap;">${statusLines}</div>
     </div>`;
   }).join('');
 }
 
+window.selectCaseType = function(id){
+  selectedCaseType = id;
+  const ct = CASE_TYPES.find(c=>c.id===id);
+  if(ct){
+    ['CP','IO','LI','GP','CR'].forEach(l=>{expectedStatuses[l]='';});
+    Object.assign(expectedStatuses, ct.statuses);
+    skipLevels = [...ct.skipLevels];
+    ct.skipLevels.forEach(l=>{expectedStatuses[l]='';});
+  }
+  buildStatusModalRows();
+};
+
 function showStatusDialog(){
   return new Promise((resolve) => {
     statusDialogResolve = resolve;
+    selectedCaseType = 'initial';
+    skipLevels = [];
+    const ct0 = CASE_TYPES[0];
+    ['CP','IO','LI','GP','CR'].forEach(l=>{expectedStatuses[l]='';});
+    Object.assign(expectedStatuses, ct0.statuses);
     buildStatusModalRows();
     document.getElementById('status-modal').classList.add('show');
   });
 }
-
-window.setAllStatuses = function(st){
-  ['CP','IO','LI','GP','CR'].forEach(lvl => {
-    expectedStatuses[lvl] = st;
-  });
-  buildStatusModalRows();
-};
 
 window.cancelStatusDialog = function(){
   document.getElementById('status-modal').classList.remove('show');
@@ -660,8 +679,8 @@ function parseYoutubeSetting(sheets, sheetNames, fileName){
       if(label.includes('全体目標'))       cpGoal=val;
       if(label.includes('目標')&&!label.includes('全体')){ cpKpi=val; cpKpiVal=String(r[4]||'').trim(); }
       // CP開始日・終了日: D20/E20付近、ラベルはB列
-      if(label.includes('開始日')||label.includes('掲載開始')) cpStartDate=val;
-      if(label.includes('終了日')||label.includes('掲載終了')) cpEndDate=String(r[4]||'').trim();
+      if(label.includes('開始日')||label.includes('掲載開始')) cpStartDate=fmtDateVal(r[3]);
+      if(label.includes('終了日')||label.includes('掲載終了')) cpEndDate=fmtDateVal(r[4]);
     }
     if(cpName) cpList.push({name:cpName,sheet:opSheet,fileName,fields:{goal:cpGoal,kpi:cpKpi,kpiVal:cpKpiVal,startDate:cpStartDate,endDate:cpEndDate}});
 
@@ -675,7 +694,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName){
       const hdr=rows[ioHdr];
       const col={no:1,ioName:2,ioType:3,goal:4,budget:5,budgetPct:6,
                  startDate:9,startTime:10,endDate:11,endTime:12,
-                 pacing:14,kpi:16,kpiVal:17,optimize:18,fq:19,margin:20,quality:21,
+                 pacing:14,pacingRate:15,kpi:16,kpiVal:17,optimize:18,fq:19,margin:20,quality:21,
                  liName:23,typeName:24};
       hdr.forEach((h,i)=>{
         const hs=String(h||'');
@@ -688,7 +707,8 @@ function parseYoutubeSetting(sheets, sheetNames, fileName){
         if(hs.includes('開始')&&hs.includes('時間')&&!hs.includes('日')) col.startTime=i;
         if(hs.includes('終了日')&&hs.includes('時間'))       col.endDate=i;
         if(hs.includes('終了')&&hs.includes('時間')&&!hs.includes('日')) col.endTime=i;
-        if(hs.includes('ペース')&&!hs.includes('予算'))      col.pacing=i;
+        if((hs.includes('ペース')||hs.includes('掲載期間'))&&!hs.includes('予算')) col.pacing=i;
+        if(hs.includes('均等')&&!hs.includes('予算'))       col.pacingRate=i;
         if(hs.includes('KPI')&&i>10)                        col.kpi=i;
         if(hs.includes('最適化'))                            col.optimize=i;
         if(hs.includes('FQ')||hs.includes('フリークエンシー')) col.fq=i;
@@ -718,11 +738,12 @@ function parseYoutubeSetting(sheets, sheetNames, fileName){
             goal     :String(r[col.goal]||'').trim(),
             budget   :String(r[col.budget]||'').trim(),
             budgetPct:String(r[col.budgetPct]||'').trim(),
-            startDate:String(r[col.startDate]||'').trim(),
+            startDate:fmtDateVal(r[col.startDate]),
             startTime:String(r[col.startTime]||'').trim(),
-            endDate  :String(r[col.endDate]||'').trim(),
+            endDate  :fmtDateVal(r[col.endDate]),
             endTime  :String(r[col.endTime]||'').trim(),
             pacing   :String(r[col.pacing]||'').trim(),
+            pacingRate:String(r[col.pacingRate]||'').trim(),
             kpi      :String(r[col.kpi]||'').trim(),
             kpiVal   :String(r[col.kpiVal]||'').trim(),
             optimize :String(r[col.optimize]||'').trim(),
@@ -838,9 +859,9 @@ function parseYoutubeSetting(sheets, sheetNames, fileName){
             pacing     :String(r[col.pacing]||'').trim(),
             brandLift  :String(r[col.brandLift]||'').trim(),
             timeSpec   :String(r[col.timeSpec]||'').trim(),
-            startDate  :String(r[col.startDate]||'').trim(),
+            startDate  :fmtDateVal(r[col.startDate]),
             startTime  :String(r[col.startTime]||'').trim(),
-            endDate    :String(r[col.endDate]||'').trim(),
+            endDate    :fmtDateVal(r[col.endDate]),
             endTime    :String(r[col.endTime]||'').trim(),
             billing    :String(r[col.billing]||'').trim(),
             bidCap     :String(r[col.bidCap]||'').trim(),
@@ -902,8 +923,8 @@ function parseYoutubeSetting(sheets, sheetNames, fileName){
         name:crName, ioName:crIoName, lpName:matchedLiName, gpName,
         sheet:sname, fileName,
         fields:{
-          startDate :String(r[col.startDate]||'').trim(),
-          endDate   :String(r[col.endDate]||'').trim(),
+          startDate :fmtDateVal(r[col.startDate]),
+          endDate   :fmtDateVal(r[col.endDate]),
           videoUrl  :String(r[col.videoUrl]||'').trim(),
           landingUrl:String(r[col.landingUrl]||'').trim(),
           displayUrl:String(r[col.displayUrl]||'').trim(),
@@ -943,7 +964,9 @@ function parseSdfData(csvFiles){
           status:obj['Status']||'',ioType:obj['Io Type']||'',ioSubtype:obj['Io Subtype']||'',
           pacing:obj['Pacing']||'',pacingRate:obj['Pacing Rate']||'',pacingAmount:obj['Pacing Amount']||'',
           frequencyEnabled:obj['Frequency Enabled']||'',frequencyExposures:obj['Frequency Exposures']||'',
-          frequencyPeriod:obj['Frequency Period']||'',kpiType:obj['Kpi Type']||'',kpiValue:obj['Kpi Value']||'',
+          frequencyPeriod:obj['Frequency Period']||'',
+          kpiType:obj['Kpi Type']||'',kpiValue:obj['Kpi Value']||'',
+          trueViewKpiType:obj['TrueView Kpi Type']||'',trueViewKpiValue:obj['TrueView Kpi Value']||'',
           budgetType:obj['Budget Type']||'',budgetSegments:obj['Budget Segments']||'',
           fees:obj['Fees']||'',brandSafety:obj['Brand Safety Sensitivity Setting']||'',
           startDate:obj['Io Start Date']||'',endDate:obj['Io End Date']||'',
@@ -1142,13 +1165,66 @@ async function runCheck(){
 }
 
 // ===== COMPARISON ENGINE =====
+// ── セル値の日付整形: Dateオブジェクトや長い日付文字列を YYYY/M/D に統一 ──
+function fmtDateVal(v){
+  if(!v) return '';
+  if(v instanceof Date && !isNaN(v)){
+    return `${v.getFullYear()}/${v.getMonth()+1}/${v.getDate()}`;
+  }
+  const s=String(v).trim();
+  if(!s) return '';
+  if(/^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(s)) return s;
+  if(/^\d{1,2}[/-]\d{1,2}[/-]\d{4}$/.test(s)) return s;
+  if(/^\d{1,2}[/-]\d{1,2}[/-]\d{2}$/.test(s)) return s;
+  if(/[A-Za-z]{3,}/.test(s)){
+    const d=new Date(s);
+    if(!isNaN(d)) return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+  }
+  if(/^\d{5}$/.test(s)){
+    try{
+      const d=new Date((parseInt(s)-25569)*86400*1000);
+      if(!isNaN(d)) return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+    }catch(e){}
+  }
+  return s;
+}
+
+// ── SDF Budget Segments (Y列) 解析 ──
+// 形式: (開始日時;終了日時;金額;説明);(開始日時;...);...
+function parseBudgetSegments(s){
+  const result={budget:'',startDate:'',startTime:'',endDate:'',endTime:'',description:''};
+  if(!s) return result;
+  const m=s.match(/\(([^)]+)\)/);
+  if(!m) return result;
+  const parts=m[1].split(';');
+  let rawStart=parts[0]||'';
+  let rawEnd  =parts[1]||'';
+  result.budget     =parts[2]||'';
+  result.description=parts[3]||'';
+  const sp0=rawStart.split(' ');
+  result.startDate=normDate(sp0[0])||sp0[0];
+  result.startTime=sp0.slice(1).join(' ')||'';
+  const sp1=rawEnd.split(' ');
+  result.endDate=normDate(sp1[0])||sp1[0];
+  result.endTime=sp1.slice(1).join(' ')||'';
+  return result;
+}
+
 function normDate(s){
   if(!s) return '';
   const t=String(s).trim();
+  // MM/DD/YYYY または M/D/YYYY
   let m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if(m) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  // MM/DD/YY または M/D/YY（2桁年）
+  m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})(?:\s|$)/);
+  if(m){ const yy=parseInt(m[3]); const y4=yy<50?2000+yy:1900+yy; return `${y4}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`; }
+  // YYYY-MM-DD
   m=t.match(/(\d{4})-(\d{2})-(\d{2})/);
   if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+  // YYYY/M/D や YYYY年M月D日
+  m=t.match(/(\d{4})[/年](\d{1,2})[/月](\d{1,2})/);
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
   if(/^\d{5}$/.test(t)){
     try{
       const d=new Date((parseInt(t)-25569)*86400*1000);
@@ -1338,20 +1414,37 @@ function compareCP(s,d,expectedStatus){
   return items;
 }
 
-function compareIO(s,d){
+function compareIO(s,d,expectedStatus){
   if(!s||!d) return [];
   const sf=s.fields||{}, df=d.fields||{};
-  return [
-    {label:'IOタイプ',    sVal:sf.ioType||'',   dVal:(df.ioType||'')+(df.ioSubtype?'/'+df.ioSubtype:''), result:compareField(normIoType(sf.ioType),normIoType(df.ioType))},
-    {label:'開始日',      sVal:sf.startDate||'', dVal:df.startDate||'', result:compareField(normDate(sf.startDate),normDate(df.startDate))},
-    {label:'終了日',      sVal:sf.endDate||'',   dVal:df.endDate||'',   result:compareField(normDate(sf.endDate),normDate(df.endDate))},
-    {label:'ペース',      sVal:sf.pacing||'',    dVal:df.pacing||df.pacingRate||'', result:compareField(normPacing(sf.pacing),normPacing(df.pacing||df.pacingRate||''))},
-    {label:'KPI',         sVal:(sf.kpi||'')+' '+(sf.kpiVal||''), dVal:(df.kpiType||'')+' '+(df.kpiValue||''), result:compareField(normKpi(sf.kpi),normKpi(df.kpiType))},
-    {label:'フリークエンシー', sVal:sf.fq||'',
-      dVal:df.frequencyEnabled==='True'?(df.frequencyExposures+'回/'+df.frequencyPeriod):'なし', result:'ok'},
-    {label:'マージン',    sVal:sf.margin||'',    dVal:df.fees?String(df.fees).substring(0,60):'', result:'ok'},
-    {label:'Brand Safety',sVal:sf.quality||'',   dVal:df.brandSafety||'', result:'ok'},
-  ];
+  const items=[];
+  const bs=parseBudgetSegments(df.budgetSegments||'');
+
+  // 1. ステータス
+  if(expectedStatus && expectedStatus!==''){
+    items.push({label:'ステータス', sVal:'想定: '+expectedStatus, dVal:df.status||'(空)', result:compareField(expectedStatus, df.status||'')});
+  }
+  // 2. IOタイプ
+  items.push({label:'IOタイプ', sVal:sf.ioType||'', dVal:(df.ioType||'')+(df.ioSubtype?' / '+df.ioSubtype:''), result:compareField(normIoType(sf.ioType),normIoType(df.ioType))});
+  // 3. 目標
+  items.push({label:'目標', sVal:sf.goal||'', dVal:df.kpiType||'', result:compareField(normKpi(sf.goal),normKpi(df.kpiType))});
+  // 4-9. Budget Segments
+  items.push({label:'予算', sVal:sf.budget||'', dVal:bs.budget||'(空)', result:compareField(normNum(sf.budget),normNum(bs.budget))});
+  items.push({label:'開始日', sVal:fmtDateVal(sf.startDate)||sf.startDate||'', dVal:bs.startDate||'(空)', result:compareField(normDate(sf.startDate),bs.startDate?normDate(bs.startDate):'')});
+  items.push({label:'開始時間', sVal:sf.startTime||'', dVal:bs.startTime||'(空)', result:compareField(sf.startTime,bs.startTime)});
+  items.push({label:'終了日', sVal:fmtDateVal(sf.endDate)||sf.endDate||'', dVal:bs.endDate||'(空)', result:compareField(normDate(sf.endDate),bs.endDate?normDate(bs.endDate):'')});
+  items.push({label:'終了時間', sVal:sf.endTime||'', dVal:bs.endTime||'(空)', result:compareField(sf.endTime,bs.endTime)});
+  items.push({label:'説明', sVal:'なし（固定）', dVal:bs.description||'(空)', result:bs.description?'mismatch':'ok'});
+  // 10. 掲載期間
+  items.push({label:'掲載期間', sVal:sf.pacing||'', dVal:df.pacing||'(空)', result:compareField(normPacing(sf.pacing),normPacing(df.pacing))});
+  // 11. 均等
+  items.push({label:'均等', sVal:sf.pacingRate||'', dVal:df.pacingRate||'(空)', result:compareField(sf.pacingRate,df.pacingRate)});
+  // 12-13. KPI (CPCV)
+  items.push({label:'KPI (CPCV)', sVal:sf.kpi||'', dVal:df.trueViewKpiType||df.kpiType||'', result:compareField(normKpi(sf.kpi),normKpi(df.trueViewKpiType||df.kpiType||''))});
+  items.push({label:'KPI値', sVal:sf.kpiVal||'', dVal:df.trueViewKpiValue||df.kpiValue||'', result:compareField(normNum(sf.kpiVal),normNum(df.trueViewKpiValue||df.kpiValue||''))});
+  // 14. FQ
+  items.push({label:'FQ', sVal:sf.fq||'', dVal:df.frequencyEnabled==='True'?(df.frequencyExposures||'')+'回 / '+(df.frequencyPeriod||''):'なし', result:sf.fq?compareField(sf.fq,df.frequencyExposures||''):'ok'});
+  return items;
 }
 
 // ── 修正1: compareLI の dVal 記述ミスを全修正 ──
@@ -1361,8 +1454,8 @@ function compareLI(s,d){
   const dPacing=df.pacingRate||df.pacing||'';
   const items=[
     {label:'動画タイプ',   sVal:sf.videoType||'',  dVal:(df.type||'')+(df.subtype?'/'+df.subtype:''), result:compareField(normVideoType(sf.videoType),normVideoType(df.type+'/'+(df.subtype||'')))},
-    {label:'開始日',       sVal:sf.startDate||'',  dVal:df.startDate||'',   result:compareField(normDate(sf.startDate),normDate(df.startDate))},
-    {label:'終了日',       sVal:sf.endDate||'',    dVal:df.endDate||'',     result:compareField(normDate(sf.endDate),normDate(df.endDate))},
+    {label:'開始日',       sVal:sf.startDate||'',  dVal:normDate(df.startDate)||df.startDate||'',   result:compareField(normDate(sf.startDate),normDate(df.startDate))},
+    {label:'終了日',       sVal:sf.endDate||'',    dVal:normDate(df.endDate)||df.endDate||'',     result:compareField(normDate(sf.endDate),normDate(df.endDate))},
     // ── 修正4: 予算は gross を優先し amount と比較 ──
     {label:'予算(グロス)', sVal:sf.budgetGross||'',dVal:df.budgetAmount||'',result:compareField(sf.budgetGross,df.budgetAmount)},
     {label:'配信ペース',   sVal:sf.pacing||'',     dVal:dPacing,            result:compareField(normPacing(sf.pacing),normPacing(dPacing))},
@@ -1492,7 +1585,7 @@ function buildComparisonTree(setting, download, expectedStatuses){
       const dIoMatch=findBest(ioName,dIOMap);
       const ioNode={level:'IO',id:'io_'+ioName,name:ioName,
         found:!!dIoMatch,matchedName:dIoMatch?dIoMatch.match.name:null,
-        compItems:dIoMatch?compareIO(ioData.sIo||{fields:{}},dIoMatch.match):[],children:[]};
+        compItems:dIoMatch?compareIO(ioData.sIo||{fields:{}},dIoMatch.match,expectedStatuses?expectedStatuses.IO:''):[],children:[]};
       if(dIoMatch) matchedDIO.add(normStr(dIoMatch.match.name));
 
       ioData.lis.forEach(sLi=>{
@@ -1593,7 +1686,8 @@ function updateNodeStatus(node){
   if(node.fromSdf && node.children.length===0){
     node.status='warning';
   } else if(!node.found&&node.children.length===0){
-    node.status='notfound';
+    // skipLevels に含まれる階層は DL 未マッチでもエラー扱いしない
+    node.status=skipLevels.includes(node.level)?'ok':'notfound';
   } else if(hasChildMismatch||ownMismatch){
     node.status='mismatch';
   } else if(hasChildWarning||ownWarning){
@@ -1621,14 +1715,20 @@ function getLevelColumns(level){
       {key:'終了日', label:'終了日'},
     ];
     case 'IO': return [
+      {key:'ステータス', label:'ステータス'},
       {key:'IOタイプ', label:'IOタイプ'},
+      {key:'目標', label:'目標'},
+      {key:'予算', label:'予算'},
       {key:'開始日', label:'開始日'},
+      {key:'開始時間', label:'開始時間'},
       {key:'終了日', label:'終了日'},
-      {key:'ペース', label:'ペース'},
-      {key:'KPI', label:'KPI'},
-      {key:'フリークエンシー', label:'フリークエンシー'},
-      {key:'マージン', label:'マージン'},
-      {key:'Brand Safety', label:'Brand Safety'},
+      {key:'終了時間', label:'終了時間'},
+      {key:'説明', label:'説明'},
+      {key:'掲載期間', label:'掲載期間'},
+      {key:'均等', label:'均等'},
+      {key:'KPI (CPCV)', label:'KPI\n(CPCV)'},
+      {key:'KPI値', label:'KPI値'},
+      {key:'FQ', label:'FQ'},
     ];
     case 'LI': return [
       {key:'動画タイプ', label:'動画タイプ'},
@@ -1767,13 +1867,21 @@ function renderLevelTable(level){
 
   visibleItems.forEach((item,idx)=>{
     if(!item.found && !item.fromSdf){
-      // 未匹配行
-      html+=`<tr class="row-notfound">
-        <td class="col-no">${idx+1}</td>
-        <td class="col-name" style="color:#999;">${esc(item.name)}</td>
-        <td class="col-status" style="color:#999;">⬜ 未匹配</td>
-        <td colspan="${cols.length}" style="color:#bbb;text-align:center;font-size:0.72rem;">ダウンロードデータに見つかりませんでした</td>
-      </tr>`;
+      if(skipLevels.includes(level)){
+        html+=`<tr class="row-setting">
+          <td class="col-no" style="background:#2c3e50;">${idx+1}</td>
+          <td class="col-name"><div style="font-weight:bold;">${esc(item.name)}</div><div style="font-size:0.63rem;color:#888;">（対象外）</div></td>
+          <td class="col-status" style="color:#888;">— 対象外</td>
+          <td colspan="${cols.length}" style="color:#aaa;text-align:center;font-size:0.72rem;">この案件タイプではDL未マッチが正常です</td>
+        </tr>`;
+      } else {
+        html+=`<tr class="row-notfound">
+          <td class="col-no">${idx+1}</td>
+          <td class="col-name" style="color:#999;">${esc(item.name)}</td>
+          <td class="col-status" style="color:#999;">⬜ 未匹配</td>
+          <td colspan="${cols.length}" style="color:#bbb;text-align:center;font-size:0.72rem;">ダウンロードデータに見つかりませんでした</td>
+        </tr>`;
+      }
       return;
     }
 
@@ -1930,6 +2038,7 @@ window.resetAll=function(){
   mediaType='';treeRoots=[];allComparisonData=null;
   selectedNodeId=null;statusFilter='all';currentLevel='CP';
   expectedStatuses={CP:'Paused',IO:'Paused',LI:'Paused',GP:'Paused',CR:'Paused'};
+  skipLevels=[];selectedCaseType='initial';
   visibleLevels=new Set(['CP','IO','LI','GP','CR']);
   renderFileList();
   updateControls();
