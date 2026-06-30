@@ -57,6 +57,29 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 </style>
 </head>
 <body>
+<script src="qc-auth.js"></script>
+<style>
+.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
+.qc-userbar a{color:#67e8f9;text-decoration:none;}
+</style>
+<div class="qc-userbar" id="qcUserBar">
+  <span id="qcUserInfo"></span>
+  <span><a href="index.html">&#x2190; 返回门户</a></span>
+</div>
+<script>
+(function(){
+  var u = guardPage();
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
+  else {
+    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
+    // 记录工具打开
+    var toolName = document.title || window.location.pathname.split('/').pop();
+    
+  }
+})();
+</script>
+
+
 
 <header>
   <h1>📊 Excel対比</h1>
@@ -729,6 +752,10 @@ function renderXlCompResult(){
         const btn=document.getElementById('back-to-top-btn');
         if(btn){ btn.style.opacity='1'; btn.style.pointerEvents='auto'; }
     },300);
+
+    // 自动上报使用日志
+    console.log('📊 上报对比结果:', { tool:'Excel对比', totalDiff, diffSheets, totalSheets });
+    sendLog('Excel对比', totalDiff, 1, `差异Sheet:${diffSheets}/${totalSheets}`).then(r => console.log('✅ 上报结果:', r));
 }
 
 // ===== 文字差分 =====

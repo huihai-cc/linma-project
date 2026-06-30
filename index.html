@@ -16,18 +16,61 @@
         header {
             background: #1a252f;
             color: white;
-            padding: 20px 32px;
+            padding: 16px 32px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
-        header h1 { font-size: 1.3rem; letter-spacing: 1px; font-weight: 700; }
+        header h1 { font-size: 1.2rem; letter-spacing: 1px; font-weight: 700; }
+        .header-right { display:flex; align-items:center; gap:16px; }
+        .header-user { font-size:0.85rem; opacity:0.85; }
+        .header-btn {
+            background: rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.3);
+            padding:5px 14px; border-radius:4px; cursor:pointer; font-size:0.78rem;
+        }
+        .header-btn:hover { background: rgba(255,255,255,0.25); }
+
+        /* ===== 登录/注册区域 ===== */
+        #authSection {
+            display: flex; justify-content: center; align-items: center;
+            min-height: calc(100vh - 60px);
+        }
+        .auth-box {
+            background: #fff; border-radius: 12px; padding: 32px 28px;
+            width: 400px; max-width: 90vw;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .auth-tabs { display:flex; gap:0; margin-bottom:24px; }
+        .auth-tab {
+            flex:1; text-align:center; padding:10px;
+            font-size:0.9rem; font-weight:700; cursor:pointer;
+            border-bottom:3px solid #e4e8ed; color:#999; background:none; border-top:none; border-left:none; border-right:none; outline:none;
+        }
+        .auth-tab.active { border-bottom-color:#2980b9; color:#2980b9; }
+        .auth-form { display:none; flex-direction:column; gap:14px; }
+        .auth-form.active { display:flex; }
+        .auth-form input, .auth-form select {
+            padding:10px 12px; border:1px solid #ddd; border-radius:6px; font-size:0.9rem; outline:none;
+        }
+        .auth-form input:focus, .auth-form select:focus { border-color:#2980b9; }
+        .auth-form button {
+            padding:11px; background:#2980b9; color:#fff; border:none; border-radius:6px;
+            font-size:0.95rem; font-weight:700; cursor:pointer;
+        }
+        .auth-form button:hover { background:#2471a3; }
+        .auth-msg { font-size:0.82rem; min-height:20px; text-align:center; }
+        .auth-msg.error { color:#e74c3c; }
+        .auth-msg.success { color:#27ae60; }
+        .auth-hint { font-size:0.7rem; color:#999; text-align:center; margin-top:4px; }
+
+        /* ===== 工具列表（登录后显示） ===== */
+        #mainSection { display:none; }
 
         .container {
             max-width: 960px;
-            margin: 32px auto;
-            padding: 0 24px;
+            margin: 24px auto;
+            padding: 0 24px 40px;
             display: flex;
             flex-direction: column;
             gap: 14px;
@@ -41,38 +84,20 @@
             overflow: hidden;
             box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
-
         .accordion-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 20px;
-            cursor: pointer;
-            user-select: none;
-            transition: background 0.15s;
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 20px; cursor: pointer; user-select: none; transition: background 0.15s;
         }
         .accordion-header:hover { background: #f8f9fa; }
-
         .accordion-arrow {
-            font-size: 0.75rem;
-            color: #7f8c8d;
-            transition: transform 0.2s;
-            width: 16px;
-            text-align: center;
+            font-size: 0.75rem; color: #7f8c8d; transition: transform 0.2s;
+            width: 16px; text-align: center;
         }
         .accordion.collapsed .accordion-arrow { transform: rotate(-90deg); }
-
         .accordion-label {
-            display: inline-flex;
-            align-items: center;
-            border-radius: 6px;
-            padding: 3px 12px;
-            font-size: 0.78rem;
-            font-weight: bold;
-            color: white;
-            letter-spacing: 0.5px;
-            min-width: 48px;
-            justify-content: center;
+            display: inline-flex; align-items: center; border-radius: 6px;
+            padding: 3px 12px; font-size: 0.78rem; font-weight: bold;
+            color: white; letter-spacing: 0.5px; min-width: 48px; justify-content: center;
         }
         .label-common { background: #636e72; }
         .label-1 { background: #2980b9; }
@@ -81,103 +106,42 @@
         .label-4 { background: #e67e22; }
         .label-5 { background: #c0392b; }
         .label-6 { background: #16a085; }
-
-        .accordion-title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-        .accordion-sub {
-            font-size: 0.72rem;
-            color: #95a5a6;
-            margin-left: auto;
-        }
-
+        .accordion-title { font-size: 0.9rem; font-weight: 600; color: #2c3e50; }
+        .accordion-sub { font-size: 0.72rem; color: #95a5a6; margin-left: auto; }
         .accordion-body {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 10px;
-            padding: 0 20px 18px;
-            transition: all 0.25s;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px; padding: 0 20px 18px; transition: all 0.25s;
         }
         .accordion.collapsed .accordion-body { display: none; }
 
         /* ===== 卡片 ===== */
         .card {
-            background: #fafbfc;
-            border: 1px solid #e4e8ed;
-            border-radius: 8px;
-            padding: 16px 14px;
-            text-decoration: none;
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            transition: all 0.18s;
-            cursor: pointer;
-            position: relative;
+            background: #fafbfc; border: 1px solid #e4e8ed; border-radius: 8px;
+            padding: 16px 14px; text-decoration: none; color: #333;
+            display: flex; flex-direction: column; gap: 6px;
+            transition: all 0.18s; cursor: pointer; position: relative;
         }
         .card:hover {
-            background: white;
-            border-color: #3498db;
-            box-shadow: 0 3px 12px rgba(52,152,219,0.12);
-            transform: translateY(-1px);
+            background: white; border-color: #3498db;
+            box-shadow: 0 3px 12px rgba(52,152,219,0.12); transform: translateY(-1px);
         }
-        .card.disabled {
-            opacity: 0.5;
-            cursor: default;
-            pointer-events: none;
-            background: #f5f5f5;
-        }
-
-        .card-icon {
-            font-size: 1.4rem;
-            line-height: 1;
-        }
-        .card-name {
-            font-size: 0.85rem;
-            font-weight: 600;
-            line-height: 1.4;
-        }
-        .card-desc {
-            font-size: 0.7rem;
-            color: #999;
-            line-height: 1.4;
-        }
-
-        .dev-tag {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: #f39c12;
-            color: white;
-            border-radius: 4px;
-            padding: 1px 7px;
-            font-size: 0.65rem;
-            font-weight: bold;
-        }
-
+        .card-icon { font-size: 1.4rem; line-height: 1; }
+        .card-name { font-size: 0.85rem; font-weight: 600; line-height: 1.4; }
+        .card-desc { font-size: 0.7rem; color: #999; line-height: 1.4; }
         .placeholder-card {
-            background: #fafafa;
-            border: 1px dashed #ddd;
-            border-radius: 8px;
-            padding: 16px 14px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            color: #bbb;
-            min-height: 80px;
+            background: #fafafa; border: 1px dashed #ddd; border-radius: 8px;
+            padding: 16px 14px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 6px;
+            color: #bbb; min-height: 80px;
         }
         .placeholder-icon { font-size: 1.4rem; }
         .placeholder-text { font-size: 0.78rem; }
 
         @media (max-width: 540px) {
             .accordion-body { grid-template-columns: repeat(2, 1fr); }
-            .container { margin: 20px auto; padding: 0 12px; }
-            header { padding: 16px 20px; }
-            header h1 { font-size: 1.1rem; }
+            .container { margin: 16px auto; padding: 0 12px; }
+            header { padding: 12px 16px; }
+            header h1 { font-size: 1rem; }
         }
         @media (max-width: 360px) {
             .accordion-body { grid-template-columns: 1fr; }
@@ -186,30 +150,71 @@
 </head>
 <body>
 
-<script>
-(function() {
-    const MY_PASSWORD = "huihai2026！";
-    const KEY = 'qc_portal_access';
-    const isAuth = localStorage.getItem(KEY);
-    if (isAuth !== MY_PASSWORD) {
-        const input = prompt("请输入社内专用访问密码：");
-        if (input === MY_PASSWORD) {
-            localStorage.setItem(KEY, MY_PASSWORD);
-        } else {
-            alert("密码错误，禁止访问！");
-            document.write("<h1 style='color:red;text-align:center;margin-top:100px;'>403 Forbidden</h1>");
-            window.stop();
-            throw new Error("Unauthorized");
-        }
-    }
-})();
-</script>
+<script src="qc-auth.js"></script>
 
+<!-- ===== Header ===== -->
 <header>
     <h1>🛠️ 惠海 QC ポータル</h1>
+    <div class="header-right" id="headerRight" style="display:none;">
+        <span class="header-user" id="headerUser"></span>
+        <button class="header-btn" onclick="logout()">退出</button>
+    </div>
 </header>
 
-<div class="container">
+<!-- ===== 登录/注册 ===== -->
+<div id="authSection">
+    <div class="auth-box">
+        <div class="auth-tabs">
+            <button class="auth-tab active" onclick="switchTab('login')">登录</button>
+            <button class="auth-tab" onclick="switchTab('register')">注册</button>
+        </div>
+
+        <!-- 登录表单 -->
+        <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)">
+            <input type="email" id="loginEmail" placeholder="公司邮箱" required>
+            <input type="password" id="loginPwd" placeholder="密码" required minlength="4">
+            <button type="submit" id="loginBtn">登 录</button>
+            <div class="auth-msg" id="loginMsg"></div>
+        </form>
+
+        <!-- 注册表单 -->
+        <form class="auth-form" id="regForm" onsubmit="return false;">
+            <input type="text" id="regName" placeholder="姓名" required>
+            <input type="email" id="regEmail" placeholder="公司邮箱" required>
+            <select id="regDept">
+                <option value="">选择课室（可选）</option>
+                <option value="1課">1課</option>
+                <option value="2課">2課</option>
+                <option value="3課">3課</option>
+                <option value="4課">4課</option>
+                <option value="5課">5課</option>
+                <option value="6課">6課</option>
+                <option value="AP財務">AP財務</option>
+                <option value="管理者">管理者</option>
+            </select>
+            <input type="password" id="regPwd" placeholder="设置密码（4位以上）" required minlength="4">
+
+            <!-- Step1: 发送验证码 -->
+            <div id="regStep1">
+                <button type="button" onclick="handleSendCode()">发送验证码</button>
+                <div class="auth-msg" id="regMsg"></div>
+                <div class="auth-hint">仅限公司邮箱注册（@hakuhodody-one / @dac / @adpro-inc / @huihai-info）</div>
+            </div>
+
+            <!-- Step2: 输入验证码 -->
+            <div id="regStep2" style="display:none;">
+                <input type="text" id="regCode" placeholder="请输入6位验证码" maxlength="6" pattern="[0-9]{6}">
+                <button type="button" onclick="handleVerifyCode()">验证并注册</button>
+                <div class="auth-msg" id="regMsg2"></div>
+                <button type="button" style="background:none;color:#2980b9;border:none;font-size:0.78rem;cursor:pointer;" onclick="resetRegStep()">← 重新发送验证码</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== 工具列表（登录后显示） ===== -->
+<div id="mainSection">
+    <div class="container">
 
     <!-- ===== 共通ツール ===== -->
     <div class="accordion" id="acc-common">
@@ -348,12 +353,174 @@
         </div>
     </div>
 
+    <!-- ===== 定例会報告書 ===== -->
+    <div class="accordion" id="acc-report">
+        <div class="accordion-header" onclick="toggleAccordion('acc-report')">
+            <span class="accordion-arrow">▼</span>
+            <span class="accordion-label" style="background:#1a252f;">報告</span>
+            <span class="accordion-title">定例会報告書</span>
+        </div>
+        <div class="accordion-body">
+            <a class="card" id="reportCard" href="【1课】BPO定例会_馬 林_20260630.html" target="_blank" style="display:none;">
+                <span class="card-icon">📋</span>
+                <span class="card-name">【1课】BPO定例会 · 馬 林 · 2026.06.30</span>
+                <span class="card-desc">年度目标 · 效率指标 · 核心成果 · 工作计划 · 课长周定例</span>
+            </a>
+            <div class="placeholder-card" id="reportLock" style="display:none;">
+                <span class="placeholder-icon">🔒</span>
+                <span class="placeholder-text">管理者専用</span>
+            </div>
+        </div>
+    </div>
+
+    </div>
 </div>
 
 <script>
+// ==================== Auth UI Logic ====================
+
+function switchTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+    if (tab === 'login') {
+        document.querySelector('.auth-tab:first-child').classList.add('active');
+        document.getElementById('loginForm').classList.add('active');
+    } else {
+        document.querySelector('.auth-tab:last-child').classList.add('active');
+        document.getElementById('regForm').classList.add('active');
+    }
+    document.getElementById('loginMsg').textContent = '';
+    document.getElementById('regMsg').textContent = '';
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const msg = document.getElementById('loginMsg');
+    msg.className = 'auth-msg';
+    msg.textContent = '⏳ 正在验证...';
+    btn.disabled = true;
+    btn.textContent = '验证中...';
+    const email = document.getElementById('loginEmail').value.trim();
+    const pwd = document.getElementById('loginPwd').value;
+    const result = await loginUser(email, pwd);
+    btn.disabled = false;
+    btn.textContent = '登 录';
+    if (result.ok) {
+        msg.className = 'auth-msg success';
+        msg.textContent = '登录成功！';
+        showMain();
+    } else {
+        msg.className = 'auth-msg error';
+        msg.textContent = result.error || '登录失败';
+    }
+}
+
+// ===== 注册两步流程 =====
+
+var regEmailTemp = ''; // 暂存正在验证的邮箱
+
+function resetRegStep() {
+    document.getElementById('regStep1').style.display = 'block';
+    document.getElementById('regStep2').style.display = 'none';
+    document.getElementById('regMsg').textContent = '';
+    document.getElementById('regMsg2').textContent = '';
+}
+
+async function handleSendCode() {
+    const msg = document.getElementById('regMsg');
+    msg.className = 'auth-msg';
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const dept = document.getElementById('regDept').value;
+    const pwd = document.getElementById('regPwd').value;
+
+    if (!name || !email || !pwd) {
+        msg.className = 'auth-msg error';
+        msg.textContent = '请填写所有必填项';
+        return;
+    }
+
+    // 前端预检邮箱尾缀
+    var allowed = ['@hakuhodody-one.co.jp','@dac.co.jp','@adpro-inc.co.jp','@huihai-info.com'];
+    if (!allowed.some(function(d){ return email.toLowerCase().endsWith(d); })) {
+        msg.className = 'auth-msg error';
+        msg.textContent = '仅限公司邮箱注册';
+        return;
+    }
+
+    msg.textContent = '⏳ 正在发送验证码...';
+    const result = await sendVerifyCode(email, name, pwd, dept);
+    if (result.ok) {
+        msg.className = 'auth-msg success';
+        msg.textContent = result.message;
+        regEmailTemp = email;
+        document.getElementById('regStep1').style.display = 'none';
+        document.getElementById('regStep2').style.display = 'block';
+        document.getElementById('regMsg2').textContent = '';
+        document.getElementById('regCode').value = '';
+        document.getElementById('regCode').focus();
+    } else {
+        msg.className = 'auth-msg error';
+        msg.textContent = result.error || '发送失败';
+    }
+}
+
+async function handleVerifyCode() {
+    const msg = document.getElementById('regMsg2');
+    msg.className = 'auth-msg';
+    const code = document.getElementById('regCode').value.trim();
+
+    if (!code || code.length !== 6) {
+        msg.className = 'auth-msg error';
+        msg.textContent = '请输入6位验证码';
+        return;
+    }
+
+    msg.textContent = '验证中...';
+    const result = await verifyEmailCode(regEmailTemp, code);
+    if (result.ok) {
+        msg.className = 'auth-msg success';
+        msg.textContent = '注册成功！请切换到「登录」标签登录。';
+        document.getElementById('regForm').reset();
+        setTimeout(() => { resetRegStep(); switchTab('login'); }, 1500);
+    } else {
+        msg.className = 'auth-msg error';
+        msg.textContent = result.error || '验证失败';
+    }
+}
+
+function showMain() {
+    document.getElementById('authSection').style.display = 'none';
+    document.getElementById('mainSection').style.display = 'block';
+    document.getElementById('headerRight').style.display = 'flex';
+    const user = getUser();
+    if (user) {
+        document.getElementById('headerUser').textContent = '👤 ' + user.name + ' (' + user.email + ')';
+        // 管理者显示报告书，担当显示锁定
+        if (user.position === '管理者') {
+            document.getElementById('reportCard').style.display = 'flex';
+            document.getElementById('reportLock').style.display = 'none';
+        } else {
+            document.getElementById('reportCard').style.display = 'none';
+            document.getElementById('reportLock').style.display = 'flex';
+        }
+    }
+}
+
+// ==================== Init ====================
+
 function toggleAccordion(id) {
     document.getElementById(id).classList.toggle('collapsed');
 }
+
+(function init() {
+    const user = getUser();
+    if (user) {
+        // 已有有效 session，直接显示工具
+        showMain();
+    }
+})();
 </script>
 </body>
 </html>

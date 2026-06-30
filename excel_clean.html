@@ -46,6 +46,29 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 </style>
 </head>
 <body>
+<script src="qc-auth.js"></script>
+<style>
+.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
+.qc-userbar a{color:#67e8f9;text-decoration:none;}
+</style>
+<div class="qc-userbar" id="qcUserBar">
+  <span id="qcUserInfo"></span>
+  <span><a href="index.html">&#x2190; 返回门户</a></span>
+</div>
+<script>
+(function(){
+  var u = guardPage();
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
+  else {
+    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
+    // 记录工具打开
+    var toolName = document.title || window.location.pathname.split('/').pop();
+    
+  }
+})();
+</script>
+
+
 
 <header>
     <h1>🧹 Excel清洗</h1>
@@ -324,6 +347,7 @@ async function runXlClean() {
                 a.download = outName;
                 a.click();
                 progress.innerHTML = `✅ 清洗完成！共清洗 <b>${totalCleaned}</b> 处，文件已自动下载：<b>${outName}</b><br><span style="font-size:0.8rem;color:#27ae60;">✅ 所有格式（颜色/边框/合并单元格）完全保留</span>`;
+                sendLog('Excel清洗', totalCleaned, 1, outName);
             } catch(err) {
                 progress.textContent = '❌ 清洗失败：' + err.message;
             }

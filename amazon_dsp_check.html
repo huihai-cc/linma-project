@@ -101,6 +101,29 @@ const LibLoader = {
 </script>
 </head>
 <body>
+<script src="qc-auth.js"></script>
+<style>
+.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
+.qc-userbar a{color:#67e8f9;text-decoration:none;}
+</style>
+<div class="qc-userbar" id="qcUserBar">
+  <span id="qcUserInfo"></span>
+  <span><a href="index.html">&#x2190; 返回门户</a></span>
+</div>
+<script>
+(function(){
+  var u = guardPage();
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
+  else {
+    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
+    // 记录工具打开
+    var toolName = document.title || window.location.pathname.split('/').pop();
+    
+  }
+})();
+</script>
+
+
 
 <header>
   <h1>✅ Amazon DSP 設定チェック</h1>
@@ -4055,6 +4078,10 @@ col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n
         window.addEventListener('resize',()=>{syncHeadWidth();updateFixedHead();},{passive:true});
         updateFixedHead();
     },200);
+
+    // 自动上报使用日志
+    console.log('📊 AmazonDSP对比结果:', { mismatchCount, foundCount, notFoundCount, settingCount });
+    sendLog('AmazonDSP设定检查', mismatchCount, 1, `匹配:${foundCount} 未发现:${notFoundCount}`).then(r => console.log('✅ 上报结果:', r));
 }
 
 // ===== 以下、既存関数（変更なし） =====

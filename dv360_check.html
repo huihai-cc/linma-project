@@ -215,6 +215,29 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
 </style>
 </head>
 <body>
+<script src="qc-auth.js"></script>
+<style>
+.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
+.qc-userbar a{color:#67e8f9;text-decoration:none;}
+</style>
+<div class="qc-userbar" id="qcUserBar">
+  <span id="qcUserInfo"></span>
+  <span><a href="index.html">&#x2190; 返回门户</a></span>
+</div>
+<script>
+(function(){
+  var u = guardPage();
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
+  else {
+    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
+    // 记录工具打开
+    var toolName = document.title || window.location.pathname.split('/').pop();
+    
+  }
+})();
+</script>
+
+
 
 <header>
   <h1>📈 DV360 設定チェック</h1>
@@ -2007,6 +2030,9 @@ function renderStats(){
       S:CP${allComparisonData.counts.cp}/IO${allComparisonData.counts.io}/LI${allComparisonData.counts.li}/GP${allComparisonData.counts.gp}/CR${allComparisonData.counts.cr}
       &nbsp;D:CP${allComparisonData.counts.dcp}/IO${allComparisonData.counts.dio}/LI${allComparisonData.counts.dli}/GP${allComparisonData.counts.dgp}/CR${allComparisonData.counts.dcr}
     </span>`;
+
+  // 自动上报使用日志
+  sendLog('DV360设定检查', stats.mismatch, 1, '一致:'+stats.ok+' 未匹配:'+stats.notfound+' 需确认:'+stats.warning);
 }
 
 // ===== FILTER CONTROLS =====

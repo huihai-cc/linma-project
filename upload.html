@@ -552,6 +552,29 @@ textarea::placeholder { color:#adb5bd; }
 </head>
 
 <body>
+<script src="qc-auth.js"></script>
+<style>
+.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
+.qc-userbar a{color:#67e8f9;text-decoration:none;}
+</style>
+<div class="qc-userbar" id="qcUserBar">
+  <span id="qcUserInfo"></span>
+  <span><a href="index.html">&#x2190; 返回门户</a></span>
+</div>
+<script>
+(function(){
+  var u = guardPage();
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
+  else {
+    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
+    // 记录工具打开
+    var toolName = document.title || window.location.pathname.split('/').pop();
+    
+  }
+})();
+</script>
+
+
 
 <!-- ===== 顶部 Header ===== -->
 <header class="app-header">
@@ -1639,6 +1662,7 @@ function renderCheck(text){
     <span class="stag" style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b">半角特殊 <b>${hw}</b></span>`;
   cst.classList.add('show');
   buildSummary();
+  sendLog('読売 符号检查', total, 1, '总行:'+lines.length);
 }
 
 function buildSummary(){
@@ -1827,6 +1851,7 @@ function renderImageTable(){
 }
 
 async function exportImageExcel(){
+  sendLog("読売 画像解析导出", 0, 0, "");
   if(!imageData.length){alert('没有图片数据');return;}
   const wb=new ExcelJS.Workbook();
   wb.creator='QC Tool';wb.created=new Date();
@@ -1907,6 +1932,7 @@ function renderURLTable(){
 }
 
 async function exportUrlExcel(){
+  sendLog("読売 URL抽出导出", 0, 0, "");
   if(!urlData.length){alert('没有URL数据');return;}
   const wb=new ExcelJS.Workbook();
   wb.creator='QC Tool';wb.created=new Date();
