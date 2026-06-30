@@ -84,6 +84,13 @@
             overflow: hidden;
             box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
+        /* 默认折叠的accordion（2~6课、定例会） */
+        /* 初始状态：无collapsed类 → 折叠；有collapsed类 → 展开 */
+        .accordion.default-collapsed .accordion-body { display: none; }
+        .accordion.default-collapsed .accordion-arrow { transform: rotate(-90deg); }
+        .accordion.default-collapsed.collapsed .accordion-body { display: grid; }
+        .accordion.default-collapsed.collapsed .accordion-arrow { transform: rotate(0deg); }
+        
         .accordion-header {
             display: flex; align-items: center; gap: 12px;
             padding: 14px 20px; cursor: pointer; user-select: none; transition: background 0.15s;
@@ -136,6 +143,35 @@
         }
         .placeholder-icon { font-size: 1.4rem; }
         .placeholder-text { font-size: 0.78rem; }
+
+        /* ===== 定例会报告书长条链接 ===== */
+        .report-strip {
+            grid-column: 1 / -1;
+        }
+        .report-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #fafbfc;
+            border: 1px solid #e4e8ed;
+            border-radius: 8px;
+            padding: 14px 18px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.18s;
+            cursor: pointer;
+            width: 100%;
+        }
+        .report-link:hover {
+            background: #fff;
+            border-color: #3498db;
+            box-shadow: 0 3px 12px rgba(52,152,219,0.12);
+        }
+        .report-icon { font-size: 1.3rem; line-height: 1; }
+        .report-title { font-size: 0.88rem; font-weight: 600; flex: 1; line-height: 1.4; }
+        .report-desc { font-size: 0.72rem; color: #95a5a6; line-height: 1.4; }
+        .report-arrow { font-size: 1.1rem; color: #999; transition: transform 0.18s; }
+        .report-link:hover .report-arrow { transform: translateX(3px); color: #3498db; }
 
         @media (max-width: 540px) {
             .accordion-body { grid-template-columns: repeat(2, 1fr); }
@@ -279,7 +315,7 @@
     </div>
 
     <!-- ===== 2課 ===== -->
-    <div class="accordion" id="acc-ka2">
+    <div class="accordion default-collapsed" id="acc-ka2">
         <div class="accordion-header" onclick="toggleAccordion('acc-ka2')">
             <span class="accordion-arrow">▼</span>
             <span class="accordion-label label-2">2課</span>
@@ -294,7 +330,7 @@
     </div>
 
     <!-- ===== 3課 ===== -->
-    <div class="accordion" id="acc-ka3">
+    <div class="accordion default-collapsed" id="acc-ka3">
         <div class="accordion-header" onclick="toggleAccordion('acc-ka3')">
             <span class="accordion-arrow">▼</span>
             <span class="accordion-label label-3">3課</span>
@@ -309,7 +345,7 @@
     </div>
 
     <!-- ===== 4課 ===== -->
-    <div class="accordion" id="acc-ka4">
+    <div class="accordion default-collapsed" id="acc-ka4">
         <div class="accordion-header" onclick="toggleAccordion('acc-ka4')">
             <span class="accordion-arrow">▼</span>
             <span class="accordion-label label-4">4課</span>
@@ -324,7 +360,7 @@
     </div>
 
     <!-- ===== 5課 ===== -->
-    <div class="accordion" id="acc-ka5">
+    <div class="accordion default-collapsed" id="acc-ka5">
         <div class="accordion-header" onclick="toggleAccordion('acc-ka5')">
             <span class="accordion-arrow">▼</span>
             <span class="accordion-label label-5">5課</span>
@@ -339,7 +375,7 @@
     </div>
 
     <!-- ===== 6課 ===== -->
-    <div class="accordion" id="acc-ka6">
+    <div class="accordion default-collapsed" id="acc-ka6">
         <div class="accordion-header" onclick="toggleAccordion('acc-ka6')">
             <span class="accordion-arrow">▼</span>
             <span class="accordion-label label-6">6課</span>
@@ -354,18 +390,21 @@
     </div>
 
     <!-- ===== 定例会報告書 ===== -->
-    <div class="accordion" id="acc-report">
+    <div class="accordion default-collapsed" id="acc-report">
         <div class="accordion-header" onclick="toggleAccordion('acc-report')">
             <span class="accordion-arrow">▼</span>
             <span class="accordion-label" style="background:#1a252f;">報告</span>
             <span class="accordion-title">定例会報告書</span>
         </div>
-        <div class="accordion-body">
-            <a class="card" id="reportCard" href="【1课】BPO定例会_馬 林_20260630.html" target="_blank" style="display:none;">
-                <span class="card-icon">📋</span>
-                <span class="card-name">【1课】BPO定例会 · 馬 林 · 2026.06.30</span>
-                <span class="card-desc">年度目标 · 效率指标 · 核心成果 · 工作计划 · 课长周定例</span>
-            </a>
+        <div class="accordion-body" id="reportBody">
+            <div class="report-strip" id="reportStrip" style="display:none;">
+                <a class="report-link" id="reportCard" href="【1课】BPO定例会_馬 林_20260630.html" target="_blank">
+                    <span class="report-icon">📋</span>
+                    <span class="report-title">【1课】BPO定例会 · 馬 林 · 2026.06.30</span>
+                    <span class="report-desc">年度目标 · 效率指标 · 核心成果 · 工作计划 · 课长周定例</span>
+                    <span class="report-arrow">→</span>
+                </a>
+            </div>
             <div class="placeholder-card" id="reportLock" style="display:none;">
                 <span class="placeholder-icon">🔒</span>
                 <span class="placeholder-text">管理者専用</span>
@@ -499,10 +538,10 @@ function showMain() {
         document.getElementById('headerUser').textContent = '👤 ' + user.name + ' (' + user.email + ')';
         // 管理者显示报告书，担当显示锁定
         if (user.position === '管理者') {
-            document.getElementById('reportCard').style.display = 'flex';
+            document.getElementById('reportStrip').style.display = 'block';
             document.getElementById('reportLock').style.display = 'none';
         } else {
-            document.getElementById('reportCard').style.display = 'none';
+            document.getElementById('reportStrip').style.display = 'none';
             document.getElementById('reportLock').style.display = 'flex';
         }
     }
