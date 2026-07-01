@@ -307,7 +307,9 @@ table {
 </div>
 
 <div class="toolbar">
-  <input type="text" id="searchInput" placeholder="🔍 キーワード検索..." oninput="filterTable()">
+  <!-- ダミー：Chromeの自動入力を吸い取る -->
+  <input type="email" style="width:0;height:0;padding:0;margin:0;border:0;opacity:0;position:absolute;" tabindex="-1" autocomplete="email">
+  <input type="search" id="searchInput" name="kw" placeholder="🔍 キーワード検索..." oninput="filterTable()" autocomplete="nope" readonly>
   <button class="btn btn-success" onclick="openAddModal()">＋ 新規追加</button>
   <button class="btn btn-primary" onclick="loadData()">🔄 更新</button>
 </div>
@@ -685,6 +687,22 @@ function showToast(msg, type) {
 }
 
 loadData();
+// 防止浏览器自动填充邮箱到搜索框（readonly + 激活时解除）
+(function(){
+  var kw = document.getElementById('searchInput');
+  var activated = false;
+  function activate() {
+    if (activated) return;
+    activated = true;
+    kw.removeAttribute('readonly');
+    kw.value = '';
+    kw.focus();
+  }
+  kw.addEventListener('click', activate);
+  kw.addEventListener('focus', activate);
+  // 兜底：DOM完全加载后再清一次
+  window.addEventListener('load', function(){ kw.value = ''; });
+})();
 </script>
 </body>
 </html>

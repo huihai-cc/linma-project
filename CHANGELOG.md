@@ -1,5 +1,37 @@
 # 修改履歴
 
+> 期間：2026-07-01  
+> 対象：`yomiko_kanri.html`
+
+---
+
+## 15. Chrome自動入力による検索ボックス汚染の修正
+
+**対象**：`yomiko_kanri.html`
+
+### 15-1. 問題
+- 認証システム（#10）導入後、`qcUserInfo` に表示されるログインユーザーのメールアドレスを
+  Chrome が検知し、ページ内の最初の `<input type="text">`（KW検索ボックス `#searchInput`）に
+  自動入力してしまう
+- `autocomplete="off"` や `setTimeout` での後片付けは Chrome の自動入力タイミングに
+  勝てず無効
+
+### 15-2. 対策（4層防御）
+| 層 | 施策 | 理由 |
+|----|------|------|
+| ① | 検索ボックス直前に不可視の `<input type="email">` を配置 | Chrome の自动入力を吸い取る |
+| ② | `type="search"` + `name="kw"` + `autocomplete="nope"` | 検索用であることを明示 |
+| ③ | **`readonly` 属性**（核心） | Chrome は readonly フィールドに自动入力しない |
+| ④ | クリック/フォーカス時に `removeAttribute('readonly')` + `value=''` | ユーザー操作で通常の検索ボックスに復帰 |
+
+### 15-3. 注意点
+- `autocomplete="off"` は Chrome 2016年以降無視されるため単独では無意味
+- `setTimeout` での事後クリアは Chrome の自動入力が JS 実行後に走るため無効
+- **`readonly` + インタラクション時解除** が唯一確実な対策
+- 他のツールページにも同様の検索ボックスがある場合は同様の対策を適用すること
+
+---
+
 > 期間：2026-06-30  
 > 対象：全ファイル（認証システム導入 + 品質KPI自動統計）
 

@@ -961,6 +961,30 @@ function parseYoutubeSetting(sheets, sheetNames, fileName){
   return {cpList,ioList,liList,gpList,crList};
 }
 
+// ── SDF 日期格式化为 YYYY/MM/DD ──
+function formatSdfDate(s){
+  if(!s) return '';
+  const t=String(s).trim();
+  if(!t) return '';
+  // MM/DD/YY または MM/DD/YYYY → YYYY/MM/DD
+  let m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})(?:\s|$)/);
+  if(m){
+    const yy=parseInt(m[3]);
+    const y4=yy<50?2000+yy:1900+yy;
+    return `${y4}/${m[1].padStart(2,'0')}/${m[2].padStart(2,'0')}`;
+  }
+  m=t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m){
+    return `${m[3]}/${m[1].padStart(2,'0')}/${m[2].padStart(2,'0')}`;
+  }
+  // YYYY-MM-DD → YYYY/MM/DD
+  m=t.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return `${m[1]}/${m[2]}/${m[3]}`;
+  // 既に YYYY/M/D 形式
+  if(/^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(t)) return t.replace('/','-');
+  return t;
+}
+
 // ===== SDF DOWNLOAD PARSER =====
 function parseSdfData(csvFiles){
   const cpList=[],ioList=[],liList=[],gpList=[],crList=[];
@@ -977,7 +1001,7 @@ function parseSdfData(csvFiles){
         cpList.push({name:obj['Name']||'',id:obj['Campaign Id']||'',fields:{
           status:obj['Status']||'',goal:obj['Campaign Goal']||'',
           goalKpi:obj['Campaign Goal KPI']||'',goalKpiVal:obj['Campaign Goal KPI Value']||'',
-          budget:obj['Campaign Budget']||'',startDate:obj['Campaign Start Date']||'',endDate:obj['Campaign End Date']||'',
+          budget:obj['Campaign Budget']||'',startDate:formatSdfDate(obj['Campaign Start Date']),endDate:formatSdfDate(obj['Campaign End Date']),
           creativeTypes:obj['Creative Types']||'',
           frequencyEnabled:obj['Frequency Enabled']||'',frequencyExposures:obj['Frequency Exposures']||'',
           frequencyPeriod:obj['Frequency Period']||'',
@@ -992,12 +1016,12 @@ function parseSdfData(csvFiles){
           trueViewKpiType:obj['TrueView Kpi Type']||'',trueViewKpiValue:obj['TrueView Kpi Value']||'',
           budgetType:obj['Budget Type']||'',budgetSegments:obj['Budget Segments']||'',
           fees:obj['Fees']||'',brandSafety:obj['Brand Safety Sensitivity Setting']||'',
-          startDate:obj['Io Start Date']||'',endDate:obj['Io End Date']||'',
+          startDate:formatSdfDate(obj['Io Start Date']),endDate:formatSdfDate(obj['Io End Date']),
         }});
       } else if(base==='LineItems'){
         liList.push({name:obj['Name']||'',id:obj['Line Item Id']||'',ioId:obj['Io Id']||'',ioName:obj['Io Name']||'',fields:{
           type:obj['Type']||'',subtype:obj['Subtype']||'',status:obj['Status']||'',
-          startDate:obj['Start Date']||'',endDate:obj['End Date']||'',
+          startDate:formatSdfDate(obj['Start Date']),endDate:formatSdfDate(obj['End Date']),
           budgetType:obj['Budget Type']||'',budgetAmount:obj['Budget Amount']||'',
           pacing:obj['Pacing']||'',pacingRate:obj['Pacing Rate']||'',pacingAmount:obj['Pacing Amount']||'',
           frequencyEnabled:obj['Frequency Enabled']||'',frequencyExposures:obj['Frequency Exposures']||'',
@@ -1477,8 +1501,8 @@ function compareLI(s,d){
   const dPacing=df.pacingRate||df.pacing||'';
   const items=[
     {label:'動画タイプ',   sVal:sf.videoType||'',  dVal:(df.type||'')+(df.subtype?'/'+df.subtype:''), result:compareField(normVideoType(sf.videoType),normVideoType(df.type+'/'+(df.subtype||'')))},
-    {label:'開始日',       sVal:sf.startDate||'',  dVal:normDate(df.startDate)||df.startDate||'',   result:compareField(normDate(sf.startDate),normDate(df.startDate))},
-    {label:'終了日',       sVal:sf.endDate||'',    dVal:normDate(df.endDate)||df.endDate||'',     result:compareField(normDate(sf.endDate),normDate(df.endDate))},
+    {label:'開始日',       sVal:sf.startDate||'',  dVal:df.startDate||'',   result:compareField(fmtDateVal(sf.startDate),df.startDate)},
+    {label:'終了日',       sVal:sf.endDate||'',    dVal:df.endDate||'',     result:compareField(fmtDateVal(sf.endDate),df.endDate)},
     // ── 修正4: 予算は gross を優先し amount と比較 ──
     {label:'予算(グロス)', sVal:sf.budgetGross||'',dVal:df.budgetAmount||'',result:compareField(sf.budgetGross,df.budgetAmount)},
     {label:'配信ペース',   sVal:sf.pacing||'',     dVal:dPacing,            result:compareField(normPacing(sf.pacing),normPacing(dPacing))},
