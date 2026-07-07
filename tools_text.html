@@ -824,6 +824,13 @@ function renderSortResult(blocks){
     batch();
 }
 
+function isFullContainmentMatch(a,b,ignCase){
+    const normalize=s=>s.normalize('NFC');
+    const ca=ignCase?normalize(a).toLowerCase():normalize(a);
+    const cb=ignCase?normalize(b).toLowerCase():normalize(b);
+    return ca.length>0&&cb.length>0&&ca!==cb&&(ca.includes(cb)||cb.includes(ca));
+}
+
 function runFullDiff(){
     const rawA=document.getElementById('ta-full').value;
     const rawB=document.getElementById('tb-full').value;
@@ -908,7 +915,11 @@ function runTabSplitCheck(textA,textB,ignCase){
         const hasMatch=ranges.length>0;
         let lineHtml='',pos=0;
         if(!hasMatch){lineHtml='<span style="background:#b2f0f0;color:#004444;font-weight:bold;">'+esc(slot.text)+'</span>';}
-        else{ranges.forEach(r=>{if(r.start>pos){lineHtml+='<span style="background:#b2f0f0;color:#004444;">'+esc(chars.slice(pos,r.start).join(''))+'</span>';}lineHtml+='<span style="color:#333;">'+esc(chars.slice(r.start,r.end).join(''))+'</span>';pos=r.end;});if(pos<chars.length){lineHtml+='<span style="background:#b2f0f0;color:#004444;">'+esc(chars.slice(pos).join(''))+'</span>';}}
+        else{
+            const pureContainment=ranges.some(r=>isFullContainmentMatch(slot.text,shortWords[r.swIdx].text,ignCase));
+            if(pureContainment){lineHtml=esc(slot.text);}
+            else{ranges.forEach(r=>{if(r.start>pos){lineHtml+='<span style="background:#b2f0f0;color:#004444;">'+esc(chars.slice(pos,r.start).join(''))+'</span>';}lineHtml+='<span style="color:#333;">'+esc(chars.slice(r.start,r.end).join(''))+'</span>';pos=r.end;});if(pos<chars.length){lineHtml+='<span style="background:#b2f0f0;color:#004444;">'+esc(chars.slice(pos).join(''))+'</span>';}}
+        }
         return lineHtml;
     }
     let tbodyHtml='';
@@ -981,6 +992,7 @@ function runLineContainCheck(textA,textB,ignCase){
                 para.forEach(line=>{
                     const lineComp=ignCase?normalize(line).toLowerCase():normalize(line);
                     if(lineComp.includes(comp2)){
+                        if(isFullContainmentMatch(line,m.aLine,ignCase)){paraHtml+=`<div style="padding:2px 0;color:#333;">${esc(line)}</div>`;return;}
                         const parts=line.split(new RegExp('('+m.aLine.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')',ignCase?'gi':'g'));
                         let lineHtml='';
                         parts.forEach(part=>{const partComp=ignCase?normalize(part).toLowerCase():normalize(part);if(partComp===comp2){lineHtml+=`<span style="color:#333;">${esc(part)}</span>`;}else if(part){lineHtml+=`<span style="background:#b2f0f0;color:#004444;">${esc(part)}</span>`;}});
