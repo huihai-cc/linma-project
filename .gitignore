@@ -12,3 +12,5 @@ _temp_extract/
 __pycache__/
 .claude/
 body.json
+
+agnes_proxy/
