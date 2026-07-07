@@ -108,8 +108,8 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
     <div class="xl-drop-area" id="xlcomp-drop-a">
       <div class="drop-icon">📊</div>
       <div class="drop-text">拖入 Excel 文件 A</div>
-      <div class="drop-sub">支持 .xlsx / .xls / .xlsm</div>
-      <input type="file" id="xlcomp-input-a" accept=".xlsx,.xls,.xlsm" style="display:none">
+      <div class="drop-sub">支持 .xlsx / .xls / .xlsm / .xlsb</div>
+      <input type="file" id="xlcomp-input-a" accept=".xlsx,.xls,.xlsm,.xlsb" style="display:none">
     </div>
   </div>
   <div>
@@ -117,8 +117,8 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
     <div class="xl-drop-area" id="xlcomp-drop-b">
       <div class="drop-icon">📊</div>
       <div class="drop-text">拖入 Excel 文件 B</div>
-      <div class="drop-sub">支持 .xlsx / .xls / .xlsm</div>
-      <input type="file" id="xlcomp-input-b" accept=".xlsx,.xls,.xlsm" style="display:none">
+      <div class="drop-sub">支持 .xlsx / .xls / .xlsm / .xlsb</div>
+      <input type="file" id="xlcomp-input-b" accept=".xlsx,.xls,.xlsm,.xlsb" style="display:none">
     </div>
   </div>
 </div>
@@ -237,7 +237,7 @@ function initXlCompDrop(side){
     const drop  = document.getElementById('xlcomp-drop-'+side);
     const input = document.getElementById('xlcomp-input-'+side);
     if(!drop || !input) return;
-    input.accept = xlcompMode === 'zip' ? '.zip' : '.xlsx,.xls,.xlsm';
+    input.accept = xlcompMode === 'zip' ? '.zip' : '.xlsx,.xls,.xlsm,.xlsb';
 
     drop.addEventListener('click', ()=> input.click());
     input.addEventListener('change', e=>{
@@ -269,7 +269,7 @@ function handleXlCompFile(side, file){
         });
         drop.onclick = ()=> document.getElementById('xlcomp-input-'+side).click();
     } else {
-        if(!file.name.match(/\.(xlsx|xls|xlsm)$/i)){ alert('请上传 Excel 文件'); return; }
+        if(!file.name.match(/\.(xlsx|xls|xlsm|xlsb)$/i)){ alert('请上传 Excel 文件'); return; }
         if(side==='a') xlcompFileA=file; else xlcompFileB=file;
 
         const drop = document.getElementById('xlcomp-drop-'+side);
@@ -277,7 +277,7 @@ function handleXlCompFile(side, file){
             <div class="drop-icon">✅</div>
             <div class="drop-text">${file.name}</div>
             <div class="drop-sub">${(file.size/1024/1024).toFixed(2)} MB　点击重新选择</div>
-            <input type="file" id="xlcomp-input-${side}" accept=".xlsx,.xls,.xlsm" style="display:none">
+            <input type="file" id="xlcomp-input-${side}" accept=".xlsx,.xls,.xlsm,.xlsb" style="display:none">
         `;
         document.getElementById('xlcomp-input-'+side).addEventListener('change', e=>{
             if(e.target.files[0]) handleXlCompFile(side, e.target.files[0]);
@@ -336,13 +336,13 @@ function _resetDropHint(drop, side, type){
     if(!drop) return;
     const icon = type==='ZIP'?'🗜️':'📊';
     const text = type==='ZIP'?`拖入 ZIP 包 ${side.toUpperCase()}`:`拖入 Excel 文件 ${side.toUpperCase()}`;
-    const sub  = type==='ZIP'?'支持 .zip　内含 .xlsx / .xls':'支持 .xlsx / .xls / .xlsm';
+    const sub  = type==='ZIP'?'支持 .zip　内含 .xlsx / .xls':'支持 .xlsx / .xls / .xlsm / .xlsb';
     drop.innerHTML = `
         <div class="drop-icon">${icon}</div>
         <div class="drop-text">${text}</div>
         <div class="drop-sub">${sub}</div>
         <input type="file" id="xlcomp-input-${side}"
-               accept="${type==='ZIP'?'.zip':'.xlsx,.xls,.xlsm'}" style="display:none">
+               accept="${type==='ZIP'?'.zip':'.xlsx,.xls,.xlsm,.xlsb'}" style="display:none">
     `;
     initXlCompDrop(side);
 }
@@ -613,7 +613,10 @@ function compareSheet(name){
             let status='eq';
             if(vA===null&&vB!==null) status='add';
             else if(vA!==null&&vB===null) status='del';
-            else if(String(vA)!==String(vB)) status='mod';
+            else if(typeof vA === 'number' && typeof vB === 'number' && isFinite(vA) && isFinite(vB)){
+                // 数值比较：四舍五入到小数点后2位，吸收浮点运算误差
+                if(Math.round(vA * 100) !== Math.round(vB * 100)) status = 'mod';
+            } else if(String(vA)!==String(vB)) status='mod';
             if(status!=='eq') rowHasDiff=true;
             cells.push({ vA:vA===null?'':vA, vB:vB===null?'':vB, status });
         }

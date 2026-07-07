@@ -240,9 +240,42 @@ const LibLoader = {
 (function(){
 
 // ===== 状態変数 =====
-const SC_COL_NO_W  = 40;
-const SC_COL_LI_W  = 180;
+const SC_COL_NO_W_DEFAULT = 40;
+const SC_COL_LI_W_DEFAULT = 180;
+const COL_ITEM_W_DEFAULT  = 120;
+let SC_COL_NO_W  = SC_COL_NO_W_DEFAULT;
+let SC_COL_LI_W  = SC_COL_LI_W_DEFAULT;
+let SC_ROW_HEIGHT = 50;   // 行高（默认50px，用户可调整）
 let scSystem = '';
+
+// ===== sessionStorage 读写函数 =====
+function scSaveRowHeight(val){
+    try { sessionStorage.setItem('sc_row_height', String(val)); } catch(e) {}
+}
+function scLoadRowHeight(){
+    try {
+        const v = parseInt(sessionStorage.getItem('sc_row_height'));
+        return v && v >= 20 && v <= 200 ? v : 50;
+    } catch(e) { return 50; }
+}
+function scSaveColWidths(){
+    try {
+        const data = { no: SC_COL_NO_W, li: SC_COL_LI_W, item: COL_ITEM_W };
+        sessionStorage.setItem('sc_col_widths', JSON.stringify(data));
+    } catch(e) {}
+}
+function scLoadColWidths(){
+    try {
+        const raw = sessionStorage.getItem('sc_col_widths');
+        if(!raw) return null;
+        const data = JSON.parse(raw);
+        return {
+            no: (data.no && data.no >= 30) ? data.no : SC_COL_NO_W_DEFAULT,
+            li: (data.li && data.li >= 100) ? data.li : SC_COL_LI_W_DEFAULT,
+            item: (data.item && data.item >= 80) ? data.item : COL_ITEM_W_DEFAULT,
+        };
+    } catch(e) { return null; }
+}
 let scFilesS = [];   // 複数設定表
 let scFilesD = [];   // 複数ダウンロードデータ
 let scWbsS   = [];   // 読み込み済みWB（設定表）
@@ -259,6 +292,15 @@ const SC_SYSTEMS = {
 
 // ===== 初期化 =====
 document.addEventListener('DOMContentLoaded', function(){
+    // 从 sessionStorage 恢复行高
+    SC_ROW_HEIGHT = scLoadRowHeight();
+    // 从 sessionStorage 恢复列宽
+    const savedWidths = scLoadColWidths();
+    if(savedWidths){
+        SC_COL_NO_W = savedWidths.no;
+        SC_COL_LI_W = savedWidths.li;
+    }
+    
     document.getElementById('sc-system-select').addEventListener('change', function(){
         scSystem = this.value;
         if(scSystem && SC_SYSTEMS[scSystem]){
@@ -3656,7 +3698,11 @@ const visibleCols = activeCols.filter(col=>{
     document.getElementById('sc-filter-btns').style.display='flex';
     document.getElementById('sc-filter-btns').style.alignItems='center';
 
-    const COL_NO_W=SC_COL_NO_W, COL_LI_W=SC_COL_LI_W, COL_ITEM_W=120;
+    // 从 sessionStorage 恢复列宽（每次渲染时使用最新保存的值）
+    const savedWidths = scLoadColWidths();
+    const COL_NO_W = savedWidths ? savedWidths.no : SC_COL_NO_W;
+    const COL_LI_W = savedWidths ? savedWidths.li : SC_COL_LI_W;
+    const COL_ITEM_W = savedWidths ? savedWidths.item : COL_ITEM_W_DEFAULT;
 
     let html=`
     <div style="background:#2c3e50;color:white;border-radius:8px 8px 0 0;
@@ -3740,6 +3786,19 @@ const visibleCols = activeCols.filter(col=>{
                 ${col.ja}
             </label>`).join('')}
         </div>
+    </div>
+
+    <!-- 行高調整 -->
+    <div style="background:#f0f4f8;border:1px solid #dce3ea;border-top:none;padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:0.8rem;font-weight:bold;color:#2c3e50;">📏 行高調整</span>
+        <input type="range" id="sc-row-height-slider" min="20" max="200" value="${SC_ROW_HEIGHT}" step="2"
+            style="width:100px;cursor:pointer;accent-color:#f39c12;vertical-align:middle;"
+            oninput="scUpdateRowHeight(this.value)">
+        <input type="number" id="sc-row-height-input" min="20" max="200" value="${SC_ROW_HEIGHT}" step="2"
+            style="width:52px;border:1px solid #7f8c8d;border-radius:4px;padding:2px 6px;
+                   font-size:0.8rem;text-align:center;vertical-align:middle;background:white;color:#333;"
+            onchange="scUpdateRowHeight(this.value)">
+        <span style="font-size:0.7rem;color:#888;">px</span>
     </div>`;
 
     // メインテーブル
@@ -3842,7 +3901,7 @@ const visibleCols = activeCols.filter(col=>{
 
         // IO名グループヘッダー行
         html+=`
-        <td colspan="${colSpan}"
+        <td colspan="${colSpan}" data-io-header="1"
     style="padding:0 16px;
            height:36px;line-height:36px;
            background:${hasMismatch?'#4a1a1a':'#1a3a1a'};
@@ -3873,7 +3932,7 @@ const visibleCols = activeCols.filter(col=>{
             // 設定表行
             html+=`
             <tr class="sc-li-row" data-li-idx="${idx}" data-io="${esc(ioName)}" data-status="${rowStatus}"
-                style="border-bottom:1px solid #e0e0e0;">
+                style="height:${SC_ROW_HEIGHT}px;border-bottom:1px solid #e0e0e0;">
                 <td rowspan="2" data-sticky="no"
                     style="background:#2c3e50;color:white;text-align:center;font-weight:bold;
                            font-size:0.88rem;vertical-align:middle;border:1px solid #445;
@@ -3914,11 +3973,12 @@ const visibleCols = activeCols.filter(col=>{
             if(!item.found){
                 html+=`<td colspan="${visibleCols.length}"
                     style="padding:10px;background:#f8f8f8;color:#888;
-                           font-size:0.82rem;text-align:center;vertical-align:middle;">
+                           font-size:0.82rem;text-align:center;vertical-align:middle;
+                           height:${SC_ROW_HEIGHT}px;">
                     ⚠️ ダウンロードデータに見つかりませんでした
                 </td></tr>
                 <tr class="sc-li-row" data-li-idx="${idx}" data-io="${esc(ioName)}" data-status="${rowStatus}"
-                    style="border-bottom:3px solid #ccc;"></tr>`;
+                    style="height:${SC_ROW_HEIGHT}px;border-bottom:3px solid #ccc;"></tr>`;
             } else {
                 // 設定表値行
                 visibleCols.forEach(col=>{
@@ -3933,10 +3993,10 @@ const visibleCols = activeCols.filter(col=>{
                     const hideStyle=col.autoHide?'display:none;':'';
                     html+=`<td data-col-key="${col.key}"
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
-                               vertical-align:middle;height:28px;overflow:hidden;
+                               vertical-align:middle;height:${SC_ROW_HEIGHT}px;overflow:hidden;
                                white-space:nowrap;text-overflow:ellipsis;text-align:left !important;${hideStyle}"
                         title="${esc(sVal)}"
-                        ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'28px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
+                        ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'${SC_ROW_HEIGHT}px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
                         <span style="font-size:0.73rem;color:${color};text-align:left;display:block;">
                             ${sVal||'<span style="color:#ccc;">—</span>'}
                         </span>
@@ -3946,7 +4006,7 @@ const visibleCols = activeCols.filter(col=>{
 
                 // ダウンロード値行
                 html+=`<tr class="sc-li-row" data-li-idx="${idx}" data-io="${esc(ioName)}" data-status="${rowStatus}"
-                    style="border-bottom:3px solid #ddd;">`;
+                    style="height:${SC_ROW_HEIGHT}px;border-bottom:3px solid #ddd;">`;
                 visibleCols.forEach(col=>{
                     const cr=item.colResults?item.colResults.find(c=>c.key===col.key):null;
                     const sVal=cr?String(cr.sVal||'').trim():'';
@@ -3959,13 +4019,13 @@ const visibleCols = activeCols.filter(col=>{
                     const hideStyle=col.autoHide?'display:none;':'';
                     html+=`<td data-col-key="${col.key}"
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
-                               vertical-align:middle;height:28px;overflow:hidden;
+                               vertical-align:middle;height:${SC_ROW_HEIGHT}px;overflow:hidden;
                                white-space:nowrap;text-overflow:ellipsis;text-align:left !important;${hideStyle}"
                         title="${esc([dVal, item[col.key==='Brand suitability content exclusion categories'?'__brand_content_note__':
 col.key==='Brand suitability inventory tier'?'__brand_tier_note__':
 col.key==='Targeting by Keywords'?'__keyword_diff__':
 col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n'))}"
-                        ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'28px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
+                        ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'${SC_ROW_HEIGHT}px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
                         <span style="font-size:0.73rem;text-align:left;display:block;${effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':'color:#856404'};">
                             ${dVal||'<span style="color:#ccc;">—</span>'}
                         </span>
@@ -4038,6 +4098,14 @@ col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n
 
     html+=`</tbody></table></div></div>`;
     result.innerHTML=html;
+
+    // ★ 行高調整コントロールにイベントリスナーをバインド
+    setTimeout(()=>{
+        const slider = document.getElementById('sc-row-height-slider');
+        const input  = document.getElementById('sc-row-height-input');
+        if(slider) slider.addEventListener('input', function(){ scUpdateRowHeight(this.value); });
+        if(input)  input.addEventListener('change', function(){ scUpdateRowHeight(this.value); });
+    }, 0);
 
     // 固定ヘッダー初期化（変更なし）
     setTimeout(()=>{
@@ -4129,6 +4197,11 @@ function scToggleKisson(){
 function resetSettingCheck(){
     scFilesS=[]; scFilesD=[]; scWbsS=[]; scWbsD=[];
     scResults=null; scCurrentFilter='all'; _scKissonVisible=false;
+    // 不重置行高/列宽，保持用户设定
+    const slider = document.getElementById('sc-row-height-slider');
+    const input  = document.getElementById('sc-row-height-input');
+    if(slider) slider.value = SC_ROW_HEIGHT;
+    if(input)  input.value  = SC_ROW_HEIGHT;
     ['setting','download'].forEach(side=>{
         const icon=side==='setting'?'📋':'📥';
         const label=side==='setting'?'設定表':'ダウンロードデータ';
@@ -4244,6 +4317,8 @@ function _scColResizeMove(e){
 }
 function _scColResizeEnd(){
     if(!_scResizing) return;
+    // 保存当前列宽到 sessionStorage
+    scSaveColWidths();
     _scResizing=null;
     document.removeEventListener('mousemove',_scColResizeMove);
     document.removeEventListener('mouseup',_scColResizeEnd);
@@ -4263,6 +4338,42 @@ window.scToggleCol=function(checkbox){
     const key=checkbox.dataset.colKey;
     const show=checkbox.checked;
     document.querySelectorAll(`#sc-result-area [data-col-key="${CSS.escape(key)}"]`).forEach(el=>{el.style.display=show?'':'none';});
+};
+
+// ===== 行高调整 =====
+window.scUpdateRowHeight = function(val){
+    val = parseInt(val) || 50;
+    val = Math.max(20, Math.min(200, val));  // 限制范围 20-200px
+    SC_ROW_HEIGHT = val;
+    // 保存到 sessionStorage
+    scSaveRowHeight(val);
+    // 同步 slider 和 number input
+    const slider = document.getElementById('sc-row-height-slider');
+    const input  = document.getElementById('sc-row-height-input');
+    if(slider) slider.value = val;
+    if(input)  input.value  = val;
+    // 更新所有已渲染的数据行。rowspan セルがあるため tr と td の両方に反映する。
+    document.querySelectorAll('#sc-main-table tbody tr').forEach(tr => {
+        if(tr.querySelector('td[data-io-header]')) return;
+        tr.style.height = val + 'px';
+        tr.querySelectorAll('td').forEach(td => {
+            // 跳过 NO 列（项目编号列不跟随行高调整）
+            if(td.getAttribute('data-sticky') === 'no') return;
+            td.style.height = val + 'px';
+            const prevDblClick = td.getAttribute('ondblclick') || '';
+            if(prevDblClick){
+                const newDblClick = prevDblClick.replace(
+                    /this\.style\.height=e\?'auto':'\d+px'/g,
+                    "this.style.height=e?'auto':'" + val + "px'"
+                );
+                td.setAttribute('ondblclick', newDblClick);
+            }
+        });
+    });
+    // 也更新表头的行高（th）
+    document.querySelectorAll('#sc-head-table th').forEach(th => {
+        th.style.height = Math.max(36, val + 4) + 'px';
+    });
 };
 
 window.runSettingCheck=runSettingCheck;

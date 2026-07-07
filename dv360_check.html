@@ -16,26 +16,50 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
 .back-btn{background:#2980b9;color:white;border:none;border-radius:4px;padding:4px 12px;font-size:0.8rem;cursor:pointer;text-decoration:none;}
 .back-btn:hover{background:#1a6fa8;}
 
-/* ===== Upload Zone ===== */
+/* ===== Media Selector Bar ===== */
+.media-select-bar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:#f0f4f8;border-bottom:1px solid #dce3ea;flex-wrap:wrap;}
+.media-select-bar label{font-weight:bold;font-size:0.85rem;color:#2c3e50;}
+.media-select-bar select{padding:5px 12px;border:1px solid #3498db;border-radius:4px;font-size:0.85rem;background:white;cursor:pointer;}
+.media-select-bar select:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(52,152,219,0.2);}
+#media-badge{background:#3498db;color:white;border-radius:10px;padding:2px 10px;font-size:0.78rem;font-weight:bold;display:none;}
+#case-type-btn{background:#8e44ad;color:white;border:none;border-radius:6px;padding:5px 14px;font-size:0.82rem;font-weight:bold;cursor:pointer;transition:all 0.15s;}
+#case-type-btn:hover{background:#732d91;}
+
+/* ===== Upload Zone (2-Zone Layout) ===== */
 .upload-section{padding:16px 20px;}
-.upload-grid{display:grid;grid-template-columns:1fr;gap:12px;max-width:900px;}
-.multi-upload-zone{
-  border:2px dashed #3498db;border-radius:10px;padding:24px;
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:1000px;}
+.dv-drop-zone{
+  border:2px dashed #3498db;border-radius:10px;padding:20px;
   text-align:center;cursor:pointer;background:#f8fbfe;
   min-height:120px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;transition:all 0.2s;
 }
-.multi-upload-zone:hover,.multi-upload-zone.dragover{border-color:#1a6fa8;background:#eaf2fb;}
-.multi-upload-zone.has-files{border-style:solid;border-color:#27ae60;background:#f0fff4;}
-.upload-icon{font-size:2.2rem;margin-bottom:6px;}
-.upload-text{color:#2980b9;font-size:0.95rem;font-weight:bold;}
-.upload-sub{color:#999;font-size:0.75rem;margin-top:4px;}
-#file-list{width:100%;max-width:900px;margin-top:8px;}
-#file-list .file-list{padding:4px 0;}
-.file-item{display:flex;align-items:center;gap:6px;background:white;border:1px solid #d0e8d0;
+.dv-drop-zone.download-zone{border-color:#27ae60;background:#f0fff4;}
+.dv-drop-zone:hover,.dv-drop-zone.dragover{border-color:#1a6fa8;background:#eaf2fb;}
+.dv-drop-zone.has-files{border-style:solid;}
+.dv-drop-zone.has-files.download-zone{border-color:#27ae60;background:#d5f5e3;}
+.dv-upload-icon{font-size:2rem;margin-bottom:6px;}
+.dv-upload-text{color:#2980b9;font-size:0.9rem;font-weight:bold;}
+.dv-upload-text.download-text{color:#27ae60;}
+.dv-upload-sub{color:#999;font-size:0.72rem;margin-top:4px;}
+#dv-file-list{width:100%;max-width:1000px;margin-top:8px;}
+#dv-file-list .file-list{padding:4px 0;}
+.dv-file-item{display:flex;align-items:center;gap:6px;background:white;border:1px solid #d0e8d0;
   border-radius:4px;padding:4px 10px;margin-bottom:3px;font-size:0.78rem;}
-.file-item .remove-btn{background:#e74c3c;color:white;border:none;border-radius:3px;
+.dv-file-item .remove-btn{background:#e74c3c;color:white;border:none;border-radius:3px;
   padding:1px 6px;font-size:0.7rem;cursor:pointer;margin-left:auto;flex-shrink:0;}
+.dv-file-item.setting-item{border-color:#3498db;}
+.dv-file-item.download-item{border-color:#27ae60;}
+
+/* ===== Controls ===== */
+.control-bar{display:none;align-items:center;gap:10px;padding:8px 20px;flex-wrap:wrap;background:#f8f9fa;border-top:1px solid #e0e0e0;}
+.control-bar.show{display:flex;}
+.btn{padding:7px 16px;border:none;border-radius:5px;font-size:0.82rem;font-weight:bold;cursor:pointer;transition:all 0.15s;}
+.btn-check{background:#e74c3c;color:white;}
+.btn-check:hover{background:#c0392b;}
+.btn-reset{background:#95a5a6;color:white;}
+.btn-reset:hover{background:#7f8c8d;}
+.btn-sm{padding:4px 10px;font-size:0.72rem;}
 
 /* ===== Controls ===== */
 .control-bar{display:none;align-items:center;gap:10px;padding:8px 20px;flex-wrap:wrap;}
@@ -171,6 +195,38 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
 .level-tab.active{background:#1a252f;color:white;border-color:#1a252f;}
 .level-tab .tab-counter{font-size:0.65rem;opacity:0.7;margin-left:4px;}
 
+/* ===== Phase 6: Result Header Bar ===== */
+.dv-result-header{display:none;background:#2c3e50;color:white;border-radius:8px 8px 0 0;padding:12px 16px;display:none;align-items:center;gap:10px;flex-wrap:wrap;font-size:0.82rem;}
+.dv-result-header.show{display:flex;}
+.dv-result-header .hdr-title{font-weight:bold;font-size:0.95rem;}
+.dv-result-header .hdr-badge{border-radius:10px;padding:2px 10px;font-size:0.78rem;font-weight:bold;}
+.dv-result-header .hdr-badge.settings{background:#7f8c8d;}
+.dv-result-header .hdr-badge.download{background:#2980b9;}
+.dv-result-header .hdr-badge.match{background:#27ae60;}
+.dv-result-header .hdr-badge.mismatch{background:#e74c3c;}
+
+/* ===== Phase 6: File Info Bar ===== */
+.dv-file-info-bar{display:none;background:#f0f8ff;border:1px solid #bdd7ee;border-top:none;padding:7px 16px;font-size:0.82rem;color:#2c3e50;flex-wrap:wrap;gap:8px;}
+.dv-file-info-bar.show{display:flex;}
+.dv-file-info-bar .info-section{display:flex;align-items:center;gap:4px;}
+
+/* ===== Phase 6: Legend Bar ===== */
+.dv-legend-bar{display:none;background:#f8f8f8;border:1px solid #ddd;border-top:none;padding:7px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:0.78rem;color:#555;}
+.dv-legend-bar.show{display:flex;}
+.dv-legend-bar .legend-item{display:flex;align-items:center;gap:3px;}
+.dv-legend-bar .legend-swatch{display:inline-block;width:12px;height:12px;border-radius:2px;border:1px solid;}
+.dv-legend-bar .legend-swatch.ok{background:#d5f5e3;border-color:#27ae60;}
+.dv-legend-bar .legend-swatch.mismatch{background:#fde8e8;border-color:#e74c3c;}
+.dv-legend-bar .legend-swatch.warn{background:#fef9e7;border-color:#f39c12;}
+.dv-legend-bar .legend-swatch.notfound{background:#f0f0f0;border-color:#bbb;}
+
+/* ===== Phase 6: Row Height Slider Bar ===== */
+.dv-row-height-bar{display:none;background:#f0f4f8;border:1px solid #dce3ea;border-top:none;padding:8px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.dv-row-height-bar.show{display:flex;}
+.dv-row-height-bar label{font-size:0.8rem;font-weight:bold;color:#2c3e50;}
+.dv-row-height-bar input[type="range"]{width:100px;cursor:pointer;accent-color:#f39c12;}
+.dv-row-height-bar input[type="number"]{width:52px;border:1px solid #7f8c8d;border-radius:4px;padding:2px 6px;font-size:0.8rem;text-align:center;}
+
 /* ===== Result Table ===== */
 .result-table-wrap{display:none;margin:0 20px 12px;background:white;border:1px solid #ddd;border-radius:0 0 8px 8px;max-height:70vh;overflow:auto;}
 .result-table-wrap.show{display:block;}
@@ -181,6 +237,7 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
 .result-table .col-no{width:40px;text-align:center;position:sticky;left:0;z-index:10;background:#2c3e50;color:white;font-weight:bold;font-size:0.82rem;}
 .result-table .col-name{width:180px;position:sticky;left:40px;z-index:10;background:white;box-shadow:2px 0 4px rgba(0,0,0,0.08);}
 .result-table .col-status{width:85px;text-align:center;white-space:nowrap;}
+.result-table tr[data-io-header="1"] td{padding:8px 12px;}
 
 /* Cell backgrounds */
 .cell-ok{background:#f0fff4;}
@@ -249,16 +306,45 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
   <span style="color:#bdc3c7;font-size:0.8rem;">DV360 広告設定の自動チェック — Youtube優先</span>
 </div>
 
-<!-- Upload Zone -->
+<!-- Media Selector Bar -->
+<div class="media-select-bar">
+  <label for="media-select">🎯 チェック対象：</label>
+  <select id="media-select">
+    <option value="auto">⚡ 自動検出（推奨）</option>
+    <option value="youtube">Youtube（TrueView）</option>
+    <option value="ott">OTT（Netflix等）</option>
+    <option value="display">Display</option>
+  </select>
+  <span id="media-badge"></span>
+  <button id="case-type-btn" onclick="showStatusDialog()">📋 案件タイプ設定</button>
+  <span id="control-info" style="font-size:0.78rem;color:#888;margin-left:auto;"></span>
+</div>
+
+<!-- Upload Zone (2-Zone Layout) -->
 <div class="upload-section">
   <div class="upload-grid">
-    <div id="upload-zone" class="multi-upload-zone">
-      <div class="upload-icon">📦</div>
-      <div class="upload-text">拖入文件到此区域（可同时拖入多个）</div>
-      <div class="upload-sub">支持：ZIP批量上传 / 設定表 .xlsx / SDF .zip / .csv<br>点击此处选择文件</div>
+    <!-- 設定表ゾーン -->
+    <div>
+      <div style="font-weight:bold;font-size:0.9rem;color:#2c3e50;margin-bottom:8px;">📋 設定表（.xlsx）</div>
+      <div id="dv-drop-setting" class="dv-drop-zone">
+        <div class="dv-upload-icon">📊</div>
+        <div class="dv-upload-text">設定表をドラッグ＆ドロップ</div>
+        <div class="dv-upload-sub">またはクリックして選択（.xlsx 複数可）</div>
+        <input type="file" id="dv-input-setting" accept=".xlsx,.xls" multiple style="display:none">
+      </div>
+      <div id="dv-setting-list" style="margin-top:8px;"></div>
     </div>
-    <input type="file" id="file-input" multiple accept=".zip,.xlsx,.xls,.csv" style="display:none;">
-    <div id="file-list" style="display:none;"></div>
+    <!-- SDFダウンロードゾーン -->
+    <div>
+      <div style="font-weight:bold;font-size:0.9rem;color:#2c3e50;margin-bottom:8px;">📥 SDFダウンロード（.zip/.csv）</div>
+      <div id="dv-drop-download" class="dv-drop-zone download-zone">
+        <div class="dv-upload-icon">📦</div>
+        <div class="dv-upload-text download-text">SDFデータをドラッグ＆ドロップ</div>
+        <div class="dv-upload-sub">またはクリックして選択（.zip / .csv 複数可）</div>
+        <input type="file" id="dv-input-download" accept=".zip,.csv" multiple style="display:none">
+      </div>
+      <div id="dv-download-list" style="margin-top:8px;"></div>
+    </div>
   </div>
 </div>
 
@@ -266,7 +352,6 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
 <div id="control-bar" class="control-bar">
   <button class="btn btn-check" onclick="runCheck()">🔍 チェック開始</button>
   <button class="btn btn-reset" onclick="resetAll()">🗑️ リセット</button>
-  <span id="control-info" style="font-size:0.78rem;color:#888;"></span>
 </div>
 
 <div id="progress" class="progress-bar"></div>
@@ -317,6 +402,40 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
   <button class="level-tab" data-lvl="CR" onclick="switchLevel('CR')">CR<span class="tab-counter"></span></button>
 </div>
 
+<!-- Phase 6-1: Result Header Bar -->
+<div id="dv-result-header" class="dv-result-header">
+  <span class="hdr-title">📈 DV360 <span id="dv-hdr-media-type">YOUTUBE</span> チェック結果</span>
+  <span class="hdr-badge settings" id="dv-hdr-setting-count">設定表：0件</span>
+  <span class="hdr-badge download" id="dv-hdr-download-count">SDF：0文件</span>
+  <span class="hdr-badge match" id="dv-hdr-match-count">✅ 一致：0件</span>
+  <span class="hdr-badge mismatch" id="dv-hdr-mismatch-count">❌ 不一致：0项目</span>
+</div>
+
+<!-- Phase 6-2: File Info Bar -->
+<div id="dv-file-info-bar" class="dv-file-info-bar">
+  <span class="info-section">📋 設定表：<span id="dv-setting-file-names">-</span></span>
+  <span class="info-section">📥 SDF：<span id="dv-download-file-names">-</span></span>
+</div>
+
+<!-- Phase 6-3: Legend Bar -->
+<div id="dv-legend-bar" class="dv-legend-bar">
+  <span style="font-weight:bold;">凡例：</span>
+  <span class="legend-item"><span class="legend-swatch ok"></span>✅ 一致</span>
+  <span class="legend-item"><span class="legend-swatch mismatch"></span>❌ 不一致</span>
+  <span class="legend-item"><span class="legend-swatch warn"></span>⚠️ 要確認</span>
+  <span class="legend-item"><span class="legend-swatch notfound"></span>⬜ 未マッチ</span>
+  <span style="color:#999;margin-left:8px;font-size:0.72rem;">※ 上段＝設定表 / 下段＝ダウンロード</span>
+</div>
+
+<!-- Phase 6-5: Row Height Slider Bar -->
+<div id="dv-row-height-bar" class="dv-row-height-bar">
+  <span>📏 行高調整</span>
+  <input type="range" id="dv-row-height-slider" min="20" max="200" value="50" step="2" oninput="dvUpdateRowHeight(this.value)">
+  <input type="number" id="dv-row-height-input" min="20" max="200" value="50" step="2" onchange="dvUpdateRowHeight(this.value)">
+  <span style="font-size:0.7rem;color:#888;">px</span>
+  <button class="btn btn-sm" style="background:#ecf0f1;border:1px solid #bbb;margin-left:auto;" onclick="dvResetRowHeight()">↺ デフォルト</button>
+</div>
+
 <!-- Result Table Container -->
 <div id="result-table-wrap" class="result-table-wrap">
   <div class="empty-state"><div class="icon">📂</div>上传文件后点击「チェック開始」</div>
@@ -350,16 +469,22 @@ let uploadedFiles   = [];
 let settingFiles    = [];
 let downloadFiles   = [];
 let mediaType       = '';
+let selectedMediaType = 'auto'; // Phase 2: 用户选择的媒体类型
 let treeRoots       = [];
 let statusFilter    = 'all';
 let visibleLevels   = new Set(['CP','IO','LI','GP','CR']);
 let selectedNodeId  = null;
 let allComparisonData = null;
-let expectedStatuses = {CP:'Paused',IO:'Paused',LI:'Paused',GP:'Paused',CR:'Paused'};
+// Phase 7: 默认値を「初期案件」に合わせる
+let expectedStatuses = {CP:'Paused',IO:'Default',LI:'Draft',GP:'Active',CR:'Active'};
 let skipLevels = [];
 let statusDialogResolve = null;
 let currentLevel = 'CP';
 let selectedCaseType = 'initial';
+
+// ===== Phase 1: 2-Zone Upload State =====
+let dvSettingFiles   = [];
+let dvDownloadFiles  = [];
 
 // ===== UTILS =====
 function esc(s){
@@ -386,95 +511,222 @@ function fuzzyMatch(a,b){
   return 0;
 }
 
-// ===== UPLOAD =====
-const uploadZone = document.getElementById('upload-zone');
-const fileInput  = document.getElementById('file-input');
-const fileListEl = document.getElementById('file-list');
+// ===== Phase 1: 2-Zone Upload System =====
+// ドロップゾーン要素
+const dvDropSetting = document.getElementById('dv-drop-setting');
+const dvInputSetting = document.getElementById('dv-input-setting');
+const dvSettingList = document.getElementById('dv-setting-list');
+const dvDropDownload = document.getElementById('dv-drop-download');
+const dvInputDownload = document.getElementById('dv-input-download');
+const dvDownloadList = document.getElementById('dv-download-list');
+const mediaSelect = document.getElementById('media-select');
+const mediaBadge = document.getElementById('media-badge');
 
-uploadZone.addEventListener('click', () => fileInput.click());
+/**
+ * 初始化指定区域的拖拽上传
+ * @param {'setting'|'download'} side - 上传区域类型
+ */
+function dvInitUpload(side){
+  const dropZone = side==='setting' ? dvDropSetting : dvDropDownload;
+  const inputEl  = side==='setting' ? dvInputSetting : dvInputDownload;
+  const listEl   = side==='setting' ? dvSettingList : dvDownloadList;
+  const filesArr = side==='setting' ? dvSettingFiles : dvDownloadFiles;
+  const isDownload = side==='download';
 
-fileInput.addEventListener('change', e => {
-  if(e.target.files && e.target.files.length){
-    handleFiles(Array.from(e.target.files));
-    fileInput.value = '';
+  // クリックでファイル選択
+  dropZone.addEventListener('click', ()=> inputEl.click());
+
+  // ファイル選択イベント
+  inputEl.addEventListener('change', e => {
+    if(e.target.files && e.target.files.length){
+      dvHandleFiles(side, Array.from(e.target.files));
+      inputEl.value = ''; // 再度同じファイルを選択可能にする
+    }
+  });
+
+  // ドラッグ&ドロップ
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if(e.dataTransfer.files && e.dataTransfer.files.length){
+      dvHandleFiles(side, Array.from(e.dataTransfer.files));
+    }
+  });
+
+  // 初期化時にファイルリスト非表示
+  if(filesArr.length===0){
+    listEl.innerHTML = '';
   }
-});
+}
 
-uploadZone.addEventListener('dragover',  e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-uploadZone.addEventListener('dragleave', ()  => uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadZone.classList.remove('dragover');
-  if(e.dataTransfer.files && e.dataTransfer.files.length){
-    handleFiles(Array.from(e.dataTransfer.files));
-  }
-});
+/**
+ * ファイル処理（種類別バリデーション付き）
+ * @param {'setting'|'download'} side - 上传区域类型
+ * @param {File[]} files - 処理対象ファイル
+ */
+function dvHandleFiles(side, files){
+  const filesArr = side==='setting' ? dvSettingFiles : dvDownloadFiles;
+  const isDownload = side==='download';
 
-function handleFiles(files){
+  // ファイル種類のバリデーション
+  const validExtensions = isDownload
+    ? ['.zip', '.csv']
+    : ['.xlsx', '.xls'];
+  const validNames = validExtensions.join(' / ');
+
   const valid = files.filter(f => {
     const n = f.name.toLowerCase();
-    return n.endsWith('.zip')||n.endsWith('.xlsx')||n.endsWith('.xls')||n.endsWith('.csv');
+    return validExtensions.some(ext => n.endsWith(ext));
   });
-  if(!valid.length){ alert('支持 .zip / .xlsx / .xls / .csv 文件'); return; }
 
+  if(!valid.length){
+    alert(`サポートされていないファイル形式です。\n対応: ${validNames}`);
+    return;
+  }
+
+  // 重複除去 + 追加
   valid.forEach(f => {
-    if(!uploadedFiles.find(u => u.name === f.name)){
-      uploadedFiles.push({
+    if(!filesArr.find(u => u.name === f.name)){
+      filesArr.push({
         name : f.name,
         blob : f,
         type : f.name.toLowerCase().endsWith('.zip') ? 'zip'
-             : f.name.toLowerCase().endsWith('.csv') ? 'csv' : 'xlsx'
+             : f.name.toLowerCase().endsWith('.csv') ? 'csv'
+             : 'xlsx'
       });
     }
   });
-  renderFileList();
-  updateControls();
+
+  dvRenderFileList(side);
+  dvUpdateControls();
 }
 
-function removeFile(idx){
-  uploadedFiles.splice(idx,1);
-  renderFileList();
-  updateControls();
-}
-window.removeFile = removeFile;
+/**
+ * ファイルリスト描画
+ * @param {'setting'|'download'} side - 上传区域类型
+ */
+function dvRenderFileList(side){
+  const filesArr = side==='setting' ? dvSettingFiles : dvDownloadFiles;
+  const dropZone = side==='setting' ? dvDropSetting : dvDropDownload;
+  const listEl   = side==='setting' ? dvSettingList : dvDownloadList;
+  const isDownload = side==='download';
 
-function renderFileList(){
-  if(uploadedFiles.length===0){
-    uploadZone.className = 'multi-upload-zone';
-    fileListEl.style.display = 'none';
-    fileListEl.innerHTML = '';
+  if(filesArr.length===0){
+    dropZone.className = `dv-drop-zone${isDownload?' download-zone':''}`;
+    listEl.innerHTML = '';
     return;
   }
-  uploadZone.className = 'multi-upload-zone has-files';
-  const listHtml = uploadedFiles.map((f,i) => `
-    <div class="file-item">
-      <span>${f.name.endsWith('.zip')?'📦':f.name.endsWith('.csv')?'📄':'📊'}</span>
+
+  dropZone.className = `dv-drop-zone has-files${isDownload?' download-zone':''}`;
+
+  const icon = isDownload ? '📦' : '📊';
+  const listHtml = filesArr.map((f,i) => `
+    <div class="dv-file-item ${isDownload?'download-item':'setting-item'}">
+      <span>${icon}</span>
       <span style="flex:1;word-break:break-all;">${esc(f.name)}</span>
       <span style="color:#999;flex-shrink:0;">${(f.blob.size/1024).toFixed(0)}KB</span>
-      <button class="remove-btn" onclick="event.stopPropagation();removeFile(${i})">✕</button>
+      <button class="remove-btn" onclick="event.stopPropagation();dvRemoveFile('${side}',${i})">✕</button>
     </div>`).join('');
-  fileListEl.style.display = 'block';
-  fileListEl.innerHTML = `
+
+  listEl.innerHTML = `
     <div class="file-list">${listHtml}</div>
     <div style="margin-top:6px;font-size:0.75rem;color:#27ae60;font-weight:bold;text-align:center;">
-      📎 ${uploadedFiles.length}件 ／ クリックして追加
+      📎 ${filesArr.length}件 ／ クリックして追加
     </div>`;
 }
 
-function updateControls(){
-  const bar  = document.getElementById('control-bar');
+/**
+ * ファイル削除
+ * @param {'setting'|'download'} side - 上传区域类型
+ * @param {number} idx - インデックス
+ */
+function dvRemoveFile(side, idx){
+  const filesArr = side==='setting' ? dvSettingFiles : dvDownloadFiles;
+  filesArr.splice(idx, 1);
+  dvRenderFileList(side);
+  dvUpdateControls();
+}
+
+/**
+ * コントロールバーの状態を更新
+ */
+function dvUpdateControls(){
+  const bar = document.getElementById('control-bar');
   const info = document.getElementById('control-info');
-  if(uploadedFiles.length>0){
+
+  const hasSetting = dvSettingFiles.length > 0;
+  const hasDownload = dvDownloadFiles.length > 0;
+
+  if(hasSetting || hasDownload){
     bar.classList.add('show');
-    const xlsxCount = uploadedFiles.filter(f=>f.type==='xlsx').length;
-    const zipCount  = uploadedFiles.filter(f=>f.type==='zip').length;
-    const csvCount  = uploadedFiles.filter(f=>f.type==='csv').length;
-    info.textContent = `設定Excel:${xlsxCount}件  ZIP:${zipCount}件  CSV:${csvCount}件`;
+    const xlsxCount = dvSettingFiles.filter(f=>f.type==='xlsx').length;
+    const zipCount  = dvDownloadFiles.filter(f=>f.type==='zip').length;
+    const csvCount  = dvDownloadFiles.filter(f=>f.type==='csv').length;
+    const parts = [];
+    if(xlsxCount) parts.push(`設定Excel:${xlsxCount}件`);
+    if(zipCount)  parts.push(`ZIP:${zipCount}件`);
+    if(csvCount)  parts.push(`CSV:${csvCount}件`);
+    info.textContent = parts.join('  ');
   } else {
     bar.classList.remove('show');
     info.textContent = '';
   }
 }
+
+/**
+ * 媒体タイプを検出してバッジを表示
+ * @param {'youtube'|'ott'|'display'} detected - 検出された媒体タイプ
+ */
+function dvUpdateMediaBadge(detected){
+  const labels = {youtube:'Youtube', ott:'OTT', display:'Display'};
+  if(detected && labels[detected]){
+    mediaBadge.textContent = '🎯 '+labels[detected];
+    mediaBadge.style.display = 'inline-block';
+  } else {
+    mediaBadge.style.display = 'none';
+  }
+}
+
+/**
+ * Phase 2: 媒体类型选择器事件绑定
+ */
+function initMediaSelector(){
+  if(mediaSelect){
+    mediaSelect.addEventListener('change', function(){
+      selectedMediaType = this.value;
+      if(selectedMediaType !== 'auto'){
+        dvUpdateMediaBadge(selectedMediaType);
+      }
+    });
+  }
+}
+
+/**
+ * Phase 2: 获取最终媒体类型（用户选择优先）
+ * @returns {'youtube'|'ott'|'display'|null}
+ */
+function getEffectiveMediaType(autoDetected){
+  if(selectedMediaType === 'auto'){
+    return autoDetected || 'youtube';
+  }
+  return selectedMediaType;
+}
+
+// ===== END Phase 1: 2-Zone Upload System =====
+
+// ===== 初始化上传系统（必须在DOM元素定义后调用） =====
+dvInitUpload('setting');
+dvInitUpload('download');
+
+// ===== Phase 2: Media Selector Init =====
+initMediaSelector();
+
+// ===== Phase 6: Row Height Init =====
+// 提前声明 DV_ROW_HEIGHT 以避免 TDZ 错误 (dvInitRowHeight 在第 2555 行定义)
+let DV_ROW_HEIGHT = 50;
+dvInitRowHeight();
 
 // ===== STATUS DIALOG (案件タイプ選択) =====
 const CASE_TYPES = [
@@ -961,6 +1213,177 @@ function parseYoutubeSetting(sheets, sheetNames, fileName){
   return {cpList,ioList,liList,gpList,crList};
 }
 
+// ===== OTT/DISPLAY SETTING PARSER =====
+/**
+ * OTT/Display 设定表解析器（新FMT格式）
+ * 基于Amazon工具的 readSettingTableVideo() 适配
+ * @param {Object} sheets - Excel sheets
+ * @param {string[]} sheetNames - sheet names
+ * @param {string} fileName - file name
+ * @returns {Object} { cpList, ioList, liList, gpList, crList }
+ */
+function parseOttSetting(sheets, sheetNames, fileName){
+  const liList = [];
+  
+  // 新FMT特征关键词
+  const NEW_FMT_KEYWORDS = ['ラインアイテム名', 'Line Item Name', 'Base supply bid', 'Pacing'];
+  const SKIP_KW = ['入稿物', 'ブラックリスト', '選択', 'ASIN', 'Deal', 'セグメント', 'Instructions', 'Reference'];
+  
+  // 查找候选sheet
+  const candidateSheets = [];
+  for(const sname of sheetNames){
+    if(SKIP_KW.some(kw => sname.includes(kw))) continue;
+    const rows = sheets[sname];
+    if(!rows || rows.length < 5) continue;
+    
+    const firstRows = rows.slice(0, 35).map(r => r.join(' ')).join(' ');
+    let score = 0;
+    if(firstRows.includes('ラインアイテム名')) score += 10;
+    if(firstRows.includes('Base supply bid')) score += 5;
+    if(firstRows.includes('Pacing')) score += 3;
+    if(firstRows.includes('Frequency')) score += 2;
+    // OTT特有
+    if(firstRows.includes('Supply sources') || firstRows.includes('SSP')) score += 8;
+    if(firstRows.includes('StreamingTV') || firstRows.includes('TVer')) score += 3;
+    if(firstRows.includes('DealID')) score += 8;
+    
+    if(score >= 5) candidateSheets.push({ sname, score, rows });
+  }
+  
+  if(!candidateSheets.length) return { cpList:[], ioList:[], liList:[], gpList:[], crList:[] };
+  
+  candidateSheets.sort((a,b) => b.score - a.score);
+  
+  // 解析每个候选sheet
+  for(const { sname, rows } of candidateSheets){
+    // 查找表头行
+    let headerRowIdx = -1;
+    for(let i = 0; i < Math.min(100, rows.length); i++){
+      const rs = rows[i].join(' ');
+      if(rs.includes('ラインアイテム名') || rs.includes('Line Item Name')){
+        headerRowIdx = i;
+        // 检查下一行是否有更详细的列头
+        for(let j = i+1; j < Math.min(i+5, rows.length); j++){
+          const rs2 = rows[j].join(' ');
+          if(rs2.includes('Start day') || rs2.includes('Start time') || rs2.includes('End day') ||
+             rs2.includes('Device type') || rs2.includes('Mobile environment')){
+            headerRowIdx = j;
+            break;
+          }
+        }
+        break;
+      }
+    }
+    
+    if(headerRowIdx === -1) continue;
+    
+    const headers = rows[headerRowIdx];
+    const colIdx = {};
+    
+    // 列关键词定义（OTT通用）
+    const COL_KEYWORDS = {
+      LI_NAME: ['ラインアイテム名', 'Line Item Name'],
+      media:   ['メディア', 'Type'],
+      device:  ['Device type'],
+      mobile_env: ['Mobile environment'],
+      start_day: ['Start day', '開始日'],
+      start_time: ['Start time', '開始時間'],
+      end_day: ['End day', '終了日'],
+      end_time: ['End time', '終了時間'],
+      auto_opt: ['Automated optimization', '自動最適化'],
+      budget: ['予算', 'Line item budget'],
+      pacing: ['配信ペース', 'Pacing'],
+      fee_3p: ['3P Fee'],
+      frequency: ['Frequency', 'フリークエンシー'],
+      base_cpm: ['ベースCPM', 'Base supply bid'],
+      max_cpm: ['上限CPM', 'Maximum average CPM', 'Max supply bid'],
+      product_small: ['商材カテゴリ', 'Product categories'],
+      audience: ['セグメント', 'Audience'],
+      location: ['配信地域', 'Location', 'エリア'],
+      content: ['コンテンツ', 'Content'],
+      language: ['Language'],
+      video_format: ['Video ad format', '動画フォーマット'],
+      video_size: ['Video player size', '動画サイズ'],
+      ssp: ['SSP', 'Supply sources'],
+      deal_id: ['DealID'],
+      deal_name: ['Deal名'],
+    };
+    
+    headers.forEach((h, i) => {
+      const hFull = String(h);
+      const hs = hFull.split('\n')[0].replace(/（[^）]*）/g, '').replace(/\([^)]*\)/g, '').trim();
+      for(const [key, keywords] of Object.entries(COL_KEYWORDS)){
+        if(!keywords) continue;
+        if(keywords.some(kw => hs.includes(kw) || hFull.includes(kw))){
+          if(!(key in colIdx)) colIdx[key] = i;
+        }
+      }
+    });
+    
+    // 默认LI_NAME列
+    if(!('LI_NAME' in colIdx)) colIdx['LI_NAME'] = 1;
+    
+    // 解析数据行
+    for(let i = headerRowIdx + 1; i < rows.length; i++){
+      const row = rows[i];
+      const liName = row[colIdx.LI_NAME] ? String(row[colIdx.LI_NAME]).trim() : '';
+      
+      // 跳过无效行
+      if(!liName || liName.includes('●') || liName.includes('例）') ||
+         liName.includes('合訁E') || liName.startsWith('▼') ||
+         liName.includes('合計') || liName.includes('小計') ||
+         /^\d+$/.test(liName)) continue;
+      
+      // 获取列值
+      const g = (key) => colIdx[key] !== undefined ? String(row[colIdx[key]] || '') : '';
+      
+      liList.push({
+        name: liName,
+        sheet: sname,
+        fileName,
+        fields: {
+          media: g('media'),
+          device: g('device'),
+          mobile_env: g('mobile_env'),
+          startDate: g('start_day'),
+          startTime: g('start_time'),
+          endDate: g('end_day'),
+          endTime: g('end_time'),
+          budget: g('budget'),
+          pacing: g('pacing'),
+          ssp: g('ssp'),
+          dealId: g('deal_id'),
+          dealName: g('deal_name'),
+          content: g('content'),
+          location: g('location'),
+          language: g('language'),
+          inventory: '',
+          bidStrategy: '',
+          videoFormat: g('video_format'),
+          videoSize: g('video_size'),
+          frequency: g('frequency'),
+          autoOpt: g('auto_opt'),
+          baseCpm: g('base_cpm'),
+          maxCpm: g('max_cpm'),
+          fee3p: g('fee_3p'),
+          productSmall: g('product_small'),
+        }
+      });
+    }
+  }
+  
+  // OTT没有CP/IO/GP/CR信息，只返回LI列表
+  return { cpList:[], ioList:[], liList, gpList:[], crList:[] };
+}
+
+/**
+ * Display 设定表解析器（基于OTT解析器扩展）
+ */
+function parseDisplaySetting(sheets, sheetNames, fileName){
+  // Display与OTT使用相同的解析逻辑，只是额外字段不同
+  return parseOttSetting(sheets, sheetNames, fileName);
+}
+
 // ── SDF 日期格式化为 YYYY/MM/DD ──
 function formatSdfDate(s){
   if(!s) return '';
@@ -1062,14 +1485,12 @@ function parseSdfData(csvFiles){
 
 // ===== RUN CHECK =====
 async function runCheck(){
-  if(!uploadedFiles.length){ alert('ファイルをアップロードしてください'); return; }
+  // Phase 1: 使用 2 分区上传系统
+  if(!dvSettingFiles.length || !dvDownloadFiles.length){ alert('ファイルをアップロードしてください'); return; }
 
-  // ステータスダイアログ表示 → ユーザーが各階層の想定ステータスを選択
-  const statusResult = await showStatusDialog();
-  console.log('[DV360] statusDialog result:', statusResult);
-  if(statusResult === null){ console.log('[DV360] ステータスダイアログ キャンセル'); return; } // キャンセル
-  expectedStatuses = statusResult;
-  console.log('[DV360] expectedStatuses set:', expectedStatuses);
+  // Phase 7: 默认直接使用初期案件设置，不弹出对话框
+  console.log('[DV360] expectedStatuses:', expectedStatuses);
+  console.log('[DV360] skipLevels:', skipLevels);
 
   const progress=document.getElementById('progress');
   const log=(msg)=>{console.log('[DV360]',msg);progress.textContent='⏳ '+msg;};
@@ -1079,16 +1500,26 @@ async function runCheck(){
     document.getElementById(id).classList.remove('show'));
 
   try{
-    // Step 1: 解凍
+    // Step 1: 解凍 - 合并 setting + download 文件
     log('ZIP解凍中...');
     const allFiles=[];
-    for(const uf of uploadedFiles){
+    
+    // 設定表ファイル処理
+    for(const uf of dvSettingFiles){
+      if(uf.type==='xlsx'){
+        allFiles.push({name:uf.name,blob:uf.blob,type:uf.type,path:uf.name});
+      }
+    }
+    
+    // SDFダウンロードファイル処理
+    for(const uf of dvDownloadFiles){
       if(uf.type==='zip'){
         const extracted=await extractZip(uf.blob);
         log(` 解凍: ${uf.name} → ${extracted.length}ファイル`);
         extracted.forEach(f=>f.parentZip=uf.name);
         allFiles.push(...extracted);
       } else {
+        // CSV ファイル
         allFiles.push({name:uf.name,blob:uf.blob,type:uf.type,path:uf.name});
       }
     }
@@ -1143,8 +1574,10 @@ async function runCheck(){
 
     // Step 3: メディア判定 & 設定解析
     const allSheetNames=settingFiles.flatMap(sf=>sf.sheetNames);
-    mediaType=detectMediaType(allSheetNames);
-    log(`メディア判定: ${mediaType} / 設定ファイル:${settingFiles.length}件 / CSV:${csvFiles.length}件`);
+    const autoDetected=detectMediaType(allSheetNames);
+    // Phase 2: 用户选择优先
+    mediaType=getEffectiveMediaType(autoDetected);
+    log(`メディア判定: ${mediaType} (自動:${autoDetected}, 選択:${selectedMediaType}) / 設定ファイル:${settingFiles.length}件 / CSV:${csvFiles.length}件`);
 
     // ── メディアタイプに応じてSDF CSVをフィルタ（異なる媒体のデータ混入を防ぐ）──
     const mediaFolder=mediaType==='youtube'?'youtube':mediaType==='ott'?'ott':mediaType==='display'?'display':'';
@@ -1171,18 +1604,24 @@ async function runCheck(){
       console.log('[DV360] SDFフィルタ:',mediaFolder,'→',filteredCsvFiles.length,'/',csvFiles.length,'件を採用');
     }
 
+    // Phase 3/4/5: 媒体别パーサールーティング
+    const mediaParsers = {
+      youtube: parseYoutubeSetting,
+      ott: parseOttSetting,
+      display: parseDisplaySetting,
+    };
+    const parserFn = mediaParsers[mediaType] || parseYoutubeSetting;
+    
     let allSettingCP=[],allSettingIO=[],allSettingLI=[],allSettingGP=[],allSettingCR=[];
     for(const sf of settingFiles){
-      if(mediaType==='youtube'){
-        const p=parseYoutubeSetting(sf.sheets,sf.sheetNames,sf.fileName);
-        console.log('[DV360] 設定解析:',sf.fileName,
-          `CP=${p.cpList.length} IO=${p.ioList.length} LI=${p.liList.length} GP=${p.gpList.length} CR=${p.crList.length}`);
-        allSettingCP.push(...p.cpList);
-        allSettingIO.push(...p.ioList);
-        allSettingLI.push(...p.liList);
-        allSettingGP.push(...p.gpList);
-        allSettingCR.push(...p.crList);
-      }
+      const p = parserFn(sf.sheets, sf.sheetNames, sf.fileName);
+      console.log('[DV360] 設定解析('+mediaType+'):', sf.fileName,
+        `CP=${p.cpList.length} IO=${p.ioList.length} LI=${p.liList.length} GP=${p.gpList.length} CR=${p.crList.length}`);
+      allSettingCP.push(...p.cpList);
+      allSettingIO.push(...p.ioList);
+      allSettingLI.push(...p.liList);
+      allSettingGP.push(...p.gpList);
+      allSettingCR.push(...p.crList);
     }
     console.log('[DV360] 設定 合計:',
       `CP=${allSettingCP.length} IO=${allSettingIO.length} LI=${allSettingLI.length} GP=${allSettingGP.length} CR=${allSettingCR.length}`);
@@ -1503,10 +1942,28 @@ function compareLI(s,d){
     {label:'動画タイプ',   sVal:sf.videoType||'',  dVal:(df.type||'')+(df.subtype?'/'+df.subtype:''), result:compareField(normVideoType(sf.videoType),normVideoType(df.type+'/'+(df.subtype||'')))},
     {label:'開始日',       sVal:sf.startDate||'',  dVal:df.startDate||'',   result:compareField(fmtDateVal(sf.startDate),df.startDate)},
     {label:'終了日',       sVal:sf.endDate||'',    dVal:df.endDate||'',     result:compareField(fmtDateVal(sf.endDate),df.endDate)},
-    // ── 修正4: 予算は gross を優先し amount と比較 ──
-    {label:'予算(グロス)', sVal:sf.budgetGross||'',dVal:df.budgetAmount||'',result:compareField(sf.budgetGross,df.budgetAmount)},
-    {label:'配信ペース',   sVal:sf.pacing||'',     dVal:dPacing,            result:compareField(normPacing(sf.pacing),normPacing(dPacing))},
   ];
+  
+  // ── 预算: 根据 SDF Budget Type 判断是否比较 ──
+  // 修复: SDF 的 Budget Amount 可能是日预算，设定表只有总预算，类型不同时不比较
+  const budgetType = (df.budgetType || '').toUpperCase();
+  let budgetResult = 'ok';
+  let budgetDVal = df.budgetAmount || '';
+  
+  if (budgetType === 'DAILY' || budgetType === '日予算') {
+    // SDF 日预算 vs 设定表总预算 — 无法直接比较，标记为 warning
+    budgetResult = 'warning';
+    budgetDVal = df.budgetAmount + ' (日预算)';
+  } else if (budgetType === 'TOTAL' || budgetType === 'LIFETIME' || budgetType === '総予算' || !budgetType) {
+    // SDF 总预算 vs 设定表总预算 — 可以比较
+    budgetResult = compareField(sf.budgetGross, df.budgetAmount);
+  } else {
+    // 其他类型，仍然比较
+    budgetResult = compareField(sf.budgetGross, df.budgetAmount);
+  }
+  
+  items.push({label:'予算(グロス)', sVal:sf.budgetGross||'', dVal:budgetDVal, result:budgetResult});
+  items.push({label:'配信ペース',   sVal:sf.pacing||'',     dVal:dPacing,            result:compareField(normPacing(sf.pacing),normPacing(dPacing))});
 
   // ── 修正: 課金形態は billing(CPM/CPV) と SDF bidStrategyType(Target CPM/CPV) を比較 ──
   const sBilling=normBilling(sf.billing);
@@ -1638,6 +2095,7 @@ function buildComparisonTree(setting, download, expectedStatuses){
       ioData.lis.forEach(sLi=>{
         const dLiMatch=findBest(sLi.name,dLIMap);
         const liNode={level:'LI',id:'li_'+sLi.name,name:sLi.name,
+          ioName:ioName,  // Phase 6-4: LI分组显示用
           found:!!dLiMatch,matchedName:dLiMatch?dLiMatch.match.name:null,
           compItems:dLiMatch?compareLI(sLi,dLiMatch.match):[],children:[]};
         if(dLiMatch) matchedDLI.add(normStr(dLiMatch.match.name));
@@ -1808,6 +2266,17 @@ function getLevelColumns(level){
   }
 }
 
+// ── ヘルパー: 自身の compItems のみから状態を計算（子ノード影響なし） ──
+function calcOwnStatus(compItems){
+  for(const it of compItems){
+    if(it.result==='mismatch') return 'mismatch';
+  }
+  for(const it of compItems){
+    if(it.result==='warning') return 'warning';
+  }
+  return 'ok';
+}
+
 // ── ツリーから指定レベルの全アイテムを収集 ──
 function collectLevelItems(level){
   const items=[];
@@ -1819,8 +2288,10 @@ function collectLevelItems(level){
         matchedName:node.matchedName,
         found:node.found,
         status:node.status,
+        ownStatus: calcOwnStatus(node.compItems||[]),  // 修复: 独立计算当前级别状态
         compItems:node.compItems||[],
-        fromSdf:!!node.fromSdf
+        fromSdf:!!node.fromSdf,
+        ioName:node.ioName||''  // Phase 6-4: LI分组用
       });
     }
     node.children.forEach(traverse);
@@ -1878,16 +2349,29 @@ function renderLevelTable(level){
     return;
   }
 
-  // フィルタ適用
+  // フィルタ適用 — 修复: 使用 ownStatus 而不是 status，避免子节点状态影响当前级别
   let visibleItems=items;
   if(statusFilter!=='all'){
-    visibleItems=items.filter(it=>it.status===statusFilter);
+    visibleItems=items.filter(it=>it.ownStatus===statusFilter);
   }
 
   if(!visibleItems.length){
     wrap.innerHTML=`<div class="empty-state"><div class="icon">🔍</div>該当する${level}項目がありません（フィルタ: ${statusFilter}）</div>`;
     wrap.classList.add('show');
     return;
+  }
+
+  // 6-4: LIレベルのみIOグループ化
+  const isLiGrouped = (level === 'LI');
+  let groupedItems = {};
+  
+  if(isLiGrouped){
+    // 按 IO 名称分组
+    visibleItems.forEach(item => {
+      const ioName = item.ioName || '（IO名なし）';
+      if(!groupedItems[ioName]) groupedItems[ioName] = [];
+      groupedItems[ioName].push(item);
+    });
   }
 
   let html=`<table class="result-table"><thead><tr>
@@ -1897,88 +2381,115 @@ function renderLevelTable(level){
   cols.forEach(c=>{ html+=`<th>${esc(c.label)}</th>`; });
   html+=`</tr></thead><tbody>`;
 
-  // 階層パス表示用（IO以上の場合、親CP名を表示）
-  function getItemPath(item){
-    const paths=[];
-    function findPath(nodes, targetName, currentPath){
-      for(const n of nodes){
-        const p=currentPath?currentPath+' > '+n.name:n.name;
-        if(n.name===targetName && n.level===level) return p;
-        const found=findPath(n.children, targetName, p);
-        if(found) return found;
-      }
-      return null;
+  let globalIdx = 0;
+  
+  if(isLiGrouped){
+    // IOグループ化されたレンダリング — 修复: 使用 ownStatus
+    for(const [ioName, ioItems] of Object.entries(groupedItems)){
+      // IOグループヘッダー行
+      const ioHasMismatch = ioItems.some(it => it.ownStatus === 'mismatch' || it.ownStatus === 'warning');
+      const ioMatchCount = ioItems.filter(it => it.ownStatus === 'ok').length;
+      const ioMismatchCount = ioItems.filter(it => it.ownStatus === 'mismatch').length;
+      
+      html += `<tr data-io-header="1">
+        <td colspan="${cols.length + 3}" style="height:36px;line-height:36px;
+          background:${ioHasMismatch ? '#4a1a1a' : '#1a3a1a'};
+          border-bottom:2px solid ${ioHasMismatch ? '#e74c3c' : '#27ae60'};
+          color:white;font-weight:bold;font-size:0.82rem;padding:8px 12px;">
+          🗂️ IO：${esc(ioName)}
+          <span style="background:${ioHasMismatch ? '#e74c3c' : '#27ae60'};border-radius:10px;padding:2px 8px;font-size:0.72rem;margin-left:8px;">
+            LI ${ioItems.length}件 | ✅${ioMatchCount} | ❌${ioMismatchCount}
+          </span>
+        </td>
+      </tr>`;
+      
+      // LI行（S/Dペア行）
+      ioItems.forEach((item, idx) => {
+        globalIdx++;
+        html += _buildRowHtml(item, idx, level, cols, statusIcon, statusText);
+      });
     }
-    return findPath(treeRoots, item.name, '')||'';
+  } else {
+    // 通常レンダリング（CP/IO/GP/CR）
+    visibleItems.forEach((item, idx) => {
+      globalIdx++;
+      html += _buildRowHtml(item, idx, level, cols, statusIcon, statusText);
+    });
   }
-
-  visibleItems.forEach((item,idx)=>{
-    if(!item.found && !item.fromSdf){
-      if(skipLevels.includes(level)){
-        html+=`<tr class="row-setting">
-          <td class="col-no" style="background:#2c3e50;">${idx+1}</td>
-          <td class="col-name"><div style="font-weight:bold;">${esc(item.name)}</div><div style="font-size:0.63rem;color:#888;">（対象外）</div></td>
-          <td class="col-status" style="color:#888;">— 対象外</td>
-          <td colspan="${cols.length}" style="color:#aaa;text-align:center;font-size:0.72rem;">この案件タイプではDL未マッチが正常です</td>
-        </tr>`;
-      } else {
-        html+=`<tr class="row-notfound">
-          <td class="col-no">${idx+1}</td>
-          <td class="col-name" style="color:#999;">${esc(item.name)}</td>
-          <td class="col-status" style="color:#999;">⬜ 未匹配</td>
-          <td colspan="${cols.length}" style="color:#bbb;text-align:center;font-size:0.72rem;">ダウンロードデータに見つかりませんでした</td>
-        </tr>`;
-      }
-      return;
-    }
-
-    const rowBg=item.status==='mismatch'?'#fff5f5':item.status==='warning'?'#fffef5':'';
-
-    // 設定表行
-    html+=`<tr class="row-setting" style="background:${rowBg};">
-      <td class="col-no" rowspan="2" style="background:#2c3e50;">${idx+1}</td>
-      <td class="col-name" rowspan="2" style="background:${rowBg||'white'};">
-        <div style="font-weight:bold;font-size:0.78rem;">${esc(item.name)}</div>`;
-    if(item.matchedName && item.matchedName!==item.name){
-      html+=`<div style="font-size:0.63rem;color:#888;">→ ${esc(item.matchedName)}</div>`;
-    }
-    if(item.fromSdf){
-      html+=`<span class="lvl-badge lvl-${level}" style="font-size:0.6rem;margin-top:2px;">SDF由来</span>`;
-    }
-    html+=`</td>
-      <td class="col-status" rowspan="2" style="text-align:center;font-weight:bold;font-size:0.78rem;
-        color:${item.status==='ok'?'#27ae60':item.status==='mismatch'?'#e74c3c':item.status==='warning'?'#e67e22':'#95a5a6'};">
-        ${statusIcon[item.status]||'❓'}<br><span style="font-size:0.6rem;">${statusText[item.status]||'-'}</span>
-      </td>`;
-
-    // 設定表値
-    cols.forEach(col=>{
-      const ci=item.compItems.find(c=>c.label===col.key);
-      const sVal=ci?ci.sVal:'';
-      const result=ci?ci.result:'ok';
-      html+=`<td class="cell-${result==='ok'?'ok':result==='mismatch'?'mismatch':'warn'}">
-        <div class="cell-s-row"><span class="cell-s-label">S:</span>${esc(sVal)||'—'}</div>
-      </td>`;
-    });
-    html+=`</tr>`;
-
-    // ダウンロード値行
-    html+=`<tr class="row-download" style="background:${rowBg};">
-      <td colspan="3" style="display:none;"></td>`;
-    cols.forEach(col=>{
-      const ci=item.compItems.find(c=>c.label===col.key);
-      const dVal=ci?ci.dVal:'';
-      const result=ci?ci.result:'ok';
-      html+=`<td class="cell-${result==='ok'?'ok':result==='mismatch'?'mismatch':'warn'}">
-        <div class="cell-d-row"><span class="cell-d-label">D:</span>${esc(dVal)||'—'}</div>
-      </td>`;
-    });
-    html+=`</tr>`;
-  });
 
   html+=`</tbody></table>`;
   wrap.innerHTML=html;
   wrap.classList.add('show');
+}
+
+// ── 行レンダリング用ヘルパー ──
+function _buildRowHtml(item, idx, level, cols, statusIcon, statusText){
+  if(!item.found && !item.fromSdf){
+    const skipLevels = window.skipLevels || [];
+    if(skipLevels.includes(level)){
+      return `<tr class="row-setting">
+        <td class="col-no" style="background:#2c3e50;">${idx+1}</td>
+        <td class="col-name"><div style="font-weight:bold;">${esc(item.name)}</div><div style="font-size:0.63rem;color:#888;">（対象外）</div></td>
+        <td class="col-status" style="color:#888;">— 対象外</td>
+        <td colspan="${cols.length}" style="color:#aaa;text-align:center;font-size:0.72rem;">この案件タイプではDL未マッチが正常です</td>
+      </tr>`;
+    } else {
+      return `<tr class="row-notfound">
+        <td class="col-no">${idx+1}</td>
+        <td class="col-name" style="color:#999;">${esc(item.name)}</td>
+        <td class="col-status" style="color:#999;">⬜ 未匹配</td>
+        <td colspan="${cols.length}" style="color:#bbb;text-align:center;font-size:0.72rem;">ダウンロードデータに見つかりませんでした</td>
+      </tr>`;
+    }
+  }
+
+  // 修复: 使用 ownStatus 而不是 status，避免子节点状态影响当前级别显示
+  const displayStatus = item.ownStatus !== undefined ? item.ownStatus : item.status;
+  const rowBg = displayStatus==='mismatch'?'#fff5f5':displayStatus==='warning'?'#fffef5':'';
+  let html = '';
+  
+  // 設定表行
+  html += `<tr class="row-setting" style="background:${rowBg};">
+    <td class="col-no" rowspan="2" style="background:#2c3e50;">${idx+1}</td>
+    <td class="col-name" rowspan="2" style="background:${rowBg||'white'};">
+      <div style="font-weight:bold;font-size:0.78rem;">${esc(item.name)}</div>`;
+  if(item.matchedName && item.matchedName!==item.name){
+    html += `<div style="font-size:0.63rem;color:#888;">→ ${esc(item.matchedName)}</div>`;
+  }
+  if(item.fromSdf){
+    html += `<span class="lvl-badge lvl-${level}" style="font-size:0.6rem;margin-top:2px;">SDF由来</span>`;
+  }
+  html += `</td>
+    <td class="col-status" rowspan="2" style="text-align:center;font-weight:bold;font-size:0.78rem;
+      color:${displayStatus==='ok'?'#27ae60':displayStatus==='mismatch'?'#e74c3c':displayStatus==='warning'?'#e67e22':'#95a5a6'};">
+      ${statusIcon[displayStatus]||'❓'}<br><span style="font-size:0.6rem;">${statusText[displayStatus]||'-'}</span>
+    </td>`;
+  
+  // 設定表値
+  cols.forEach(col=>{
+    const ci=item.compItems.find(c=>c.label===col.key);
+    const sVal=ci?ci.sVal:'';
+    const result=ci?ci.result:'ok';
+    html += `<td class="cell-${result==='ok'?'ok':result==='mismatch'?'mismatch':'warn'}">
+      <div class="cell-s-row"><span class="cell-s-label">S:</span>${esc(sVal)||'—'}</div>
+    </td>`;
+  });
+  html += `</tr>`;
+  
+  // ダウンロード値行
+  html += `<tr class="row-download" style="background:${rowBg};">
+    <td colspan="3" style="display:none;"></td>`;
+  cols.forEach(col=>{
+    const ci=item.compItems.find(c=>c.label===col.key);
+    const dVal=ci?ci.dVal:'';
+    const result=ci?ci.result:'ok';
+    html += `<td class="cell-${result==='ok'?'ok':result==='mismatch'?'mismatch':'warn'}">
+      <div class="cell-d-row"><span class="cell-d-label">D:</span>${esc(dVal)||'—'}</div>
+    </td>`;
+  });
+  html += `</tr>`;
+  
+  return html;
 }
 
 function renderIssueSummary(){
@@ -2055,8 +2566,126 @@ function renderStats(){
       &nbsp;D:CP${allComparisonData.counts.dcp}/IO${allComparisonData.counts.dio}/LI${allComparisonData.counts.dli}/GP${allComparisonData.counts.dgp}/CR${allComparisonData.counts.dcr}
     </span>`;
 
-  // 自动上报使用日志
-  sendLog('DV360设定检查', stats.mismatch, 1, '一致:'+stats.ok+' 未匹配:'+stats.notfound+' 需确认:'+stats.warning);
+ // Phase 6-1: 结果显示头部栏
+ if(allComparisonData){
+   const settingCount = (allComparisonData.counts.cp || 0) + (allComparisonData.counts.io || 0) +
+                        (allComparisonData.counts.li || 0) + (allComparisonData.counts.gp || 0) +
+                        (allComparisonData.counts.cr || 0);
+   const downloadFileCount = dvDownloadFiles ? dvDownloadFiles.length : 0;
+   dvShowResultHeader(settingCount, downloadFileCount, stats.ok + stats.warning, stats.mismatch);
+   dvShowFileInfo(
+     settingFiles ? settingFiles.map(f => f.fileName) : [],
+     dvDownloadFiles ? dvDownloadFiles.map(f => f.name) : []
+   );
+   dvShowLegend();
+   dvShowRowHeightBar();
+ }
+
+ // 自动上报使用日志
+ sendLog('DV360设定检查', stats.mismatch, 1, '一致:'+stats.ok+' 未匹配:'+stats.notfound+' 需确认:'+stats.warning);
+}
+
+// ===== Phase 6: 行高调整 & 结果头部渲染 =====
+// DV_ROW_HEIGHT is already declared at L728 to avoid TDZ issues
+
+function dvInitRowHeight(){
+  try{
+    const saved = sessionStorage.getItem('dv_row_height');
+    if(saved){ DV_ROW_HEIGHT = parseInt(saved); }
+  }catch(e){}
+  const slider = document.getElementById('dv-row-height-slider');
+  const input = document.getElementById('dv-row-height-input');
+  if(slider) slider.value = DV_ROW_HEIGHT;
+  if(input) input.value = DV_ROW_HEIGHT;
+}
+
+function dvUpdateRowHeight(val){
+  DV_ROW_HEIGHT = parseInt(val) || 50;
+  if(DV_ROW_HEIGHT < 20) DV_ROW_HEIGHT = 20;
+  if(DV_ROW_HEIGHT > 200) DV_ROW_HEIGHT = 200;
+  const slider = document.getElementById('dv-row-height-slider');
+  const input = document.getElementById('dv-row-height-input');
+  if(slider) slider.value = DV_ROW_HEIGHT;
+  if(input) input.value = DV_ROW_HEIGHT;
+  document.querySelectorAll('#result-table-wrap td').forEach(td => {
+    td.style.height = DV_ROW_HEIGHT + 'px';
+  });
+  try { sessionStorage.setItem('dv_row_height', DV_ROW_HEIGHT); } catch(e){}
+}
+
+function dvResetRowHeight(){
+  DV_ROW_HEIGHT = 50;
+  dvUpdateRowHeight(50);
+}
+
+// ===== 修复: 将行高函数挂载到 window 上，供 HTML inline handler 调用 =====
+window.dvUpdateRowHeight = dvUpdateRowHeight;
+window.dvResetRowHeight = dvResetRowHeight;
+
+function dvShowResultHeader(settingCount, downloadFileCount, matchCount, mismatchCount){
+  const header = document.getElementById('dv-result-header');
+  const mediaTypeEl = document.getElementById('dv-hdr-media-type');
+  const settingCountEl = document.getElementById('dv-hdr-setting-count');
+  const downloadCountEl = document.getElementById('dv-hdr-download-count');
+  const matchCountEl = document.getElementById('dv-hdr-match-count');
+  const mismatchCountEl = document.getElementById('dv-hdr-mismatch-count');
+  
+  if(mediaTypeEl) mediaTypeEl.textContent = mediaType.toUpperCase();
+  if(settingCountEl) settingCountEl.textContent = '設定表：' + settingCount + '件';
+  if(downloadCountEl) downloadCountEl.textContent = 'SDF：' + downloadFileCount + '文件';
+  if(matchCountEl) matchCountEl.textContent = '✅ 一致：' + matchCount + '件';
+  if(mismatchCountEl) mismatchCountEl.textContent = '❌ 不一致：' + mismatchCount + '项目';
+  
+  header.classList.add('show');
+  header.style.display = 'flex';
+}
+
+function dvHideResultHeader(){
+  const header = document.getElementById('dv-result-header');
+  header.classList.remove('show');
+  header.style.display = 'none';
+}
+
+function dvShowFileInfo(settingFiles, downloadFiles){
+  const bar = document.getElementById('dv-file-info-bar');
+  const settingNames = document.getElementById('dv-setting-file-names');
+  const downloadNames = document.getElementById('dv-download-file-names');
+  
+  if(settingNames) settingNames.textContent = settingFiles.length ? settingFiles.join(', ') : '-';
+  if(downloadNames) downloadNames.textContent = downloadFiles.length ? downloadFiles.join(', ') : '-';
+  
+  bar.classList.add('show');
+  bar.style.display = 'flex';
+}
+
+function dvHideFileInfo(){
+  const bar = document.getElementById('dv-file-info-bar');
+  bar.classList.remove('show');
+  bar.style.display = 'none';
+}
+
+function dvShowLegend(){
+  const bar = document.getElementById('dv-legend-bar');
+  bar.classList.add('show');
+  bar.style.display = 'flex';
+}
+
+function dvHideLegend(){
+  const bar = document.getElementById('dv-legend-bar');
+  bar.classList.remove('show');
+  bar.style.display = 'none';
+}
+
+function dvShowRowHeightBar(){
+  const bar = document.getElementById('dv-row-height-bar');
+  bar.classList.add('show');
+  bar.style.display = 'flex';
+}
+
+function dvHideRowHeightBar(){
+  const bar = document.getElementById('dv-row-height-bar');
+  bar.classList.remove('show');
+  bar.style.display = 'none';
 }
 
 // ===== FILTER CONTROLS =====
@@ -2085,16 +2714,27 @@ window.expandProblems=function(){ /* テーブルビューでは不要 */ };
 
 window.resetAll=function(){
   uploadedFiles=[];settingFiles=[];downloadFiles=[];
+  // Phase 1: 2-Zone Upload Reset
+  dvSettingFiles=[];
+  dvDownloadFiles=[];
   mediaType='';treeRoots=[];allComparisonData=null;
   selectedNodeId=null;statusFilter='all';currentLevel='CP';
-  expectedStatuses={CP:'Paused',IO:'Paused',LI:'Paused',GP:'Paused',CR:'Paused'};
+  // Phase 7: デフォルト値を「初期案件」に合わせる
+  expectedStatuses={CP:'Paused',IO:'Default',LI:'Draft',GP:'Active',CR:'Active'};
   skipLevels=[];selectedCaseType='initial';
   visibleLevels=new Set(['CP','IO','LI','GP','CR']);
-  renderFileList();
-  updateControls();
+  // Phase 1: 2-Zone Upload Reset
+  dvRenderFileList('setting');
+  dvRenderFileList('download');
+  dvUpdateControls();
   ['control-bar','progress','stats-bar','filter-bar','level-tab-bar','result-table-wrap'].forEach(id=>{
     document.getElementById(id).classList.remove('show');
   });
+  // Phase 6: Hide result header elements
+  dvHideResultHeader();
+  dvHideFileInfo();
+  dvHideLegend();
+  dvHideRowHeightBar();
   document.getElementById('result-summary').style.display='none';
   document.getElementById('result-issues').style.display='none';
   document.getElementById('result-table-wrap').innerHTML=
