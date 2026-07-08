@@ -194,15 +194,35 @@ const INV_CHARS = [
     { code: 0x3000, name: 'IDSP', label: '全角空格',        badge: 'other', optId: 'opt-fullsp'},
 ];
 
+function getInvCharRule(code) {
+    if(code >= 0xE000 && code <= 0xF8FF) {
+        return { code, name: 'PUA', label: 'PDF私用字符', badge: 'other', optId: 'opt-pua' };
+    }
+    return INV_CHARS.find(i => i.code === code) || null;
+}
+
+function isOptionEnabled(optId, opts) {
+    if(!opts) return true;
+    const optKey = {
+        'opt-zws': 'zws',
+        'opt-bom': 'bom',
+        'opt-nbsp': 'nbsp',
+        'opt-pua': 'pua',
+        'opt-fullsp': 'fullsp',
+    }[optId];
+    return optKey ? opts[optKey] !== false : true;
+}
+
+function shouldCleanInvChar(ch, opts) {
+    const rule = getInvCharRule(ch.codePointAt(0));
+    return !!rule && isOptionEnabled(rule.optId, opts);
+}
+
 function getInvCharsInText(text) {
     const found = [];
     for(const ch of [...text]) {
         const code = ch.codePointAt(0);
-        if(code >= 0xE000 && code <= 0xF8FF) {
-            found.push({ code, name: 'PUA', label: 'PDF私用字符', badge: 'other', optId: 'opt-pua' });
-            continue;
-        }
-        const inv = INV_CHARS.find(i => i.code === code);
+        const inv = getInvCharRule(code);
         if(inv) found.push(inv);
     }
     return found;
@@ -260,8 +280,7 @@ function escPreview(text) {
     let html = '';
     for(const ch of [...text]) {
         const code = ch.codePointAt(0);
-        const inv = INV_CHARS.find(i => i.code === code) ||
-                    (code >= 0xE000 && code <= 0xF8FF ? {name:'PUA'} : null);
+        const inv = getInvCharRule(code);
         if(inv) {
             html += `<span style="background:#d63031;color:white;border-radius:3px;padding:0 3px;font-size:0.72em;margin:0 1px;">${inv.name}</span>`;
         } else {
@@ -374,27 +393,55 @@ function cleanSiTrail(siContent, opts) {
     if(!tList.length) return { content: siContent, changed: false };
     function decodeXml(s) { return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'"); }
     function encodeXml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    function isDeletable(ch) {
-        const code = ch.codePointAt(0);
-        if(ch === '\n' || ch === '\r') return true;
-        if(opts.zws && [0x200B,0x200C,0x200D,0x034F,0x180E,0x2060,0xFFFD].includes(code)) return true;
-        if(opts.bom && [0xFEFF,0x00AD,0x202A,0x202B,0x202C,0x202D,0x202E].includes(code)) return true;
-        if(opts.nbsp && code === 0x00A0) return true;
-        if(opts.pua && code >= 0xE000 && code <= 0xF8FF) return true;
-        if(opts.fullsp && code === 0x3000) return true;
-        return false;
-    }
     let changed = false;
-    const newContents = tList.map(t => decodeXml(t.content));
-    for(let i = newContents.length - 1; i >= 0; i--) {
-        const chars = [...newContents[i]];
-        const allDeletable = chars.length > 0 && chars.every(ch => isDeletable(ch));
-        if(allDeletable) { newContents[i] = ''; changed = true; continue; }
-        let end = chars.length;
-        while(end > 0 && isDeletable(chars[end - 1])) end--;
-        if(end < chars.length) { newContents[i] = chars.slice(0, end).join(''); changed = true; }
-        break;
+    const newContents = tList.map(t => {
+        const original = decodeXml(t.content);
+        const cleaned = [...original].filter(ch => !shouldCleanInvChar(ch, opts)).join('');
+        if(cleaned !== original) changed = true;
+        return cleaned;
+    });
+
+    function trimEdgeSpace(fromStart) {
+        const indexes = fromStart ? [...newContents.keys()] : [...newContents.keys()].reverse();
+        for(const i of indexes) {
+            const chars = [...newContents[i]];
+            if(chars.length === 0) continue;
+            let keepStart = 0;
+            let keepEnd = chars.length;
+            if(fromStart) {
+                while(keepStart < keepEnd && chars[keepStart] === ' ') keepStart++;
+            } else {
+                while(keepEnd > keepStart && chars[keepEnd - 1] === ' ') keepEnd--;
+            }
+            if(keepStart > 0 || keepEnd < chars.length) {
+                newContents[i] = chars.slice(keepStart, keepEnd).join('');
+                changed = true;
+            }
+            if(newContents[i].length > 0) break;
+        }
     }
+
+    // 普通半角空格只按整个单元格逻辑文本的首尾删除，正文中间的空格保留。
+    trimEdgeSpace(true);
+    trimEdgeSpace(false);
+
+    // 删除文本最前面的空行，如 "\n睡眠挑戰" → "睡眠挑戰"
+    // 不影响正文中间的换行："第一行\n\n第二行" 保持不变
+    {
+        const leadBlankRe = /^(?:[ \t 　​‌‍﻿⁠­͏᠎�]*\r?\n)+/;
+        let leadIdx = 0;
+        while (leadIdx < newContents.length) {
+            if (newContents[leadIdx].length === 0) { leadIdx++; continue; }
+            const cleaned = newContents[leadIdx].replace(leadBlankRe, '');
+            if (cleaned !== newContents[leadIdx]) {
+                newContents[leadIdx] = cleaned;
+                changed = true;
+                if (cleaned.length === 0) { leadIdx++; continue; }
+            }
+            break;
+        }
+    }
+
     if(!changed) return { content: siContent, changed: false };
     let newSiContent = siContent;
     for(let i = tList.length - 1; i >= 0; i--) {
