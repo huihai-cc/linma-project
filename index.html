@@ -811,6 +811,40 @@ const UPDATE_LOG = [
         detail: 'PVA Programmatic Guaranteed 案件中，管理画面不设定的项目不再作为错误比较对象。\n本次对以下字段追加対象外处理：\n- Location targeting 1 of 2\n- Pacing profile\n- Base supply bid*\n- Maximum average CPM\n\n显示：対象外 / PGのため比較対象外\n\n注意：Line item budget 保持原逻辑；W:AD 灰色区域字段未新增比较；非 PG / 非 PVA 不受影响。',
         note: '',
     },
+    {
+        date: '2026/07/09',
+        requester: '张梦田',
+        tool: '文本处理 tools_text.html',
+        title: '对比工具追加「地域リスト比較」模式',
+        detail: '日方地域リスト（北海道/宮城/茨城/…）与系统侧表記（東京都/神奈川県/…）因表記ゆれ無法良好匹配的问题。\n' +
+                 '在「包含关系比对」中追加「地域リスト比較（/・改行区切り）」选项。\n' +
+                 '支持 / ／ 换行 逗号 顿号 空白 Tab 拆分；\n' +
+                 '追加地域名归一化：東京都→東京、大阪府→大阪、京都府→京都、北海道県→北海道、各県→去除県；\n' +
+                 '使用 Map 计数处理重复项；\n' +
+                 '结果显示 A/B 原文匹配关系，统计一致/仅A/仅B。\n' +
+                 '不影响逐行比对、升序比对、符号检查、既有包含关系默认逻辑。\n' +
+                 '使用方法：打开对比工具 → 使用包含关系比对 → 勾选「地域リスト比較（/・改行区切り）」→ 将 A/B 地域列表分别粘贴到两侧 → 执行比较 → 查看结果。',
+        note: 'commit: 37c829a。仅提交 tools_text.html，未混入其他文件。',
+    },
+    {
+        date: '2026/07/09',
+        requester: '張羽凡',
+        tool: '地域表記変換チェック region_check.html',
+        title: '新增独立模块「地域表記変換チェック」',
+        detail: '日方 DV360 設定依頼中的地域記載有时全写在一列、有时分 A/B/C 列。' +
+                 '以前 Google Sheets 只能做到都道府県级别转换，现在希望根据日方给出的粒度尽量转换到对应管理画面用地域表記。\n' +
+                 '新增独立模块 region_check.html，index.html 增加「🗾 地域表記変換チェック」入口。\n' +
+                 '第一版仅支持「DV360設定依頼」媒体；不读取 DV360 设定表、不写回文件、不接入 dv360_check.html。\n' +
+                 '判定设计：\n' +
+                 '- CONFIRMED master（27件、DV360确认数据）命中 → OK_市区町村 / OK_都道府県\n' +
+                 '- CANDIDATE master（861件、AI/公开数据生成、全47都道府県+814市区町村）命中 → WARN_候補未確認\n' +
+                 '- 市区町村未命中 → WARN_市区町村未登録（都道府県级 fallback）\n' +
+                 '- 候补多个或无都道府県无法唯一判断 → WARN_候補複数\n' +
+                 '- 完全无法识别 → NG_未識別\n' +
+                 '安全边界：CANDIDATE 绝不标 OK；変換結果显示「Maebashi, Gunma, Japan（市区町村）」完整后缀；' +
+                 '需 DV360 管理画面确认后才能从 CANDIDATE 升级为 CONFIRMED。',
+        note: '当前状态：本地已提交（5148dc0），push 安全分类器暂不可用。',
+    },
     // 后续更新在这里追加
 ];
 

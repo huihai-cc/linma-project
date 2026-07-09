@@ -355,6 +355,15 @@ const CITY_EN = {
   '前橋市':'Maebashi','高崎市':'Takasaki','桐生市':'Kiryu','伊勢崎市':'Isesaki',
   '太田市':'Ota','沼田市':'Numata','館林市':'Tatebayashi','渋川市':'Shibukawa',
   '藤岡市':'Fujioka','富岡市':'Tomioka','安中市':'Annaka','みどり市':'Midori',
+  // 群馬 町村
+  '北群馬郡榛東村':'Shinto','北群馬郡吉岡町':'Yoshioka',
+  '甘楽郡甘楽町':'Kanra','甘楽郡下仁田町':'Shimonita','甘楽郡南牧村':'Namboku',
+  '利根郡片品村':'Katashina','利根郡川場村':'Kawaba','利根郡昭和村':'Showa','利根郡みなかみ町':'Minakami',
+  '吾妻郡中之条町':'Nakanojo','吾妻郡長野原町':'Naganohara','吾妻郡嬬恋村':'Tsumagoi',
+  '吾妻郡草津町':'Kusatsu','吾妻郡高山村':'Takayama','吾妻郡東吾妻町':'Higashiagatsuma',
+  '邑楽郡板倉町':'Itakura','邑楽郡明和町':'Meiwa','邑楽郡千代田町':'Chiyoda',
+  '邑楽郡大泉町':'Oizumi','邑楽郡邑楽町':'Oura',
+  '佐波郡玉村町':'Tamamura','多野郡上野村':'Ueno','多野郡神流町':'Kanna',
   'さいたま市':'Saitama','川越市':'Kawagoe','熊谷市':'Kumagaya','川口市':'Kawaguchi',
   '行田市':'Gyoda','秩父市':'Chichibu','所沢市':'Tokorozawa','飯能市':'Hanno',
   '加須市':'Kazo','本庄市':'Honjo','東松山市':'Higashimatsuyama','春日部市':'Kasukabe',
@@ -381,7 +390,20 @@ const CITY_EN = {
   '小田原市':'Odawara','茅ヶ崎市':'Chigasaki','逗子市':'Zushi','三浦市':'Miura',
   '秦野市':'Hadano','厚木市':'Atsugi','大和市':'Yamato','伊勢原市':'Isehara',
   '海老名市':'Ebina','座間市':'Zama','南足柄市':'Minamiashigara','綾瀬市':'Ayase',
-  // 中部
+  // 東京（特別区 + 市）
+  '千代田区':'Chiyoda','中央区':'Chuo','港区':'Minato','新宿区':'Shinjuku',
+  '文京区':'Bunkyo','台東区':'Taito','墨田区':'Sumida','江東区':'Koto',
+  '品川区':'Shinagawa','目黒区':'Meguro','大田区':'Ota','世田谷区':'Setagaya',
+  '渋谷区':'Shibuya','中野区':'Nakano','杉並区':'Suginami','豊島区':'Toshima',
+  '北区':'Kita','荒川区':'Arakawa','板橋区':'Itabashi','練馬区':'Nerima',
+  '足立区':'Adachi','葛飾区':'Katsushika','江戸川区':'Edogawa',
+  '八王子市':'Hachioji','立川市':'Tachikawa','武蔵野市':'Musashino','三鷹市':'Mitaka',
+  '青梅市':'Ome','府中市':'Fuchu','昭島市':'Akishima','調布市':'Chofu',
+  '町田市':'Machida','小金井市':'Koganei','小平市':'Kodaira','日野市':'Hino',
+  '東村山市':'Higashimurayama','国分寺市':'Kokubunji','国立市':'Kunitachi',
+  '福生市':'Fussa','狛江市':'Komae','東大和市':'Higashiyamato','清瀬市':'Kiyose',
+  '東久留米市':'Higashikurume','武蔵村山市':'Musashimurayama','多摩市':'Tama',
+  '稲城市':'Inagi','羽村市':'Hamura','あきる野市':'Akiruno','西東京市':'Nishitokyo',
   '新潟市':'Niigata','長岡市':'Nagaoka','三条市':'Sanjo','柏崎市':'Kashiwazaki',
   '新発田市':'Shibata','小千谷市':'Ojiya','加茂市':'Kamo','十日町市':'Tokamachi',
   '見附市':'Mitsuke','村上市':'Murakami','燕市':'Tsubame','糸魚川市':'Itoigawa',
@@ -526,8 +548,8 @@ const CITY_EN = {
   '名護市':'Nago','糸満市':'Itoman','沖縄市':'Okinawa','豊見城市':'Tomigusuku',
   'うるま市':'Uruma','宮古島市':'Miyakojima','南城市':'Nanjo'
 };
-// 全都市リスト（都道府県別、カンマ区切り）
-const CITIES = {
+// 全市区町村リスト（都道府県別、カンマ区切り）
+const MUNICIPALITIES = {
   '北海道': '札幌市,函館市,小樽市,旭川市,室蘭市,釧路市,帯広市,北見市,夕張市,岩見沢市,網走市,留萌市,苫小牧市,稚内市,美唄市,芦別市,江別市,赤平市,紋別市,士別市,名寄市,三笠市,根室市,千歳市,滝川市,砂川市,歌志内市,深川市,富良野市,登別市,恵庭市,伊達市,北広島市,石狩市,北斗市',
   '青森県': '青森市,弘前市,八戸市,黒石市,五所川原市,十和田市,三沢市,むつ市,つがる市,平川市',
   '岩手県': '盛岡市,宮古市,大船渡市,花巻市,北上市,久慈市,遠野市,一関市,陸前高田市,釜石市,二戸市,八幡平市,奥州市',
@@ -537,7 +559,7 @@ const CITIES = {
   '福島県': '福島市,会津若松市,郡山市,いわき市,白河市,須賀川市,喜多方市,相馬市,二本松市,田村市,南相馬市,伊達市,本宮市',
   '茨城県': '水戸市,日立市,土浦市,古河市,石岡市,結城市,龍ケ崎市,下妻市,常総市,常陸太田市,高萩市,北茨城市,笠間市,取手市,牛久市,つくば市,ひたちなか市,鹿嶋市,潮来市,守谷市,常陸大宮市,那珂市,筑西市,坂東市,稲敷市,かすみがうら市,桜川市,神栖市,行方市,鉾田市,つくばみらい市,小美玉市',
   '栃木県': '宇都宮市,足利市,栃木市,佐野市,鹿沼市,日光市,小山市,真岡市,大田原市,矢板市,那須塩原市,さくら市,那須烏山市,下野市',
-  '群馬県': '前橋市,高崎市,桐生市,伊勢崎市,太田市,沼田市,館林市,渋川市,藤岡市,富岡市,安中市,みどり市',
+  '群馬県': '前橋市,高崎市,桐生市,伊勢崎市,太田市,沼田市,館林市,渋川市,藤岡市,富岡市,安中市,みどり市,北群馬郡榛東村,北群馬郡吉岡町,甘楽郡甘楽町,甘楽郡下仁田町,甘楽郡南牧村,利根郡片品村,利根郡川場村,利根郡昭和村,利根郡みなかみ町,吾妻郡中之条町,吾妻郡長野原町,吾妻郡嬬恋村,吾妻郡草津町,吾妻郡高山村,吾妻郡東吾妻町,邑楽郡板倉町,邑楽郡明和町,邑楽郡千代田町,邑楽郡大泉町,邑楽郡邑楽町,佐波郡玉村町,多野郡上野村,多野郡神流町',
   '埼玉県': 'さいたま市,川越市,熊谷市,川口市,行田市,秩父市,所沢市,飯能市,加須市,本庄市,東松山市,春日部市,狭山市,羽生市,鴻巣市,深谷市,上尾市,草加市,越谷市,蕨市,戸田市,入間市,朝霞市,志木市,和光市,新座市,桶川市,久喜市,北本市,八潮市,富士見市,三郷市,蓮田市,坂戸市,幸手市,鶴ケ島市,日高市,吉川市,ふじみ野市,白岡市',
   '千葉県': '千葉市,銚子市,市川市,船橋市,館山市,木更津市,松戸市,野田市,茂原市,成田市,佐倉市,東金市,旭市,習志野市,柏市,勝浦市,市原市,流山市,八千代市,我孫子市,鴨川市,鎌ケ谷市,君津市,富津市,浦安市,四街道市,袖ケ浦市,八街市,印西市,白井市,富里市,南房総市,匝瑳市,香取市,山武市,いすみ市,大網白里市',
   '東京都': '千代田区,中央区,港区,新宿区,文京区,台東区,墨田区,江東区,品川区,目黒区,大田区,世田谷区,渋谷区,中野区,杉並区,豊島区,北区,荒川区,板橋区,練馬区,足立区,葛飾区,江戸川区,八王子市,立川市,武蔵野市,三鷹市,青梅市,府中市,昭島市,調布市,町田市,小金井市,小平市,日野市,東村山市,国分寺市,国立市,福生市,狛江市,東大和市,清瀬市,東久留米市,武蔵村山市,多摩市,稲城市,羽村市,あきる野市,西東京市',
@@ -576,15 +598,16 @@ const CITIES = {
   '鹿児島県': '鹿児島市,鹿屋市,枕崎市,阿久根市,出水市,指宿市,西之表市,垂水市,薩摩川内市,日置市,曽於市,霧島市,いちき串木野市,南さつま市,志布志市,奄美市,南九州市,伊佐市,姶良市',
   '沖縄県': '那覇市,沖縄市,宜野湾市,石垣市,浦添市,名護市,糸満市,豊見城市,うるま市,宮古島市,南城市'
 };
-// CANDIDATE_REGION_MASTER 生成（47都道府県 + 全市区町村 約790件）
+// CANDIDATE_REGION_MASTER 生成（47都道府県 + 全市区町村）
 const CANDIDATE_REGION_MASTER = (function(){
   const out = [];
   for(const [prefJP, prefEN] of Object.entries(PREF_EN)) {
     out.push({media:'dv360', prefectureJp:prefJP, municipalityJp:'', displayName:prefEN+', Japan', level:'都道府県', note:''});
-    const cities = (CITIES[prefJP]||'').split(',').filter(Boolean);
+    const cities = (MUNICIPALITIES[prefJP]||'').split(',').filter(Boolean);
     for(const city of cities) {
       const c = city.trim();
-      const cityEN = CITY_EN[c] || c.replace(/[市町村区]$/,'');
+      const cityEN = CITY_EN[c];
+      if(!cityEN) continue; // 英語候補未生成 → candidate に含めない（WARN_市区町村未登録 へ fallback）
       out.push({media:'dv360', prefectureJp:prefJP, municipalityJp:c, displayName:cityEN+', '+prefEN+', Japan', level:'市区町村', note:''});
     }
   }
@@ -669,7 +692,7 @@ function findMatches(parsed) {
     // Priority 2/4: confirmed 都道府県 exists → 市区町村未登録
     const cPref = confirmed.filter(m => m.prefectureJp === prefecture && !m.municipalityJp);
     if (cPref.length > 0) {
-      return { status: 'WARN_市区町村未登録', displayName: cPref[0].displayName, note: '「' + municipality + '」はマスタに未登録です' };
+      return { status: 'WARN_市区町村未登録', displayName: cPref[0].displayName, note: '「' + municipality + '」は候補マスタに未登録のため、都道府県レベルで表示しています。正式表記はDV360管理画面で確認してください。' };
     }
     const caPref = candidate.filter(m => m.prefectureJp === prefecture && !m.municipalityJp);
     if (caPref.length > 0) {
