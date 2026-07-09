@@ -696,6 +696,11 @@ function normFrequency(v){
     if(!v) return '';
     const s = String(v).trim();
     if(!s || s === '●回/●日間' || s.toLowerCase() === 'nan') return '';
+    const jp = s.match(/(\d+)\s*回\s*\/\s*(?:(\d+)\s*)?(日間|日|時|分)/);
+    if(jp){
+        const u={'日間':'days','日':'days','時':'hours','分':'minutes'};
+        return `${jp[1]}_${jp[2]||'1'}_${u[jp[3]]||'days'}`;
+    }
     const m = s.match(/(\d+)\s*回\s*\/\s*(\d+)\s*(日|時|分)/);
     if(m){ const u={'日':'days','時':'hours','分':'minutes'}; return `${m[1]}_${m[2]}_${u[m[3]]||'days'}`; }
     const m2 = s.match(/FrequencyCap\d+:\[User,\s*(\d+),\s*(\d+),\s*(\w+)\]/i);
@@ -716,7 +721,16 @@ function _normalizeAudienceName(name){
         .replace(/\u3000/g, ' ')
         // 合并多余空格
         .replace(/\s+/g, ' ')
+        .replace(/^(\S+)\s+\1\s+/i, '$1 ')
         .trim();
+}
+function audienceNameEquals(a,b){
+    const an = _normalizeAudienceName(a || '');
+    const bn = _normalizeAudienceName(b || '');
+    if(an === bn) return true;
+    const stripAmc = v => v.replace(/^AMC\s+/i, '').trim();
+    return stripAmc(an) === stripAmc(bn) &&
+        (/^AMC\s+/i.test(an) || /^AMC\s+/i.test(bn));
 }
 function parseAudienceS(v){
     if(!v) return { groups:[], notItems:[], raw:'' };
@@ -890,8 +904,13 @@ function compareAudience(sP, dP){
     const dAllIncludes = new Set(dP.groups.flatMap(g => g.items)
         .filter(n => !n.startsWith('(UnknownID:')));  // 过滤掉无法识别的ID
 
-    const onlyInS = [...sAllIncludes].filter(n => !dAllIncludes.has(n));
-    const onlyInD = [...dAllIncludes].filter(n => !sAllIncludes.has(n));
+    const sIncludes = [...sAllIncludes];
+    const dIncludes = [...dAllIncludes];
+    const includeWholeMatch =
+        (sIncludes.length > 1 && dIncludes.length === 1 && audienceNameEquals(sIncludes.join(','), dIncludes[0])) ||
+        (dIncludes.length > 1 && sIncludes.length === 1 && audienceNameEquals(sIncludes[0], dIncludes.join(',')));
+    const onlyInS = includeWholeMatch ? [] : sIncludes.filter(n => !dIncludes.some(d => audienceNameEquals(n,d)));
+    const onlyInD = includeWholeMatch ? [] : dIncludes.filter(n => !sIncludes.some(s => audienceNameEquals(n,s)));
 
     if(onlyInS.length > 0){
         allMatch = false;
@@ -906,8 +925,8 @@ function compareAudience(sP, dP){
     const sNotSet = new Set(sP.notItems);
     const dNotSet = new Set(dP.notItems.filter(n => !n.startsWith('(UnknownID:')));
 
-    const onlySNot = [...sNotSet].filter(n => !dNotSet.has(n));
-    const onlyDNot = [...dNotSet].filter(n => !sNotSet.has(n));
+    const onlySNot = [...sNotSet].filter(n => ![...dNotSet].some(d => audienceNameEquals(n,d)));
+    const onlyDNot = [...dNotSet].filter(n => ![...sNotSet].some(s => audienceNameEquals(n,s)));
 
     if(onlySNot.length > 0){
         allMatch = false;
@@ -1344,6 +1363,22 @@ function _readSegmentSheetOldFMT(rows){
     return result;
 }
 
+function fixLiNameColumnFromPreviousHeader(allRows, headerRowIdx, colIdx){
+    if('LI_NAME' in colIdx) return;
+    for(let r=headerRowIdx-1; r>=Math.max(0, headerRowIdx-2); r--){
+        const row = allRows[r] || [];
+        for(let c=0; c<row.length; c++){
+            const cell = String(row[c] || '');
+            if(cell.includes('Line Item Name') || cell.includes('ラインアイテム名')){
+                colIdx['LI_NAME'] = c;
+                return;
+            }
+        }
+    }
+    // Last-resort fallback for legacy sheets; may read row numbers if the format changed.
+    colIdx['LI_NAME'] = 1;
+}
+
 function readSettingTableVideo(wb, system){
     const areaSheetData = readAreaSheet(wb);  // ★ エリアシート読み込み
     const allSegmentSheets = readAllSegmentSheets(wb);  // ★ 全セグメントシート読み込み
@@ -1459,7 +1494,7 @@ function readSettingTableVideo(wb, system){
             }
         });
 
-        if(!('LI_NAME' in colIdx)) colIdx['LI_NAME'] = 1;
+        fixLiNameColumnFromPreviousHeader(allRows, headerRowIdx, colIdx);
 
         for(let i=headerRowIdx+1; i<allRows.length; i++){
             const row = allRows[i];
@@ -1586,7 +1621,7 @@ function readDownloadDataVideoMulti(wbsD){
             return;
         }
 
-        const junkPattern = /Follow instructions|Choose from|Don't delete|READ ONLY|informational/i;
+        const junkPattern = /Follow instructions|Choose from|Don't delete|READ ONLY|informational|Use letters|Enter a number|Leave blank|Choose from dropdown/i;
         const fileLis = [];
         let fileIoName = '';
 
@@ -2158,7 +2193,7 @@ function readDownloadDataDSPMulti(wbsD){
         }
 
         // ダウンロードデータのIO名を抽出（Order name列から）
-        const junkPattern = /Follow instructions|Choose from|Don't delete|READ ONLY|informational/i;
+        const junkPattern = /Follow instructions|Choose from|Don't delete|READ ONLY|informational|Use letters|Enter a number|Leave blank|Choose from dropdown/i;
         const fileLis = [];
         let fileIoName = '';
 
@@ -2576,7 +2611,7 @@ function readSettingTableDSP(wb){
                 }
             }
         });
-        if(!('LI_NAME' in colIdx)) colIdx['LI_NAME']=1;
+        fixLiNameColumnFromPreviousHeader(allRows, headerRowIdx, colIdx);
         if('viewability_pct' in colIdx) colIdx['viewability_excl']=colIdx['viewability_pct']+1;
         for(let i=headerRowIdx+1; i<allRows.length; i++){
             const row=allRows[i];
@@ -3656,6 +3691,7 @@ function renderScResult(){
     const settingNames=new Set(items.map(i=>i.liName));
     items.forEach(i=>{ if(i.matchedName) settingNames.add(i.matchedName); });
     const kissonLIs=[];
+    const downloadOnlyItems=[];
     const JUNK_PATTERN=/Follow instructions|Choose from|Don't delete|READ ONLY|informational|Use letters|Enter a number|Leave blank|Choose from dropdown/i;
     if(downloadData){
         Object.entries(downloadData).forEach(([liName,dRow])=>{
@@ -3668,7 +3704,9 @@ function renderScResult(){
                 if(m) startDate=new Date(parseInt(m[3]),parseInt(m[1])-1,parseInt(m[2]));
                 else{ const p=new Date(startRaw); if(!isNaN(p)) startDate=p; }
             }catch(e){}
-            kissonLIs.push({liName,dRow,startDate,isKisson:startDate&&startDate<today});
+            const extraItem={liName,dRow,startDate,isKisson:!!(startDate&&startDate<today)};
+            if(extraItem.isKisson) kissonLIs.push(extraItem);
+            else downloadOnlyItems.push(extraItem);
         });
     }
 
@@ -3715,6 +3753,10 @@ const visibleCols = activeCols.filter(col=>{
         <span style="background:#27ae60;border-radius:10px;padding:2px 10px;font-size:0.8rem;">後台マッチ：${foundCount}件</span>
         <span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.8rem;">未発見：${notFoundCount}件</span>
         <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">不一致：${mismatchCount}項目</span>
+        ${downloadOnlyItems.length>0?`
+        <span style="background:#f39c12;color:white;border-radius:10px;padding:2px 10px;font-size:0.8rem;">
+            ⚠️ 後台のみLI（設定表未記載・要確認）:${downloadOnlyItems.length}件
+        </span>`:''}
         ${kissonLIs.length>0?`
         <button id="sc-kisson-btn" onclick="scToggleKisson()"
             style="background:#8e44ad;color:white;border:none;border-radius:6px;
@@ -3983,10 +4025,11 @@ const visibleCols = activeCols.filter(col=>{
                     const sVal=cr?String(cr.sVal||'').trim():'';
                     const dVal=cr?String(cr.dVal||'').trim():'';
                     const result=cr?cr.result:null;
-                    const effectiveResult=(result===null&&!dVal&&!sVal)?true:result;
-                    const bg=effectiveResult===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
-                    const border=effectiveResult===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
-                    const color=effectiveResult===false?'#922b21':(result===null&&dVal)?'#856404':'#333';
+                    const bothEmpty=!dVal&&!sVal;
+                    const effectiveResult=bothEmpty?true:result;
+                    const bg=result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
+                    const border=result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
+                    const color=result===false?'#922b21':(result===null&&dVal)?'#856404':'#333';
                     const hideStyle=col.autoHide?'display:none;':'';
                     html+=`<td data-col-key="${col.key}"
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
@@ -4009,9 +4052,10 @@ const visibleCols = activeCols.filter(col=>{
                     const sVal=cr?String(cr.sVal||'').trim():'';
                     const dVal=cr?String(cr.dVal||'').trim():'';
                     const result=cr?cr.result:null;
-                    const effectiveResult=(result===null&&!dVal&&!sVal)?true:result;
-                    const bg=effectiveResult===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
-                    const border=effectiveResult===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
+                    const bothEmpty=!dVal&&!sVal;
+                    const effectiveResult=bothEmpty?true:result;
+                    const bg=result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
+                    const border=result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
                     const confirmLabel=(result===null&&dVal)?'<span style="font-size:0.68rem;color:#856404;margin-left:4px;">要確認</span>':'';
                     const hideStyle=col.autoHide?'display:none;':'';
                     html+=`<td data-col-key="${col.key}"
@@ -4054,6 +4098,57 @@ col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n
     });
 
     // 寄存LI行
+    if(downloadOnlyItems.length>0){
+        const colSpan=visibleCols.length+2;
+        html+=`<tr class="sc-download-only-header">
+            <td colspan="${colSpan}"
+                style="padding:8px 12px;background:#fff3cd;color:#856404;
+                       border-top:3px solid #f39c12;border-bottom:1px solid #f9ca24;
+                       font-weight:bold;font-size:0.82rem;">
+                ⚠️ 後台のみLI（設定表未記載・要確認） ${downloadOnlyItems.length}件
+            </td>
+        </tr>`;
+        downloadOnlyItems.forEach((di,didx)=>{
+            const startStr=di.startDate?di.startDate.toISOString().slice(0,10):(di.dRow['Line start date']||'');
+            html+=`<tr class="sc-download-only-row" style="background:#fff9e6;">
+                <td style="background:#f39c12;color:white;text-align:center;font-weight:bold;
+                           font-size:0.75rem;border:1px solid #f5c46b;
+                           position:sticky;left:0;z-index:10;">D${didx+1}</td>
+                <td style="border:1px solid #f5c46b;padding:6px 8px;
+                           position:sticky;left:${SC_COL_NO_W}px;z-index:10;
+                           background:#fff9e6;overflow:hidden;">
+                    <div style="font-weight:bold;font-size:0.75rem;color:#856404;word-break:break-all;">
+                        ${esc(di.liName)}
+                    </div>
+                    <div style="margin-top:2px;">
+                        <span style="background:#f39c12;color:white;border-radius:3px;
+                                     padding:1px 6px;font-size:0.68rem;">要確認</span>
+                        <span style="color:#856404;font-size:0.68rem;margin-left:4px;">後台のみLI</span>
+                        ${startStr?`<span style="color:#999;font-size:0.68rem;margin-left:4px;">開始: ${esc(startStr)}</span>`:''}
+                        ${di.dRow['Active/Inactive']?`<span style="color:#999;font-size:0.68rem;margin-left:4px;">${esc(di.dRow['Active/Inactive'])}</span>`:''}
+                        ${di.dRow.__FILE_D__?`<span style="color:#856404;font-size:0.65rem;margin-left:4px;">${esc(di.dRow.__FILE_D__)}</span>`:''}
+                    </div>
+                </td>`;
+            visibleCols.forEach(col=>{
+                const aliases=DL_COL_ALIASES[col.key]||[];
+                let dVal=di.dRow[col.key]||'';
+                if(!dVal){for(const a of aliases){if(di.dRow[a]){dVal=di.dRow[a];break;}}}
+                dVal=String(dVal).trim();
+                const hideStyle=col.autoHide?'display:none;':'';
+                html+=`<td data-col-key="${col.key}"
+                           style="padding:4px 8px;border:1px solid #f5c46b;
+                                  background:#fff9e6;vertical-align:middle;
+                                  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;${hideStyle}"
+                           title="${esc(dVal)}">
+                    <span style="font-size:0.73rem;color:#856404;">
+                        ${dVal||'<span style="color:#ccc;">窶・/span>'}
+                    </span>
+                </td>`;
+            });
+            html+=`</tr>`;
+        });
+    }
+
     if(kissonLIs.length>0){
         kissonLIs.forEach((ki,kidx)=>{
             const startStr=ki.startDate?ki.startDate.toISOString().slice(0,10):(ki.dRow['Line start date']||'');
