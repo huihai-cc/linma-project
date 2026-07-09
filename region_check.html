@@ -70,16 +70,23 @@ textarea#regionInput::placeholder{color:#bbb;font-size:0.82rem;}
 .result-table{width:100%;border-collapse:collapse;font-size:0.78rem;}
 .result-table thead{position:sticky;top:0;z-index:20;}
 .result-table thead th{
-  background:#2c3e50;color:white;padding:8px 10px;border:1px solid #334455;
+  background:#2c3e50;color:#ffffff;padding:9px 10px;border:1px solid #445566;
   text-align:center;vertical-align:middle;white-space:nowrap;font-size:0.74rem;
 }
-.result-table tbody td{padding:7px 10px;border:1px solid #e8e8e8;vertical-align:middle;word-break:break-all;}
-.result-table tbody tr:hover{background:#f8fbff;}
-.result-table .col-no{width:36px;text-align:center;color:#999;font-size:0.7rem;}
+/* 确保表头文字颜色不被其他类覆盖 */
+.result-table thead th.col-raw,
+.result-table thead th.col-parsed,
+.result-table thead th.col-result,
+.result-table thead th.col-note{color:#ffffff !important;}
+.result-table tbody td{padding:8px 10px;border:1px solid #e8e8e8;vertical-align:middle;word-break:break-all;line-height:1.5;}
+.result-table tbody tr:nth-child(odd){background:#fafbfc;}
+.result-table tbody tr:nth-child(even){background:#ffffff;}
+.result-table tbody tr:hover{background:#f0f4ff;}
+.result-table .col-no{width:48px;text-align:center;color:#555;font-size:0.72rem;font-weight:600;}
 .result-table .col-raw{min-width:160px;font-family:'Noto Sans JP',sans-serif;}
 .result-table .col-parsed{min-width:140px;font-family:'Noto Sans JP',sans-serif;color:#555;}
 .result-table .col-result{min-width:180px;font-weight:600;color:#1a5276;}
-.result-table .col-note{min-width:120px;color:#666;font-size:0.74rem;}
+.result-table .col-note{min-width:120px;color:#888;font-size:0.74rem;}
 
 /* ===== Status Badges ===== */
 .status-badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:0.7rem;font-weight:bold;white-space:nowrap;}
@@ -194,7 +201,7 @@ textarea#regionInput::placeholder{color:#bbb;font-size:0.82rem;}
     <table class="result-table">
       <thead>
         <tr>
-          <th class="col-no">#</th>
+          <th class="col-no">No</th>
           <th class="col-raw">原始入力</th>
           <th class="col-parsed">解析結果</th>
           <th class="col-result">変換結果</th>
@@ -284,131 +291,305 @@ const CONFIRMED_REGION_MASTER = [
 //  　- 来源：AI翻訳、公開行政区画データ、未確認候補
 //  　- 確認済みデータは CONFIRMED に昇格可能
 // ============================================================
-const CANDIDATE_REGION_MASTER = [
-  // ===== 都道府県レベル（全47） =====
-  // -- 北海道・東北 --
-  { media:"dv360", prefectureJp:"北海道", municipalityJp:"", displayName:"Hokkaido, Japan",                  level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"青森県", municipalityJp:"", displayName:"Aomori, Japan",                    level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"岩手県", municipalityJp:"", displayName:"Iwate, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"宮城県", municipalityJp:"", displayName:"Miyagi, Japan",                    level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"秋田県", municipalityJp:"", displayName:"Akita, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"山形県", municipalityJp:"", displayName:"Yamagata, Japan",                   level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"福島県", municipalityJp:"", displayName:"Fukushima, Japan",                  level:"都道府県", note:"" },
-  // -- 関東 --
-  { media:"dv360", prefectureJp:"茨城県", municipalityJp:"", displayName:"Ibaraki, Japan",                    level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"栃木県", municipalityJp:"", displayName:"Tochigi, Japan",                   level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"群馬県", municipalityJp:"", displayName:"Gunma, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"埼玉県", municipalityJp:"", displayName:"Saitama, Japan",                   level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"千葉県", municipalityJp:"", displayName:"Chiba, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"東京都", municipalityJp:"", displayName:"Tokyo, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"神奈川県", municipalityJp:"", displayName:"Kanagawa, Japan",                level:"都道府県", note:"" },
-  // -- 中部 --
-  { media:"dv360", prefectureJp:"新潟県", municipalityJp:"", displayName:"Niigata, Japan",                   level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"富山県", municipalityJp:"", displayName:"Toyama, Japan",                    level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"石川県", municipalityJp:"", displayName:"Ishikawa, Japan",                  level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"福井県", municipalityJp:"", displayName:"Fukui, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"山梨県", municipalityJp:"", displayName:"Yamanashi, Japan",                 level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"長野県", municipalityJp:"", displayName:"Nagano, Japan",                    level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"岐阜県", municipalityJp:"", displayName:"Gifu, Japan",                      level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"静岡県", municipalityJp:"", displayName:"Shizuoka, Japan",                  level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"愛知県", municipalityJp:"", displayName:"Aichi, Japan",                     level:"都道府県", note:"" },
-  // -- 近畿 --
-  { media:"dv360", prefectureJp:"三重県", municipalityJp:"", displayName:"Mie, Japan",                       level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"滋賀県", municipalityJp:"", displayName:"Shiga, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"京都府", municipalityJp:"", displayName:"Kyoto, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"大阪府", municipalityJp:"", displayName:"Osaka, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"兵庫県", municipalityJp:"", displayName:"Hyogo, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"奈良県", municipalityJp:"", displayName:"Nara, Japan",                      level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"和歌山県", municipalityJp:"", displayName:"Wakayama, Japan",                level:"都道府県", note:"" },
-  // -- 中国 --
-  { media:"dv360", prefectureJp:"鳥取県", municipalityJp:"", displayName:"Tottori, Japan",                   level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"島根県", municipalityJp:"", displayName:"Shimane, Japan",                   level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"岡山県", municipalityJp:"", displayName:"Okayama, Japan",                   level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"広島県", municipalityJp:"", displayName:"Hiroshima, Japan",                 level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"山口県", municipalityJp:"", displayName:"Yamaguchi, Japan",                 level:"都道府県", note:"" },
-  // -- 四国 --
-  { media:"dv360", prefectureJp:"徳島県", municipalityJp:"", displayName:"Tokushima, Japan",                 level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"香川県", municipalityJp:"", displayName:"Kagawa, Japan",                    level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"愛媛県", municipalityJp:"", displayName:"Ehime, Japan",                     level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"高知県", municipalityJp:"", displayName:"Kochi, Japan",                     level:"都道府県", note:"" },
-  // -- 九州・沖縄 --
-  { media:"dv360", prefectureJp:"福岡県", municipalityJp:"", displayName:"Fukuoka, Japan",                   level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"佐賀県", municipalityJp:"", displayName:"Saga, Japan",                      level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"長崎県", municipalityJp:"", displayName:"Nagasaki, Japan",                  level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"熊本県", municipalityJp:"", displayName:"Kumamoto, Japan",                  level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"大分県", municipalityJp:"", displayName:"Oita, Japan",                      level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"宮崎県", municipalityJp:"", displayName:"Miyazaki, Japan",                  level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"鹿児島県", municipalityJp:"", displayName:"Kagoshima, Japan",               level:"都道府県", note:"" },
-  { media:"dv360", prefectureJp:"沖縄県", municipalityJp:"", displayName:"Okinawa, Japan",                   level:"都道府県", note:"" },
-
-  // ===== 市区町村レベル =====
-  // -- 北海道 --
-  { media:"dv360", prefectureJp:"北海道", municipalityJp:"函館市",     displayName:"Hakodate, Hokkaido, Japan",     level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"北海道", municipalityJp:"旭川市",     displayName:"Asahikawa, Hokkaido, Japan",    level:"市区町村", note:"" },
-  // -- 東北 --
-  { media:"dv360", prefectureJp:"青森県", municipalityJp:"青森市",     displayName:"Aomori, Aomori, Japan",         level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"青森県", municipalityJp:"八戸市",     displayName:"Hachinohe, Aomori, Japan",      level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"岩手県", municipalityJp:"盛岡市",     displayName:"Morioka, Iwate, Japan",         level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"宮城県", municipalityJp:"仙台市",     displayName:"Sendai, Miyagi, Japan",         level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"秋田県", municipalityJp:"秋田市",     displayName:"Akita, Akita, Japan",           level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"山形県", municipalityJp:"山形市",     displayName:"Yamagata, Yamagata, Japan",     level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"福島県", municipalityJp:"福島市",     displayName:"Fukushima, Fukushima, Japan",   level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"福島県", municipalityJp:"郡山市",     displayName:"Koriyama, Fukushima, Japan",    level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"福島県", municipalityJp:"いわき市",   displayName:"Iwaki, Fukushima, Japan",       level:"市区町村", note:"" },
-  // -- 関東（既存CONFIRMED以外） --
-  { media:"dv360", prefectureJp:"茨城県", municipalityJp:"水戸市",     displayName:"Mito, Ibaraki, Japan",          level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"茨城県", municipalityJp:"つくば市",   displayName:"Tsukuba, Ibaraki, Japan",       level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"栃木県", municipalityJp:"宇都宮市",   displayName:"Utsunomiya, Tochigi, Japan",    level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"群馬県", municipalityJp:"高崎市",     displayName:"Takasaki, Gunma, Japan",        level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"埼玉県", municipalityJp:"川口市",     displayName:"Kawaguchi, Saitama, Japan",     level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"埼玉県", municipalityJp:"川越市",     displayName:"Kawagoe, Saitama, Japan",       level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"千葉県", municipalityJp:"千葉市",     displayName:"Chiba, Chiba, Japan",           level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"千葉県", municipalityJp:"船橋市",     displayName:"Funabashi, Chiba, Japan",       level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"神奈川県", municipalityJp:"川崎市",   displayName:"Kawasaki, Kanagawa, Japan",     level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"神奈川県", municipalityJp:"相模原市", displayName:"Sagamihara, Kanagawa, Japan",   level:"市区町村", note:"" },
-  // -- 中部 --
-  { media:"dv360", prefectureJp:"新潟県", municipalityJp:"新潟市",     displayName:"Niigata, Niigata, Japan",       level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"富山県", municipalityJp:"富山市",     displayName:"Toyama, Toyama, Japan",         level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"石川県", municipalityJp:"金沢市",     displayName:"Kanazawa, Ishikawa, Japan",     level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"福井県", municipalityJp:"福井市",     displayName:"Fukui, Fukui, Japan",           level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"山梨県", municipalityJp:"甲府市",     displayName:"Kofu, Yamanashi, Japan",        level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"長野県", municipalityJp:"長野市",     displayName:"Nagano, Nagano, Japan",         level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"長野県", municipalityJp:"松本市",     displayName:"Matsumoto, Nagano, Japan",      level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"岐阜県", municipalityJp:"岐阜市",     displayName:"Gifu, Gifu, Japan",             level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"静岡県", municipalityJp:"静岡市",     displayName:"Shizuoka, Shizuoka, Japan",     level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"静岡県", municipalityJp:"浜松市",     displayName:"Hamamatsu, Shizuoka, Japan",    level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"愛知県", municipalityJp:"豊田市",     displayName:"Toyota, Aichi, Japan",          level:"市区町村", note:"" },
-  // -- 近畿 --
-  { media:"dv360", prefectureJp:"三重県", municipalityJp:"津市",       displayName:"Tsu, Mie, Japan",               level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"滋賀県", municipalityJp:"大津市",     displayName:"Otsu, Shiga, Japan",            level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"京都府", municipalityJp:"京都市",     displayName:"Kyoto, Kyoto, Japan",           level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"大阪府", municipalityJp:"堺市",       displayName:"Sakai, Osaka, Japan",           level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"兵庫県", municipalityJp:"神戸市",     displayName:"Kobe, Hyogo, Japan",            level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"兵庫県", municipalityJp:"姫路市",     displayName:"Himeji, Hyogo, Japan",          level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"奈良県", municipalityJp:"奈良市",     displayName:"Nara, Nara, Japan",             level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"和歌山県", municipalityJp:"和歌山市", displayName:"Wakayama, Wakayama, Japan",     level:"市区町村", note:"" },
-  // -- 中国 --
-  { media:"dv360", prefectureJp:"鳥取県", municipalityJp:"鳥取市",     displayName:"Tottori, Tottori, Japan",       level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"島根県", municipalityJp:"松江市",     displayName:"Matsue, Shimane, Japan",        level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"岡山県", municipalityJp:"岡山市",     displayName:"Okayama, Okayama, Japan",       level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"広島県", municipalityJp:"広島市",     displayName:"Hiroshima, Hiroshima, Japan",   level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"山口県", municipalityJp:"山口市",     displayName:"Yamaguchi, Yamaguchi, Japan",   level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"山口県", municipalityJp:"下関市",     displayName:"Shimonoseki, Yamaguchi, Japan", level:"市区町村", note:"" },
-  // -- 四国 --
-  { media:"dv360", prefectureJp:"徳島県", municipalityJp:"徳島市",     displayName:"Tokushima, Tokushima, Japan",   level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"香川県", municipalityJp:"高松市",     displayName:"Takamatsu, Kagawa, Japan",      level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"愛媛県", municipalityJp:"松山市",     displayName:"Matsuyama, Ehime, Japan",       level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"高知県", municipalityJp:"高知市",     displayName:"Kochi, Kochi, Japan",           level:"市区町村", note:"" },
-  // -- 九州・沖縄 --
-  { media:"dv360", prefectureJp:"福岡県", municipalityJp:"北九州市",   displayName:"Kitakyushu, Fukuoka, Japan",    level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"佐賀県", municipalityJp:"佐賀市",     displayName:"Saga, Saga, Japan",             level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"長崎県", municipalityJp:"長崎市",     displayName:"Nagasaki, Nagasaki, Japan",     level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"熊本県", municipalityJp:"熊本市",     displayName:"Kumamoto, Kumamoto, Japan",     level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"大分県", municipalityJp:"大分市",     displayName:"Oita, Oita, Japan",             level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"宮崎県", municipalityJp:"宮崎市",     displayName:"Miyazaki, Miyazaki, Japan",     level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"鹿児島県", municipalityJp:"鹿児島市", displayName:"Kagoshima, Kagoshima, Japan",   level:"市区町村", note:"" },
-  { media:"dv360", prefectureJp:"沖縄県", municipalityJp:"那覇市",     displayName:"Naha, Okinawa, Japan",          level:"市区町村", note:"" },
-];
+// 都道府県英語名マッピング
+const PREF_EN = {
+  '北海道':'Hokkaido','青森県':'Aomori','岩手県':'Iwate','宮城県':'Miyagi',
+  '秋田県':'Akita','山形県':'Yamagata','福島県':'Fukushima',
+  '茨城県':'Ibaraki','栃木県':'Tochigi','群馬県':'Gunma','埼玉県':'Saitama',
+  '千葉県':'Chiba','東京都':'Tokyo','神奈川県':'Kanagawa',
+  '新潟県':'Niigata','富山県':'Toyama','石川県':'Ishikawa','福井県':'Fukui',
+  '山梨県':'Yamanashi','長野県':'Nagano','岐阜県':'Gifu','静岡県':'Shizuoka',
+  '愛知県':'Aichi','三重県':'Mie','滋賀県':'Shiga',
+  '京都府':'Kyoto','大阪府':'Osaka','兵庫県':'Hyogo','奈良県':'Nara','和歌山県':'Wakayama',
+  '鳥取県':'Tottori','島根県':'Shimane','岡山県':'Okayama','広島県':'Hiroshima','山口県':'Yamaguchi',
+  '徳島県':'Tokushima','香川県':'Kagawa','愛媛県':'Ehime','高知県':'Kochi',
+  '福岡県':'Fukuoka','佐賀県':'Saga','長崎県':'Nagasaki','熊本県':'Kumamoto',
+  '大分県':'Oita','宮崎県':'Miyazaki','鹿児島県':'Kagoshima','沖縄県':'Okinawa'
+};
+// 市区町村英語名マッピング（既知の読み）
+const CITY_EN = {
+  // 北海道
+  '札幌市':'Sapporo','函館市':'Hakodate','小樽市':'Otaru','旭川市':'Asahikawa',
+  '室蘭市':'Muroran','釧路市':'Kushiro','帯広市':'Obihiro','北見市':'Kitami',
+  '夕張市':'Yubari','岩見沢市':'Iwamizawa','網走市':'Abashiri','留萌市':'Rumoi',
+  '苫小牧市':'Tomakomai','稚内市':'Wakkanai','美唄市':'Bibai','芦別市':'Ashibetsu',
+  '江別市':'Ebetsu','赤平市':'Akabira','紋別市':'Monbetsu','士別市':'Shibetsu',
+  '名寄市':'Nayoro','三笠市':'Mikasa','根室市':'Nemuro','千歳市':'Chitose',
+  '滝川市':'Takikawa','砂川市':'Sunagawa','歌志内市':'Utashinai','深川市':'Fukagawa',
+  '富良野市':'Furano','登別市':'Noboribetsu','恵庭市':'Eniwa','伊達市':'Date',
+  '北広島市':'Kitahiroshima','石狩市':'Ishikari','北斗市':'Hokuto',
+  // 東北
+  '青森市':'Aomori','弘前市':'Hirosaki','八戸市':'Hachinohe','黒石市':'Kuroishi',
+  '五所川原市':'Goshogawara','十和田市':'Towada','三沢市':'Misawa','むつ市':'Mutsu',
+  'つがる市':'Tsugaru','平川市':'Hirakawa','盛岡市':'Morioka','宮古市':'Miyako',
+  '大船渡市':'Ofunato','花巻市':'Hanamaki','北上市':'Kitakami','久慈市':'Kuji',
+  '遠野市':'Tono','一関市':'Ichinoseki','陸前高田市':'Rikuzentakata','釜石市':'Kamaishi',
+  '二戸市':'Ninohe','八幡平市':'Hachimantai','奥州市':'Oshu','紫波郡':'Shiwa',
+  '仙台市':'Sendai','石巻市':'Ishinomaki','塩竈市':'Shiogama','気仙沼市':'Kesennuma',
+  '白石市':'Shiroishi','名取市':'Natori','角田市':'Kakuda','多賀城市':'Tagajo',
+  '岩沼市':'Iwanuma','登米市':'Tome','栗原市':'Kurihara','東松島市':'Higashimatsushima',
+  '大崎市':'Osaki','富谷市':'Tomiya','秋田市':'Akita','能代市':'Noshiro',
+  '横手市':'Yokote','大館市':'Odate','男鹿市':'Oga','湯沢市':'Yuzawa',
+  '鹿角市':'Kazuno','由利本荘市':'Yurihonjo','潟上市':'Katagami','大仙市':'Daisen',
+  '北秋田市':'Kitaakita','にかほ市':'Nikaho','仙北市':'Semboku',
+  '山形市':'Yamagata','米沢市':'Yonezawa','鶴岡市':'Tsuruoka','酒田市':'Sakata',
+  '新庄市':'Shinjo','寒河江市':'Sagae','上山市':'Kaminoyama','村山市':'Murayama',
+  '長井市':'Nagai','天童市':'Tendo','東根市':'Higashine','尾花沢市':'Obanazawa',
+  '南陽市':'Nanyo','福島市':'Fukushima','会津若松市':'Aizuwakamatsu','郡山市':'Koriyama',
+  'いわき市':'Iwaki','白河市':'Shirakawa','須賀川市':'Sukagawa','喜多方市':'Kitakata',
+  '相馬市':'Soma','二本松市':'Nihonmatsu','田村市':'Tamura','南相馬市':'Minamisoma',
+  '伊達市':'Date','本宮市':'Motomiya',
+  // 関東
+  '水戸市':'Mito','日立市':'Hitachi','土浦市':'Tsuchiura','古河市':'Koga',
+  '石岡市':'Ishioka','結城市':'Yuki','龍ケ崎市':'Ryugasaki','下妻市':'Shimotsuma',
+  '常総市':'Joso','常陸太田市':'Hitachiota','高萩市':'Takahagi','北茨城市':'Kitaibaraki',
+  '笠間市':'Kasama','取手市':'Toride','牛久市':'Ushiku','つくば市':'Tsukuba',
+  'ひたちなか市':'Hitachinaka','鹿嶋市':'Kashima','潮来市':'Itako','守谷市':'Moriya',
+  '常陸大宮市':'Hitachiomiya','那珂市':'Naka','筑西市':'Chikusei','坂東市':'Bando',
+  '稲敷市':'Inashiki','かすみがうら市':'Kasumigaura','桜川市':'Sakuragawa','神栖市':'Kamisu',
+  '行方市':'Namegata','鉾田市':'Hokota','つくばみらい市':'Tsukubamirai','小美玉市':'Omitama',
+  '宇都宮市':'Utsunomiya','足利市':'Ashikaga','栃木市':'Tochigi','佐野市':'Sano',
+  '鹿沼市':'Kanuma','日光市':'Nikko','小山市':'Oyama','真岡市':'Moka',
+  '大田原市':'Otawara','矢板市':'Yaita','那須塩原市':'Nasushiobara','さくら市':'Sakura',
+  '那須烏山市':'Nasukarasuyama','下野市':'Shimotsuke',
+  '前橋市':'Maebashi','高崎市':'Takasaki','桐生市':'Kiryu','伊勢崎市':'Isesaki',
+  '太田市':'Ota','沼田市':'Numata','館林市':'Tatebayashi','渋川市':'Shibukawa',
+  '藤岡市':'Fujioka','富岡市':'Tomioka','安中市':'Annaka','みどり市':'Midori',
+  'さいたま市':'Saitama','川越市':'Kawagoe','熊谷市':'Kumagaya','川口市':'Kawaguchi',
+  '行田市':'Gyoda','秩父市':'Chichibu','所沢市':'Tokorozawa','飯能市':'Hanno',
+  '加須市':'Kazo','本庄市':'Honjo','東松山市':'Higashimatsuyama','春日部市':'Kasukabe',
+  '狭山市':'Sayama','羽生市':'Hanyu','鴻巣市':'Konosu','深谷市':'Fukaya',
+  '上尾市':'Ageo','草加市':'Soka','越谷市':'Koshigaya','蕨市':'Warabi',
+  '戸田市':'Toda','入間市':'Iruma','鳩ケ谷市':'Hatogaya','朝霞市':'Asaka',
+  '志木市':'Shiki','和光市':'Wako','新座市':'Niiza','桶川市':'Okegawa',
+  '久喜市':'Kuki','北本市':'Kitamoto','八潮市':'Yashio','富士見市':'Fujimi',
+  '三郷市':'Misato','蓮田市':'Hasuda','坂戸市':'Sakado','幸手市':'Satte',
+  '鶴ケ島市':'Tsurugashima','日高市':'Hidaka','吉川市':'Yoshikawa','ふじみ野市':'Fujimino',
+  '白岡市':'Shiraoka',
+  '千葉市':'Chiba','銚子市':'Choshi','市川市':'Ichikawa','船橋市':'Funabashi',
+  '館山市':'Tateyama','木更津市':'Kisarazu','松戸市':'Matsudo','野田市':'Noda',
+  '茂原市':'Mobara','成田市':'Narita','佐倉市':'Sakura','東金市':'Togane',
+  '旭市':'Asahi','習志野市':'Narashino','柏市':'Kashiwa','勝浦市':'Katsuura',
+  '市原市':'Ichihara','流山市':'Nagareyama','八千代市':'Yachiyo','我孫子市':'Abiko',
+  '鴨川市':'Kamogawa','鎌ケ谷市':'Kamagaya','君津市':'Kimitsu','富津市':'Futtsu',
+  '浦安市':'Urayasu','四街道市':'Yotsukaido','袖ケ浦市':'Sodegaura','八街市':'Yachimata',
+  '印西市':'Inzai','白井市':'Shiroi','富里市':'Tomisato','南房総市':'Minamiboso',
+  '匝瑳市':'Sosa','香取市':'Katori','山武市':'Sammu','いすみ市':'Isumi',
+  '大網白里市':'Oamishirasato',
+  '横浜市':'Yokohama','川崎市':'Kawasaki','相模原市':'Sagamihara',
+  '横須賀市':'Yokosuka','平塚市':'Hiratsuka','鎌倉市':'Kamakura','藤沢市':'Fujisawa',
+  '小田原市':'Odawara','茅ヶ崎市':'Chigasaki','逗子市':'Zushi','三浦市':'Miura',
+  '秦野市':'Hadano','厚木市':'Atsugi','大和市':'Yamato','伊勢原市':'Isehara',
+  '海老名市':'Ebina','座間市':'Zama','南足柄市':'Minamiashigara','綾瀬市':'Ayase',
+  // 中部
+  '新潟市':'Niigata','長岡市':'Nagaoka','三条市':'Sanjo','柏崎市':'Kashiwazaki',
+  '新発田市':'Shibata','小千谷市':'Ojiya','加茂市':'Kamo','十日町市':'Tokamachi',
+  '見附市':'Mitsuke','村上市':'Murakami','燕市':'Tsubame','糸魚川市':'Itoigawa',
+  '妙高市':'Myoko','五泉市':'Gosen','上越市':'Joetsu','阿賀野市':'Agano',
+  '佐渡市':'Sado','魚沼市':'Uonuma','南魚沼市':'Minamiuonuma','胎内市':'Tainai',
+  '富山市':'Toyama','高岡市':'Takaoka','魚津市':'Uozu','氷見市':'Himi',
+  '滑川市':'Namerikawa','黒部市':'Kurobe','砺波市':'Tonami','小矢部市':'Oyabe',
+  '南砺市':'Nanto','射水市':'Imizu',
+  '金沢市':'Kanazawa','七尾市':'Nanao','小松市':'Komatsu','輪島市':'Wajima',
+  '珠洲市':'Suzu','加賀市':'Kaga','羽咋市':'Hakui','かほく市':'Kahoku',
+  '白山市':'Hakusan','能美市':'Nomi','野々市市':'Nonoichi',
+  '福井市':'Fukui','敦賀市':'Tsuruga','小浜市':'Obama','大野市':'Ono',
+  '勝山市':'Katsuyama','鯖江市':'Sabae','あわら市':'Awara','越前市':'Echizen',
+  '坂井市':'Sakai',
+  '甲府市':'Kofu','富士吉田市':'Fujiyoshida','都留市':'Tsuru','山梨市':'Yamanashi',
+  '大月市':'Otsuki','韮崎市':'Nirasaki','南アルプス市':'Minamiarupusu','北杜市':'Hokuto',
+  '甲斐市':'Kai','笛吹市':'Fuefuki','上野原市':'Uenohara','甲州市':'Koshu',
+  '中央市':'Chuo',
+  '長野市':'Nagano','松本市':'Matsumoto','上田市':'Ueda','岡谷市':'Okaya',
+  '飯田市':'Iida','諏訪市':'Suwa','須坂市':'Suzaka','小諸市':'Komoro',
+  '伊那市':'Ina','駒ヶ根市':'Komagane','中野市':'Nakano','大町市':'Omachi',
+  '飯山市':'Iiyama','茅野市':'Chino','塩尻市':'Shiojiri','佐久市':'Saku',
+  '千曲市':'Chikuma','東御市':'Tomi','安曇野市':'Azumino',
+  '岐阜市':'Gifu','大垣市':'Ogaki','高山市':'Takayama','多治見市':'Tajimi',
+  '関市':'Seki','中津川市':'Nakatsugawa','美濃市':'Mino','瑞浪市':'Mizunami',
+  '羽島市':'Hashima','恵那市':'Ena','美濃加茂市':'Minokamo','土岐市':'Toki',
+  '各務原市':'Kakamigahara','可児市':'Kani','山県市':'Yamagata','瑞穂市':'Mizuho',
+  '飛騨市':'Hida','本巣市':'Motosu','郡上市':'Gujo','下呂市':'Gero',
+  '海津市':'Kaizu',
+  '静岡市':'Shizuoka','浜松市':'Hamamatsu','沼津市':'Numazu','熱海市':'Atami',
+  '三島市':'Mishima','富士宮市':'Fujinomiya','伊東市':'Ito','島田市':'Shimada',
+  '富士市':'Fuji','磐田市':'Iwata','焼津市':'Yaizu','掛川市':'Kakegawa',
+  '藤枝市':'Fujieda','御殿場市':'Gotenba','袋井市':'Fukuroi','下田市':'Shimoda',
+  '裾野市':'Susono','湖西市':'Kosai','伊豆市':'Izu','御前崎市':'Omaezaki',
+  '菊川市':'Kikugawa','伊豆の国市':'Izunokuni','牧之原市':'Makinohara',
+  '名古屋市':'Nagoya','豊橋市':'Toyohashi','岡崎市':'Okazaki','一宮市':'Ichinomiya',
+  '瀬戸市':'Seto','半田市':'Handa','春日井市':'Kasugai','豊川市':'Toyokawa',
+  '津島市':'Tsushima','碧南市':'Hekinan','刈谷市':'Kariya','豊田市':'Toyota',
+  '安城市':'Anjo','西尾市':'Nishio','蒲郡市':'Gamagori','犬山市':'Inuyama',
+  '常滑市':'Tokoname','江南市':'Konan','小牧市':'Komaki','稲沢市':'Inazawa',
+  '新城市':'Shinshiro','東海市':'Tokai','大府市':'Obu','知多市':'Chita',
+  '知立市':'Chiryu','尾張旭市':'Owariasahi','高浜市':'Takahama','岩倉市':'Iwakura',
+  '豊明市':'Toyoake','日進市':'Nisshin','田原市':'Tahara','愛西市':'Aisai',
+  '清須市':'Kiyosu','北名古屋市':'Kitanagoya','弥富市':'Yatomi','みよし市':'Miyoshi',
+  'あま市':'Ama','長久手市':'Nagakute',
+  // 近畿
+  '津市':'Tsu','四日市市':'Yokkaichi','伊勢市':'Ise','松阪市':'Matsusaka',
+  '桑名市':'Kuwana','鈴鹿市':'Suzuka','名張市':'Nabari','尾鷲市':'Owase',
+  '亀山市':'Kameyama','鳥羽市':'Toba','熊野市':'Kumano','いなべ市':'Inabe',
+  '志摩市':'Shima','伊賀市':'Iga',
+  '大津市':'Otsu','彦根市':'Hikone','長浜市':'Nagahama','近江八幡市':'Omihachiman',
+  '草津市':'Kusatsu','守山市':'Moriyama','栗東市':'Ritto','甲賀市':'Koka',
+  '野洲市':'Yasu','湖南市':'Konan','高島市':'Takashima','東近江市':'Higashiomi',
+  '米原市':'Maibara',
+  '京都市':'Kyoto','福知山市':'Fukuchiyama','舞鶴市':'Maizuru','綾部市':'Ayabe',
+  '宇治市':'Uji','宮津市':'Miyazu','亀岡市':'Kameoka','城陽市':'Joyo',
+  '向日市':'Muko','長岡京市':'Nagaokakyo','八幡市':'Yawata','京田辺市':'Kyotanabe',
+  '京丹後市':'Kyotango','南丹市':'Nantan','木津川市':'Kizugawa',
+  '大阪市':'Osaka','堺市':'Sakai','岸和田市':'Kishiwada','豊中市':'Toyonaka',
+  '池田市':'Ikeda','吹田市':'Suita','泉大津市':'Izumiotsu','高槻市':'Takatsuki',
+  '貝塚市':'Kaizuka','守口市':'Moriguchi','枚方市':'Hirakata','茨木市':'Ibaraki',
+  '八尾市':'Yao','泉佐野市':'Izumisano','富田林市':'Tondabayashi','寝屋川市':'Neyagawa',
+  '河内長野市':'Kawachinagano','松原市':'Matsubara','大東市':'Daito','和泉市':'Izumi',
+  '箕面市':'Minoh','柏原市':'Kashiwara','羽曳野市':'Habikino','門真市':'Kadoma',
+  '摂津市':'Settsu','高石市':'Takaishi','藤井寺市':'Fujiidera','東大阪市':'Higashiosaka',
+  '泉南市':'Sennan','四條畷市':'Shijonawate','交野市':'Katano','大阪狭山市':'Osakasayama',
+  '阪南市':'Hannan',
+  '神戸市':'Kobe','姫路市':'Himeji','尼崎市':'Amagasaki','明石市':'Akashi',
+  '西宮市':'Nishinomiya','洲本市':'Sumoto','芦屋市':'Ashiya','伊丹市':'Itami',
+  '相生市':'Aioi','豊岡市':'Toyooka','加古川市':'Kakogawa','赤穂市':'Ako',
+  '西脇市':'Nishiwaki','宝塚市':'Takarazuka','三木市':'Miki','高砂市':'Takasago',
+  '川西市':'Kawanishi','小野市':'Ono','三田市':'Sanda','加西市':'Kasai',
+  '丹波篠山市':'Tamba Sasayama','養父市':'Yabu','丹波市':'Tamba','南あわじ市':'Minamiawaji',
+  '朝来市':'Asago','淡路市':'Awaji','宍粟市':'Shiso','加東市':'Kato',
+  'たつの市':'Tatsuno',
+  '奈良市':'Nara','大和高田市':'Yamatotakada','大和郡山市':'Yamatokoriyama','天理市':'Tenri',
+  '橿原市':'Kashihara','桜井市':'Sakurai','五條市':'Gojo','御所市':'Gose',
+  '生駒市':'Ikoma','香芝市':'Kashiba','葛城市':'Katsuragi','宇陀市':'Uda',
+  '和歌山市':'Wakayama','海南市':'Kainan','橋本市':'Hashimoto','有田市':'Arida',
+  '御坊市':'Gobo','田辺市':'Tanabe','新宮市':'Shingu','紀の川市':'Kinokawa',
+  '岩出市':'Iwade',
+  // 中国
+  '鳥取市':'Tottori','米子市':'Yonago','倉吉市':'Kurayoshi','境港市':'Sakaiminato',
+  '松江市':'Matsue','浜田市':'Hamada','出雲市':'Izumo','益田市':'Masuda',
+  '大田市':'Oda','安来市':'Yasugi','江津市':'Gotsu','雲南市':'Unnan',
+  '岡山市':'Okayama','倉敷市':'Kurashiki','津山市':'Tsuyama','玉野市':'Tamano',
+  '笠岡市':'Kasaoka','井原市':'Ibara','総社市':'Soja','高梁市':'Takahashi',
+  '新見市':'Niimi','備前市':'Bizen','瀬戸内市':'Setouchi','赤磐市':'Akaiwa',
+  '真庭市':'Maniwa','美作市':'Mimasaka','浅口市':'Asakuchi',
+  '広島市':'Hiroshima','呉市':'Kure','竹原市':'Takehara','三原市':'Mihara',
+  '尾道市':'Onomichi','福山市':'Fukuyama','府中市':'Fuchu','三次市':'Miyoshi',
+  '庄原市':'Shobara','大竹市':'Otake','東広島市':'Higashihiroshima','廿日市市':'Hatsukaichi',
+  '安芸高田市':'Akitakata','江田島市':'Etajima',
+  '山口市':'Yamaguchi','下関市':'Shimonoseki','宇部市':'Ube','山口市':'Yamaguchi',
+  '萩市':'Hagi','防府市':'Hofu','下松市':'Kudamatsu','岩国市':'Iwakuni',
+  '光市':'Hikari','長門市':'Nagato','柳井市':'Yanai','美祢市':'Mine',
+  '周南市':'Shunan','山陽小野田市':'Sanyoonoda',
+  // 四国
+  '徳島市':'Tokushima','鳴門市':'Naruto','小松島市':'Komatsushima','阿南市':'Anan',
+  '吉野川市':'Yoshinogawa','阿波市':'Awa','美馬市':'Mima','三好市':'Miyoshi',
+  '高松市':'Takamatsu','丸亀市':'Marugame','坂出市':'Sakaide','善通寺市':'Zentsuji',
+  '観音寺市':'Kanonji','さぬき市':'Sanuki','東かがわ市':'Higashikagawa','三豊市':'Mitoyo',
+  '松山市':'Matsuyama','今治市':'Imabari','宇和島市':'Uwajima','八幡浜市':'Yawatahama',
+  '新居浜市':'Niihama','西条市':'Saijo','大洲市':'Ozu','伊予市':'Iyo',
+  '四国中央市':'Shikokuchuo','西予市':'Seiyo','東温市':'Toon',
+  '高知市':'Kochi','室戸市':'Muroto','安芸市':'Aki','南国市':'Nankoku',
+  '土佐市':'Tosa','須崎市':'Susaki','宿毛市':'Sukumo','土佐清水市':'Tosashimizu',
+  '四万十市':'Shimanto','香南市':'Konan','香美市':'Kami',
+  // 九州・沖縄
+  '北九州市':'Kitakyushu','福岡市':'Fukuoka','大牟田市':'Omuta','久留米市':'Kurume',
+  '直方市':'Nogata','飯塚市':'Iizuka','田川市':'Tagawa','柳川市':'Yanagawa',
+  '八女市':'Yame','筑後市':'Chikugo','大川市':'Okawa','行橋市':'Yukuhashi',
+  '豊前市':'Buzen','中間市':'Nakama','小郡市':'Ogoori','筑紫野市':'Chikushino',
+  '春日市':'Kasuga','大野城市':'Onojo','宗像市':'Munakata','太宰府市':'Dazaifu',
+  '古賀市':'Koga','福津市':'Fukutsu','うきは市':'Ukiha','宮若市':'Miyawaka',
+  '嘉麻市':'Kama','朝倉市':'Asakura','みやま市':'Miyama','糸島市':'Itoshima',
+  '那珂川市':'Nakagawa',
+  '佐賀市':'Saga','唐津市':'Karatsu','鳥栖市':'Tosu','多久市':'Taku',
+  '伊万里市':'Imari','武雄市':'Takeo','鹿島市':'Kashima','小城市':'Ogi',
+  '嬉野市':'Ureshino','神埼市':'Kanzaki',
+  '長崎市':'Nagasaki','佐世保市':'Sasebo','島原市':'Shimabara','諫早市':'Isahaya',
+  '大村市':'Omura','平戸市':'Hirado','松浦市':'Matsuura','対馬市':'Tsushima',
+  '壱岐市':'Iki','五島市':'Goto','西海市':'Saikai','雲仙市':'Unzen',
+  '南島原市':'Minamishimabara',
+  '熊本市':'Kumamoto','八代市':'Yatsushiro','人吉市':'Hitoyoshi','荒尾市':'Arao',
+  '水俣市':'Minamata','玉名市':'Tamana','山鹿市':'Yamaga','菊池市':'Kikuchi',
+  '宇土市':'Uto','上天草市':'Kamiamakusa','宇城市':'Uki','阿蘇市':'Aso',
+  '天草市':'Amakusa','合志市':'Koshi',
+  '大分市':'Oita','別府市':'Beppu','中津市':'Nakatsu','日田市':'Hita',
+  '佐伯市':'Saiki','臼杵市':'Usuki','津久見市':'Tsukumi','竹田市':'Taketa',
+  '豊後高田市':'Bungotakada','杵築市':'Kitsuki','宇佐市':'Usa','豊後大野市':'Bungoono',
+  '由布市':'Yufu','国東市':'Kunisaki',
+  '宮崎市':'Miyazaki','都城市':'Miyakonojo','延岡市':'Nobeoka','日南市':'Nichinan',
+  '小林市':'Kobayashi','日向市':'Hyuga','串間市':'Kushima','西都市':'Saito',
+  'えびの市':'Ebino',
+  '鹿児島市':'Kagoshima','鹿屋市':'Kanoya','枕崎市':'Makurazaki','阿久根市':'Akune',
+  '出水市':'Izumi','指宿市':'Ibusuki','西之表市':'Nishinoomote','垂水市':'Tarumizu',
+  '薩摩川内市':'Satsumasendai','日置市':'Hioki','曽於市':'Soo','霧島市':'Kirishima',
+  'いちき串木野市':'Ichikikushikino','南さつま市':'Minamisatsuma','志布志市':'Shibushi',
+  '奄美市':'Amami','南九州市':'Minamikyushu','伊佐市':'Isa','姶良市':'Aira',
+  '沖縄市':'Okinawa','宜野湾市':'Ginowan','石垣市':'Ishigaki','浦添市':'Urasoe',
+  '名護市':'Nago','糸満市':'Itoman','沖縄市':'Okinawa','豊見城市':'Tomigusuku',
+  'うるま市':'Uruma','宮古島市':'Miyakojima','南城市':'Nanjo'
+};
+// 全都市リスト（都道府県別、カンマ区切り）
+const CITIES = {
+  '北海道': '札幌市,函館市,小樽市,旭川市,室蘭市,釧路市,帯広市,北見市,夕張市,岩見沢市,網走市,留萌市,苫小牧市,稚内市,美唄市,芦別市,江別市,赤平市,紋別市,士別市,名寄市,三笠市,根室市,千歳市,滝川市,砂川市,歌志内市,深川市,富良野市,登別市,恵庭市,伊達市,北広島市,石狩市,北斗市',
+  '青森県': '青森市,弘前市,八戸市,黒石市,五所川原市,十和田市,三沢市,むつ市,つがる市,平川市',
+  '岩手県': '盛岡市,宮古市,大船渡市,花巻市,北上市,久慈市,遠野市,一関市,陸前高田市,釜石市,二戸市,八幡平市,奥州市',
+  '宮城県': '仙台市,石巻市,塩竈市,気仙沼市,白石市,名取市,角田市,多賀城市,岩沼市,登米市,栗原市,東松島市,大崎市,富谷市',
+  '秋田県': '秋田市,能代市,横手市,大館市,男鹿市,湯沢市,鹿角市,由利本荘市,潟上市,大仙市,北秋田市,にかほ市,仙北市',
+  '山形県': '山形市,米沢市,鶴岡市,酒田市,新庄市,寒河江市,上山市,村山市,長井市,天童市,東根市,尾花沢市,南陽市',
+  '福島県': '福島市,会津若松市,郡山市,いわき市,白河市,須賀川市,喜多方市,相馬市,二本松市,田村市,南相馬市,伊達市,本宮市',
+  '茨城県': '水戸市,日立市,土浦市,古河市,石岡市,結城市,龍ケ崎市,下妻市,常総市,常陸太田市,高萩市,北茨城市,笠間市,取手市,牛久市,つくば市,ひたちなか市,鹿嶋市,潮来市,守谷市,常陸大宮市,那珂市,筑西市,坂東市,稲敷市,かすみがうら市,桜川市,神栖市,行方市,鉾田市,つくばみらい市,小美玉市',
+  '栃木県': '宇都宮市,足利市,栃木市,佐野市,鹿沼市,日光市,小山市,真岡市,大田原市,矢板市,那須塩原市,さくら市,那須烏山市,下野市',
+  '群馬県': '前橋市,高崎市,桐生市,伊勢崎市,太田市,沼田市,館林市,渋川市,藤岡市,富岡市,安中市,みどり市',
+  '埼玉県': 'さいたま市,川越市,熊谷市,川口市,行田市,秩父市,所沢市,飯能市,加須市,本庄市,東松山市,春日部市,狭山市,羽生市,鴻巣市,深谷市,上尾市,草加市,越谷市,蕨市,戸田市,入間市,朝霞市,志木市,和光市,新座市,桶川市,久喜市,北本市,八潮市,富士見市,三郷市,蓮田市,坂戸市,幸手市,鶴ケ島市,日高市,吉川市,ふじみ野市,白岡市',
+  '千葉県': '千葉市,銚子市,市川市,船橋市,館山市,木更津市,松戸市,野田市,茂原市,成田市,佐倉市,東金市,旭市,習志野市,柏市,勝浦市,市原市,流山市,八千代市,我孫子市,鴨川市,鎌ケ谷市,君津市,富津市,浦安市,四街道市,袖ケ浦市,八街市,印西市,白井市,富里市,南房総市,匝瑳市,香取市,山武市,いすみ市,大網白里市',
+  '東京都': '千代田区,中央区,港区,新宿区,文京区,台東区,墨田区,江東区,品川区,目黒区,大田区,世田谷区,渋谷区,中野区,杉並区,豊島区,北区,荒川区,板橋区,練馬区,足立区,葛飾区,江戸川区,八王子市,立川市,武蔵野市,三鷹市,青梅市,府中市,昭島市,調布市,町田市,小金井市,小平市,日野市,東村山市,国分寺市,国立市,福生市,狛江市,東大和市,清瀬市,東久留米市,武蔵村山市,多摩市,稲城市,羽村市,あきる野市,西東京市',
+  '神奈川県': '横浜市,川崎市,相模原市,横須賀市,平塚市,鎌倉市,藤沢市,小田原市,茅ヶ崎市,逗子市,三浦市,秦野市,厚木市,大和市,伊勢原市,海老名市,座間市,南足柄市,綾瀬市',
+  '新潟県': '新潟市,長岡市,三条市,柏崎市,新発田市,小千谷市,加茂市,十日町市,見附市,村上市,燕市,糸魚川市,妙高市,五泉市,上越市,阿賀野市,佐渡市,魚沼市,南魚沼市,胎内市',
+  '富山県': '富山市,高岡市,魚津市,氷見市,滑川市,黒部市,砺波市,小矢部市,南砺市,射水市',
+  '石川県': '金沢市,七尾市,小松市,輪島市,珠洲市,加賀市,羽咋市,かほく市,白山市,能美市,野々市市',
+  '福井県': '福井市,敦賀市,小浜市,大野市,勝山市,鯖江市,あわら市,越前市,坂井市',
+  '山梨県': '甲府市,富士吉田市,都留市,山梨市,大月市,韮崎市,南アルプス市,北杜市,甲斐市,笛吹市,上野原市,甲州市,中央市',
+  '長野県': '長野市,松本市,上田市,岡谷市,飯田市,諏訪市,須坂市,小諸市,伊那市,駒ヶ根市,中野市,大町市,飯山市,茅野市,塩尻市,佐久市,千曲市,東御市,安曇野市',
+  '岐阜県': '岐阜市,大垣市,高山市,多治見市,関市,中津川市,美濃市,瑞浪市,羽島市,恵那市,美濃加茂市,土岐市,各務原市,可児市,山県市,瑞穂市,飛騨市,本巣市,郡上市,下呂市,海津市',
+  '静岡県': '静岡市,浜松市,沼津市,熱海市,三島市,富士宮市,伊東市,島田市,富士市,磐田市,焼津市,掛川市,藤枝市,御殿場市,袋井市,下田市,裾野市,湖西市,伊豆市,御前崎市,菊川市,伊豆の国市,牧之原市',
+  '愛知県': '名古屋市,豊橋市,岡崎市,一宮市,瀬戸市,半田市,春日井市,豊川市,津島市,碧南市,刈谷市,豊田市,安城市,西尾市,蒲郡市,犬山市,常滑市,江南市,小牧市,稲沢市,新城市,東海市,大府市,知多市,知立市,尾張旭市,高浜市,岩倉市,豊明市,日進市,田原市,愛西市,清須市,北名古屋市,弥富市,みよし市,あま市,長久手市',
+  '三重県': '津市,四日市市,伊勢市,松阪市,桑名市,鈴鹿市,名張市,尾鷲市,亀山市,鳥羽市,熊野市,いなべ市,志摩市,伊賀市',
+  '滋賀県': '大津市,彦根市,長浜市,近江八幡市,草津市,守山市,栗東市,甲賀市,野洲市,湖南市,高島市,東近江市,米原市',
+  '京都府': '京都市,福知山市,舞鶴市,綾部市,宇治市,宮津市,亀岡市,城陽市,向日市,長岡京市,八幡市,京田辺市,京丹後市,南丹市,木津川市',
+  '大阪府': '大阪市,堺市,岸和田市,豊中市,池田市,吹田市,泉大津市,高槻市,貝塚市,守口市,枚方市,茨木市,八尾市,泉佐野市,富田林市,寝屋川市,河内長野市,松原市,大東市,和泉市,箕面市,柏原市,羽曳野市,門真市,摂津市,高石市,藤井寺市,東大阪市,泉南市,四條畷市,交野市,大阪狭山市,阪南市',
+  '兵庫県': '神戸市,姫路市,尼崎市,明石市,西宮市,洲本市,芦屋市,伊丹市,相生市,豊岡市,加古川市,赤穂市,西脇市,宝塚市,三木市,高砂市,川西市,小野市,三田市,加西市,丹波篠山市,養父市,丹波市,南あわじ市,朝来市,淡路市,宍粟市,加東市,たつの市',
+  '奈良県': '奈良市,大和高田市,大和郡山市,天理市,橿原市,桜井市,五條市,御所市,生駒市,香芝市,葛城市,宇陀市',
+  '和歌山県': '和歌山市,海南市,橋本市,有田市,御坊市,田辺市,新宮市,紀の川市,岩出市',
+  '鳥取県': '鳥取市,米子市,倉吉市,境港市',
+  '島根県': '松江市,浜田市,出雲市,益田市,大田市,安来市,江津市,雲南市',
+  '岡山県': '岡山市,倉敷市,津山市,玉野市,笠岡市,井原市,総社市,高梁市,新見市,備前市,瀬戸内市,赤磐市,真庭市,美作市,浅口市',
+  '広島県': '広島市,呉市,竹原市,三原市,尾道市,福山市,府中市,三次市,庄原市,大竹市,東広島市,廿日市市,安芸高田市,江田島市',
+  '山口県': '下関市,宇部市,山口市,萩市,防府市,下松市,岩国市,光市,長門市,柳井市,美祢市,周南市,山陽小野田市',
+  '徳島県': '徳島市,鳴門市,小松島市,阿南市,吉野川市,阿波市,美馬市,三好市',
+  '香川県': '高松市,丸亀市,坂出市,善通寺市,観音寺市,さぬき市,東かがわ市,三豊市',
+  '愛媛県': '松山市,今治市,宇和島市,八幡浜市,新居浜市,西条市,大洲市,伊予市,四国中央市,西予市,東温市',
+  '高知県': '高知市,室戸市,安芸市,南国市,土佐市,須崎市,宿毛市,土佐清水市,四万十市,香南市,香美市',
+  '福岡県': '北九州市,福岡市,大牟田市,久留米市,直方市,飯塚市,田川市,柳川市,八女市,筑後市,大川市,行橋市,豊前市,中間市,小郡市,筑紫野市,春日市,大野城市,宗像市,太宰府市,古賀市,福津市,うきは市,宮若市,嘉麻市,朝倉市,みやま市,糸島市,那珂川市',
+  '佐賀県': '佐賀市,唐津市,鳥栖市,多久市,伊万里市,武雄市,鹿島市,小城市,嬉野市,神埼市',
+  '長崎県': '長崎市,佐世保市,島原市,諫早市,大村市,平戸市,松浦市,対馬市,壱岐市,五島市,西海市,雲仙市,南島原市',
+  '熊本県': '熊本市,八代市,人吉市,荒尾市,水俣市,玉名市,山鹿市,菊池市,宇土市,上天草市,宇城市,阿蘇市,天草市,合志市',
+  '大分県': '大分市,別府市,中津市,日田市,佐伯市,臼杵市,津久見市,竹田市,豊後高田市,杵築市,宇佐市,豊後大野市,由布市,国東市',
+  '宮崎県': '宮崎市,都城市,延岡市,日南市,小林市,日向市,串間市,西都市,えびの市',
+  '鹿児島県': '鹿児島市,鹿屋市,枕崎市,阿久根市,出水市,指宿市,西之表市,垂水市,薩摩川内市,日置市,曽於市,霧島市,いちき串木野市,南さつま市,志布志市,奄美市,南九州市,伊佐市,姶良市',
+  '沖縄県': '那覇市,沖縄市,宜野湾市,石垣市,浦添市,名護市,糸満市,豊見城市,うるま市,宮古島市,南城市'
+};
+// CANDIDATE_REGION_MASTER 生成（47都道府県 + 全市区町村 約790件）
+const CANDIDATE_REGION_MASTER = (function(){
+  const out = [];
+  for(const [prefJP, prefEN] of Object.entries(PREF_EN)) {
+    out.push({media:'dv360', prefectureJp:prefJP, municipalityJp:'', displayName:prefEN+', Japan', level:'都道府県', note:''});
+    const cities = (CITIES[prefJP]||'').split(',').filter(Boolean);
+    for(const city of cities) {
+      const c = city.trim();
+      const cityEN = CITY_EN[c] || c.replace(/[市町村区]$/,'');
+      out.push({media:'dv360', prefectureJp:prefJP, municipalityJp:c, displayName:cityEN+', '+prefEN+', Japan', level:'市区町村', note:''});
+    }
+  }
+  return out;
+})();
 
 // ============================================================
 //  都道府県一覧（正規表現生成用）+ マスタ取得ヘルパー
@@ -620,7 +801,8 @@ function renderResults(results) {
 
   // 変換結果のlevel suffixをステータスから推定
   function levelSuffix(status, displayName) {
-    if (status === 'OK_市区町村' || status === 'WARN_市区町村未登録') return '（市区町村）';
+    if (status === 'OK_市区町村') return '（市区町村）';
+    if (status === 'WARN_市区町村未登録') return '（都道府県）';
     if (status === 'OK_都道府県') return '（都道府県）';
     if (status === 'WARN_候補未確認' && displayName) {
       return (displayName.match(/,/g) || []).length >= 2 ? '（市区町村）' : '（都道府県）';
