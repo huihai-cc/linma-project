@@ -1769,6 +1769,12 @@ const DL_COLUMNS_VIDEO = [
 
     { key:'Location targeting 1 of 2', ja:'配信地域（含む）',
   checkFn:(s,v) => {
+    // ★ PVA PG案件：LocationはDealレベルで管理されるため比較対象外
+    if(s.__SYSTEM__ === 'amazon_pva' &&
+       String(s.deal_type || '').trim().toLowerCase() === 'programmatic guaranteed'){
+        s.__pg_skip__ = 'PGのため比較対象外';
+        return null;
+    }
     const loc = (s.location || s.region || '').trim();
     const locL = loc.toLowerCase();
 
@@ -1968,16 +1974,36 @@ const DL_COLUMNS_VIDEO = [
     },
     { key:'Pacing profile',            ja:'配信ペース',
       checkFn:(s,v) => {
+        // ★ PVA PG案件：配信ペースはDealレベルで管理されるため比較対象外
+        if(s.__SYSTEM__ === 'amazon_pva' &&
+           String(s.deal_type || '').trim().toLowerCase() === 'programmatic guaranteed'){
+            s.__pg_skip__ = 'PGのため比較対象外';
+            return null;
+        }
         const sp = normPacing(s.pacing);
         return !sp || sp === normPacing(v);
       }
     },
     { key:'3P fees',                   ja:'3Pフィー',            checkFn:null, autoHide:true },
     { key:'Base supply bid*',          ja:'ベースCPM',
-      checkFn:(s,v) => normNum(s.base_cpm) === normNum(v)
+      checkFn:(s,v) => {
+        // ★ PVA PG案件：ベースCPMはDealレベルで管理されるため比較対象外
+        if(s.__SYSTEM__ === 'amazon_pva' &&
+           String(s.deal_type || '').trim().toLowerCase() === 'programmatic guaranteed'){
+            s.__pg_skip__ = 'PGのため比較対象外';
+            return null;
+        }
+        return normNum(s.base_cpm) === normNum(v);
+      }
     },
     { key:'Maximum average CPM', ja:'上限CPM',
   checkFn:(s,v) => {
+    // ★ PVA PG案件：上限CPMはDealレベルで管理されるため比較対象外
+    if(s.__SYSTEM__ === 'amazon_pva' &&
+       String(s.deal_type || '').trim().toLowerCase() === 'programmatic guaranteed'){
+        s.__pg_skip__ = 'PGのため比較対象外';
+        return null;
+    }
     if(!s.max_cpm || !v) return null;
     // ¥1,822 → 1822
     const sVal = parseFloat(s.max_cpm.replace(/[¥,￥\s]/g, ''));
@@ -2078,6 +2104,7 @@ function matchAndCompareVideo(settingData, downloadMap, system){
             return map[key] !== undefined ? String(map[key] || '') : '';
         }
 
+        const PG_SKIP_KEYS = ['Location targeting 1 of 2', 'Pacing profile', 'Base supply bid*', 'Maximum average CPM'];
         const colResults = DL_COLUMNS_VIDEO.map(col => {
     const dVal = dGet(col.key);
     const sVal = sGetForCol(col.key);
@@ -2086,7 +2113,9 @@ function matchAndCompareVideo(settingData, downloadMap, system){
         try { result = col.checkFn(sRow, dVal, dRow); }  // ← 加第3个参数 dRow
         catch(e){ result = null; }
     }
-    return { key:col.key, ja:col.ja, sVal, dVal, result };
+    return { key:col.key, ja:col.ja, sVal, dVal, result,
+        skipReason: sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key)
+            ? sRow.__pg_skip__ : '' };
 });
 
         results.push({
@@ -2101,7 +2130,7 @@ function matchAndCompareVideo(settingData, downloadMap, system){
     isPause:        dRow ? (dRow['Active/Inactive']||'').toLowerCase()==='pause' : null,
     activeStatus:   dRow ? dRow['Active/Inactive'] : '',
     colResults,
-    mismatchCount:  colResults.filter(c => c.result === false).length,
+    mismatchCount:  colResults.filter(c => c.result === false && !c.skipReason).length,
     // ★ sRowから差異情報を引き継ぐ
     __audience_diff__:      sRow.__audience_diff__      || '',
     __location_diff__:      sRow.__location_diff__      || '',
@@ -3798,6 +3827,7 @@ const visibleCols = activeCols.filter(col=>{
         <span><span style="display:inline-block;width:12px;height:12px;background:#fde8e8;border:1px solid #e74c3c;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>❌ 不一致</span>
         <span><span style="display:inline-block;width:12px;height:12px;background:#fef9e7;border:1px solid #f39c12;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>☞ 要確認</span>
         <span><span style="display:inline-block;width:12px;height:12px;background:#f0f0f0;border:1px solid #bbb;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>— 空/対象外</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#eaf2f8;border:1px solid #5dade2;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>🔵 対象外（PG）</span>
         <span style="color:#999;margin-left:8px;">※ 上段＝設定表 / 下段＝ダウンロード</span>
     </div>`;
 
@@ -4025,11 +4055,13 @@ const visibleCols = activeCols.filter(col=>{
                     const sVal=cr?String(cr.sVal||'').trim():'';
                     const dVal=cr?String(cr.dVal||'').trim():'';
                     const result=cr?cr.result:null;
+                    const skipReason=cr?cr.skipReason||'':'';
                     const bothEmpty=!dVal&&!sVal;
                     const effectiveResult=bothEmpty?true:result;
-                    const bg=result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
-                    const border=result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
-                    const color=result===false?'#922b21':(result===null&&dVal)?'#856404':'#333';
+                    const bg=skipReason?'#eaf2f8':result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
+                    const border=skipReason?'1px solid #5dade2':result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
+                    const color=skipReason?'#2c3e50':result===false?'#922b21':(result===null&&dVal)?'#856404':'#333';
+                    const skipLabel=skipReason?`<span style="font-size:0.68rem;color:#2c3e50;margin-left:4px;background:#d4e6f1;padding:1px 6px;border-radius:3px;">対象外 / ${skipReason}</span>`:'';
                     const hideStyle=col.autoHide?'display:none;':'';
                     html+=`<td data-col-key="${col.key}"
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
@@ -4039,6 +4071,7 @@ const visibleCols = activeCols.filter(col=>{
                         ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'${SC_ROW_HEIGHT}px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
                         <span style="font-size:0.73rem;color:${color};text-align:left;display:block;">
                             ${sVal||'<span style="color:#ccc;">—</span>'}
+                            ${skipLabel}
                         </span>
                     </td>`;
                 });
@@ -4052,11 +4085,13 @@ const visibleCols = activeCols.filter(col=>{
                     const sVal=cr?String(cr.sVal||'').trim():'';
                     const dVal=cr?String(cr.dVal||'').trim():'';
                     const result=cr?cr.result:null;
+                    const skipReason=cr?cr.skipReason||'':'';
                     const bothEmpty=!dVal&&!sVal;
                     const effectiveResult=bothEmpty?true:result;
-                    const bg=result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
-                    const border=result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
-                    const confirmLabel=(result===null&&dVal)?'<span style="font-size:0.68rem;color:#856404;margin-left:4px;">要確認</span>':'';
+                    const bg=skipReason?'#eaf2f8':result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
+                    const border=skipReason?'1px solid #5dade2':result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
+                    const skipLabel=skipReason?`<span style="font-size:0.68rem;color:#2c3e50;margin-left:4px;background:#d4e6f1;padding:1px 6px;border-radius:3px;">対象外 / ${skipReason}</span>`:'';
+                    const confirmLabel=!skipReason&&result===null&&dVal?'<span style="font-size:0.68rem;color:#856404;margin-left:4px;">要確認</span>':'';
                     const hideStyle=col.autoHide?'display:none;':'';
                     html+=`<td data-col-key="${col.key}"
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
@@ -4067,10 +4102,10 @@ col.key==='Brand suitability inventory tier'?'__brand_tier_note__':
 col.key==='Targeting by Keywords'?'__keyword_diff__':
 col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n'))}"
                         ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'${SC_ROW_HEIGHT}px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
-                        <span style="font-size:0.73rem;text-align:left;display:block;${effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':'color:#856404'};">
+                        <span style="font-size:0.73rem;text-align:left;display:block;${skipReason?'color:#2c3e50':effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':'color:#856404'};">
                             ${dVal||'<span style="color:#ccc;">—</span>'}
                         </span>
-                        ${confirmLabel}
+                        ${skipLabel || confirmLabel}
                         ${(()=>{
     const noteKey = col.key === 'Brand suitability content exclusion categories'
         ? '__brand_content_note__'
