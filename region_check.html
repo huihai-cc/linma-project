@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地域表記変換チェック</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:#f0f2f5;color:#333;min-height:100vh;}
+
+/* ===== Header ===== */
+header{background:#1a252f;color:white;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
+.badge{background:#3498db;border-radius:12px;padding:3px 12px;font-size:0.72rem;white-space:nowrap;}
+.back-nav{background:#2c3e50;padding:6px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.back-btn{background:#2980b9;color:white;border:none;border-radius:4px;padding:4px 12px;font-size:0.8rem;cursor:pointer;text-decoration:none;}
+.back-btn:hover{background:#1a6fa8;}
+.back-nav .subtitle{color:#bdc3c7;font-size:0.78rem;}
+
+/* ===== Media Select Bar ===== */
+.media-select-bar{display:flex;align-items:center;gap:12px;padding:10px 20px;background:#f0f4f8;border-bottom:1px solid #dce3ea;flex-wrap:wrap;}
+.media-select-bar label{font-weight:bold;font-size:0.85rem;color:#2c3e50;white-space:nowrap;}
+.media-select-bar select{padding:5px 12px;border:1px solid #3498db;border-radius:4px;font-size:0.85rem;background:white;cursor:pointer;}
+.media-select-bar select:focus{outline:none;border-color:#2980b9;box-shadow:0 0 0 2px rgba(52,152,219,0.2);}
+.media-badge{background:#3498db;color:white;border-radius:10px;padding:2px 10px;font-size:0.78rem;font-weight:bold;display:none;}
+
+/* ===== Input Section ===== */
+.input-section{padding:14px 20px 8px;}
+.input-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;}
+.input-header .input-label{font-weight:bold;font-size:0.88rem;color:#2c3e50;display:flex;align-items:center;gap:6px;}
+.input-header .input-label .count-badge{background:#dfe6e9;color:#636e72;border-radius:10px;padding:1px 8px;font-size:0.7rem;font-weight:normal;}
+textarea#regionInput {
+  width:100%;min-height:180px;padding:12px 14px;border:2px solid #dce3ea;border-radius:8px;
+  font-size:0.88rem;font-family:'Segoe UI','Noto Sans JP','Noto Sans SC',sans-serif;
+  resize:vertical;outline:none;transition:border-color 0.2s;background:white;line-height:1.7;
+}
+textarea#regionInput:focus{border-color:#3498db;box-shadow:0 0 0 3px rgba(52,152,219,0.08);}
+textarea#regionInput::placeholder{color:#bbb;font-size:0.82rem;}
+.input-hint{font-size:0.72rem;color:#95a5a6;margin-top:5px;line-height:1.5;}
+
+/* ===== Buttons ===== */
+.btn{padding:7px 16px;border:none;border-radius:5px;font-size:0.82rem;font-weight:bold;cursor:pointer;transition:all 0.15s;}
+.btn-check{background:#e74c3c;color:white;}
+.btn-check:hover{background:#c0392b;}
+.btn-reset{background:#95a5a6;color:white;}
+.btn-reset:hover{background:#7f8c8d;}
+.btn-sm{padding:4px 10px;font-size:0.72rem;}
+.btn-sample{background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;padding:5px 14px;font-size:0.78rem;}
+.btn-sample:hover{background:#dfe6e9;}
+.btn-copy{background:#3498db;color:white;padding:4px 12px;font-size:0.72rem;border-radius:4px;}
+.btn-copy:hover{background:#2980b9;}
+
+/* ===== Control Bar ===== */
+.control-bar{display:none;align-items:center;gap:10px;padding:8px 20px;flex-wrap:wrap;background:#f8f9fa;border-top:1px solid #e0e0e0;border-bottom:1px solid #e0e0e0;}
+.control-bar.show{display:flex;}
+.control-info{font-size:0.78rem;color:#888;margin-left:auto;}
+
+/* ===== Result Section ===== */
+.result-section{display:none;padding:14px 20px 30px;}
+.result-section.show{display:block;}
+.result-header{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#1a252f;color:white;padding:10px 16px;border-radius:8px 8px 0 0;
+  font-size:0.88rem;font-weight:bold;flex-wrap:wrap;gap:8px;
+}
+.result-summary{font-size:0.75rem;font-weight:normal;opacity:0.85;}
+
+/* ===== Table ===== */
+.table-wrap{background:white;border:1px solid #ddd;border-top:none;border-radius:0 0 8px 8px;max-height:65vh;overflow:auto;}
+.result-table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+.result-table thead{position:sticky;top:0;z-index:20;}
+.result-table thead th{
+  background:#2c3e50;color:white;padding:8px 10px;border:1px solid #334455;
+  text-align:center;vertical-align:middle;white-space:nowrap;font-size:0.74rem;
+}
+.result-table tbody td{padding:7px 10px;border:1px solid #e8e8e8;vertical-align:middle;word-break:break-all;}
+.result-table tbody tr:hover{background:#f8fbff;}
+.result-table .col-no{width:36px;text-align:center;color:#999;font-size:0.7rem;}
+.result-table .col-raw{min-width:160px;font-family:'Noto Sans JP',sans-serif;}
+.result-table .col-parsed{min-width:140px;font-family:'Noto Sans JP',sans-serif;color:#555;}
+.result-table .col-result{min-width:180px;font-weight:600;color:#1a5276;}
+.result-table .col-note{min-width:120px;color:#666;font-size:0.74rem;}
+
+/* ===== Status Badges ===== */
+.status-badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:0.7rem;font-weight:bold;white-space:nowrap;}
+.status-ok-city{background:#d5f5e3;color:#1e8449;}
+.status-ok-pref{background:#d6eaf8;color:#1a5276;}
+.status-warn-unreg{background:#fef5e7;color:#d35400;}
+.status-warn-multi{background:#fef9e7;color:#b7950b;}
+.status-warn-unconfirmed{background:#fef0e0;color:#e67e22;border:1px solid #f0b070;}
+.status-ng{background:#fadbd8;color:#c0392b;}
+
+/* ===== Master Data Panel ===== */
+.master-panel{margin-top:20px;border:1px solid #e4e8ed;border-radius:8px;overflow:hidden;background:white;}
+.master-header{
+  display:flex;align-items:center;gap:8px;padding:10px 14px;
+  background:#f8f9fa;cursor:pointer;user-select:none;font-size:0.82rem;font-weight:bold;color:#555;
+}
+.master-header:hover{background:#f0f3f7;}
+.master-body{display:none;padding:10px 14px 14px;border-top:1px solid #e4e8ed;}
+.master-body.show{display:block;}
+.master-table{width:100%;border-collapse:collapse;font-size:0.72rem;}
+.master-table th{background:#f0f3f7;padding:5px 8px;text-align:left;border-bottom:2px solid #ddd;color:#666;}
+.master-table td{padding:4px 8px;border-bottom:1px solid #f0f0f0;font-family:'Noto Sans JP',sans-serif;}
+.master-note{font-size:0.65rem;color:#e67e22;margin-top:6px;}
+
+/* ===== Empty State ===== */
+.empty-state{text-align:center;padding:40px 20px;color:#aaa;}
+.empty-state .icon{font-size:2rem;margin-bottom:8px;}
+.empty-state .text{font-size:0.85rem;}
+
+/* ===== Responsive ===== */
+@media(max-width:640px){
+  .result-table{font-size:0.7rem;}
+  .result-table thead th{font-size:0.65rem;padding:5px 6px;}
+  .result-table tbody td{padding:5px 6px;}
+  .result-section{padding:10px 10px 20px;}
+  .input-section{padding:10px 10px 4px;}
+}
+</style>
+</head>
+<body>
+<script src="qc-auth.js"></script>
+<style>
+.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
+.qc-userbar a{color:#67e8f9;text-decoration:none;}
+</style>
+<div class="qc-userbar" id="qcUserBar">
+  <span id="qcUserInfo"></span>
+  <span><a href="index.html">&#x2190; 返回门户</a></span>
+</div>
+<script>
+(function(){
+  var u = guardPage();
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
+  else {
+    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
+  }
+})();
+</script>
+
+<header>
+  <h1>🗾 地域表記変換チェック</h1>
+  <span class="badge">🔒 完全本地运行</span>
+</header>
+
+<div class="back-nav">
+  <a href="index.html" class="back-btn">← 返回导航页</a>
+  <span class="subtitle">日方地域記載 → 媒体管理画面用表記へ変換</span>
+</div>
+
+<!-- ===== 対象媒体選択 ===== -->
+<div class="media-select-bar">
+  <label>📌 対象媒体：</label>
+  <select id="mediaSelect">
+    <option value="dv360">DV360設定依頼</option>
+  </select>
+  <span class="media-badge" id="mediaBadge">DV360設定依頼</span>
+</div>
+
+<!-- ===== 入力区 ===== -->
+<div class="input-section">
+  <div class="input-header">
+    <span class="input-label">
+      📝 日方地域記載を入力
+      <span class="count-badge" id="lineCount">0行</span>
+    </span>
+    <button class="btn btn-sample" onclick="loadSample()">📋 サンプルを読み込む</button>
+  </div>
+  <textarea id="regionInput" placeholder="例（1行1件）：&#10;群馬県前橋市&#10;東京都港区&#10;&#10;A/B/C列がタブ区切りの場合：&#10;群馬県    北群馬郡    吉岡町&#10;東京都    港区"></textarea>
+  <div class="input-hint">
+    💡 1行1件で入力してください。A/B/C列が別れている場合も1行にタブ区切りでまとめて入力可能です。
+  </div>
+  <div style="margin-top:6px;padding:6px 12px;background:#fef9e7;border:1px solid #f0d080;border-radius:4px;font-size:0.72rem;color:#856404;line-height:1.6;">
+    ✅ <b>CONFIRMED</b>（DV360確認済）と 🔶 <b>CANDIDATE</b>（AI/公開データ由来・未確認）の2層マスタで判定。<br>
+    🔶 CANDIDATE 由来の変換結果は <b>必ずDV360管理画面で実際の表記を確認</b>してから正式利用してください。
+  </div>
+</div>
+
+<!-- ===== 控制栏 ===== -->
+<div class="control-bar" id="controlBar">
+  <button class="btn btn-check" onclick="runConversion()">🔄 変換チェック</button>
+  <button class="btn btn-reset" onclick="resetAll()">🗑️ クリア</button>
+  <span class="control-info" id="statusInfo"></span>
+</div>
+
+<!-- ===== 结果区 ===== -->
+<div class="result-section" id="resultSection">
+  <div class="result-header">
+    <span>📊 変換結果</span>
+    <span class="result-summary" id="resultSummary"></span>
+  </div>
+  <div class="table-wrap" id="resultTableWrap">
+    <table class="result-table">
+      <thead>
+        <tr>
+          <th class="col-no">#</th>
+          <th class="col-raw">原始入力</th>
+          <th class="col-parsed">解析結果</th>
+          <th class="col-result">変換結果</th>
+          <th style="min-width:110px;">判定</th>
+          <th class="col-note">備考</th>
+        </tr>
+      </thead>
+      <tbody id="resultBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== Master对照表（折叠） ===== -->
+<div class="master-panel" id="masterPanel">
+  <div class="master-header" onclick="toggleMaster()">
+    <span id="masterArrow">▶</span>
+    <span>📚 マスタデータ <span style="font-weight:normal;color:#999;font-size:0.78rem;" id="masterCount"></span></span>
+    <span style="margin-left:auto;font-weight:normal;color:#999;font-size:0.72rem;">クリックで展開</span>
+  </div>
+  <div class="master-body" id="masterBody">
+    <table class="master-table">
+      <thead>
+        <tr><th>都道府県</th><th>市区町村</th><th>変換表記</th><th>レベル</th><th>来源</th><th>備考</th></tr>
+      </thead>
+      <tbody id="masterBodyRows"></tbody>
+    </table>
+    <div class="master-note">
+      ⚠ <b>CONFIRMED</b>（緑行）はDV360管理画面で確認済み。&nbsp;
+      <b>CANDIDATE</b>（灰行）はAI/公開データ由来の未確認候補です。<br>
+      変換結果を正式利用する前に、必ずDV360管理画面で実際の表示表記を確認してください。確認済みデータは CANDIDATE → CONFIRMED に昇格可能です。
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+//  第1層: CONFIRMED_REGION_MASTER（DV360管理画面確認済み）
+//  　- 命中後 OK_市区町村 / OK_都道府県 が可能
+//  　- 来源：DV360管理画面確認、既有正確設定表、人工確認
+// ============================================================
+const CONFIRMED_REGION_MASTER = [
+  // ── 都道府県レベル ──
+  { media:"dv360", prefectureJp:"東京都", municipalityJp:"", displayName:"Tokyo, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"大阪府", municipalityJp:"", displayName:"Osaka, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"京都府", municipalityJp:"", displayName:"Kyoto, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"北海道", municipalityJp:"", displayName:"Hokkaido, Japan",                   level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"群馬県", municipalityJp:"", displayName:"Gunma, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"愛知県", municipalityJp:"", displayName:"Aichi, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"福岡県", municipalityJp:"", displayName:"Fukuoka, Japan",                   level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"神奈川県", municipalityJp:"", displayName:"Kanagawa, Japan",                level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"埼玉県", municipalityJp:"",  displayName:"Saitama, Japan",                  level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"千葉県", municipalityJp:"",  displayName:"Chiba, Japan",                    level:"都道府県", note:"" },
+
+  // ── 市区町村レベル ──
+  // 東京都
+  { media:"dv360", prefectureJp:"東京都", municipalityJp:"千代田区", displayName:"Chiyoda, Tokyo, Japan",     level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"東京都", municipalityJp:"中央区",   displayName:"Chuo, Tokyo, Japan",        level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"東京都", municipalityJp:"港区",     displayName:"Minato, Tokyo, Japan",      level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"東京都", municipalityJp:"新宿区",   displayName:"Shinjuku, Tokyo, Japan",    level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"東京都", municipalityJp:"渋谷区",   displayName:"Shibuya, Tokyo, Japan",     level:"市区町村", note:"" },
+  // 大阪府
+  { media:"dv360", prefectureJp:"大阪府", municipalityJp:"大阪市",         displayName:"Osaka City, Osaka, Japan",       level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"大阪府", municipalityJp:"大阪市中央区",   displayName:"Chuo, Osaka, Japan",             level:"市区町村", note:"" },
+  // 北海道
+  { media:"dv360", prefectureJp:"北海道", municipalityJp:"札幌市",         displayName:"Sapporo, Hokkaido, Japan",       level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"北海道", municipalityJp:"札幌市中央区",   displayName:"Chuo, Sapporo, Japan",           level:"市区町村", note:"" },
+  // 群馬県
+  { media:"dv360", prefectureJp:"群馬県", municipalityJp:"前橋市",         displayName:"Maebashi, Gunma, Japan",         level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"群馬県", municipalityJp:"北群馬郡吉岡町", displayName:"Yoshioka, Gunma, Japan",         level:"市区町村", note:"要確認" },
+  // 愛知県
+  { media:"dv360", prefectureJp:"愛知県", municipalityJp:"名古屋市",       displayName:"Nagoya, Aichi, Japan",           level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"愛知県", municipalityJp:"名古屋市中区",   displayName:"Naka, Nagoya, Japan",            level:"市区町村", note:"" },
+  // 福岡県
+  { media:"dv360", prefectureJp:"福岡県", municipalityJp:"福岡市",         displayName:"Fukuoka City, Fukuoka, Japan",   level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"福岡県", municipalityJp:"福岡市中央区",   displayName:"Chuo, Fukuoka, Japan",           level:"市区町村", note:"" },
+  // 神奈川県
+  { media:"dv360", prefectureJp:"神奈川県", municipalityJp:"横浜市",       displayName:"Yokohama, Kanagawa, Japan",      level:"市区町村", note:"" },
+  // 埼玉県
+  { media:"dv360", prefectureJp:"埼玉県", municipalityJp:"さいたま市",     displayName:"Saitama, Saitama, Japan",        level:"市区町村", note:"" },
+];
+
+// ============================================================
+//  第2層: CANDIDATE_REGION_MASTER（AI/公開データ由来、未確認）
+//  　- 命中後 WARN_候補未確認（絶対に OK と判定しない）
+//  　- 来源：AI翻訳、公開行政区画データ、未確認候補
+//  　- 確認済みデータは CONFIRMED に昇格可能
+// ============================================================
+const CANDIDATE_REGION_MASTER = [
+  // ===== 都道府県レベル（全47） =====
+  // -- 北海道・東北 --
+  { media:"dv360", prefectureJp:"北海道", municipalityJp:"", displayName:"Hokkaido, Japan",                  level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"青森県", municipalityJp:"", displayName:"Aomori, Japan",                    level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"岩手県", municipalityJp:"", displayName:"Iwate, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"宮城県", municipalityJp:"", displayName:"Miyagi, Japan",                    level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"秋田県", municipalityJp:"", displayName:"Akita, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"山形県", municipalityJp:"", displayName:"Yamagata, Japan",                   level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"福島県", municipalityJp:"", displayName:"Fukushima, Japan",                  level:"都道府県", note:"" },
+  // -- 関東 --
+  { media:"dv360", prefectureJp:"茨城県", municipalityJp:"", displayName:"Ibaraki, Japan",                    level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"栃木県", municipalityJp:"", displayName:"Tochigi, Japan",                   level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"群馬県", municipalityJp:"", displayName:"Gunma, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"埼玉県", municipalityJp:"", displayName:"Saitama, Japan",                   level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"千葉県", municipalityJp:"", displayName:"Chiba, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"東京都", municipalityJp:"", displayName:"Tokyo, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"神奈川県", municipalityJp:"", displayName:"Kanagawa, Japan",                level:"都道府県", note:"" },
+  // -- 中部 --
+  { media:"dv360", prefectureJp:"新潟県", municipalityJp:"", displayName:"Niigata, Japan",                   level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"富山県", municipalityJp:"", displayName:"Toyama, Japan",                    level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"石川県", municipalityJp:"", displayName:"Ishikawa, Japan",                  level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"福井県", municipalityJp:"", displayName:"Fukui, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"山梨県", municipalityJp:"", displayName:"Yamanashi, Japan",                 level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"長野県", municipalityJp:"", displayName:"Nagano, Japan",                    level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"岐阜県", municipalityJp:"", displayName:"Gifu, Japan",                      level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"静岡県", municipalityJp:"", displayName:"Shizuoka, Japan",                  level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"愛知県", municipalityJp:"", displayName:"Aichi, Japan",                     level:"都道府県", note:"" },
+  // -- 近畿 --
+  { media:"dv360", prefectureJp:"三重県", municipalityJp:"", displayName:"Mie, Japan",                       level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"滋賀県", municipalityJp:"", displayName:"Shiga, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"京都府", municipalityJp:"", displayName:"Kyoto, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"大阪府", municipalityJp:"", displayName:"Osaka, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"兵庫県", municipalityJp:"", displayName:"Hyogo, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"奈良県", municipalityJp:"", displayName:"Nara, Japan",                      level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"和歌山県", municipalityJp:"", displayName:"Wakayama, Japan",                level:"都道府県", note:"" },
+  // -- 中国 --
+  { media:"dv360", prefectureJp:"鳥取県", municipalityJp:"", displayName:"Tottori, Japan",                   level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"島根県", municipalityJp:"", displayName:"Shimane, Japan",                   level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"岡山県", municipalityJp:"", displayName:"Okayama, Japan",                   level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"広島県", municipalityJp:"", displayName:"Hiroshima, Japan",                 level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"山口県", municipalityJp:"", displayName:"Yamaguchi, Japan",                 level:"都道府県", note:"" },
+  // -- 四国 --
+  { media:"dv360", prefectureJp:"徳島県", municipalityJp:"", displayName:"Tokushima, Japan",                 level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"香川県", municipalityJp:"", displayName:"Kagawa, Japan",                    level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"愛媛県", municipalityJp:"", displayName:"Ehime, Japan",                     level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"高知県", municipalityJp:"", displayName:"Kochi, Japan",                     level:"都道府県", note:"" },
+  // -- 九州・沖縄 --
+  { media:"dv360", prefectureJp:"福岡県", municipalityJp:"", displayName:"Fukuoka, Japan",                   level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"佐賀県", municipalityJp:"", displayName:"Saga, Japan",                      level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"長崎県", municipalityJp:"", displayName:"Nagasaki, Japan",                  level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"熊本県", municipalityJp:"", displayName:"Kumamoto, Japan",                  level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"大分県", municipalityJp:"", displayName:"Oita, Japan",                      level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"宮崎県", municipalityJp:"", displayName:"Miyazaki, Japan",                  level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"鹿児島県", municipalityJp:"", displayName:"Kagoshima, Japan",               level:"都道府県", note:"" },
+  { media:"dv360", prefectureJp:"沖縄県", municipalityJp:"", displayName:"Okinawa, Japan",                   level:"都道府県", note:"" },
+
+  // ===== 市区町村レベル =====
+  // -- 北海道 --
+  { media:"dv360", prefectureJp:"北海道", municipalityJp:"函館市",     displayName:"Hakodate, Hokkaido, Japan",     level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"北海道", municipalityJp:"旭川市",     displayName:"Asahikawa, Hokkaido, Japan",    level:"市区町村", note:"" },
+  // -- 東北 --
+  { media:"dv360", prefectureJp:"青森県", municipalityJp:"青森市",     displayName:"Aomori, Aomori, Japan",         level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"青森県", municipalityJp:"八戸市",     displayName:"Hachinohe, Aomori, Japan",      level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"岩手県", municipalityJp:"盛岡市",     displayName:"Morioka, Iwate, Japan",         level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"宮城県", municipalityJp:"仙台市",     displayName:"Sendai, Miyagi, Japan",         level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"秋田県", municipalityJp:"秋田市",     displayName:"Akita, Akita, Japan",           level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"山形県", municipalityJp:"山形市",     displayName:"Yamagata, Yamagata, Japan",     level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"福島県", municipalityJp:"福島市",     displayName:"Fukushima, Fukushima, Japan",   level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"福島県", municipalityJp:"郡山市",     displayName:"Koriyama, Fukushima, Japan",    level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"福島県", municipalityJp:"いわき市",   displayName:"Iwaki, Fukushima, Japan",       level:"市区町村", note:"" },
+  // -- 関東（既存CONFIRMED以外） --
+  { media:"dv360", prefectureJp:"茨城県", municipalityJp:"水戸市",     displayName:"Mito, Ibaraki, Japan",          level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"茨城県", municipalityJp:"つくば市",   displayName:"Tsukuba, Ibaraki, Japan",       level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"栃木県", municipalityJp:"宇都宮市",   displayName:"Utsunomiya, Tochigi, Japan",    level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"群馬県", municipalityJp:"高崎市",     displayName:"Takasaki, Gunma, Japan",        level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"埼玉県", municipalityJp:"川口市",     displayName:"Kawaguchi, Saitama, Japan",     level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"埼玉県", municipalityJp:"川越市",     displayName:"Kawagoe, Saitama, Japan",       level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"千葉県", municipalityJp:"千葉市",     displayName:"Chiba, Chiba, Japan",           level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"千葉県", municipalityJp:"船橋市",     displayName:"Funabashi, Chiba, Japan",       level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"神奈川県", municipalityJp:"川崎市",   displayName:"Kawasaki, Kanagawa, Japan",     level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"神奈川県", municipalityJp:"相模原市", displayName:"Sagamihara, Kanagawa, Japan",   level:"市区町村", note:"" },
+  // -- 中部 --
+  { media:"dv360", prefectureJp:"新潟県", municipalityJp:"新潟市",     displayName:"Niigata, Niigata, Japan",       level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"富山県", municipalityJp:"富山市",     displayName:"Toyama, Toyama, Japan",         level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"石川県", municipalityJp:"金沢市",     displayName:"Kanazawa, Ishikawa, Japan",     level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"福井県", municipalityJp:"福井市",     displayName:"Fukui, Fukui, Japan",           level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"山梨県", municipalityJp:"甲府市",     displayName:"Kofu, Yamanashi, Japan",        level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"長野県", municipalityJp:"長野市",     displayName:"Nagano, Nagano, Japan",         level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"長野県", municipalityJp:"松本市",     displayName:"Matsumoto, Nagano, Japan",      level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"岐阜県", municipalityJp:"岐阜市",     displayName:"Gifu, Gifu, Japan",             level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"静岡県", municipalityJp:"静岡市",     displayName:"Shizuoka, Shizuoka, Japan",     level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"静岡県", municipalityJp:"浜松市",     displayName:"Hamamatsu, Shizuoka, Japan",    level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"愛知県", municipalityJp:"豊田市",     displayName:"Toyota, Aichi, Japan",          level:"市区町村", note:"" },
+  // -- 近畿 --
+  { media:"dv360", prefectureJp:"三重県", municipalityJp:"津市",       displayName:"Tsu, Mie, Japan",               level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"滋賀県", municipalityJp:"大津市",     displayName:"Otsu, Shiga, Japan",            level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"京都府", municipalityJp:"京都市",     displayName:"Kyoto, Kyoto, Japan",           level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"大阪府", municipalityJp:"堺市",       displayName:"Sakai, Osaka, Japan",           level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"兵庫県", municipalityJp:"神戸市",     displayName:"Kobe, Hyogo, Japan",            level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"兵庫県", municipalityJp:"姫路市",     displayName:"Himeji, Hyogo, Japan",          level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"奈良県", municipalityJp:"奈良市",     displayName:"Nara, Nara, Japan",             level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"和歌山県", municipalityJp:"和歌山市", displayName:"Wakayama, Wakayama, Japan",     level:"市区町村", note:"" },
+  // -- 中国 --
+  { media:"dv360", prefectureJp:"鳥取県", municipalityJp:"鳥取市",     displayName:"Tottori, Tottori, Japan",       level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"島根県", municipalityJp:"松江市",     displayName:"Matsue, Shimane, Japan",        level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"岡山県", municipalityJp:"岡山市",     displayName:"Okayama, Okayama, Japan",       level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"広島県", municipalityJp:"広島市",     displayName:"Hiroshima, Hiroshima, Japan",   level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"山口県", municipalityJp:"山口市",     displayName:"Yamaguchi, Yamaguchi, Japan",   level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"山口県", municipalityJp:"下関市",     displayName:"Shimonoseki, Yamaguchi, Japan", level:"市区町村", note:"" },
+  // -- 四国 --
+  { media:"dv360", prefectureJp:"徳島県", municipalityJp:"徳島市",     displayName:"Tokushima, Tokushima, Japan",   level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"香川県", municipalityJp:"高松市",     displayName:"Takamatsu, Kagawa, Japan",      level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"愛媛県", municipalityJp:"松山市",     displayName:"Matsuyama, Ehime, Japan",       level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"高知県", municipalityJp:"高知市",     displayName:"Kochi, Kochi, Japan",           level:"市区町村", note:"" },
+  // -- 九州・沖縄 --
+  { media:"dv360", prefectureJp:"福岡県", municipalityJp:"北九州市",   displayName:"Kitakyushu, Fukuoka, Japan",    level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"佐賀県", municipalityJp:"佐賀市",     displayName:"Saga, Saga, Japan",             level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"長崎県", municipalityJp:"長崎市",     displayName:"Nagasaki, Nagasaki, Japan",     level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"熊本県", municipalityJp:"熊本市",     displayName:"Kumamoto, Kumamoto, Japan",     level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"大分県", municipalityJp:"大分市",     displayName:"Oita, Oita, Japan",             level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"宮崎県", municipalityJp:"宮崎市",     displayName:"Miyazaki, Miyazaki, Japan",     level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"鹿児島県", municipalityJp:"鹿児島市", displayName:"Kagoshima, Kagoshima, Japan",   level:"市区町村", note:"" },
+  { media:"dv360", prefectureJp:"沖縄県", municipalityJp:"那覇市",     displayName:"Naha, Okinawa, Japan",          level:"市区町村", note:"" },
+];
+
+// ============================================================
+//  都道府県一覧（正規表現生成用）+ マスタ取得ヘルパー
+//  全47都道府県を CONFIRMED + CANDIDATE から収集
+// ============================================================
+function getMaster(media) {
+  const confirmed = CONFIRMED_REGION_MASTER.filter(m => m.media === media);
+  const candidate = CANDIDATE_REGION_MASTER.filter(m => m.media === media);
+  return { confirmed, candidate, all: [...confirmed, ...candidate] };
+}
+const ALL_PREF_SET = new Set([
+  ...CONFIRMED_REGION_MASTER.map(m => m.prefectureJp).filter(Boolean),
+  ...CANDIDATE_REGION_MASTER.map(m => m.prefectureJp).filter(Boolean)
+]);
+const PREF_PATTERNS = [...ALL_PREF_SET].sort((a,b) => b.length - a.length);
+const PREF_REGEX = new RegExp('^(' + PREF_PATTERNS.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')');
+
+// ============================================================
+//  入力解析
+// ============================================================
+function parseLine(raw) {
+  const line = raw.replace(/[　]+/g, ' ').trim();
+  if (!line) return null;
+
+  // Step 1: Tab区切り（A/B/C列）
+  const tabParts = line.split('\t').map(s => s.trim()).filter(Boolean);
+  if (tabParts.length >= 2) {
+    const prefecture = tabParts[0];
+    const municipality = tabParts.slice(1).join('').trim();
+    return { raw, prefecture, municipality, parsed: prefecture + (municipality ? ' / ' + municipality : '') };
+  }
+
+  // Step 2: 都道府県＋市区町村（例「群馬県前橋市」）
+  const m = line.match(PREF_REGEX);
+  if (m) {
+    const prefecture = m[1];
+    const rest = line.slice(m[1].length).trim();
+    if (rest) {
+      return { raw, prefecture, municipality: rest, parsed: prefecture + ' / ' + rest };
+    } else {
+      return { raw, prefecture, municipality: '', parsed: prefecture };
+    }
+  }
+
+  // Step 3: 市区町村のみ（都道府県なし）
+  return { raw, prefecture: '', municipality: line, parsed: '（都道府県なし）' + line };
+}
+
+// ============================================================
+//  Master マッチング（优先级: confirmed市区町村 > 都道府県 > candidate > 候補複数）
+// ============================================================
+function findMatches(parsed) {
+  const { media } = getMediaConfig();
+  const { prefecture, municipality } = parsed;
+  if (!prefecture && !municipality) {
+    return { status: 'NG_未識別', displayName: '', note: '入力が空です' };
+  }
+  const { confirmed, candidate } = getMaster(media);
+
+  if (prefecture && municipality) {
+    // Priority 1: confirmed 市区町村 exact
+    const cCity = confirmed.filter(m => m.prefectureJp === prefecture && m.municipalityJp === municipality);
+    if (cCity.length === 1) {
+      return { status: 'OK_市区町村', displayName: cCity[0].displayName, note: '' };
+    }
+    if (cCity.length > 1) {
+      return { status: 'WARN_候補複数', displayName: '', note: '同一組合せで複数候補あり' };
+    }
+    // Priority 3: candidate 市区町村 exact（confirmedにない場合）
+    const caCity = candidate.filter(m => m.prefectureJp === prefecture && m.municipalityJp === municipality);
+    if (caCity.length === 1) {
+      return { status: 'WARN_候補未確認', displayName: caCity[0].displayName, note: '候補マスタ由来。DV360管理画面で確認してください' };
+    }
+    if (caCity.length > 1) {
+      return { status: 'WARN_候補複数', displayName: '', note: '候補マスタに複数該当あり' };
+    }
+    // Priority 2/4: confirmed 都道府県 exists → 市区町村未登録
+    const cPref = confirmed.filter(m => m.prefectureJp === prefecture && !m.municipalityJp);
+    if (cPref.length > 0) {
+      return { status: 'WARN_市区町村未登録', displayName: cPref[0].displayName, note: '「' + municipality + '」はマスタに未登録です' };
+    }
+    const caPref = candidate.filter(m => m.prefectureJp === prefecture && !m.municipalityJp);
+    if (caPref.length > 0) {
+      return { status: 'WARN_候補未確認', displayName: caPref[0].displayName, note: '都道府県のみ候補マスタに存在。市区町村「' + municipality + '」は未登録' };
+    }
+    return { status: 'NG_未識別', displayName: '', note: '「' + prefecture + '」「' + municipality + '」を識別できません' };
+  }
+
+  if (prefecture && !municipality) {
+    // Priority 2: confirmed 都道府県
+    const cP = confirmed.filter(m => m.prefectureJp === prefecture && !m.municipalityJp);
+    if (cP.length === 1) {
+      return { status: 'OK_都道府県', displayName: cP[0].displayName, note: '' };
+    }
+    if (cP.length > 1) {
+      return { status: 'WARN_候補複数', displayName: '', note: '都道府県の候補が複数あります' };
+    }
+    // Priority 4: candidate 都道府県
+    const caP = candidate.filter(m => m.prefectureJp === prefecture && !m.municipalityJp);
+    if (caP.length === 1) {
+      return { status: 'WARN_候補未確認', displayName: caP[0].displayName, note: '候補マスタ由来。DV360管理画面で確認してください' };
+    }
+    if (caP.length > 1) {
+      return { status: 'WARN_候補複数', displayName: '', note: '候補マスタに都道府県が複数あります' };
+    }
+    return { status: 'NG_未識別', displayName: '', note: '「' + prefecture + '」はマスタに登録されていません' };
+  }
+
+  // 都道府県なし → 市区町村のみで全件検索（confirmed → candidate 両方）
+  // 【修正】都道府県不明の市区町村は自動確定禁止：常に WARN
+  const searchPool = [...confirmed, ...candidate];
+  const munExact  = searchPool.filter(m => m.municipalityJp === municipality);
+  const munSuffix = municipality.length >= 2
+    ? searchPool.filter(m => m.municipalityJp.endsWith(municipality) && m.municipalityJp !== municipality)
+    : [];
+  const candidateMap = new Map();
+  [...munExact, ...munSuffix].forEach(m => {
+    if (!candidateMap.has(m.prefectureJp)) candidateMap.set(m.prefectureJp, m);
+  });
+  const candidates = [...candidateMap.values()];
+
+  if (candidates.length === 0) {
+    return { status: 'NG_未識別', displayName: '', note: '都道府県が不明、かつマスタに該当する市区町村がありません' };
+  }
+  const opts = candidates.map(m => m.prefectureJp + (m.municipalityJp ? m.municipalityJp : '')).join('、');
+  return { status: 'WARN_候補複数', displayName: '', note: '候補: ' + opts + ' — 都道府県を確認してください' };
+}
+
+// ============================================================
+//  判定表示ヘルパー
+// ============================================================
+function getStatusBadge(status) {
+  const map = {
+    'OK_市区町村':      ['status-badge status-ok-city',   '✅ OK_市区町村'],
+    'OK_都道府県':      ['status-badge status-ok-pref',   '✅ OK_都道府県'],
+    'WARN_市区町村未登録': ['status-badge status-warn-unreg','⚠ WARN_市区町村未登録'],
+    'WARN_候補複数':    ['status-badge status-warn-multi', '⚠ WARN_候補複数'],
+    'WARN_候補未確認':  ['status-badge status-warn-unconfirmed','🔶 WARN_候補未確認'],
+    'NG_未識別':        ['status-badge status-ng',         '❌ NG_未識別'],
+  };
+  return map[status] || ['status-badge status-ng', '❌ NG_未識別'];
+}
+
+// ============================================================
+//  メディア設定
+// ============================================================
+function getMediaConfig() {
+  const sel = document.getElementById('mediaSelect');
+  return { media: sel.value, label: sel.options[sel.selectedIndex].text };
+}
+
+// ============================================================
+//  メイン実行
+// ============================================================
+function runConversion() {
+  const input = document.getElementById('regionInput');
+  const rawText = input.value;
+  const lines = rawText.split('\n')
+    .map(l => l.replace(/[　]+/g, ' ').trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) {
+    document.getElementById('statusInfo').textContent = '⚠ 入力が空です';
+    return;
+  }
+
+  const results = [];
+  lines.forEach((line, idx) => {
+    const parsed = parseLine(line);
+    if (!parsed) return;
+    const match = findMatches(parsed);
+    results.push({
+      idx: idx + 1,
+      raw: parsed.raw,
+      parsed: parsed.parsed,
+      displayName: match.displayName,
+      status: match.status,
+      note: match.note
+    });
+  });
+
+  renderResults(results);
+}
+
+// ============================================================
+//  結果描画
+// ============================================================
+function renderResults(results) {
+  const tbody = document.getElementById('resultBody');
+  const section = document.getElementById('resultSection');
+
+  if (results.length === 0) {
+    tbody.innerHTML = '';
+    section.classList.remove('show');
+    return;
+  }
+
+  // 統計
+  const total = results.length;
+  const okCity = results.filter(r => r.status === 'OK_市区町村').length;
+  const okPref = results.filter(r => r.status === 'OK_都道府県').length;
+  const warnUnreg = results.filter(r => r.status === 'WARN_市区町村未登録').length;
+  const warnMulti = results.filter(r => r.status === 'WARN_候補複数').length;
+  const warnUnconfirmed = results.filter(r => r.status === 'WARN_候補未確認').length;
+  const ng = results.filter(r => r.status === 'NG_未識別').length;
+
+  document.getElementById('resultSummary').textContent =
+    '全' + total + '件 ✅' + okCity + ' ⬆' + okPref + ' 🔶' + warnUnconfirmed + ' ⚠' + (warnUnreg + warnMulti) + ' ❌' + ng;
+
+  // 変換結果のlevel suffixをステータスから推定
+  function levelSuffix(status, displayName) {
+    if (status === 'OK_市区町村' || status === 'WARN_市区町村未登録') return '（市区町村）';
+    if (status === 'OK_都道府県') return '（都道府県）';
+    if (status === 'WARN_候補未確認' && displayName) {
+      return (displayName.match(/,/g) || []).length >= 2 ? '（市区町村）' : '（都道府県）';
+    }
+    return '';
+  }
+
+  // 行描画
+  tbody.innerHTML = results.map(r => {
+    const [cls, label] = getStatusBadge(r.status);
+    const dn = r.displayName ? esc(r.displayName) + levelSuffix(r.status, r.displayName) : '<span style="color:#ccc;">-</span>';
+    return '<tr>' +
+      '<td class="col-no">' + r.idx + '</td>' +
+      '<td class="col-raw">' + esc(r.raw) + '</td>' +
+      '<td class="col-parsed">' + esc(r.parsed) + '</td>' +
+      '<td class="col-result">' + dn + '</td>' +
+      '<td><span class="' + cls + '">' + label + '</span></td>' +
+      '<td class="col-note">' + (r.note ? esc(r.note) : '') + '</td>' +
+      '</tr>';
+  }).join('');
+
+  // 「変換結果」列のみ選択コピー可能にするため、クリックイベントで全件の変換結果をまとめて表示
+  section.classList.add('show');
+  document.getElementById('statusInfo').textContent = total + '件処理完了';
+
+  // 結果までスクロール
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ============================================================
+//  リセット
+// ============================================================
+function resetAll() {
+  document.getElementById('regionInput').value = '';
+  document.getElementById('resultBody').innerHTML = '';
+  document.getElementById('resultSection').classList.remove('show');
+  document.getElementById('controlBar').classList.remove('show');
+  document.getElementById('statusInfo').textContent = '';
+}
+
+// ============================================================
+//  サンプル読み込み
+// ============================================================
+function loadSample() {
+  const sample = [
+    '群馬県前橋市',
+    '東京都港区',
+    '東京都',
+    '京都府',
+    '群馬県北群馬郡吉岡町',
+    '北海道札幌市中央区',
+    '大阪府堺市',
+    'テスト県サンプル市',
+    '中央区',
+  ].join('\n');
+  document.getElementById('regionInput').value = sample;
+  document.getElementById('controlBar').classList.add('show');
+  updateLineCount();
+  // 自動実行
+  runConversion();
+}
+
+// ============================================================
+//  Masterパネル表示
+// ============================================================
+let masterVisible = false;
+function toggleMaster() {
+  masterVisible = !masterVisible;
+  document.getElementById('masterBody').classList.toggle('show', masterVisible);
+  document.getElementById('masterArrow').textContent = masterVisible ? '▼' : '▶';
+}
+
+function renderMasterTable() {
+  const rows = document.getElementById('masterBodyRows');
+  const media = getMediaConfig().media;
+  const confirmed = CONFIRMED_REGION_MASTER.filter(m => m.media === media);
+  const candidate = CANDIDATE_REGION_MASTER.filter(m => m.media === media);
+  const totalAll = confirmed.length + candidate.length;
+  document.getElementById('masterCount').textContent = '（CONFIRMED:' + confirmed.length + ' / CANDIDATE:' + candidate.length + ' = 計' + totalAll + '件）';
+
+  rows.innerHTML = [
+    ...confirmed.map(m => ({ ...m, source: 'confirmed' })),
+    ...candidate.map(m => ({ ...m, source: 'candidate' }))
+  ].map(m =>
+    '<tr style="' + (m.source === 'confirmed' ? 'background:#f0faf0;' : 'background:#fafafa;color:#888;') + '">' +
+      '<td>' + esc(m.prefectureJp) + '</td>' +
+      '<td>' + (m.municipalityJp ? esc(m.municipalityJp) : '<span style="color:#ccc;">-</span>') + '</td>' +
+      '<td>' + esc(m.displayName) + '</td>' +
+      '<td>' + esc(m.level) + '</td>' +
+      '<td>' + (m.source === 'confirmed' ? '<span style="color:#27ae60;">confirmed</span>' : '<span style="color:#e67e22;">candidate</span>') + '</td>' +
+      '<td>' + (m.note ? esc(m.note) : '') + '</td>' +
+    '</tr>'
+  ).join('');
+}
+
+// ============================================================
+//  ユーティリティ
+// ============================================================
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function updateLineCount() {
+  const val = document.getElementById('regionInput').value;
+  const lines = val.split('\n').filter(l => l.trim()).length;
+  document.getElementById('lineCount').textContent = lines + '行';
+}
+
+// ============================================================
+//  イベント登録
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  // 入力カウント更新
+  document.getElementById('regionInput').addEventListener('input', function() {
+    updateLineCount();
+    const hasText = this.value.trim().length > 0;
+    document.getElementById('controlBar').classList.toggle('show', hasText);
+  });
+
+  // Masterテーブル初期描画
+  renderMasterTable();
+
+  // Ctrl+Enter で実行
+  document.getElementById('regionInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      runConversion();
+    }
+  });
+});
+</script>
+</body>
+</html>
