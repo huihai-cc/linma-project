@@ -818,17 +818,20 @@ function renderSidebarUpdates() {
         console.error('[UpdateNotice] updateCardList not found!');
         return;
     }
-    const items = UPDATE_LOG.slice(0, MAX_SIDEBAR);
+    const sorted = [...UPDATE_LOG].sort((a,b) => b.date.localeCompare(a.date));
+    const items = sorted.slice(0, MAX_SIDEBAR);
     console.log('[UpdateNotice] Rendering', items.length, 'items');
-    list.innerHTML = items.map((item, i) => `
-        <div class="update-card" onclick="openUpdateModal(${i})">
+    list.innerHTML = items.map(item => {
+        const origIdx = UPDATE_LOG.indexOf(item);
+        return `
+        <div class="update-card" onclick="openUpdateModal(${origIdx})">
             <div>
                 <span class="update-card-date">${item.date}</span>
                 <span class="update-card-requester">${item.requester}</span>
             </div>
             <div class="update-card-title">[${item.tool}] ${item.title}</div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
     console.log('[UpdateNotice] Cards rendered OK');
 }
 
