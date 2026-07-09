@@ -811,35 +811,32 @@ const UPDATE_LOG = [
 
 const MAX_SIDEBAR = 10;
 
+// 统一排序函数：返回按日期降序排列的副本（不修改原数组）
+function getSortedUpdateLog() {
+    return [...UPDATE_LOG].sort((a, b) => b.date.localeCompare(a.date));
+}
+
 function renderSidebarUpdates() {
     const list = document.getElementById('updateCardList');
-    console.log('[UpdateNotice] renderSidebarUpdates called, list:', list);
-    if (!list) {
-        console.error('[UpdateNotice] updateCardList not found!');
-        return;
-    }
-    const sorted = [...UPDATE_LOG].sort((a,b) => b.date.localeCompare(a.date));
+    if (!list) return;
+    const sorted = getSortedUpdateLog();
     const items = sorted.slice(0, MAX_SIDEBAR);
-    console.log('[UpdateNotice] Rendering', items.length, 'items');
-    list.innerHTML = items.map(item => {
-        const origIdx = UPDATE_LOG.indexOf(item);
-        return `
-        <div class="update-card" onclick="openUpdateModal(${origIdx})">
+    list.innerHTML = items.map((item, i) => `
+        <div class="update-card" onclick="openUpdateModal(${i})">
             <div>
                 <span class="update-card-date">${item.date}</span>
                 <span class="update-card-requester">${item.requester}</span>
             </div>
             <div class="update-card-title">[${item.tool}] ${item.title}</div>
-        </div>`;
-    }).join('');
-    console.log('[UpdateNotice] Cards rendered OK');
+        </div>`).join('');
 }
 
 function openUpdateModal(focusIndex) {
     const overlay = document.getElementById('updateModal');
     if (!overlay) return;
     const body = overlay.querySelector('.modal-body');
-    body.innerHTML = UPDATE_LOG.map((item, i) => `
+    const sorted = getSortedUpdateLog();
+    body.innerHTML = sorted.map((item, i) => `
         <div class="modal-entry" ${i === focusIndex ? 'id="modal-focus-entry"' : ''}>
             <div class="modal-entry-meta">
                 ${item.date}
