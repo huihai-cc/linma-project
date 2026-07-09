@@ -179,9 +179,6 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
   if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
   else {
     document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
-    // 记录工具打开
-    var toolName = document.title || window.location.pathname.split('/').pop();
-    
   }
 })();
 </script>
@@ -731,6 +728,7 @@ function runLineDiff(){
         document.getElementById('btn-show-eq-diff').style.display='none';
         eqHidden.diff=false;
         renderResult('diff',blocks,showInv);
+        sendLog('文本比对-逐行', nAdd+nDel+nMod, 1, `A:${lA.length}行 B:${lB.length}行`);
     },20);
 }
 
@@ -775,6 +773,7 @@ function runSortDiff(){
         document.getElementById('btn-show-eq-sort').style.display='none';
         vsState['sort'].blocks=blocks;
         renderSortResult(blocks);
+        sendLog('文本比对-升序', nDel+nIns, 1, `A:${sortedA.length}项 B:${sortedB.length}项`);
     },20);
 }
 
@@ -945,6 +944,7 @@ function runTabSplitCheck(textA,textB,ignCase){
     document.getElementById('diff-out').innerHTML=`<div style="background:white;border:1px solid #bbb;border-radius:4px;overflow:hidden;"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="background:#c8e6ff;color:#1a3a6a;padding:8px 14px;text-align:left;border-bottom:2px solid #bbb;width:50%;position:sticky;top:0;z-index:5;">${leftLabel}</th><th style="background:#e8f8e8;color:#1a4a1a;padding:8px 14px;text-align:left;border-bottom:2px solid #bbb;width:50%;position:sticky;top:0;z-index:5;">${rightLabel}</th></tr></thead><tbody>${tbodyHtml}</tbody></table></div>`;
     document.getElementById('diff-wrap').classList.add('show');
     document.getElementById('btn-exp-full').style.display='inline-block';
+    sendLog('文本比对-包含关系', delCount+longUnmatched, 1, `一致:${eqCount} 仅A:${aIsShort?delCount:longUnmatched} 仅B:${aIsShort?longUnmatched:delCount}`);
     diffRows=[];navIndex=-1;
     requestAnimationFrame(()=>{
         document.querySelectorAll('#diff-out span[style*="ffd0d0"],#diff-out td[style*="e8f8ff"]').forEach(el=>diffRows.push(el));
@@ -1012,6 +1012,7 @@ function runLineContainCheck(textA,textB,ignCase){
     document.getElementById('diff-wrap').classList.add('show');
     document.getElementById('btn-exp-full').style.display='inline-block';
     document.getElementById('nav-bar-full').classList.remove('show');
+    sendLog('文本比对-包含关系', notFoundCount, 1, `A中找到:${foundCount} 未找到:${notFoundCount}`);
 }
 
 function classifyChar(ch){
@@ -1047,7 +1048,13 @@ function classifyChar(ch){
 const INV_LABELS={0x00A0:'NBSP',0x200B:'ZWS',0x200C:'ZWNJ',0x200D:'ZWJ',0xFEFF:'BOM',0x2060:'WJ',0x00AD:'SHY',0x034F:'CGJ',0x180E:'MVS',0x202A:'LRE',0x202B:'RLE',0x202C:'PDF-ctrl',0x202D:'LRO',0x202E:'RLO',0x2066:'LRI',0x2067:'RLI',0x2068:'FSI',0x2069:'PDI',0xFFFD:'REPL'};
 function invLabelC(c){return INV_LABELS[c]||`U+${c.toString(16).toUpperCase().padStart(4,'0')}`;}
 
-function runCheck(){lastCheckText=document.getElementById('ta-check').value;if(!lastCheckText)return;renderCheck(lastCheckText);document.getElementById('btn-exp-check').style.display='inline-block';}
+function runCheck(){
+    lastCheckText=document.getElementById('ta-check').value;
+    if(!lastCheckText)return;
+    renderCheck(lastCheckText);
+    document.getElementById('btn-exp-check').style.display='inline-block';
+    sendLog('文本比对-符号检查', symbolIndex.length, 1, '总行:'+lastCheckText.replace(/\r\n/g,'\n').split('\n').length);
+}
 function rerender(){if(lastCheckText)renderCheck(lastCheckText);}
 
 function renderCheck(text){

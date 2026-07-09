@@ -567,9 +567,6 @@ textarea::placeholder { color:#adb5bd; }
   if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
   else {
     document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
-    // 记录工具打开
-    var toolName = document.title || window.location.pathname.split('/').pop();
-    
   }
 })();
 </script>
@@ -1266,6 +1263,7 @@ function runLineDiff(){
     document.getElementById('btn-show-eq-diff').style.display='none';
     eqHidden.diff=false;
     renderResult('diff',blocks,showInv);
+    sendLog('読売 文本比对-逐行', nAdd+nDel+nMod, 1, `A:${lA.length}行 B:${lB.length}行`);
   },20);
 }
 
@@ -1326,6 +1324,7 @@ function runSortDiff(){
     document.getElementById('btn-show-eq-sort').style.display='none';
     vsState.sort.blocks=blocks;
     renderSortResult(blocks);
+    sendLog('読売 文本比对-升序', nDel+nIns, 1, `A:${sortedA.length}项 B:${sortedB.length}项`);
   },20);
 }
 
@@ -1490,6 +1489,7 @@ function runTabSplitCheck(textA,textB,ignCase){
       nb.style.display='none';
     }
   });
+  sendLog('読売 文本比对-包含关系', delCount+longUnmatched, 1, `一致:${eqCount} 仅A:${aIsShort?delCount:longUnmatched} 仅B:${aIsShort?longUnmatched:delCount}`);
 }
 
 function runLineContainCheck(textA,textB,ignCase){
@@ -1555,6 +1555,7 @@ function runLineContainCheck(textA,textB,ignCase){
   document.getElementById('btn-exp-full').style.display='inline-flex';
   document.getElementById('nav-bar-full').classList.remove('show');
   document.getElementById('nav-bar-full').style.display='none';
+  sendLog('読売 文本比对-包含关系', notFoundCount, 1, 'A中找到:'+foundCount+' 未找到:'+notFoundCount);
 }
 
 /* ================================================================
@@ -1848,10 +1849,10 @@ function renderImageTable(){
   });
   html+='</tbody></table>';
   document.getElementById('imageResult').innerHTML=html;
+  sendLog('読売 图片解析', imageData.length, 0, '总大小 '+totalSizeMB+' MB');
 }
 
 async function exportImageExcel(){
-  sendLog("読売 画像解析导出", 0, 0, "");
   if(!imageData.length){alert('没有图片数据');return;}
   const wb=new ExcelJS.Workbook();
   wb.creator='QC Tool';wb.created=new Date();
@@ -1906,6 +1907,7 @@ function parseURLs(){
     }
   });
   renderURLTable();
+  sendLog('読売 URL解析', urlData.length, 0, '有效:'+urlData.filter(d=>d.valid).length);
 }
 
 function renderURLTable(){
@@ -1932,7 +1934,6 @@ function renderURLTable(){
 }
 
 async function exportUrlExcel(){
-  sendLog("読売 URL抽出导出", 0, 0, "");
   if(!urlData.length){alert('没有URL数据');return;}
   const wb=new ExcelJS.Workbook();
   wb.creator='QC Tool';wb.created=new Date();

@@ -17,6 +17,26 @@ function checkAuth() {
     }
     return null;
   }
+  // ★ 客户端侧校验 token 是否过期（base64 解码，无需请求 GAS）
+  try {
+    const decoded = atob(session.token);
+    const parts = decoded.split('|');
+    const expiry = parseInt(parts[1]);
+    if (!isNaN(expiry) && Date.now() > expiry) {
+      localStorage.removeItem('qc_session');
+      if (!window._qc_token_expired) {
+        window._qc_token_expired = true;
+        alert('ログイン状態が期限切れです。再ログインしてください。\n登录状态已过期，请重新登录。');
+        window.location.href = 'index.html';
+      }
+      return null;
+    }
+  } catch(e) {
+    // token 解析失败，清除登录状态
+    localStorage.removeItem('qc_session');
+    window.location.href = 'index.html';
+    return null;
+  }
   return session.user;
 }
 
@@ -49,6 +69,18 @@ async function apiCall(action, data) {
       body: JSON.stringify({ action, ...data })
     });
     const result = await resp.json();
+    // 统一处理 token 过期 / 未授权（只对 log 等需要 token 的接口返回）
+    if (!result.ok && result.error && (
+      result.error.includes('Token') || result.error === '未授权'
+    )) {
+      localStorage.removeItem('qc_session');
+      if (!window._qc_token_expired) {
+        window._qc_token_expired = true;
+        alert('ログイン状態が期限切れです。再ログインしてください。\n登录状态已过期，请重新登录。');
+        window.location.href = 'index.html';
+      }
+      return { ok: false, error: '登录已过期' };
+    }
     return result;
   } catch (e) {
     console.error('API Error:', e);

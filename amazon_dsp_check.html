@@ -116,9 +116,6 @@ const LibLoader = {
   if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
   else {
     document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
-    // 记录工具打开
-    var toolName = document.title || window.location.pathname.split('/').pop();
-    
   }
 })();
 </script>
