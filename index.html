@@ -136,6 +136,13 @@
         .card-icon { font-size: 1.4rem; line-height: 1; }
         .card-name { font-size: 0.85rem; font-weight: 600; line-height: 1.4; }
         .card-desc { font-size: 0.7rem; color: #999; line-height: 1.4; }
+        .card-disabled {
+            opacity: 0.6; cursor: not-allowed;
+        }
+        .card-disabled:hover {
+            background: #fafbfc; border-color: #e4e8ed;
+            box-shadow: none; transform: none;
+        }
         .placeholder-card {
             background: #fafafa; border: 1px dashed #ddd; border-radius: 8px;
             padding: 16px 14px; display: flex; flex-direction: column;
@@ -462,11 +469,11 @@
                 <span class="card-name">Amazon DSP 設定チェック</span>
                 <span class="card-desc">Display / PVA / OTT 対応</span>
             </a>
-            <a class="card" href="dv360_check.html" target="_blank">
+            <div class="card card-disabled">
                 <span class="card-icon">📈</span>
-                <span class="card-name">DV360 設定チェック</span>
-                <span class="card-desc">Display / Youtube / OTT 対応（Youtube優先）</span>
-            </a>
+                <span class="card-name">DV360 設定チェック <span style="font-size:0.6rem;background:#95a5a6;color:white;border-radius:3px;padding:1px 6px;margin-left:4px;vertical-align:middle;">開発中</span></span>
+                <span class="card-desc">Display / Youtube / OTT 対応（Youtube優先）※準備中</span>
+            </div>
             <a class="card" href="upload.html" target="_blank">
                 <span class="card-icon">📤</span>
                 <span class="card-name">読売専用 アップロード</span>
