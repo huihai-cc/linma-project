@@ -214,7 +214,7 @@
             flex-shrink: 0;
         }
         .update-card {
-            padding: 10px 16px;
+            padding: 9px 16px;
             cursor: pointer;
             transition: background 0.15s;
             border-bottom: 1px solid #f0f0f0;
@@ -240,6 +240,11 @@
             color: #2c3e50;
             margin-top: 2px;
             line-height: 1.4;
+        }
+        #updateCardList {
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
         }
         .sidebar-footer {
             padding: 10px 16px;
@@ -786,10 +791,18 @@ const UPDATE_LOG = [
         detail: '上传表格和下载数据进行对比后，在结果显示区的「列の表示切替」下方出现了「📏 行高調整」的滑块和输入框。拖动滑块就能让表格行变大或变小，方便查看内容多的单元格。如果某个格子文字被截断了，双击格子就能展开看全部内容，再双击收回。',
         note: '点「リセット」不会重置行高设置，刷新页面也会保持你上次调好的高度。',
     },
+    {
+        date: '2026/07/09',
+        requester: '张梦田',
+        tool: 'Amazon DSP 設定チェック',
+        title: 'PVA PG案件の非設定項目を対象外処理',
+        detail: 'PVA Programmatic Guaranteed 案件中，管理画面不设定的项目不再作为错误比较对象。\n本次对以下字段追加対象外处理：\n- Location targeting 1 of 2\n- Pacing profile\n- Base supply bid*\n- Maximum average CPM\n\n显示：対象外 / PGのため比較対象外\n\n注意：Line item budget 保持原逻辑；W:AD 灰色区域字段未新增比较；非 PG / 非 PVA 不受影响。',
+        note: '',
+    },
     // 后续更新在这里追加
 ];
 
-const MAX_SIDEBAR = 5;
+const MAX_SIDEBAR = 10;
 
 function renderSidebarUpdates() {
     const list = document.getElementById('updateCardList');
