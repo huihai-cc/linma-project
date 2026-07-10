@@ -512,3 +512,27 @@ function formatJst(date) {
   const s  = String(date.getSeconds()).padStart(2, '0');
   return `${y}/${mo}/${d} ${h}:${mi}:${s}`;
 }
+
+/**
+ * summary 后台统计を毎日複数回自動更新するトリガーを作成する。
+ * 手动执行一次即可，之后由 GAS 自动执行 rebuildSummary()。
+ */
+function installDailySummaryTriggers() {
+  const targetFunction = 'rebuildSummary';
+
+  // 避免重复安装：先删除既有 rebuildSummary 的时间触发器
+  ScriptApp.getProjectTriggers().forEach(trigger => {
+    if (trigger.getHandlerFunction() === targetFunction) {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+
+  // 每天 10点、14点、17点左右自动刷新 summary
+  [10, 14, 17].forEach(hour => {
+    ScriptApp.newTrigger(targetFunction)
+      .timeBased()
+      .everyDays(1)
+      .atHour(hour)
+      .create();
+  });
+}
