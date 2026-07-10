@@ -65,11 +65,12 @@ header span { font-size: 13px; opacity: 0.8; }
 }
 
 .table-wrap {
-  padding: 0 24px 16px 24px;
+  padding: 0 32px 16px 24px;
   overflow-x: auto;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  width: 100%;
 }
 
 thead { background: #1a237e; color: white; }
@@ -100,7 +101,14 @@ td {
   max-width: 120px;
 }
 
-.td-actions { white-space: nowrap; }
+.td-actions {
+  width: 132px;
+  min-width: 132px;
+  max-width: 132px;
+  padding-right: 20px;
+  white-space: nowrap;
+}
+.td-actions .btn + .btn { margin-left: 8px; }
 
 /* Modal */
 .modal-overlay {
@@ -251,18 +259,27 @@ td {
 }
 
 table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   background: white;
   font-size: 12px;
 }
 
+thead th:last-child,
+tbody td:last-child {
+  width: 132px;
+  min-width: 132px;
+  max-width: 132px;
+}
+
 .table-wrap {
-  padding: 0 24px 16px 24px;
+  padding: 0 32px 16px 24px;
   overflow-x: auto;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  width: 100%;
 }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
