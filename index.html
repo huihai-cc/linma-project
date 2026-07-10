@@ -755,6 +755,22 @@ function toggleAccordion(id) {
 // ===== 更新履历 =====
 const UPDATE_LOG = [
     {
+        date: '2026/07/10',
+        requester: '於洋',
+        tool: 'Excel対比',
+        title: '修正 Excel 内部范围异常导致行数识别不足',
+        detail: '修正部分系统导出 Excel 因内部 dimension / !ref 范围异常，导致实际 800 多行数据仅识别为 29 行的问题。新增真实单元格范围扫描逻辑，不再单纯依赖 !ref；通过扫描实际存在的单元格地址重新计算有效行列范围。已确认 Job-List 样本可正确识别 802 / 803 行并参与完整对比。',
+        note: '',
+    },
+    {
+        date: '2026/07/10',
+        requester: '杨蒙蒙',
+        tool: '上传组件',
+        title: '修复上传区域重复提示窗口',
+        detail: '修复 Excel対比 与 Amazon DSP設定チェック 上传区域事件重复绑定问题。上传设定表或下载数据时，选错文件后点击删除/重新选择，有时会连续弹出多次提示窗口；现统一上传区域事件初始化逻辑，通过 cloneNode 清除旧事件后重新绑定，避免 addEventListener 重复叠加，同时避免 onclick 与 addEventListener 混用。已确认错误提示仅弹出 1 次，删除后重新上传正常。',
+        note: '',
+    },
+    {
         date: '2026/07/09',
         requester: '马林',
         tool: '登录系统',

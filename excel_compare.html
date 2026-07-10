@@ -231,7 +231,10 @@ document.addEventListener('DOMContentLoaded', function(){
 
 // ===== ドロップ初期化 =====
 function initXlCompDrop(side){
-    const drop  = document.getElementById('xlcomp-drop-'+side);
+    const oldDrop = document.getElementById('xlcomp-drop-'+side);
+    if(!oldDrop) return;
+    const drop = oldDrop.cloneNode(true);
+    oldDrop.parentNode.replaceChild(drop, oldDrop);
     const input = document.getElementById('xlcomp-input-'+side);
     if(!drop || !input) return;
     input.accept = xlcompMode === 'zip' ? '.zip' : '.xlsx,.xls,.xlsm,.xlsb';
@@ -261,10 +264,7 @@ function handleXlCompFile(side, file){
             <div class="drop-sub">${(file.size/1024/1024).toFixed(2)} MB　点击重新选择</div>
             <input type="file" id="xlcomp-input-${side}" accept=".zip" style="display:none">
         `;
-        document.getElementById('xlcomp-input-'+side).addEventListener('change', e=>{
-            if(e.target.files[0]) handleXlCompFile(side, e.target.files[0]);
-        });
-        drop.onclick = ()=> document.getElementById('xlcomp-input-'+side).click();
+        initXlCompDrop(side);
     } else {
         if(!file.name.match(/\.(xlsx|xls|xlsm|xlsb)$/i)){ alert('请上传 Excel 文件'); return; }
         if(side==='a') xlcompFileA=file; else xlcompFileB=file;
@@ -276,10 +276,7 @@ function handleXlCompFile(side, file){
             <div class="drop-sub">${(file.size/1024/1024).toFixed(2)} MB　点击重新选择</div>
             <input type="file" id="xlcomp-input-${side}" accept=".xlsx,.xls,.xlsm,.xlsb" style="display:none">
         `;
-        document.getElementById('xlcomp-input-'+side).addEventListener('change', e=>{
-            if(e.target.files[0]) handleXlCompFile(side, e.target.files[0]);
-        });
-        drop.onclick = ()=> document.getElementById('xlcomp-input-'+side).click();
+        initXlCompDrop(side);
     }
 
     if(xlcompFileA && xlcompFileB){
@@ -341,7 +338,6 @@ function _resetDropHint(drop, side, type){
         <input type="file" id="xlcomp-input-${side}"
                accept="${type==='ZIP'?'.zip':'.xlsx,.xls,.xlsm,.xlsb'}" style="display:none">
     `;
-    initXlCompDrop(side);
 }
 
 // ===== Excel読込 =====
@@ -454,6 +450,25 @@ function _showEncryptedDialog(fileName){
 const XLCOMP_MAX_ROWS = 50000;
 const XLCOMP_MAX_COLS = 100;
 
+function xlcompGetActualRange(ws){
+    if(!ws) return null;
+    const cellKeys=Object.keys(ws).filter(k=>/^[A-Z]+[0-9]+$/.test(k));
+    if(!cellKeys.length){
+        return ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']) : null;
+    }
+
+    let minRow=Infinity, maxRow=-1, minCol=Infinity, maxCol=-1;
+    cellKeys.forEach(addr=>{
+        const cell=XLSX.utils.decode_cell(addr);
+        minRow=Math.min(minRow, cell.r);
+        maxRow=Math.max(maxRow, cell.r);
+        minCol=Math.min(minCol, cell.c);
+        maxCol=Math.max(maxCol, cell.c);
+    });
+
+    return { s:{ r:minRow, c:minCol }, e:{ r:maxRow, c:maxCol } };
+}
+
 function _showSheetSelect(){
     const progress = document.getElementById('xlcomp-progress');
     progress.classList.remove('show');
@@ -472,7 +487,8 @@ function _showSheetSelect(){
         let rowCount=0;
         if(inA){
             const ws=xlcompWbA.Sheets[name];
-            if(ws&&ws['!ref']){ const r=XLSX.utils.decode_range(ws['!ref']); rowCount=r.e.r-r.s.r+1; }
+            const r=xlcompGetActualRange(ws);
+            if(r){ rowCount=r.e.r-r.s.r+1; }
         }
         totalRowsEstimate+=rowCount;
         const defaultCheck=rowCount<5000;
@@ -631,8 +647,8 @@ function compareSheet(name){
 }
 
 function sheetTo2D(ws, maxRows, maxCols){
-    if(!ws||!ws['!ref']) return { data:[], rawRows:0, rawCols:0 };
-    const range=XLSX.utils.decode_range(ws['!ref']);
+    const range=xlcompGetActualRange(ws);
+    if(!range) return { data:[], rawRows:0, rawCols:0 };
     const rawRows=range.e.r-range.s.r+1;
     const rawCols=range.e.c-range.s.c+1;
     const limitR=maxRows?Math.min(range.e.r, range.s.r+maxRows-1):range.e.r;
@@ -1351,6 +1367,7 @@ function resetXlComp(){
         const drop=document.getElementById('xlcomp-drop-'+side);
         const type=xlcompMode==='zip'?'ZIP':'Excel';
         _resetDropHint(drop, side, type);
+        initXlCompDrop(side);
     });
 
     document.getElementById('xlcomp-controls').style.display='none';

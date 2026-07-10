@@ -318,14 +318,19 @@ document.addEventListener('DOMContentLoaded', function(){
 
 // ===== 複数ファイルドロップ初期化 =====
 function initScMultiDrop(side){
-    const drop  = document.getElementById('sc-drop-'+side);
+    const oldDrop = document.getElementById('sc-drop-'+side);
+    if(!oldDrop) return;
+    const drop = oldDrop.cloneNode(true);
+    oldDrop.parentNode.replaceChild(drop, oldDrop);
     const input = document.getElementById('sc-input-'+side);
     if(!drop || !input) return;
 
     // 複数選択を有効化
     input.setAttribute('multiple', 'multiple');
 
-    drop.addEventListener('click', ()=> input.click());
+    drop.addEventListener('click', e=>{
+        if(e.target.tagName !== 'BUTTON') input.click();
+    });
     input.addEventListener('change', e=>{
         if(e.target.files && e.target.files.length > 0){
             handleScFiles(side, Array.from(e.target.files));
@@ -410,29 +415,7 @@ function renderScFileList(side){
         <input type="file" id="sc-input-${side}" accept=".xlsx,.xls" multiple style="display:none">
     `;
 
-    // clickで追加
-    drop.onclick = null;
-    drop.addEventListener('click', e=>{
-        if(e.target.tagName !== 'BUTTON'){
-            document.getElementById('sc-input-'+side).click();
-        }
-    });
-
-    // drag再初期化
-    const input = document.getElementById('sc-input-'+side);
-    input.addEventListener('change', ev=>{
-        if(ev.target.files && ev.target.files.length > 0){
-            handleScFiles(side, Array.from(ev.target.files));
-        }
-    });
-    drop.addEventListener('dragover',  e=>{ e.preventDefault(); drop.classList.add('dragover'); });
-    drop.addEventListener('dragleave', ()=> drop.classList.remove('dragover'));
-    drop.addEventListener('drop', e=>{
-        e.preventDefault(); drop.classList.remove('dragover');
-        if(e.dataTransfer.files && e.dataTransfer.files.length > 0){
-            handleScFiles(side, Array.from(e.dataTransfer.files));
-        }
-    });
+    initScMultiDrop(side);
 
     // infoエリア更新
     const infoEl = document.getElementById('sc-'+(side==='setting'?'setting':'download')+'-info');
