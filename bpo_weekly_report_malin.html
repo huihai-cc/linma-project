@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BPO定例会 · 馬 林 · 2026.06</title>
+<title>BPO定例会 · 馬 林 · 业务改善报告</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
@@ -64,7 +64,13 @@ body {
 .hero-top { display: flex; align-items: center; }
 
 .hero h1 { font-size: 20px; font-weight: 800; line-height: 1.3; letter-spacing: -0.3px; white-space: nowrap; }
-.hero-sub { font-size: 11px; opacity: 0.72; margin-top: 3px; line-height: 1.5; }
+.hero-meta { margin-top: 2px; }
+.hero-meta-row {
+  font-size: 10.5px; opacity: 0.78; line-height: 1.55;
+}
+.hero-meta-tools {
+  opacity: 0.65; font-size: 10px; margin-top: 1px;
+}
 
 /* ==========================================
    NAV TABS
@@ -461,6 +467,126 @@ body {
 }
 
 /* ==========================================
+   MEETING HISTORY (Page 5)
+========================================== */
+.meeting-item {
+  background: var(--card); border-radius: var(--radius);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  margin-bottom: 14px; overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+.meeting-item:hover { box-shadow: 0 3px 14px rgba(0,0,0,0.10); }
+.meeting-item.latest { border-left: 4px solid var(--purple); }
+.meeting-item.done   { border-left: 4px solid var(--success); }
+.meeting-item.pending{ border-left: 4px solid #94a3b8; }
+
+.meeting-summary {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px; cursor: pointer; user-select: none;
+  list-style: none; gap: 12px;
+}
+.meeting-summary::-webkit-details-marker { display: none; }
+
+.ms-left {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  flex: 1; min-width: 0;
+}
+.ms-date {
+  display: inline-flex; align-items: center;
+  background: var(--brand-light); color: var(--brand);
+  border-radius: 8px; padding: 5px 12px;
+  font-size: 12px; font-weight: 800; white-space: nowrap; flex-shrink: 0;
+}
+.meeting-item.done .ms-date   { background: #d1fae5; color: #065f46; }
+.meeting-item.pending .ms-date{ background: #f1f5f9; color: #64748b; }
+
+.ms-title {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  flex: 1; min-width: 180px; line-height: 1.45;
+}
+.ms-meta {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0;
+}
+.ms-type {
+  font-size: 11px; color: var(--sub); white-space: nowrap;
+}
+.ms-status {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.status-prepare  { background: #ede9fe; color: #6d28d9; }
+.status-done     { background: #d1fae5; color: #065f46; }
+.status-pending  { background: #f1f5f9; color: #64748b; }
+
+.ms-arrow {
+  font-size: 16px; color: var(--sub); flex-shrink: 0;
+  transition: transform 0.25s; line-height: 1;
+}
+.meeting-item[open] .ms-arrow {
+  transform: rotate(180deg);
+}
+
+.meeting-content {
+  padding: 0 22px 22px 22px;
+  border-top: 1px solid var(--border);
+}
+
+@media(max-width:720px){
+  .ms-left { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .ms-title { font-size: 13px; min-width: 0; }
+  .ms-summary { padding: 14px 16px; }
+  .meeting-content { padding: 0 14px 18px 14px; }
+}
+
+/* ==========================================
+   AI TEMPLATES (Page 5)
+========================================== */
+.tpl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+@media(max-width:720px){ .tpl-grid { grid-template-columns: 1fr; } }
+.tpl-card {
+  background: #f8fafc; border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px; overflow: hidden;
+}
+.tpl-card h4 {
+  font-size: 13px; font-weight: 800; color: var(--brand);
+  margin-bottom: 10px;
+}
+.tpl-use {
+  font-size: 10px; color: var(--accent); font-weight: 700;
+  margin-bottom: 8px; letter-spacing: 0.5px;
+}
+.tpl-code {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: 12px; font-family: 'SF Mono','Consolas','Monaco',monospace;
+  font-size: 11.5px; line-height: 1.7; color: #334155;
+  white-space: pre-wrap; word-break: break-word;
+  overflow-x: auto; max-height: 420px; overflow-y: auto;
+}
+
+/* bad vs good comparison */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+@media(max-width:720px){ .compare-grid { grid-template-columns: 1fr; } }
+.compare-bad, .compare-good {
+  border-radius: 12px; padding: 16px;
+}
+.compare-bad {
+  background: rgba(239,68,68,0.04);
+  border: 1px solid rgba(239,68,68,0.2);
+}
+.compare-good {
+  background: rgba(16,185,129,0.04);
+  border: 1px solid rgba(16,185,129,0.2);
+}
+.compare-bad h4 { font-size: 13px; font-weight: 800; color: var(--danger); margin-bottom: 8px; }
+.compare-good h4 { font-size: 13px; font-weight: 800; color: var(--success); margin-bottom: 8px; }
+
+.case-step {
+  background: #f8fafc; border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px; margin-bottom: 10px;
+}
+.case-step h4 { font-size: 12px; font-weight: 800; color: var(--brand); margin-bottom: 6px; }
+
+/* ==========================================
    MISC
 ========================================== */
 .gap20 { margin-bottom: 20px; }
@@ -494,8 +620,11 @@ body {
   <div class="hero-inner">
     <div class="hero-top">
       <div>
-        <h1>【1课】BPO定例会 · 馬 林 · 2026.06.30</h1>
-        <div class="hero-sub">报告周期：2025.12 — 2026.06 · 技术杠杆驱动降本增效 | 汇报人：馬 林 | 职务：チームリーダー | 技术栈：GAS · Python · HTML/JS</div>
+        <h1>【1课】BPO定例会 · 馬 林 · <span class="today-date"></span></h1>
+        <div class="hero-meta">
+          <div class="hero-meta-row">报告周期：2025.12 — <span class="current-year-month"></span> | 内容更新截至：<span class="report-updated-at"></span> | 汇报人：馬 林 | 职务：チームリーダー</div>
+          <div class="hero-meta-row hero-meta-tools">AI工作站：ChatGPT · Codex · VS/CodeBuddy · Obsidian | 自动化：GAS · Python · HTML/JS</div>
+        </div>
       </div>
     </div>
   </div>
@@ -508,7 +637,7 @@ body {
       <span class="nav-num">1</span> 年度目标
     </button>
     <button class="nav-btn" onclick="showPage('p2',this)">
-      <span class="nav-num">2</span> 效率指标
+      <span class="nav-num">2</span> 效率与质量指标
     </button>
     <button class="nav-btn" onclick="showPage('p3',this)">
       <span class="nav-num">3</span> 核心成果
@@ -554,7 +683,7 @@ body {
         <span class="badge b-done">已完成 ✓</span>
       </div>
       <div class="goal-item">
-        <div><div class="gname">降本增效（含自动化工具）</div><div class="gtgt">目标：个人 ≥ 2个，实际完成 6大项目 · 覆盖6个业务 · 全原稿业务 · 1课5课TODO自动总表 · 2个事业部</div></div>
+        <div><div class="gname">降本增效（含自动化工具）</div><div class="gtgt">目标：个人 ≥ 2个，已落地6大核心项目并持续扩展多个业务检查模块及质量管理能力</div></div>
         <span class="badge b-done">超额完成 ✓</span>
       </div>
       <div class="goal-item">
@@ -580,7 +709,7 @@ body {
       <p class="csub" style="margin-bottom:20px;">年度各项可量化目标达成情况一览</p>
       <div class="prog-block">
         <div class="prog-label">
-          <span>降本增效工具（≥2个，已落地6大项目）</span>
+          <span>降本增效工具（目标≥2个，已落地6大核心项目并持续扩展）</span>
           <span style="color:#10b981;font-weight:700;">超额完成 300%</span>
         </div>
         <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:100%;"></div></div>
@@ -601,7 +730,7 @@ body {
       </div>
     </div>
   </div>
-  <div class="footer">長春恵海業務報告(6月) · 馬 林 · 技术杠杆驱动降本增效</div>
+  <div class="footer">長春恵海業務報告 · 馬 林 · 技术杠杆驱动降本增效</div>
 </div>
 
 <!-- ==========================================
@@ -611,7 +740,7 @@ body {
   <div class="container">
     <div class="sec-hd">
       <div class="sec-divider"></div>
-      <h2>核心效率指标一览</h2>
+      <h2>核心效率与质量指标一览</h2>
       <p>Key Performance Indicators — 年度自动化落地量化成果（2025.12~2026.11）</p>
     </div>
 
@@ -629,7 +758,7 @@ body {
       <div class="kpi-card su">
         <div class="kpi-v">10中心</div>
         <div class="kpi-l">GAS合计表覆盖中心数</div>
-        <div class="kpi-d">含第一WEB本部联动汇总</div>
+        <div class="kpi-d">＋第一WEB本部跨中心汇总</div>
       </div>
       <div class="kpi-card wa">
         <div class="kpi-v">20min</div>
@@ -659,8 +788,17 @@ body {
       <div class="kpi-card su">
         <div class="kpi-v">100%</div>
         <div class="kpi-l">自動転記RPA案件节约率</div>
-        <div class="kpi-d">6月案件数：1550件（前）→ 0件（後）</div>
+        <div class="kpi-d">6月实绩：1550件（自动化前）→ 0件（人工转记）</div>
       </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;border-left:4px solid var(--purple);">
+      <h3 style="font-size:14px;color:var(--purple);">📊 QC门户质量KPI统计机制</h3>
+      <p style="font-size:12.5px;color:var(--sub);line-height:1.8;margin-top:6px;">
+        QC门户质量KPI统计机制已上线，支持按人员、课室、工具、日期等维度统计使用日志。
+        由于历史部分期间存在登录机制切换导致的日志缺失，本次不使用不完整数据计算7月实绩；
+        新机制下的数据完整性仍在持续确认中。
+      </p>
     </div>
 
     <div class="two-col gap20">
@@ -678,11 +816,11 @@ body {
 
     <div class="card">
       <h3>月度累计节约工时趋势（分钟）</h3>
-      <p class="csub">3套工具自2026年5月落地后的月度节约预测（含保守/基准/乐观三种情景）</p>
+      <p class="csub">3套工具自2026年5月落地后趋势。5月、6月为落地后实绩基础；7月以后为预测趋势（含保守/基准/乐观三种情景）</p>
       <div class="chart-wrap"><canvas id="chartTrend"></canvas></div>
     </div>
   </div>
-  <div class="footer">長春恵海業務報告(6月) · 馬 林 · 技术杠杆驱动降本增效</div>
+  <div class="footer">長春恵海業務報告 · 馬 林 · 技术杠杆驱动降本增效</div>
 </div>
 
 <!-- ==========================================
@@ -701,6 +839,9 @@ body {
       </button>
       <button class="ach-nav-btn" onclick="showAch('a3',this)">
         <span class="ach-dot"></span> 成果③ DSP设定自动对比工具
+      </button>
+      <button class="ach-nav-btn" onclick="showAch('a4',this)">
+        <span class="ach-dot"></span> 成果④ QC门户质量管理平台
       </button>
     </div>
 
@@ -820,7 +961,7 @@ body {
       <div class="ach-header">
         <div class="kicker green">ACHIEVEMENT 02 · DEPLOYED</div>
         <h2>全中心合计表自动分发与多维联动汇总</h2>
-        <p>Google Apps Script · 11中心全覆盖 · 6大Sheet维度 · 复合键去重 · 一键执行全流程</p>
+        <p>Google Apps Script · 10中心＋第一WEB本部跨中心汇总 · 6大Sheet维度 · 复合键去重 · 一键执行全流程</p>
       </div>
 
       <div class="ach-main gap20">
@@ -858,7 +999,7 @@ body {
           <div class="dc green-dc">
             <div class="dc-label">覆盖中心数</div>
             <div class="dc-val">10</div>
-            <div class="dc-sub">含第一WEB本部</div>
+            <div class="dc-sub">＋第一WEB本部跨中心汇总</div>
           </div>
           <div class="dc green-dc">
             <div class="dc-label">自动更新维度</div>
@@ -878,7 +1019,7 @@ body {
         </div>
       </div>
 
-      <!-- 11中心展示 -->
+      <!-- 10中心展示 -->
       <div class="pc" style="margin-bottom:16px;">
         <div class="pc-title green" style="margin-bottom:14px;">📌 数据流向：一份合计表 → 自动分发至10个中心</div>
         <div class="center-grid">
@@ -923,7 +1064,7 @@ body {
       <div class="phase-row">
         <div class="phase-card ph-active">
           <div class="phase-tag">当前状态</div>
-          <div class="phase-title">全面运行，覆盖11中心</div>
+          <div class="phase-title">全面运行，覆盖10个中心并联动第一WEB本部汇总</div>
           <div class="phase-desc">一键执行完成全部流程，将原本需要人员逐一操作的多表分发工作彻底自动化，显著降低人工操作负担与错误风险。</div>
         </div>
         <div class="phase-card">
@@ -946,8 +1087,8 @@ body {
         <div class="ach-left">
           <div class="dark-grid"></div>
           <div class="status-row" style="position:relative;z-index:1;">
-            <span class="status-badge">已落地</span>
-            <span class="status-date">2026.06.15</span>
+            <span class="status-badge orange">已落地</span>
+            <span class="status-date">2026.06.15 · 运营优化中</span>
           </div>
           <p class="ach-desc" style="position:relative;z-index:1;">
             DSP设定后台数据与设定表自动对比功能已于6月15日正式落地。当前适用媒体为
@@ -994,11 +1135,29 @@ body {
         </div>
       </div>
 
+      <!-- 7月运营优化 -->
+      <div class="pc" style="margin-bottom:16px;">
+        <div class="pc-title" style="margin-bottom:14px;">🔧 7月运营优化实绩</div>
+        <ul class="pc-list">
+          <li><span class="ic">🔍</span>LI读取与判断逻辑修正，降低寄存LI误判</li>
+          <li><span class="ic">🎯</span>FQ、Audience名称格式差异导致的误报优化</li>
+          <li><span class="ic">📋</span>后台独有但设定表没有的项目默认显示「要確認」</li>
+          <li><span class="ic">🎨</span>检查结果颜色与状态优化：一致绿色/不一致红色/要确认黄色</li>
+          <li><span class="ic">⚙️</span>PVA PG案件非设定字段自动显示対象外</li>
+          <li><span class="ic">🚫</span>Location、Pacing profile、Base CPM、Maximum average CPM按案件类型跳过</li>
+          <li><span class="ic">✅</span>不适用项目不再误计入错误数量</li>
+          <li><span class="ic">👥</span>根据现场成员反馈持续修正误报</li>
+        </ul>
+        <p style="font-size:12px;color:var(--dark-sub);margin-top:10px;">
+          工具已从初期落地进入<strong style="color:#67e8f9;">现场运营优化阶段</strong>，通过持续吸收业务反馈，提高检查规则与实际案件条件的一致性。
+        </p>
+      </div>
+
       <div class="phase-row">
         <div class="phase-card ph-active">
           <div class="phase-tag">PHASE 01 · 当前</div>
-          <div class="phase-title">辅助自我校正 / W校正</div>
-          <div class="phase-desc">通过系统直接比对后台数据与设定表，快速锁定差异点，将传统人工检索检查转变为系统结果确认。</div>
+          <div class="phase-title">运营优化中</div>
+          <div class="phase-desc">持续吸收现场反馈，优化检查规则与案件条件一致性。辅助自我校正 / W校正模式稳定运行。</div>
         </div>
         <div class="phase-card">
           <div class="phase-tag">PHASE 02 · 予定</div>
@@ -1008,8 +1167,107 @@ body {
       </div>
     </div>
 
+    <!-- ====== 成果④ ====== -->
+    <div id="a4" class="ach-page">
+      <div class="ach-header">
+        <div class="kicker purple">ACHIEVEMENT 04 · DEPLOYED</div>
+        <h2>QC门户个人认证与质量KPI管理平台</h2>
+        <p>GAS · Google Sheets · HTML/JS — 从工具入口升级为具备认证、权限、日志和统计能力的质量管理平台</p>
+      </div>
+
+      <div class="ach-main gap20">
+        <div class="ach-left">
+          <div class="dark-grid"></div>
+          <div class="status-row" style="position:relative;z-index:1;">
+            <span class="status-badge blue">已落地</span>
+            <span class="status-date">2026.07 · 持续验证中</span>
+          </div>
+          <p class="ach-desc" style="position:relative;z-index:1;">
+            7月完成QC门户管理机制升级，将原有<strong>单纯工具入口</strong>升级为具备
+            <strong class="purple">个人认证、权限控制、工具使用日志采集及质量KPI汇总能力</strong>的管理平台。
+          </p>
+          <p class="ach-desc" style="position:relative;z-index:1;">
+            管理者可以按照<strong>人员、课室、工具和日期</strong>维度掌握工具使用情况，
+            使工具价值从「工时削减」进一步扩展到<strong class="white">「质量贡献可视化」</strong>。
+          </p>
+          <div class="flow-row" style="position:relative;z-index:1;">
+            <div class="flow-node purple-n">用户登录</div>
+            <div class="flow-arr">→</div>
+            <div class="flow-node purple-n">使用工具</div>
+            <div class="flow-arr">→</div>
+            <div class="flow-node purple-n">自动发送日志</div>
+            <div class="flow-arr">→</div>
+            <div class="flow-node purple-n">GAS写入logs</div>
+            <div class="flow-arr">→</div>
+            <div class="flow-node purple-n">summary汇总</div>
+            <div class="flow-arr">→</div>
+            <div class="flow-node purple-n">管理者查看</div>
+          </div>
+        </div>
+
+        <div class="ach-right">
+          <div class="dc purple-dc">
+            <div class="dc-label">平台定位</div>
+            <div class="dc-val sm">工具门户<br>→ 质量管理平台</div>
+          </div>
+          <div class="dc purple-dc">
+            <div class="dc-label">认证方式</div>
+            <div class="dc-val sm">个人邮箱<br>注册登录</div>
+          </div>
+          <div class="dc purple-dc">
+            <div class="dc-label">统计维度</div>
+            <div class="dc-val sm">人员 · 课室<br>工具 · 日期</div>
+          </div>
+          <div class="dc purple-dc">
+            <div class="dc-label">当前状态</div>
+            <div class="dc-val sm">已上线<br>数据完整性确认中</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="principle-grid gap20" style="grid-template-columns:1fr 1fr;">
+        <div class="pc">
+          <div class="pc-title purple">🔐 已落地功能</div>
+          <ul class="pc-list">
+            <li><span class="ic">📧</span>邮件注册与个人登录</li>
+            <li><span class="ic">👤</span>管理者权限控制</li>
+            <li><span class="ic">⏰</span>登录状态8小时有效</li>
+            <li><span class="ic">📊</span>各工具完成时自动发送使用日志</li>
+            <li><span class="ic">📥</span>GAS接收并写入logs</li>
+            <li><span class="ic">📈</span>logs自动生成summary</li>
+            <li><span class="ic">🇯🇵</span>工具名称日语映射</li>
+            <li><span class="ic">🔄</span>15分钟内重复使用去重</li>
+            <li><span class="ic">⏲️</span>每日定时刷新summary</li>
+            <li><span class="ic">📋</span>按人员、课室、工具、日期等维度汇总</li>
+          </ul>
+        </div>
+        <div class="pc">
+          <div class="pc-title purple" style="color:#fbbf24;">⚠️ 风险说明</div>
+          <ul class="pc-list">
+            <li><span class="ic">📅</span>历史部分期间因登录机制切换存在日志缺失</li>
+            <li><span class="ic">🔧</span>新机制已经调整，当前持续确认数据完整性</li>
+            <li><span class="ic">🚫</span>历史缺失期间不进行推算补填</li>
+            <li><span class="ic">👀</span>后续需持续监控定时summary运行状况</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="phase-row">
+        <div class="phase-card ph-active">
+          <div class="phase-tag">当前状态</div>
+          <div class="phase-title">已上线，持续验证中</div>
+          <div class="phase-desc">QC门户已从单一工具入口完成升级，认证、日志、统计能力全部部署。当前重点确认新机制下的数据持续完整性。</div>
+        </div>
+        <div class="phase-card">
+          <div class="phase-tag">NEXT PHASE</div>
+          <div class="phase-title">数据完整性确认与统计体系完善</div>
+          <div class="phase-desc">持续监控定时summary运行，确保日志采集无遗漏后，可将质量KPI正式纳入定期报告指标体系。</div>
+        </div>
+      </div>
+    </div>
+
   </div>
-  <div class="dark-footer">長春恵海業務報告(6月) · 馬 林 · 技术杠杆驱动降本增效</div>
+  <div class="dark-footer">長春恵海業務報告 · 馬 林 · 技术杠杆驱动降本增效</div>
 </div>
 
 <!-- ==========================================
@@ -1020,10 +1278,68 @@ body {
     <div class="sec-hd">
       <div class="sec-divider"></div>
       <h2>工作计划</h2>
-      <p>2026年下半年 · 自动化与业务效率化推进方向</p>
+      <p>2026年7月 · 自动化与业务效率化推进方向</p>
+    </div>
+
+    <!-- 7月改善实绩 -->
+    <div class="card gap20" style="border-left:4px solid var(--success);margin-bottom:32px;">
+      <h3 style="font-size:16px;font-weight:800;color:var(--success);margin-bottom:16px;">📋 7月改善实绩（问题 → 处理 → 效果）</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12.5px;line-height:1.75;">
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;">
+          <div style="font-weight:700;color:var(--brand);">1. Amazon DSP复杂案件误报</div>
+          <div style="color:var(--sub);">完善LI、FQ、Audience及PVA PG规则</div>
+          <div style="color:var(--success);font-size:11px;">→ 降低误报，提高结果与业务条件一致性</div>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;">
+          <div style="font-weight:700;color:var(--brand);">2. 地域表记转换</div>
+          <div style="color:var(--sub);">新增市、区、町、村及郡下町村识别</div>
+          <div style="color:var(--success);font-size:11px;">→ 提高DV360地域表记检查覆盖率</div>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;">
+          <div style="font-weight:700;color:var(--brand);">3. Excel大数据识别不完整</div>
+          <div style="color:var(--sub);">改为按实际使用单元格范围扫描</div>
+          <div style="color:var(--success);font-size:11px;">→ 802/803行样本可正确识别</div>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;">
+          <div style="font-weight:700;color:var(--brand);">4. 上传组件重复弹窗</div>
+          <div style="color:var(--sub);">清除重复事件绑定</div>
+          <div style="color:var(--success);font-size:11px;">→ 错误提示恢复单次显示</div>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;">
+          <div style="font-weight:700;color:var(--brand);">5. 文本包含关系误报</div>
+          <div style="color:var(--sub);">优化纯包含关系判定显示</div>
+          <div style="color:var(--success);font-size:11px;">→ 减少无意义异常提示</div>
+        </div>
+        <div style="background:#f8fafc;border-radius:8px;padding:12px;">
+          <div style="font-weight:700;color:var(--brand);">6. 住友不動產宏问题调查</div>
+          <div style="color:var(--sub);">确认根因为下载Sheet名称与宏预设不一致</div>
+          <div style="color:var(--success);font-size:11px;">→ 避免不必要修改，明确现场操作规则</div>
+        </div>
+      </div>
     </div>
 
     <div class="plan-grid">
+
+<div class="plan-card warn-t">
+        <div class="plan-hd">
+          <div class="plan-icon w">🤖</div>
+          <div>
+            <div class="plan-tag w">PROJECT A · 真实验证中</div>
+            <div class="plan-title">TL业务RPA核心流程自动化</div>
+          </div>
+        </div>
+        <p class="plan-desc">
+          当前处于核心流程分步骤真实验证阶段。
+          通过限定操作范围、失败即停止、日志脱敏及真实操作授权机制，
+          逐步验证账号选择、日期设定、数据筛选和下载流程。
+          待核心流程验证通过后，再扩展至报表自动生成与分发。
+        </p>
+        <div class="plan-chips">
+          <span class="chip">🐍 Python+Playwright</span>
+          <span class="chip">🔒 真实验证中</span>
+          <span class="chip">📋 分步骤推进</span>
+        </div>
+      </div>
 
 <div class="plan-card accent-t">
         <div class="plan-hd">
@@ -1034,34 +1350,16 @@ body {
           </div>
         </div>
         <p class="plan-desc">
-          Amazon DSP / PVA 比对逻辑已落地，DV360扩展推进中：
-          <strong>✅ CP（配信除外）设计逻辑已完成</strong>，
-          剩余 IO / LI / GP / CR 适配开发中。
-          目标将Amazon+DV360统一比对架构升级为团队主要校正方式。
+          地域表记转换独立模块已完成。
+          <strong>CP基础逻辑已完成</strong>，IO / LI / GP / CR仍在分阶段开发。
+          未完成入口保持禁用。
+          后续在Amazon DSP现有架构基础上继续扩展，目标统一比对架构。
         </p>
         <div class="plan-chips">
           <span class="chip">✅ CP完成</span>
+          <span class="chip">✅ 地域转换完成</span>
           <span class="chip">🚧 IO/LI/GP/CR</span>
-          <span class="chip">🔄 Phase 02</span>
-        </div>
-      </div>
-
-      <div class="plan-card">
-        <div class="plan-hd">
-          <div class="plan-icon">📦</div>
-          <div>
-            <div class="plan-tag">PROJECT C · 推进中</div>
-            <div class="plan-title">合规工具推广与资产化</div>
-          </div>
-        </div>
-        <p class="plan-desc">
-          在全中心普及本地QC工具（惠海），同步输出《工具维护文档》，
-          确保自动化成果的组织可持续性，将工具能力沉淀为团队可传承的资产。
-        </p>
-        <div class="plan-chips">
-          <span class="chip">📝 维护文档</span>
-          <span class="chip">🏢 全中心普及</span>
-          <span class="chip">✅ ISMS合规</span>
+          <span class="chip">🔒 未开放</span>
         </div>
       </div>
 
@@ -1069,19 +1367,18 @@ body {
         <div class="plan-hd">
           <div class="plan-icon w">📧</div>
           <div>
-            <div class="plan-tag w">PROJECT D · 新規</div>
+            <div class="plan-tag w">PROJECT C · 需求确认与脚本准备中</div>
             <div class="plan-title">2课 Outlook 邮件自动汇总 TODO</div>
           </div>
         </div>
         <p class="plan-desc">
-          参考已落地的Xone邮件机器人架构，为2课设计基于Outlook的邮件自动读取与TODO汇总机制。
-          自动识别关键邮件、提取任务信息并汇总至共享总表，替代手动整理邮件待办的重复工作，
-          提升跨课室任务可视化水平。
+          已具备部分GAS脚本基础，待进一步确认现场业务流程、输入来源和输出规则后，
+          再推进正式开发。参考已落地的Xone邮件机器人架构，为2课设计基于Outlook的邮件自动读取与TODO汇总机制。
         </p>
         <div class="plan-chips">
           <span class="chip">📬 Outlook</span>
           <span class="chip">📋 TODO自动化</span>
-          <span class="chip">🔗 GAS联动</span>
+          <span class="chip">⏳ 需求确认中</span>
         </div>
       </div>
 
@@ -1089,38 +1386,17 @@ body {
         <div class="plan-hd">
           <div class="plan-icon p">📰</div>
           <div>
-            <div class="plan-tag p">PROJECT E · 新規</div>
-            <div class="plan-title">原稿読売业务手顺优化</div>
+            <div class="plan-tag p">PROJECT D · 需求确认中</div>
+            <div class="plan-title">5课顾麒麒专用工具</div>
           </div>
         </div>
         <p class="plan-desc">
-          针对原稿読売相关业务流程进行手顺梳理与优化，识别可简化或自动化的环节，
-          输出标准化操作手顺文档，降低新人培训成本，减少因手顺不统一导致的操作差异与潜在风险。
+          已记录改善意向，待与业务担当确认实际作业流程、输入数据和预期输出后，
+          再判断开发方式和优先级。目前不要简单写成「未联络」，已进入需求确认阶段。
         </p>
         <div class="plan-chips">
-          <span class="chip">📋 手顺标准化</span>
-          <span class="chip">⚡ 流程优化</span>
-          <span class="chip">📚 文档输出</span>
-        </div>
-      </div>
-
-      <div class="plan-card accent-t">
-        <div class="plan-hd">
-          <div class="plan-icon a">📸</div>
-          <div>
-            <div class="plan-tag a">PROJECT F · 新規</div>
-            <div class="plan-title">トーチライトレポート截图RPA</div>
-          </div>
-        </div>
-        <p class="plan-desc">
-          针对トーチライト报告制作中需要大量手动截图的环节，设计并实现自动化截图RPA工具。
-          程序自动打开指定页面、按规则截取所需区域并整理输出，
-          将原本耗时的截图整理工作压缩至分钟级，大幅提升报告制作效率。
-        </p>
-        <div class="plan-chips">
-          <span class="chip">🤖 RPA设计</span>
-          <span class="chip">📸 自动截图</span>
-          <span class="chip">🐍 Playwright</span>
+          <span class="chip">📋 需求确认中</span>
+          <span class="chip">🔍 流程调查</span>
         </div>
       </div>
 
@@ -1128,68 +1404,438 @@ body {
         <div class="plan-hd">
           <div class="plan-icon w">💰</div>
           <div>
-            <div class="plan-tag w">PROJECT G · 开发中</div>
+            <div class="plan-tag w">PROJECT E · 开发中</div>
             <div class="plan-title">AP财务数据自动化抽取</div>
           </div>
         </div>
         <p class="plan-desc">
-          JFM Cash Total（银行残高·现金簿）月度更新与RPA自动生成工具。
-          从Bank Statement（.xls）与Cashbook（.xlsx）自动读取多店舗数据，
-          生成含Excel公式的三Sheet Workbook（Bankbalance / Cashbook / Money Total），
-          并自动对比原始版与RPA版差异点，正在完善中。
+          继续推进银行余额、现金簿及Money Total自动生成和原始版差异比对。
+          JFM Cash Total（银行残高·现金簿）月度更新与RPA自动生成工具，
+          从Bank Statement与Cashbook自动读取多店舖数据。
         </p>
         <div class="plan-chips">
           <span class="chip">🐍 Python</span>
           <span class="chip">📊 openpyxl/xlrd</span>
-          <span class="chip">🏦 多银行·多店舗</span>
-          <span class="chip">🔄 自动对比</span>
+          <span class="chip">🏦 多银行·多店舖</span>
+          <span class="chip">🔄 开发中</span>
+        </div>
+      </div>
+
+      <div class="plan-card">
+        <div class="plan-hd">
+          <div class="plan-icon">🔄</div>
+          <div>
+            <div class="plan-tag">PROJECT F · 持续运营</div>
+            <div class="plan-title">QC门户统计稳定性确认</div>
+          </div>
+        </div>
+        <p class="plan-desc">
+          确认新登录机制下日志采集完整性，检查定时summary运行状况，
+          明确历史缺失数据不进行推算。持续完善工具接入范围，
+          确保后续质量KPI可纳入定期报告指标体系。
+        </p>
+        <div class="plan-chips">
+          <span class="chip">📊 数据完整性</span>
+          <span class="chip">⏲️ 定时监控</span>
+          <span class="chip">🔧 持续运营</span>
+        </div>
+      </div>
+
+      <div class="plan-card purple-t">
+        <div class="plan-hd">
+          <div class="plan-icon p">💡</div>
+          <div>
+            <div class="plan-tag p">PROJECT G · 分享准备中</div>
+            <div class="plan-title">AI与CodeBuddy现场辅助实践分享</div>
+          </div>
+        </div>
+        <p class="plan-desc">
+          结合本人目前与AI协作及使用CodeBuddy处理实际工作的经验，面向现场成员分享两类可直接使用的方法：
+          一是<strong>如何正确向AI说明背景、问题、证据、预期结果和限制条件</strong>；
+          二是<strong>如何使用国内CodeBuddy完成只读分析、小范围修改、验证及完成报告</strong>。
+          分享重点放在实际使用、风险边界和人工验收，不推广复杂技术体系。
+          <br><span style="font-size:11px;color:var(--sub);">飞书等协作工具可由擅长人员继续探索，本次不作为必须掌握内容。</span>
+        </p>
+        <div class="plan-chips">
+          <span class="chip">🤖 AI沟通</span>
+          <span class="chip">💻 CodeBuddy实操</span>
+          <span class="chip">🛡️ 安全边界</span>
+          <span class="chip">✅ 人工验收</span>
         </div>
       </div>
 
     </div>
   </div>
-  <div class="footer">長春恵海業務報告(6月) · 馬 林 · 技术杠杆驱动降本增效</div>
+  <div class="footer">長春恵海業務報告 · 馬 林 · 技术杠杆驱动降本增效</div>
 </div>
 
+
 <!-- ==========================================
-     PAGE 5 · 课长周定例
+     PAGE 5 · 课长周定例（历史议题记录）
 ========================================== -->
+
+<!--
+  维护说明：
+  新增周定例记录时：
+  1. 复制一条 <details class="meeting-item"> 整块；
+  2. 修改日期、标题、类型、状态和内容；
+  3. 插入列表最上方（最新记录在第一条）；
+  4. 仅最新一条保留 open 属性，其余移除 open。
+  历史内容不得删除。
+-->
+
 <div id="p5" class="page">
   <div class="container">
     <div class="sec-hd">
       <div class="sec-divider"></div>
-      <h2>课长周定例 · 议题提出</h2>
-      <p>议题提出日期：2026.06.30 · 馬 林</p>
+      <h2>课长周定例 · 历史议题记录</h2>
+      <p>按日期降序保存历次议题，最新内容默认展开 | 查看日期：<span class="today-date"></span></p>
     </div>
 
-    <!-- 日期列 -->
-    <div class="card gap20" style="border-left: 4px solid var(--brand);">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-        <span style="font-size:13px;font-weight:700;color:var(--sub);">📅 定例日期</span>
-        <span style="font-size:20px;font-weight:800;color:var(--brand);">2026.06.30</span>
-      </div>
-    </div>
+    <!-- ====== 记录① 最新：AI与CodeBuddy分享 ====== -->
+    <details class="meeting-item latest" open>
+      <summary class="meeting-summary">
+        <span class="ms-left">
+          <span class="ms-date">2026.07.13</span>
+          <span class="ms-title">AI与CodeBuddy现场辅助实践分享</span>
+          <span class="ms-meta">
+            <span class="ms-type">内部经验分享 · AI辅助工作方法</span>
+            <span class="ms-status status-prepare">分享准备中</span>
+          </span>
+        </span>
+        <span class="ms-arrow">▾</span>
+      </summary>
+      <div class="meeting-content">
 
-    <!-- 议题① -->
-    <div class="card gap20">
-      <div style="display:flex;align-items:flex-start;gap:12px;">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;font-size:14px;font-weight:800;flex-shrink:0;">①</span>
-        <div>
-          <h3 style="font-size:16px;font-weight:800;margin-bottom:6px;">QC门户 用户注册制 + 自动使用统计系统导入提案</h3>
-          <p class="csub" style="margin-bottom:14px;">议题类型：系统改善提案 · 质量KPI自动化</p>
+        <!-- 定位说明 -->
+        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:8px;">📌 定位说明</div>
+          <p style="font-size:13px;color:var(--text);line-height:1.8;">
+            本次分享<strong>不是统一推广AI平台</strong>，也不是要求现场人员学习开发，
+            而是分享本人实际使用后形成的<strong>基础方法和风险边界</strong>。
+            目标对象是：不熟悉AI沟通的现场成员、使用CodeBuddy但不知如何下达指令的成员、
+            以及希望使用AI整理报告、分析问题或修改小工具的成员。
+          </p>
         </div>
-      </div>
 
-      <div style="padding-left:44px;">
+        <!-- 分享方向A -->
+        <div style="background:linear-gradient(135deg,#f0f9ff,#e8f0fe);border-radius:10px;padding:16px;margin-bottom:14px;border:1px solid rgba(26,86,219,0.15);">
+          <div style="font-size:13px;font-weight:800;color:var(--brand);margin-bottom:12px;">💡 分享方向A：如何与AI沟通</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="font-size:12px;color:var(--text);line-height:1.8;">
+              <strong>沟通要点：</strong><br>
+              1. 先说明背景和目标<br>
+              2. 描述实际结果与预期结果<br>
+              3. 提供截图、文件、错误信息和操作步骤<br>
+              4. 第一次先要求只读分析<br>
+              5. 明确允许修改与禁止修改范围
+            </div>
+            <div style="font-size:12px;color:var(--text);line-height:1.8;">
+              <strong>安全要求：</strong><br>
+              6. 要求AI说明风险和验证方法<br>
+              7. 修改后必须提供验证证据<br>
+              8. 关键结论必须由人确认<br>
+              9. AI输出不等于事实<br>
+              10. 不直接说「帮我修好」
+            </div>
+          </div>
+        </div>
+
+        <!-- 分享方向B -->
+        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:16px;margin-bottom:14px;border:1px solid rgba(16,185,129,0.25);">
+          <div style="font-size:13px;font-weight:800;color:var(--success);margin-bottom:12px;">💡 分享方向B：如何把CodeBuddy用到实际工作</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);">
+              <div style="font-size:12px;font-weight:800;color:var(--success);margin-bottom:6px;">✅ 适合的使用场景</div>
+              <ul style="font-size:11px;color:var(--sub);line-height:1.7;padding-left:14px;">
+                <li>HTML文字与小范围样式调整</li>
+                <li>Excel公式、宏和错误原因分析</li>
+                <li>现有Python、GAS、JavaScript脚本检查</li>
+                <li>报告、手顺和邮件整理</li>
+                <li>小范围修改</li>
+                <li>修改前后差异确认</li>
+                <li>本地验证和完成报告</li>
+              </ul>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);">
+              <div style="font-size:12px;font-weight:800;color:var(--danger);margin-bottom:6px;">🚫 禁止或慎用</div>
+              <ul style="font-size:11px;color:var(--sub);line-height:1.7;padding-left:14px;">
+                <li>未明确范围的大规模修改</li>
+                <li>未备份的重要正式文件</li>
+                <li>未授权操作真实系统</li>
+                <li>未确认直接Push或部署</li>
+                <li>上传账号、客户机密和敏感数据</li>
+                <li>未经确认运行宏、脚本、删除或批量覆盖</li>
+                <li>仅凭AI说「已修复」就结束</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- 标准流程 -->
+        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:8px;">📋 建议标准操作流程</div>
+          <div style="font-family:monospace;font-size:12px;color:var(--text);line-height:2;background:#fff;border-radius:6px;padding:12px;border:1px solid var(--border);text-align:center;">
+            问题描述 → 提供证据 → AI整理需求 → CodeBuddy只读分析 → 人工确认 → 限定范围修改 → 实际验证 → 保存结果
+          </div>
+        </div>
+
+        <!-- 可直接复制模板 -->
+        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:800;color:var(--brand);margin-bottom:12px;">📋 可直接复制使用的 AI / CodeBuddy 模板</div>
+          <p style="font-size:11px;color:var(--sub);margin-bottom:14px;">以下模板可直接复制到ChatGPT或CodeBuddy中使用。替换【】中的内容即可。</p>
+
+          <div class="tpl-grid">
+            <!-- 模板① -->
+            <div class="tpl-card">
+              <h4>模板① 让AI帮我整理问题</h4>
+              <div class="tpl-use">📋 复制后替换【】内容即可使用</div>
+              <div class="tpl-code">请帮我把下面的问题整理清楚，暂时不要给解决方案。
+
+【业务名称】
+填写业务或工具名称
+
+【当前操作】
+1.
+2.
+3.
+
+【实际结果】
+填写现在发生了什么
+
+【预期结果】
+填写原本应该出现什么结果
+
+【证据】
+填写错误信息、截图、文件名或样本数据
+
+请输出：
+1. 问题摘要
+2. 已知事实
+3. 仍缺少的信息
+4. 推荐下一步检查顺序
+
+不要虚构未提供的信息。</div>
+            </div>
+            <!-- 模板② -->
+            <div class="tpl-card">
+              <h4>模板② 让CodeBuddy先检查，不修改</h4>
+              <div class="tpl-use">📋 复制后替换【】内容即可使用</div>
+              <div class="tpl-code">请先只读分析，不要修改任何文件。
+
+【目标文件或目录】
+填写路径
+
+【问题】
+填写具体问题
+
+【实际结果】
+填写当前结果
+
+【预期结果】
+填写目标结果
+
+请确认：
+1. 问题可能出现在哪个文件或函数
+2. 最可能的原因
+3. 建议修改范围
+4. 是否会影响其他功能
+5. 修改后应如何验证
+
+限制：
+- 不修改文件
+- 不运行危险脚本
+- 不删除或覆盖数据
+- 不提交
+- 不Push
+
+请输出分析报告，等待我确认后再修改。</div>
+            </div>
+            <!-- 模板③ -->
+            <div class="tpl-card">
+              <h4>模板③ 确认后授权小范围修改</h4>
+              <div class="tpl-use">📋 复制后替换【】内容即可使用</div>
+              <div class="tpl-code">根据刚才的分析，授权进行本次修改。
+
+【允许修改】
+- 填写允许修改的文件
+- 填写允许修改的功能
+
+【禁止修改】
+- 其他页面
+- 无关功能
+- 数据结构
+- 未指定文件
+- 正式环境
+
+【完成标准】
+1.
+2.
+3.
+
+要求：
+- 只修改本次问题相关内容
+- 修改前确认git status
+- 修改后说明具体修改位置
+- 不提交
+- 不Push
+- 完成后等待人工确认</div>
+            </div>
+            <!-- 模板④ -->
+            <div class="tpl-card">
+              <h4>模板④ 要求CodeBuddy提供验证证据</h4>
+              <div class="tpl-use">📋 复制后替换【】内容即可使用</div>
+              <div class="tpl-code">请对刚才的修改进行实际验证。
+
+必须确认：
+1. 语法检查是否通过
+2. 页面或程序是否能正常运行
+3. 原问题是否已复现并确认解决
+4. 是否影响其他功能
+5. git diff是否仅包含授权范围
+6. 是否存在未验证事项
+
+请输出：
+- 修改文件
+- 修改位置
+- 修改内容
+- 实际执行的验证
+- 验证结果
+- 剩余风险
+
+不要只回复「应该可以」或「已修复」。</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 错误 vs 正确指令对比 -->
+        <div style="margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px;">🔍 同一个问题，不同沟通方式的结果</div>
+          <div class="compare-grid">
+            <div class="compare-bad">
+              <h4>❌ 不推荐</h4>
+              <div class="tpl-code" style="font-size:11px;line-height:1.7;max-height:none;">
+帮我把这个页面修好看一点。</div>
+              <div style="font-size:11px;color:var(--sub);margin-top:10px;line-height:1.7;">
+                <strong>问题说明：</strong><br>
+                · 没有说明哪个页面<br>
+                · 没有说明哪里不好看<br>
+                · 没有修改边界<br>
+                · 没有完成标准<br>
+                · AI可能大范围改动
+              </div>
+            </div>
+            <div class="compare-good">
+              <h4>✅ 推荐</h4>
+              <div class="tpl-code" style="font-size:11px;line-height:1.7;max-height:none;">
+请先只读检查，不要修改。
+
+目标文件：yomiko_kanri.html
+
+当前问题：
+表格右侧「编辑」「删除」按钮距离页面边缘太近，视觉拥挤。
+
+预期结果：
+桌面端按钮右侧保留自然空白；
+两个按钮保持同一行；
+左侧筛选区域不得变化；
+内容过宽时只允许表格区域横向滚动。
+
+请先说明：
+1. 需要修改哪些CSS
+2. 是否会影响移动端
+3. 建议验证方法
+
+等待确认后再修改。</div>
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--brand);font-weight:600;margin-top:4px;">💡 问题越具体、证据越完整、边界越明确，AI输出越稳定。</p>
+        </div>
+
+        <!-- 实际案例：Excel宏 -->
+        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
+          <div style="font-size:13px;font-weight:800;color:var(--brand);margin-bottom:12px;">🧪 实际案例：Excel宏报错的正确提问方式</div>
+
+          <div class="case-step">
+            <h4>第一步：现场人员提供</h4>
+            <p style="font-size:12px;color:var(--text);line-height:1.8;">
+              宏文件名称 · 报错截图 · 点击了哪个按钮 · 当前Sheet名称 · 预期操作结果 · 是否允许修改宏
+            </p>
+          </div>
+
+          <div class="case-step">
+            <h4>第二步：先让AI判断</h4>
+            <div class="tpl-code" style="font-size:11px;max-height:none;">
+请先分析报错原因，不要修改宏。
+
+当前情况：
+点击「デバイス別_取り込み」后报错。
+宏预期读取Sheet「デバイス別」，但下载文件中的Sheet名称为「デバイス」。
+
+请判断：
+1. 是否是Sheet名称不一致导致
+2. 是否需要修改宏
+3. 能否通过统一下载文件Sheet名称解决
+4. 哪种方式风险更低</div>
+          </div>
+
+          <div class="case-step">
+            <h4>第三步：人工决定</h4>
+            <p style="font-size:12px;color:var(--text);line-height:1.8;">
+              如果只需统一Sheet名称即可正常运行，<strong>应优先修改操作规则</strong>，不要为了「让AI做点什么」而修改宏。
+            </p>
+          </div>
+
+          <p style="font-size:12px;color:var(--sub);line-height:1.8;margin-top:8px;">
+            该案例强调：AI不一定必须修改文件；正确判断原因比直接动代码更重要；避免无效开发。
+          </p>
+        </div>
+
+        <!-- 分享目标 -->
+        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:16px;border:1px solid rgba(16,185,129,0.25);">
+          <div style="font-size:13px;font-weight:800;color:var(--success);margin-bottom:10px;">🎯 分享的最终目标</div>
+          <p style="font-size:13px;color:var(--text);line-height:1.8;">
+            让成员掌握四项基本能力：<strong>会说明问题、会让AI先分析、会限制修改范围、会确认验证结果</strong>。
+            不要求「让所有人学会开发」。
+          </p>
+          <p style="font-size:12px;color:var(--sub);line-height:1.8;margin-top:8px;">
+            💡 飞书等协作工具可由擅长人员继续探索连接方式，本次分享不作为必须掌握内容，也不将报告人描述为飞书方向负责人。
+          </p>
+        </div>
+
+      </div>
+    </details>
+
+    <!-- ====== 记录②：QC门户提案（已落地） ====== -->
+    <details class="meeting-item done">
+      <summary class="meeting-summary">
+        <span class="ms-left">
+          <span class="ms-date">2026.06.30</span>
+          <span class="ms-title">QC门户 用户注册制＋自动使用统计系统导入提案</span>
+          <span class="ms-meta">
+            <span class="ms-type">系统改善提案 · 质量KPI自动化</span>
+            <span class="ms-status status-done">已落地 · 已转为核心成果④</span>
+          </span>
+        </span>
+        <span class="ms-arrow">▸</span>
+      </summary>
+      <div class="meeting-content">
+
+        <!-- 状态说明 -->
+        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:14px;margin-bottom:16px;border:1px solid rgba(16,185,129,0.3);">
+          <div style="font-size:13px;font-weight:800;color:var(--success);margin-bottom:4px;">✅ 当前状态</div>
+          <p style="font-size:12px;color:var(--text);line-height:1.8;">
+            本议题已在2026年7月完成主要功能落地，现已迁移至<strong>「核心成果④ QC门户质量管理平台」</strong>。以下内容作为当时的提案记录保留。
+          </p>
+        </div>
 
         <!-- 背景 -->
         <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
           <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:8px;">📋 背景 · 当前课题</div>
           <p style="font-size:13px;color:var(--text);line-height:1.8;">
-            目前QC门户使用<strong>单一共享密码</strong>全员登录，
+            当时QC门户使用<strong>单一共享密码</strong>全员登录，
             <strong style="color:var(--danger);">无法掌握「谁、何时、用了哪个工具、发现了多少差异」。</strong>
-            另一方面，已开发的工具群（Excel对比、AmazonDSP检查、DV360检查、Excel清洗等）
-            的核心价值不仅是<strong style="color:var(--accent);">「工时削减」更在于「准确性保障与人为错误防止」</strong>，
+            已开发的工具群的核心价值不仅是<strong style="color:var(--accent);">「工时削减」更在于「准确性保障与人为错误防止」</strong>，
             但由于质量贡献无法量化，管理层只能看到工时削减这一面。
           </p>
         </div>
@@ -1223,33 +1869,12 @@ body {
               <tr style="background:#f0f9ff;">
                 <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">指标</td>
                 <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">内容</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">示例</td>
               </tr>
-              <tr>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">🛠️ 工具别使用次数</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">各工具月度使用次数</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">Excel对比：42次</td>
-              </tr>
-              <tr>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">👤 个人使用实绩</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">谁用了多少次、哪个工具</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">马林：18次</td>
-              </tr>
-              <tr>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">🔍 差异检出总数</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">全工具合计发现的差异数</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">月度 327件</td>
-              </tr>
-              <tr>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">⚠️ 重大差异检出数</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">金额·投放设定等关键差异</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">月度 41件</td>
-              </tr>
-              <tr>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">⏱️ 预估返工回避时间</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">重大差异 × 平均修复时间（15min）</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">41件×15min = 10.25h</td>
-              </tr>
+              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🛠️ 工具别使用次数</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">各工具月度使用次数</td></tr>
+              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">👤 个人使用实绩</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">谁用了多少次、哪个工具</td></tr>
+              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🔍 差异检出总数</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">全工具合计发现的差异数</td></tr>
+              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">⚠️ 重大差异检出数</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">金额·投放设定等关键差异</td></tr>
+              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">⏱️ 预估返工回避时间</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">重大差异 × 平均修复时间（15min）</td></tr>
             </table>
           </div>
         </div>
@@ -1299,19 +1924,30 @@ body {
         </div>
 
       </div>
-    </div>
+    </details>
 
-    <!-- 议题② -->
-    <div class="card gap20">
-      <div style="display:flex;align-items:flex-start;gap:12px;">
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-size:14px;font-weight:800;flex-shrink:0;">②</span>
-        <div>
-          <h3 style="font-size:16px;font-weight:800;margin-bottom:6px;">入稿表自动校验工具开发提案 — 设定表依赖前的质量检查强化</h3>
-          <p class="csub" style="margin-bottom:14px;">议题类型：新工具开发提案 · 质量事前防止</p>
+    <!-- ====== 记录③：入稿表校验提案（暂未推进） ====== -->
+    <details class="meeting-item pending">
+      <summary class="meeting-summary">
+        <span class="ms-left">
+          <span class="ms-date">2026.06.30</span>
+          <span class="ms-title">入稿表自动校验工具开发提案 — 设定表依赖前的质量检查强化</span>
+          <span class="ms-meta">
+            <span class="ms-type">历史提案 · 质量事前防止</span>
+            <span class="ms-status status-pending">暂未推进</span>
+          </span>
+        </span>
+        <span class="ms-arrow">▸</span>
+      </summary>
+      <div class="meeting-content">
+
+        <!-- 状态说明 -->
+        <div style="background:rgba(239,68,68,0.04);border-radius:10px;padding:14px;margin-bottom:16px;border:1px solid rgba(239,68,68,0.15);">
+          <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:4px;">⏸️ 当前状态</div>
+          <p style="font-size:12px;color:var(--text);line-height:1.8;">
+            该议题为2026年6月阶段的构想记录，目前未列入近期优先推进项目，仅作为历史提案留存。
+          </p>
         </div>
-      </div>
-
-      <div style="padding-left:44px;">
 
         <!-- 背景 -->
         <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
@@ -1355,26 +1991,10 @@ body {
                 <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">检测内容</td>
                 <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">示例</td>
               </tr>
-              <tr>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">🔴 必填项缺失</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">入稿表必填单元格为空</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">刊登日未填写</td>
-              </tr>
-              <tr>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">🟡 格式不匹配</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">日期/金额/编码格式与规定不一致</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">日期非西历格式</td>
-              </tr>
-              <tr>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">🟡 数值范围异常</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">金额·尺寸等超出CR允许范围</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">广告尺寸不符合规定</td>
-              </tr>
-              <tr>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">🔵 CR矛盾检测</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">多项目间的逻辑矛盾</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;">刊登日晚于截止日</td>
-              </tr>
+              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🔴 必填项缺失</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">入稿表必填单元格为空</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">刊登日未填写</td></tr>
+              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🟡 格式不匹配</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">日期/金额/编码格式与规定不一致</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">日期非西历格式</td></tr>
+              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🟡 数值范围异常</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">金额·尺寸等超出CR允许范围</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">广告尺寸不符合规定</td></tr>
+              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🔵 CR矛盾检测</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">多项目间的逻辑矛盾</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">刊登日晚于截止日</td></tr>
             </table>
           </div>
 
@@ -1402,7 +2022,6 @@ body {
           <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:8px;">🔧 可行性 · 现有技术复用</div>
           <p style="font-size:12px;color:var(--text);line-height:1.8;">
             本提案并非从零开发，而是<strong>沿用1课已落地的「AmazonDSP设定检查」「DV360设定检查」相同技术架构</strong>（Excel上传→与规定值自动对照→差异报告输出），将核心引擎应用于入稿表领域。
-            核心引擎可复用现有资产，与从零开发相比风险更低、实现性更高。
           </p>
         </div>
 
@@ -1429,21 +2048,11 @@ body {
           </div>
         </div>
 
-        <!-- 对日方提案注意点 -->
-        <div style="margin-top:12px;background:rgba(239,68,68,0.06);border-radius:8px;padding:12px;border:1px solid rgba(239,68,68,0.2);">
-          <div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:4px;">⚠️ 对日方提案时的注意事项</div>
-          <p style="font-size:11px;color:var(--sub);line-height:1.7;">
-            本工具应以<strong>「检查的辅助·强化」</strong>而非「检查的替代」进行提案。
-            不应表述为「指出人工检查的不足」，而应定位为<strong>「让担当者的确认工作更高效，降低遗漏风险的辅助工具」</strong>。
-            同时展示AmazonDSP/DV360已通过同类自动对照工具取得成果的实绩，可增加说服力。
-          </p>
-        </div>
-
       </div>
-    </div>
+    </details>
 
   </div>
-  <div class="footer">長春恵海業務報告(6月) · 馬 林 · 课长周定例</div>
+  <div class="footer">長春恵海業務報告 · 馬 林 · 课长周定例</div>
 </div>
 
 
@@ -1477,7 +2086,7 @@ new Chart(document.getElementById('chartGoalStatus').getContext('2d'), {
   data: {
     labels: ['已完成', '进行中', '未参加'],
     datasets: [{
-      data: [5, 1, 1],
+      data: [4, 1, 1],
       backgroundColor: ['rgba(16,185,129,0.88)','rgba(245,158,11,0.82)','rgba(148,163,184,0.7)'],
       borderWidth: 2, borderColor: '#fff'
     }]
@@ -1579,11 +2188,11 @@ new Chart(document.getElementById('chartRate').getContext('2d'), {
 new Chart(document.getElementById('chartTrend').getContext('2d'), {
   type: 'line',
   data: {
-    labels: ['5月（落地）','6月','7月','8月','9月','10月','11月','12月'],
+    labels: ['5月（实绩）','6月（实绩）','7月（预测）','8月（预测）','9月（预测）','10月（预测）','11月（预测）','12月（预测）'],
     datasets: [
-      { label:'乐观估算', data:[585,595,605,615,625,635,645,655], borderColor:'rgba(16,185,129,0.9)', backgroundColor:'rgba(16,185,129,0.08)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 },
-      { label:'基准估算', data:[560,560,565,570,575,580,585,590], borderColor:'rgba(26,86,219,0.9)', backgroundColor:'rgba(26,86,219,0.06)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 },
-      { label:'保守估算', data:[520,520,522,524,526,528,530,532], borderColor:'rgba(245,158,11,0.9)', backgroundColor:'rgba(245,158,11,0.05)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 }
+      { label:'乐观预测', data:[585,595,605,615,625,635,645,655], borderColor:'rgba(16,185,129,0.9)', backgroundColor:'rgba(16,185,129,0.08)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 },
+      { label:'基准预测', data:[560,560,565,570,575,580,585,590], borderColor:'rgba(26,86,219,0.9)', backgroundColor:'rgba(26,86,219,0.06)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 },
+      { label:'保守预测', data:[520,520,522,524,526,528,530,532], borderColor:'rgba(245,158,11,0.9)', backgroundColor:'rgba(245,158,11,0.05)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 }
     ]
   },
   options: {
@@ -1600,14 +2209,24 @@ new Chart(document.getElementById('chartTrend').getContext('2d'), {
   }
 });
 
-/* ---------- 动态设置当日日期 ---------- */
+/* ---------- 日期自动化 ---------- */
+// ★ 内容更新截至固定日期，后续只需修改此一处
+const REPORT_UPDATED_AT = '2026.07.13';
+
 (function() {
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
-  const el = document.getElementById('todayDate');
-  if (el) el.textContent = `${yyyy}.${mm}.${dd}`;
+  const todayStr = `${yyyy}.${mm}.${dd}`;
+  const yearMonthStr = `${yyyy}.${mm}`;
+
+  // 查看日期
+  document.querySelectorAll('.today-date').forEach(el => { el.textContent = todayStr; });
+  // 报告周期结束年月
+  document.querySelectorAll('.current-year-month').forEach(el => { el.textContent = yearMonthStr; });
+  // 内容更新截至
+  document.querySelectorAll('.report-updated-at').forEach(el => { el.textContent = REPORT_UPDATED_AT; });
 })();
 </script>
 </body>

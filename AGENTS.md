@@ -33,7 +33,7 @@ my-qc-web/
 ├── tools_text.html         # 文本处理工具（多Tab）
 ├── upload.html             # 读卖専用チェックツール
 ├── yomiko_kanri.html       # 读卖管理
-├── 【1课】BPO定例会_*.html  # 定例会报告书
+├── bpo_weekly_report_malin.html  # 定例会报告书
 ├── xlsx.full.min.js        # SheetJS
 ├── jszip.min.js            # JSZip
 └── encoding.min.js         # 编码处理
