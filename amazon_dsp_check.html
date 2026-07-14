@@ -678,17 +678,33 @@ function normMobileEnv(v){
 function normFrequency(v){
     if(!v) return '';
     const s = String(v).trim();
-    if(!s || s === '●回/●日間' || s.toLowerCase() === 'nan') return '';
-    const jp = s.match(/(\d+)\s*回\s*\/\s*(?:(\d+)\s*)?(日間|日|時|分)/);
+    // 空白、模板值、NaN → 空（無設定扱い）
+    if(!s || /^●(回|times?)[\/／]●(日間|day)/i.test(s) || s.toLowerCase() === 'nan') return '';
+    // 日文格式: 支持半角 / 和全角 ／
+    // 例: 1回／1日間, 1回/1日, 2回/7日間, 1回/1時間, 1回/30分
+    const jp = s.match(/(\d+)\s*回\s*[\/／]\s*(?:(\d+)\s*)?(日間|日|時間|時|分間|分)/);
     if(jp){
-        const u={'日間':'days','日':'days','時':'hours','分':'minutes'};
+        const u={'日間':'days','日':'days','時間':'hours','時':'hours','分間':'minutes','分':'minutes'};
         return `${jp[1]}_${jp[2]||'1'}_${u[jp[3]]||'days'}`;
     }
-    const m = s.match(/(\d+)\s*回\s*\/\s*(\d+)\s*(日|時|分)/);
-    if(m){ const u={'日':'days','時':'hours','分':'minutes'}; return `${m[1]}_${m[2]}_${u[m[3]]||'days'}`; }
-    const m2 = s.match(/FrequencyCap\d+:\[User,\s*(\d+),\s*(\d+),\s*(\w+)\]/i);
-    if(m2) return `${m2[1]}_${m2[2]}_${m2[3].toLowerCase()}`;
-    return s;
+    // 英文格式: 5times/1day, 10times/7days, 3times/1hour
+    // 設定表使用英文表記時的格式
+    const en = s.match(/(\d+)\s*times?\s*\/\s*(\d+)\s*(day|days|hour|hours|minute|minutes)/i);
+    if(en) return `${en[1]}_${en[2]}_${_normFreqUnit(en[3])}`;
+    // 下载数据格式: FrequencyCap1:[User, 1, 1, Days]（含半角/全角空格）
+    const m2 = s.match(/FrequencyCap\d*:?\s*\[User,\s*(\d+),\s*(\d+),\s*(\w+)\]/i);
+    if(m2) return `${m2[1]}_${m2[2]}_${_normFreqUnit(m2[3])}`;
+    // 無 FrequencyCap 前缀的格式: [User, 1, 1, Days]
+    const m3 = s.match(/\[User,\s*(\d+),\s*(\d+),\s*(\w+)\]/i);
+    if(m3) return `${m3[1]}_${m3[2]}_${_normFreqUnit(m3[3])}`;
+    // 无法解析 → null 表示"要確認"（不可静默判定一致/不一致）
+    return null;
+}
+// 单位归一化（Day/Days→days, Hour/Hours→hours, Minute/Minutes→minutes）
+function _normFreqUnit(u){
+    const ul = String(u||'').toLowerCase().trim();
+    const map = {day:'days', days:'days', hour:'hours', hours:'hours', minute:'minutes', minutes:'minutes'};
+    return map[ul] || ul;
 }
 
 function _normalizeAudienceName(name){
@@ -2717,7 +2733,16 @@ const DL_COLUMNS = [
       }
     },
     { key:'Frequency Caps',           ja:'フリークエンシー',
-      checkFn:(s,v)=>{ const sf=normFrequency(s.frequency); return !sf||sf===normFrequency(v); }
+      checkFn:(s,v)=>{
+          const sf=normFrequency(s.frequency);
+          const df=normFrequency(v);
+          // 任一侧无法解析（非空但格式未知）→ 要確認
+          if(sf===null||df===null) return null;
+          // 設定表为空 → 跳过（现有行为：不强制要求FQ）
+          if(!sf) return true;
+          // 标准化后精确比较
+          return sf===df;
+      }
     },
     { key:'Device type',              ja:'デバイス',
       checkFn:(s,v)=>{
