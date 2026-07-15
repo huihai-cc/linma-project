@@ -1395,6 +1395,8 @@ function runDuplicateLineCheck(){
     }
     if(dupLocateTargets.length>0){document.getElementById('btn-locate-dup').disabled=false;}
     outer.style.display='block';
+    // 使用統計ログ（重複行チェック）
+    sendLog('文本比对-重复行检查', dupLines, dupGroups, '全' + total + '行／重複グループ' + dupGroups + '組／重複行' + dupLines + '行／単独行' + single + '行');
     // 动态计算 sticky 表头 top 值（等于 page-sticky 总高度）
     var stickyTop=document.getElementById('page-sticky').offsetHeight;
     document.querySelectorAll('#dup-table thead th').forEach(function(th){th.style.top=stickyTop+'px';});

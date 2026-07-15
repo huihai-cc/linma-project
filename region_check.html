@@ -962,6 +962,9 @@ function renderToyokeizaiResults(results) {
   copyBtn.style.display = 'inline-block';
   copyBtn.textContent = '📋 3列データをコピー';
   section.scrollIntoView({ behavior:'smooth', block:'start' });
+
+  // 使用統計ログ（東洋経済新報社）
+  sendLog('地域表記変換チェック-東洋経済新報社', excluded, excluded, '入力' + total + '件／コピー対象' + eligible + '件／対象外' + excluded + '件');
 }
 
 function copyToyokeizaiResults() {
@@ -1284,6 +1287,11 @@ function renderResults(results) {
 
   // 結果までスクロール
   section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // 使用統計ログ（DV360）
+  var warnTotal = warnUnreg + warnMulti + warnUnconfirmed;
+  var okTotal = okCity + okPref;
+  sendLog('地域表記変換チェック-DV360', warnTotal + ng, ng, '入力' + total + '件／OK' + okTotal + '件／要確認' + warnTotal + '件／未識別' + ng + '件');
 }
 
 // ============================================================

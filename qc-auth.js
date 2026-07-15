@@ -4,7 +4,7 @@
 // ============================================================
 
 // ⚠️ 部署GAS后，把下面的URL替换为实际的Web App URL
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyjzKwirxa1Fk4MG_pT5fFSpmevfOAgTldUdO3dvP3WFEDlzu5VRIfC9aUfbbywCqFV/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw8vN6yeZ4Mrphhdojd7T69hwQM_LM_OZnjgHrZub1EYHkZ4oEol6vrQfNrk1xEXjEF/exec';
 
 // ==================== 认证检查 ====================
 
@@ -64,15 +64,22 @@ function logout() {
 async function apiCall(action, data) {
   try {
     // 用 text/plain 避免 CORS preflight（GAS 不支持 OPTIONS）
+    var fetchStart = Date.now();
+    var payload = JSON.stringify({ action: action, tool: data.tool, diffCount: data.diffCount, criticalCount: data.criticalCount, note: data.note, hasToken: !!data.token });
+    console.info('[apiCall] fetching', { action: action, endpoint: GAS_URL.substring(0, 60) + '...' });
     const resp = await fetch(GAS_URL, {
       method: 'POST',
       body: JSON.stringify({ action, ...data })
     });
-    const result = await resp.json();
+    console.info('[apiCall] response status', { action: action, status: resp.status, statusText: resp.statusText, durationMs: Date.now() - fetchStart });
+    var responseText = await resp.text();
+    console.info('[apiCall] response body', { action: action, body: responseText.substring(0, 200) });
+    const result = JSON.parse(responseText);
     // 统一处理 token 过期 / 未授权（只对 log 等需要 token 的接口返回）
     if (!result.ok && result.error && (
       result.error.includes('Token') || result.error === '未授权'
     )) {
+      console.warn('[apiCall] token expired, clearing session');
       localStorage.removeItem('qc_session');
       if (!window._qc_token_expired) {
         window._qc_token_expired = true;
@@ -83,8 +90,8 @@ async function apiCall(action, data) {
     }
     return result;
   } catch (e) {
-    console.error('API Error:', e);
-    return { ok: false, error: '网络错误: ' + e.message };
+    console.error('[apiCall] failed', { action: action, name: e && e.name, message: e && e.message });
+    return { ok: false, error: '网络错误: ' + (e && e.message) };
   }
 }
 
@@ -110,15 +117,35 @@ async function verifyEmailCode(email, code) {
 }
 
 async function sendLog(tool, diffCount, criticalCount, note) {
-  const session = getSession();
-  if (!session) return { ok: false, error: '未登录' };
-  return await apiCall('log', {
-    token: session.token,
+  var session = getSession();
+  console.info('[sendLog] start', {
     tool: tool,
-    diffCount: diffCount || 0,
-    criticalCount: criticalCount || 0,
-    note: note || ''
+    diffCount: diffCount,
+    criticalCount: criticalCount,
+    note: note,
+    hasSession: !!session,
+    hasToken: !!(session && session.token),
+    tokenLength: (session && session.token) ? String(session.token).length : 0,
+    endpoint: GAS_URL ? GAS_URL.substring(0, 60) + '...' : 'undefined'
   });
+  if (!session) {
+    console.warn('[sendLog] blocked: no session');
+    return { ok: false, error: '未登录' };
+  }
+  try {
+    var result = await apiCall('log', {
+      token: session.token,
+      tool: tool,
+      diffCount: diffCount || 0,
+      criticalCount: criticalCount || 0,
+      note: note || ''
+    });
+    console.info('[sendLog] response', { ok: result.ok, error: result.error, tool: tool });
+    return result;
+  } catch(e) {
+    console.error('[sendLog] failed', { name: e && e.name, message: e && e.message, tool: tool });
+    return { ok: false, error: 'sendLog error: ' + (e && e.message) };
+  }
 }
 
 // ==================== 页面级认证守卫 ====================
