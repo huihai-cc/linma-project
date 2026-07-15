@@ -161,6 +161,14 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 .vscroll-table { width:100%; border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.85rem; background:white; }
 .vscroll-table th { position:sticky; top:0; z-index:10; padding:8px 12px; font-size:0.8rem; font-weight:bold; border-bottom:2px solid #bbb; }
 .vscroll-table td { padding:4px 12px; vertical-align:top; line-height:1.8; white-space:pre-wrap; word-break:break-all; border-bottom:1px solid #eee; }
+
+.btn-locate { background:#3498db; color:white; font-weight:bold; }
+.btn-locate:hover:not(:disabled) { background:#2980b9; }
+.btn-locate:disabled { background:#bdc3c7; color:#95a5a6; cursor:default; opacity:0.7; }
+.dup-highlight { outline:3px solid #f39c12 !important; outline-offset:-2px !important; box-shadow:0 0 12px rgba(243,156,18,0.6) !important; }
+
+/* 重复行检查：固定表头（top值由JS动态设置） */
+#dup-table thead th { position:sticky; z-index:180; }
 </style>
 </head>
 <body>
@@ -192,7 +200,7 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 
 <div class="back-nav">
     <a href="index.html" class="back-btn">← 返回导航页</a>
-    <span style="color:#bdc3c7;font-size:0.82rem;">逐行比对 / 升序比对 / 包含关系比对 / 符号检查</span>
+    <span style="color:#bdc3c7;font-size:0.82rem;">逐行比对 / 升序比对 / 包含关系比对 / 符号检查 / 重复行检查</span>
 </div>
 
 <div class="page-sticky" id="page-sticky">
@@ -201,6 +209,7 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
         <button class="tab-btn"        id="tab-sort"  onclick="switchTab('sort')">🔤 升序比对</button>
         <button class="tab-btn"        id="tab-full"  onclick="switchTab('full')">🔎 包含关系比对</button>
         <button class="tab-btn"        id="tab-check" onclick="switchTab('check')">🔬 符号检查</button>
+        <button class="tab-btn"        id="tab-dup"   onclick="switchTab('dup')">🔁 重复行检查</button>
     </div>
 
     <!-- 逐行比对 -->
@@ -331,6 +340,20 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
             <label class="check-opt"><input type="checkbox" id="o-hl-ln" checked onchange="rerender()"> 高亮含符号的行</label>
         </div>
     </div>
+    <!-- 重复行检查 -->
+    <div class="tab-panel" id="panel-dup">
+        <div class="input-area">
+            <div class="input-label">📝 检查对象 <span class="label-tip">整行内容完全一致时，将使用相同颜色标记</span></div>
+            <textarea id="ta-dup" placeholder="请粘贴需要检查的多行内容。&#10;整行内容完全一致时，将使用相同颜色标记。" style="height:180px;"></textarea>
+        </div>
+        <div class="controls">
+            <button class="btn-check" onclick="runDuplicateLineCheck()">🔍 检查重复行（Ctrl+Enter）</button>
+            <button class="btn-locate" id="btn-locate-dup" onclick="locateNextDuplicateGroup()" disabled>📍 定位到重复行</button>
+            <button class="btn-check-clear" onclick="clearDuplicateLineCheck()">🗑️ 清空</button>
+            <span id="dup-locate-msg" style="font-size:0.78rem;color:#2980b9;font-weight:bold;display:none;margin-left:4px;"></span>
+        </div>
+        <div class="stats" id="dup-stats"></div>
+    </div>
 </div>
 
 <div class="diff-wrap" id="diff-wrap">
@@ -363,6 +386,21 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
     </div>
 </div>
 
+<div id="dup-result-outer" style="display:none;">
+    <div style="overflow-x:auto;padding:0 20px 20px;">
+        <table class="diff-table" id="dup-table">
+            <thead>
+                <tr>
+                    <th class="th-num" style="width:56px;">行目</th>
+                    <th style="background:#eef;color:#335;border-bottom:2px solid #bbb;padding:8px 12px;text-align:left;font-weight:bold;">内容</th>
+                    <th style="background:#fef;color:#535;border-bottom:2px solid #bbb;padding:8px 12px;text-align:center;font-weight:bold;width:140px;">判定</th>
+                </tr>
+            </thead>
+            <tbody id="dup-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
 <script>
 'use strict';
 
@@ -377,6 +415,7 @@ let symbolIndex=[],lastCheckText='',diffRows=[],navIndex=-1,currentTab='diff';
 const eqHidden={diff:false,sort:false};
 const vsState={diff:{blocks:[],showInv:true,container:null},sort:{blocks:[],showInv:false,container:null}};
 const VS_THRESHOLD=2000,VS_BUFFER=25;
+var dupLocateTargets=[],dupLocateCursor=0,dupLocateTimer=null;
 
 document.addEventListener('DOMContentLoaded', () => {
     document.title = "文本处理工具";
@@ -400,12 +439,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function switchTab(tab){
     currentTab=tab;
-    ['diff','sort','full','check'].forEach(t=>{
+    ['diff','sort','full','check','dup'].forEach(t=>{
         document.getElementById('tab-'+t).classList.toggle('active',t===tab);
         document.getElementById('panel-'+t).classList.toggle('active',t===tab);
     });
     document.getElementById('diff-wrap').classList.remove('show');
     document.getElementById('check-result-outer').style.display='none';
+    document.getElementById('dup-result-outer').style.display='none';
 }
 
 function cleanText(raw){
@@ -1304,12 +1344,106 @@ function exportSort(){doExport(document.getElementById('stats-sort').outerHTML+d
 function exportFull(){doExport(document.getElementById('stats-full').outerHTML+document.getElementById('diff-out').outerHTML,'全文高亮结果');}
 function exportCheck(){doExport(document.getElementById('check-stats').outerHTML+document.getElementById('check-summary').outerHTML+document.getElementById('preview-wrap').outerHTML,'符号检查结果');}
 
+/* ─── 重复行检查 ─── */
+const DUP_COLORS=['#ffd6d6','#d6f5d6','#d6e8ff','#fff0b3','#e6d6ff','#b3f0e6','#ffd9b3','#f2d6f2','#d6f0ff','#fff0d6'];
+const DUP_BORDERS=['#ff9999','#99d699','#99c2ff','#ffe066','#c299ff','#66d9cc','#ffb366','#d699d6','#99d6ff','#ffd699'];
+
+function runDuplicateLineCheck(){
+    var raw=document.getElementById('ta-dup').value;
+    var lines=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    var nonEmpty=[],origIdx=[];
+    for(var i=0;i<lines.length;i++){if(lines[i].length>0){nonEmpty.push(lines[i]);origIdx.push(i);}}
+    var statsDiv=document.getElementById('dup-stats'),tbody=document.getElementById('dup-tbody'),outer=document.getElementById('dup-result-outer');
+    tbody.innerHTML='';outer.style.display='none';
+    dupLocateTargets=[];dupLocateCursor=0;
+    if(dupLocateTimer){clearTimeout(dupLocateTimer);dupLocateTimer=null;}
+    document.querySelectorAll('.dup-highlight').forEach(function(el){el.classList.remove('dup-highlight');});
+    document.getElementById('dup-locate-msg').style.display='none';
+    document.getElementById('btn-locate-dup').disabled=true;
+    if(!raw||nonEmpty.length===0){
+        statsDiv.className='stats show';
+        statsDiv.innerHTML='<span style="color:#e67e22;font-weight:bold;">⚠ 入力が空です</span>';
+        return;
+    }
+    var map=new Map();
+    for(var i=0;i<nonEmpty.length;i++){var line=nonEmpty[i];if(!map.has(line))map.set(line,[]);}
+    for(var i=0;i<nonEmpty.length;i++){map.get(nonEmpty[i]).push(i);}
+    var dupEntries=[...map.entries()].filter(function(e){return e[1].length>1;}).sort(function(a,b){return a[1][0]-b[1][0];});
+    var contentIdx=new Map();
+    for(var i=0;i<dupEntries.length;i++){contentIdx.set(dupEntries[i][0],i);}
+    var total=nonEmpty.length,dupGroups=dupEntries.length,dupLines=dupEntries.reduce(function(s,e){return s+e[1].length;},0),single=total-dupLines;
+    statsDiv.className='stats show';
+    statsDiv.innerHTML='<span>全<b>'+total+'</b>行</span> <span style="font-size:0.78rem;color:#999;">｜</span> <span class="tag" style="background:#ffe0e0;color:#880000;border:1px solid #ffaaaa;">重复组<b>'+dupGroups+'</b>组</span> <span class="tag" style="background:#fff0b3;color:#664400;border:1px solid #ffdd66;">重复行<b>'+dupLines+'</b>行</span> <span class="tag tag-eq">单独行<b>'+single+'</b>行</span>';
+    var seenGroups=new Set();
+    for(var i=0;i<nonEmpty.length;i++){
+        var line=nonEmpty[i],tr=document.createElement('tr'),no=origIdx[i]+1;
+        var tdNum=document.createElement('td');tdNum.className='td-num';tdNum.textContent=no;
+        var tdContent=document.createElement('td');tdContent.style.cssText='padding:4px 12px;vertical-align:middle;line-height:1.8;border-bottom:1px solid #eee;white-space:pre;font-family:\'Courier New\',monospace;';tdContent.textContent=line;
+        var tdJudge=document.createElement('td');tdJudge.style.cssText='padding:4px 12px;vertical-align:middle;line-height:1.8;border-bottom:1px solid #eee;text-align:center;font-weight:bold;font-size:0.82rem;white-space:nowrap;';
+        var ci=contentIdx.get(line);
+        if(ci!==void 0){
+            if(!seenGroups.has(ci)){seenGroups.add(ci);tr.setAttribute('data-dup-group',ci+1);dupLocateTargets.push(tr);}
+            var c=ci%DUP_COLORS.length;
+            tr.style.backgroundColor=DUP_COLORS[c];
+            tr.style.borderLeft='4px solid '+DUP_BORDERS[c];
+            tdNum.style.borderLeft='4px solid '+DUP_BORDERS[c];
+            tdJudge.textContent='重複グループ '+(ci+1);
+        }else{
+            tdJudge.textContent='単独';
+        }
+        tr.appendChild(tdNum);tr.appendChild(tdContent);tr.appendChild(tdJudge);tbody.appendChild(tr);
+    }
+    if(dupLocateTargets.length>0){document.getElementById('btn-locate-dup').disabled=false;}
+    outer.style.display='block';
+    // 动态计算 sticky 表头 top 值（等于 page-sticky 总高度）
+    var stickyTop=document.getElementById('page-sticky').offsetHeight;
+    document.querySelectorAll('#dup-table thead th').forEach(function(th){th.style.top=stickyTop+'px';});
+}
+
+function clearDuplicateLineCheck(){
+    document.getElementById('ta-dup').value='';
+    document.getElementById('dup-tbody').innerHTML='';
+    document.getElementById('dup-stats').className='stats';
+    document.getElementById('dup-stats').innerHTML='';
+    document.getElementById('dup-result-outer').style.display='none';
+    document.getElementById('btn-locate-dup').disabled=true;
+    document.getElementById('dup-locate-msg').style.display='none';
+    dupLocateTargets=[];dupLocateCursor=0;
+    if(dupLocateTimer){clearTimeout(dupLocateTimer);dupLocateTimer=null;}
+    document.querySelectorAll('.dup-highlight').forEach(function(el){el.classList.remove('dup-highlight');});
+    document.querySelectorAll('#dup-table thead th').forEach(function(th){th.style.top='';});
+}
+
+function locateNextDuplicateGroup(){
+    if(dupLocateTargets.length===0){
+        document.getElementById('dup-stats').className='stats show';
+        document.getElementById('dup-stats').innerHTML='<span style="color:#e67e22;font-weight:bold;">重複行がありません</span>';
+        return;
+    }
+    if(dupLocateTimer){clearTimeout(dupLocateTimer);}
+    document.querySelectorAll('.dup-highlight').forEach(function(el){el.classList.remove('dup-highlight');});
+    var target=dupLocateTargets[dupLocateCursor];
+    target.scrollIntoView({behavior:'smooth',block:'center'});
+    target.classList.add('dup-highlight');
+    var timerTarget=target;
+    dupLocateTimer=setTimeout(function(){
+        timerTarget.classList.remove('dup-highlight');
+        dupLocateTimer=null;
+    },1500);
+    var total=dupLocateTargets.length,cur=dupLocateCursor+1;
+    var msg=document.getElementById('dup-locate-msg');
+    msg.textContent='📍 重複グループ '+cur+' / '+total+' に移動しました';
+    msg.style.display='inline';
+    dupLocateCursor=cur>=total?0:cur;
+}
+
 document.addEventListener('keydown',e=>{
     if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
         if(currentTab==='diff')runLineDiff();
         else if(currentTab==='sort')runSortDiff();
         else if(currentTab==='full')runFullDiff();
-        else runCheck();
+        else if(currentTab==='check')runCheck();
+        else if(currentTab==='dup')runDuplicateLineCheck();
     }
 });
 </script>

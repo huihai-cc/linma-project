@@ -113,7 +113,15 @@ textarea#regionInput::placeholder{color:#bbb;font-size:0.82rem;}
 .status-warn-unreg{background:#fef5e7;color:#d35400;}
 .status-warn-multi{background:#fef9e7;color:#b7950b;}
 .status-warn-unconfirmed{background:#fef0e0;color:#e67e22;border:1px solid #f0b070;}
-.status-ng{background:#fadbd8;color:#c0392b;}
+	.status-ng{background:#fadbd8;color:#c0392b;}
+	.status-excluded{background:#fdecea;color:#c0392b;border:1px solid #e74c3c;}
+
+	/* ===== 東洋経済新報社 対象外行 ===== */
+	.result-table tbody tr.row-excluded{background:#fef0f0 !important;border-left:4px solid #e74c3c;}
+	.result-table tbody tr.row-excluded:nth-child(odd){background:#fef3f2 !important;}
+	.result-table tbody tr.row-excluded:nth-child(even){background:#fef0f0 !important;}
+	.result-table tbody tr.row-excluded:hover{background:#fde5e5 !important;}
+	.result-table tbody tr.row-excluded .col-result{color:#c0392b;font-weight:700;}
 
 /* ===== Master Data Panel ===== */
 .master-panel{margin-top:20px;border:1px solid #e4e8ed;border-radius:8px;overflow:hidden;background:white;}
@@ -179,6 +187,7 @@ textarea#regionInput::placeholder{color:#bbb;font-size:0.82rem;}
   <label>📌 対象媒体：</label>
   <select id="mediaSelect">
     <option value="dv360">DV360設定依頼</option>
+    <option value="toyokeizai">東洋経済新報社</option>
   </select>
   <span class="media-badge" id="mediaBadge">DV360設定依頼</span>
 </div>
@@ -187,23 +196,23 @@ textarea#regionInput::placeholder{color:#bbb;font-size:0.82rem;}
 <div class="input-section">
   <div class="input-header">
     <span class="input-label">
-      📝 日方地域記載を入力
+      <span id="inputLabelText">📝 地域記載を入力</span>
       <span class="count-badge" id="lineCount">0行</span>
     </span>
-    <button class="btn btn-sample" onclick="loadSample()">📋 サンプルを読み込む</button>
+    <button class="btn btn-sample" onclick="loadSample()" id="sampleBtn">📋 サンプルを読み込む</button>
   </div>
   <textarea id="regionInput" placeholder="例（1行1件）：&#10;群馬県前橋市&#10;東京都港区&#10;&#10;A/B/C列がタブ区切りの場合：&#10;群馬県    北群馬郡    吉岡町&#10;東京都    港区"></textarea>
-  <div class="input-hint">
+  <div class="input-hint" id="inputHint">
     💡 1行1件で入力してください。A/B/C列が別れている場合も1行にタブ区切りでまとめて入力可能です。
   </div>
-  <div style="margin-top:6px;padding:6px 12px;background:#fef9e7;border:1px solid #f0d080;border-radius:4px;font-size:0.72rem;color:#856404;line-height:1.6;">
+  <div id="hintBox" style="margin-top:6px;padding:6px 12px;background:#fef9e7;border:1px solid #f0d080;border-radius:4px;font-size:0.72rem;color:#856404;line-height:1.6;">
     ✅ <b>CONFIRMED</b>（DV360確認済）と 🔶 <b>CANDIDATE</b>（AI/公開データ由来・未確認）の2層マスタで判定。<br>
     🔶 CANDIDATE 由来の変換結果は <b>必ずDV360管理画面で実際の表記を確認</b>してから正式利用してください。
   </div>
 </div>
 
 <!-- ===== 控制栏 ===== -->
-<div class="control-bar" id="controlBar">
+<div class="control-bar show" id="controlBar">
   <button class="btn btn-check" onclick="runConversion()">🔄 変換チェック</button>
   <button class="btn btn-reset" onclick="resetAll()">🗑️ クリア</button>
   <button class="btn btn-copy-result" onclick="copyConversionResults()" id="btnCopyResult" style="display:none;">📋 変換結果をコピー</button>
@@ -759,6 +768,239 @@ const PREF_PATTERNS = [...ALL_PREF_SET].sort((a,b) => b.length - a.length);
 const PREF_REGEX = new RegExp('^(' + PREF_PATTERNS.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')');
 
 // ============================================================
+//  東洋経済新報社 用 英文都道府県 → 日文都道府県マッピング
+//  全47都道府県
+// ============================================================
+const TOYOKEIZAI_PREF_MAP = {
+  'hokkaido':'北海道','aomori':'青森県','iwate':'岩手県','miyagi':'宮城県',
+  'akita':'秋田県','yamagata':'山形県','fukushima':'福島県',
+  'ibaraki':'茨城県','tochigi':'栃木県','gunma':'群馬県','saitama':'埼玉県',
+  'chiba':'千葉県','tokyo':'東京都','kanagawa':'神奈川県',
+  'niigata':'新潟県','toyama':'富山県','ishikawa':'石川県','fukui':'福井県',
+  'yamanashi':'山梨県','nagano':'長野県','gifu':'岐阜県','shizuoka':'静岡県',
+  'aichi':'愛知県','mie':'三重県','shiga':'滋賀県',
+  'kyoto':'京都府','osaka':'大阪府','hyogo':'兵庫県','nara':'奈良県','wakayama':'和歌山県',
+  'tottori':'鳥取県','shimane':'島根県','okayama':'岡山県','hiroshima':'広島県','yamaguchi':'山口県',
+  'tokushima':'徳島県','kagawa':'香川県','ehime':'愛媛県','kochi':'高知県',
+  'fukuoka':'福岡県','saga':'佐賀県','nagasaki':'長崎県','kumamoto':'熊本県',
+  'oita':'大分県','miyazaki':'宮崎県','kagoshima':'鹿児島県','okinawa':'沖縄県'
+};
+
+// ============================================================
+//  東洋経済新報社 用 関数群
+// ============================================================
+function cleanEnglishRegion(raw) {
+  var s = raw.trim();
+  if (!s) return '';
+  s = s.replace(/,?\s*japan\s*$/i, '');
+  s = s.replace(/\s+prefecture\s*$/i, '');
+  s = s.replace(/,?\s*jp\s*$/i, '');
+  s = s.replace(/\s+city\s*$/i, '');
+  return s.trim();
+}
+
+function lookupToyokeizaiRegion(raw) {
+  var cleaned = cleanEnglishRegion(raw);
+  if (!cleaned) return null;
+  return TOYOKEIZAI_PREF_MAP[cleaned.toLowerCase()] || null;
+}
+
+function parseToyokeizaiLine(raw) {
+  var line = raw.replace(/[　]+/g, ' ').trim();
+  if (!line) return null;
+
+  var parts = line.split('\t').map(function(s){return s.trim();});
+
+  if (parts.length < 3) {
+    return {
+      raw: line,
+      englishRegion: parts[0] || '',
+      japaneseRegion: '',
+      val1: parts[1] || '',
+      val2: '',
+      status: 'NG_未識別',
+      note: 'データ不足（タブ区切り3列必要）',
+      copyEligible: false
+    };
+  }
+
+  var englishRegion = parts[0];
+  var val1 = parts[1];
+  var val2 = parts[2];
+  var lower = englishRegion.toLowerCase().trim();
+  var nonJapan = ['(not set)','unknown','none','n/a'];
+
+  if (nonJapan.indexOf(lower) !== -1) {
+    var excludedNote = lower === '(not set)'
+      ? '地域が未設定のため、コピー対象から除外します'
+      : '日本47都道府県外のため、コピー対象から除外します';
+    return { raw:line, englishRegion:englishRegion, japaneseRegion:'対象外',
+      val1:val1, val2:val2, status:'OK_対象外', note:excludedNote, copyEligible:false };
+  }
+
+  var jpName = lookupToyokeizaiRegion(englishRegion);
+  if (jpName) {
+    return { raw:line, englishRegion:englishRegion, japaneseRegion:jpName,
+      val1:val1, val2:val2, status:'OK', note:'', copyEligible:true };
+  }
+
+  return { raw:line, englishRegion:englishRegion, japaneseRegion:'対象外',
+    val1:val1, val2:val2, status:'OK_対象外',
+    note:'日本47都道府県外のため、コピー対象から除外します', copyEligible:false };
+}
+
+function toyokeizaiStableGroupSort(results) {
+  var groupMap = {};
+  var groupOrder = [];
+
+  results.forEach(function(r, i) {
+    var key = String(r.val1);
+    if (!groupMap[key]) {
+      groupMap[key] = [];
+      groupOrder.push(key);
+    }
+    r._origIdx = i;
+    groupMap[key].push(r);
+  });
+
+  var sorted = [];
+  groupOrder.forEach(function(key) {
+    var items = groupMap[key];
+    items.sort(function(a, b) {
+      var nb = parseFloat(b.val2);
+      var na = parseFloat(a.val2);
+      if (isNaN(nb) && isNaN(na)) return a._origIdx - b._origIdx;
+      if (isNaN(nb)) return -1;
+      if (isNaN(na)) return 1;
+      if (nb !== na) return nb - na;
+      return a._origIdx - b._origIdx;
+    });
+    sorted = sorted.concat(items);
+  });
+
+  sorted.forEach(function(r, i) { r.idx = i + 1; });
+  return sorted;
+}
+
+function runToyokeizaiConversion() {
+  var input = document.getElementById('regionInput');
+  var lines = input.value.split('\n');
+  var parsedLines = [];
+
+  lines.forEach(function(line) {
+    var result = parseToyokeizaiLine(line);
+    if (result) parsedLines.push(result);
+  });
+
+  if (parsedLines.length === 0) {
+    document.getElementById('statusInfo').textContent = '⚠ 入力が空です';
+    return;
+  }
+
+  var sorted = toyokeizaiStableGroupSort(parsedLines);
+  renderToyokeizaiResults(sorted);
+}
+
+function renderToyokeizaiResults(results) {
+  // グローバルに保存（コピー用）
+  window._lastToyokeizaiResults = results;
+
+  var thead = document.querySelector('.result-table thead');
+  var tbody = document.getElementById('resultBody');
+  var section = document.getElementById('resultSection');
+
+  thead.innerHTML = '<tr>' +
+    '<th class="col-no">No</th>' +
+    '<th class="col-raw">原始地域</th>' +
+    '<th class="col-result">日文地域</th>' +
+    '<th style="min-width:100px;">数值1</th>' +
+    '<th style="min-width:100px;">数值2</th>' +
+    '<th style="min-width:110px;">判定</th>' +
+    '<th class="col-note">備考</th>' +
+  '</tr>';
+
+  if (results.length === 0) {
+    tbody.innerHTML = '';
+    section.classList.remove('show');
+    document.getElementById('btnCopyResult').style.display = 'none';
+    return;
+  }
+
+  var total = results.length;
+  var eligible = results.filter(function(r){return r.copyEligible;}).length;
+  var excluded = results.filter(function(r){return r.copyEligible === false;}).length;
+
+  document.getElementById('resultSummary').textContent =
+    '全' + total + '件｜コピー対象 ' + eligible + '件｜対象外 ' + excluded + '件';
+
+  tbody.innerHTML = results.map(function(r) {
+    var rowClass = '';
+    var cls, label;
+    if (r.status === 'OK') {
+      cls = 'status-badge status-ok-pref'; label = '✅ OK';
+    } else if (r.status === 'OK_対象外') {
+      cls = 'status-badge status-excluded'; label = '🚫 対象外・コピー除外';
+      rowClass = ' class="row-excluded"';
+    } else {
+      cls = 'status-badge status-ng'; label = '❌ 未識別';
+      rowClass = ' class="row-excluded"';
+    }
+    return '<tr' + rowClass + '>' +
+      '<td class="col-no">' + r.idx + '</td>' +
+      '<td class="col-raw">' + esc(r.englishRegion) + '</td>' +
+      '<td class="col-result" style="font-weight:600;">' + esc(r.japaneseRegion) + '</td>' +
+      '<td style="text-align:right;">' + esc(r.val1) + '</td>' +
+      '<td style="text-align:right;">' + esc(r.val2) + '</td>' +
+      '<td><span class="' + cls + '">' + label + '</span></td>' +
+      '<td class="col-note">' + (r.note ? esc(r.note) : '') + '</td>' +
+    '</tr>';
+  }).join('');
+
+  section.classList.add('show');
+  document.getElementById('statusInfo').textContent = 'コピー対象 ' + eligible + '件（対象外 ' + excluded + '件を除外）';
+  var copyBtn = document.getElementById('btnCopyResult');
+  copyBtn.style.display = 'inline-block';
+  copyBtn.textContent = '📋 3列データをコピー';
+  section.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function copyToyokeizaiResults() {
+  var all = window._lastToyokeizaiResults;
+  if (!all || all.length === 0) {
+    showToast('コピーできるデータがありません', 'info');
+    return;
+  }
+
+  var eligible = all.filter(function(r){return r.copyEligible;});
+  var excludedCount = all.length - eligible.length;
+
+  if (eligible.length === 0) {
+    showToast('コピー対象の地域がありません（対象外 ' + excludedCount + '件）', 'info');
+    return;
+  }
+
+  var parts = eligible.map(function(r) {
+    return r.japaneseRegion + '\t' + r.val1 + '\t' + r.val2;
+  });
+
+  var content = parts.join('\n');
+  var toastMsg = eligible.length + '件コピーしました';
+  if (excludedCount > 0) {
+    toastMsg += '（対象外 ' + excludedCount + '件を除外）';
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(content).then(function() {
+      showToast(toastMsg, 'success');
+    }).catch(function() {
+      fallbackCopy(content, toastMsg);
+    });
+  } else {
+    fallbackCopy(content, toastMsg);
+  }
+}
+
+// ============================================================
 //  入力解析
 // ============================================================
 function parseLine(raw) {
@@ -893,9 +1135,55 @@ function getMediaConfig() {
 }
 
 // ============================================================
+//  メディア切替時UI更新
+// ============================================================
+function updateMediaUI() {
+  var media = getMediaConfig().media;
+  var subtitleEl = document.querySelector('.subtitle');
+  var inputLabel = document.getElementById('inputLabelText');
+  var inputHint = document.getElementById('inputHint');
+  var hintBox = document.getElementById('hintBox');
+  var sampleBtn = document.getElementById('sampleBtn');
+  var copyBtn = document.getElementById('btnCopyResult');
+  var textarea = document.getElementById('regionInput');
+  var badge = document.getElementById('mediaBadge');
+
+  if (media === 'toyokeizai') {
+    subtitleEl.textContent = '英文地域 → 日本語都道府県表記へ変換';
+    inputLabel.textContent = '📝 地域記載を入力';
+    textarea.placeholder = '例（タブ区切り3列）：\nTokyo\t5176\t4338\nOsaka\t1685\t1461\nHokkaido\t819\t758';
+    inputHint.innerHTML = '💡 Excelや媒体管理画面から3列をコピーしてそのまま貼り付け（タブ区切り）してください。47都道府県以外は「対象外」と表示されます。';
+    hintBox.style.display = 'none';
+    sampleBtn.textContent = '📋 サンプルを読み込む';
+    if (copyBtn.style.display !== 'none') copyBtn.textContent = '📋 3列データをコピー';
+    badge.textContent = '東洋経済新報社';
+    badge.style.display = 'inline-block';
+  } else {
+    subtitleEl.textContent = '日方地域記載 → 媒体管理画面用表記へ変換';
+    inputLabel.textContent = '📝 地域記載を入力';
+    textarea.placeholder = '例（1行1件）：\n群馬県前橋市\n東京都港区\n\nA/B/C列がタブ区切りの場合：\n群馬県    北群馬郡    吉岡町\n東京都    港区';
+    inputHint.innerHTML = '💡 1行1件で入力してください。A/B/C列が別れている場合も1行にタブ区切りでまとめて入力可能です。';
+    hintBox.style.display = 'block';
+    sampleBtn.textContent = '📋 サンプルを読み込む';
+    if (copyBtn.style.display !== 'none') copyBtn.textContent = '📋 変換結果をコピー';
+    badge.textContent = 'DV360設定依頼';
+    badge.style.display = 'inline-block';
+  }
+  resetAll();
+}
+
+// ============================================================
 //  メイン実行
 // ============================================================
 function runConversion() {
+  var media = getMediaConfig().media;
+
+  if (media === 'toyokeizai') {
+    runToyokeizaiConversion();
+    return;
+  }
+
+  // ▼ DV360 mode（以下既存ロジック）
   const input = document.getElementById('regionInput');
   const rawText = input.value;
   const lines = rawText.split('\n')
@@ -929,6 +1217,17 @@ function runConversion() {
 //  結果描画
 // ============================================================
 function renderResults(results) {
+  // DV360モードの表头に戻す
+  var thead = document.querySelector('.result-table thead');
+  thead.innerHTML = '<tr>' +
+    '<th class="col-no">No</th>' +
+    '<th class="col-raw">原始入力</th>' +
+    '<th class="col-parsed">解析結果</th>' +
+    '<th class="col-result">変換結果</th>' +
+    '<th style="min-width:110px;">判定</th>' +
+    '<th class="col-note">備考</th>' +
+  '</tr>';
+
   const tbody = document.getElementById('resultBody');
   const section = document.getElementById('resultSection');
 
@@ -979,7 +1278,9 @@ function renderResults(results) {
   // 「変換結果」列のみ選択コピー可能にするため、クリックイベントで全件の変換結果をまとめて表示
   section.classList.add('show');
   document.getElementById('statusInfo').textContent = total + '件処理完了';
-  document.getElementById('btnCopyResult').style.display = 'inline-block';
+  var dvCopyBtn = document.getElementById('btnCopyResult');
+  dvCopyBtn.style.display = 'inline-block';
+  dvCopyBtn.textContent = '📋 変換結果をコピー';
 
   // 結果までスクロール
   section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -992,16 +1293,49 @@ function resetAll() {
   document.getElementById('regionInput').value = '';
   document.getElementById('resultBody').innerHTML = '';
   document.getElementById('resultSection').classList.remove('show');
-  document.getElementById('controlBar').classList.remove('show');
   document.getElementById('statusInfo').textContent = '';
   document.getElementById('btnCopyResult').style.display = 'none';
+  // 表头をDV360に戻す
+  var thead = document.querySelector('.result-table thead');
+  thead.innerHTML = '<tr>' +
+    '<th class="col-no">No</th>' +
+    '<th class="col-raw">原始入力</th>' +
+    '<th class="col-parsed">解析結果</th>' +
+    '<th class="col-result">変換結果</th>' +
+    '<th style="min-width:110px;">判定</th>' +
+    '<th class="col-note">備考</th>' +
+  '</tr>';
+  syncInputState();
 }
 
 // ============================================================
 //  サンプル読み込み
 // ============================================================
 function loadSample() {
-  const sample = [
+  var media = getMediaConfig().media;
+
+  if (media === 'toyokeizai') {
+    var sample = [
+      'Tokyo\t5176\t4338',
+      'Osaka\t1685\t1461',
+      'Kanagawa\t1525\t1327',
+      'Aichi\t1213\t1006',
+      '(not set)\t856\t127',
+      'Hokkaido\t819\t758',
+      'Chiba\t788\t725',
+      'Saitama\t768\t675',
+      'Fukuoka\t667\t619',
+      'Hyogo\t623\t544'
+    ].join('\n');
+    document.getElementById('regionInput').value = sample;
+    document.getElementById('controlBar').classList.add('show');
+    updateLineCount();
+    runConversion();
+    return;
+  }
+
+  // ▼ DV360 sample
+  sample = [
     '群馬県前橋市',
     '東京都港区',
     '東京都',
@@ -1067,14 +1401,26 @@ function updateLineCount() {
 }
 
 // ============================================================
+//  入力状態統一同期（行数 + 控制栏可见）
+// ============================================================
+function syncInputState() {
+  updateLineCount();
+  // 控制栏（変換チェック/クリア）始终显示
+  document.getElementById('controlBar').classList.add('show');
+}
+
+// ============================================================
 //  イベント登録
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-  // 入力カウント更新
-  document.getElementById('regionInput').addEventListener('input', function() {
-    updateLineCount();
-    const hasText = this.value.trim().length > 0;
-    document.getElementById('controlBar').classList.toggle('show', hasText);
+  // メディア切替時UI更新
+  document.getElementById('mediaSelect').addEventListener('change', updateMediaUI);
+
+  // 入力状態同期（行数+控制栏）
+  document.getElementById('regionInput').addEventListener('input', syncInputState);
+  document.getElementById('regionInput').addEventListener('change', syncInputState);
+  document.getElementById('regionInput').addEventListener('paste', function() {
+    setTimeout(syncInputState, 0);
   });
 
   // Masterテーブル初期描画
@@ -1087,12 +1433,27 @@ document.addEventListener('DOMContentLoaded', function() {
       runConversion();
     }
   });
+
+  // 初期UI同期（DV360がデフォルト）
+  updateMediaUI();
+  syncInputState();
+});
+
+// ブラウザ復元時（bfcache / 前進戻る）の行数再計算
+window.addEventListener('pageshow', function() {
+  syncInputState();
 });
 
 // ============================================================
 //  変換結果コピー
 // ============================================================
 function copyConversionResults() {
+  if (getMediaConfig().media === 'toyokeizai') {
+    copyToyokeizaiResults();
+    return;
+  }
+
+  // ▼ DV360 mode
   const tbody = document.getElementById('resultBody');
   const rows = tbody.querySelectorAll('tr');
   const results = [];
@@ -1124,7 +1485,7 @@ function copyConversionResults() {
   }
 }
 
-function fallbackCopy(text, count) {
+function fallbackCopy(text, msg) {
   var ta = document.createElement('textarea');
   ta.value = text;
   ta.style.position = 'fixed';
@@ -1134,7 +1495,8 @@ function fallbackCopy(text, count) {
   ta.select();
   try {
     document.execCommand('copy');
-    showToast('変換結果を ' + count + ' 件コピーしました', 'success');
+    var toastStr = (typeof msg === 'string') ? msg : ('変換結果を ' + msg + ' 件コピーしました');
+    showToast(toastStr, 'success');
   } catch (e) {
     showToast('コピーに失敗しました', 'info');
   }

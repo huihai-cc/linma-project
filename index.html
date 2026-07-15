@@ -415,6 +415,26 @@
             color: #856404;
         }
 
+        /* ===== 更新等级标签 ===== */
+        .upd-type { display:inline-block; border-radius:999px; padding:1px 7px; font-size:0.62rem; font-weight:bold; margin-left:4px; vertical-align:middle; line-height:1.5; letter-spacing:0.3px; }
+        .upd-type-new { background:linear-gradient(135deg,#7e3da2,#b87fd4); color:white; }
+        .upd-type-add { background:linear-gradient(135deg,#1e8449,#4ec97a); color:white; }
+        .upd-type-improve { background:linear-gradient(135deg,#d66f1c,#f5b56b); color:white; }
+        .upd-type-fix { background:linear-gradient(135deg,#af3328,#e07066); color:white; }
+        .sidebar .upd-type { font-size:0.58rem; padding:0 5px; }
+        .modal-entry .upd-type-side { display:inline-block; border-radius:999px; padding:1px 8px; font-size:0.7rem; font-weight:bold; margin-left:8px; color:white; }
+        .upd-type-side-new { background:#7e3da2; }
+        .upd-type-side-add { background:#1e8449; }
+        .upd-type-side-improve { background:#d66f1c; }
+        .upd-type-side-fix { background:#af3328; }
+        .upd-tag { display:inline-block; padding:0 6px; border-radius:3px; font-size:0.65rem; font-weight:bold; color:white; margin-right:4px; }
+        .upd-tag-new { background:#7e3da2; }
+        .upd-tag-add { background:#1e8449; }
+        .upd-tag-improve { background:#d66f1c; }
+        .upd-tag-fix { background:#af3328; }
+        .update-card { position:relative; }
+        .update-card-badge { position:absolute; top:6px; right:6px; font-size:0.6rem; }
+
     </style>
 </head>
 <body>
@@ -498,7 +518,7 @@
             <a class="card" href="tools_text.html" target="_blank">
                 <span class="card-icon">🔍</span>
                 <span class="card-name">文本对比工具</span>
-                <span class="card-desc">文字列の差分を確認</span>
+                <span class="card-desc">逐行比較・包含関係・記号チェックに加え、完全一致行の色分けと重複位置への快速定位に対応</span>
             </a>
             <a class="card" href="excel_clean.html" target="_blank">
                 <span class="card-icon">🧹</span>
@@ -539,7 +559,7 @@
             <a class="card" href="region_check.html" target="_blank">
                 <span class="card-icon">🗾</span>
                 <span class="card-name">地域表記変換チェック</span>
-                <span class="card-desc">日方地域記載 → 管理画面用表記へ変換</span>
+                <span class="card-desc">日方地域記載の変換に加え、東洋経済新報社向け英語地域→日本語都道府県変換に対応</span>
             </a>
             <a class="card" href="upload.html" target="_blank">
                 <span class="card-icon">📤</span>
@@ -817,8 +837,27 @@ function toggleAccordion(id) {
 // ===== 更新履历 =====
 const UPDATE_LOG = [
     {
+        date: '2026/07/15',
+        requester: '董馨宁',
+        type: 'new',
+        tool: '地域表記変換チェック',
+        title: '東洋経済新報社モードを追加',
+        detail: '英語地域＋数値2列を日本語都道府県へ変換し、対象外を除外してExcel用3列データとしてコピーできる機能を追加。',
+        note: '',
+    },
+    {
+        date: '2026/07/15',
+        requester: '董馨宁',
+        type: 'add',
+        tool: '文本处理工具',
+        title: '重複行チェックを追加',
+        detail: '貼り付けた内容から完全一致する行を同色で表示し、重複グループごとに快速定位できる機能を追加。',
+        note: '',
+    },
+    {
         date: '2026/07/14',
         requester: '杨蒙蒙',
+        type: 'add',
         tool: 'Amazon DSP 設定チェック',
         title: 'Amazon DSP FQ 英文表记识别追加',
         detail: '追加 Frequency Cap 英文表记的识别规则，支持「5times/1day」等设定表格式与 Amazon DSP 下载数据中的「FrequencyCap1:[User, 5, 1, Days]」进行正确比对。同时补强全角斜线（／）、Day/Days、Hour/Hours、Minute/Minutes 等格式差异的标准化处理，避免实际含义一致时被误判为不一致或要确认。',
@@ -827,6 +866,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/14',
         requester: '张宇驰',
+        type: 'add',
         tool: '地域表記変換チェック',
         title: '「変換結果をコピー」機能を追加',
         detail: '変換結果列のみを表示順で一括コピーできるボタンを追加。コピー時に市区町村・都道府県の区分表記も保持され、空結果は自動スキップ。クリップボードAPI非対応環境向けのfallbackも実装済み。',
@@ -835,6 +875,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/14',
         requester: '張羽凡',
+        type: 'improve',
         tool: '地域表記変換チェック',
         title: 'DV360正式資料に基づく地域認証マスタ更新',
         detail: '西武鉄道DV360設定シートより116件の正式な地域表記をCONFIRMEDマスタに追加。東京23区区部のCity表記、埼玉県羽生市のCity表記、町村（伊奈町・宮代町・三芳町・松伏町・杉戸町・愛川町・清川村）および千葉県鎌ヶ谷市など未登録地域を新規登録。対象116件すべてが緑色OK_市区町村判定。',
@@ -843,6 +884,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/10',
         requester: '於洋',
+        type: 'fix',
         tool: 'Excel対比',
         title: '修正 Excel 内部范围异常导致行数识别不足',
         detail: '修正部分系统导出 Excel 因内部 dimension / !ref 范围异常，导致实际 800 多行数据仅识别为 29 行的问题。新增真实单元格范围扫描逻辑，不再单纯依赖 !ref；通过扫描实际存在的单元格地址重新计算有效行列范围。已确认 Job-List 样本可正确识别 802 / 803 行并参与完整对比。',
@@ -851,6 +893,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/10',
         requester: '杨蒙蒙',
+        type: 'fix',
         tool: '上传组件',
         title: '修复上传区域重复提示窗口',
         detail: '修复 Excel対比 与 Amazon DSP設定チェック 上传区域事件重复绑定问题。上传设定表或下载数据时，选错文件后点击删除/重新选择，有时会连续弹出多次提示窗口；现统一上传区域事件初始化逻辑，通过 cloneNode 清除旧事件后重新绑定，避免 addEventListener 重复叠加，同时避免 onclick 与 addEventListener 混用。已确认错误提示仅弹出 1 次，删除后重新上传正常。',
@@ -859,6 +902,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/09',
         requester: '马林',
+        type: 'improve',
         tool: '登录系统',
         title: '登录状态 8小时有效',
         detail: '登录状态改为 8 小时有效，超过时间后需重新登录，提升工具使用安全性。',
@@ -867,6 +911,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/09',
         requester: '张微',
+        type: 'fix',
         tool: 'Amazon DSP 設定チェック',
         title: 'Amazon DSP 設定チェック 修复',
         detail: '修复新追加 LI 被误判为寄存LI的问题；后台有但设定表没有的 LI 改为默认显示「要確認」；恢复一致绿色 / 不一致红色 / 要确认黄色的显示规则；修复 FQ 与 Audience 名称格式差异导致的误判。',
@@ -875,6 +920,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/08',
         requester: '张雨婷',
+        type: 'fix',
         tool: 'Excel清洗',
         title: '入稿文本首行前存在空行，且混有零宽空格',
         detail: 'cleanSiTrail 追加删除文本开头空行逻辑，并保持正文换行和段落空行不变。' +
@@ -884,6 +930,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/07',
         requester: '张黎',
+        type: 'improve',
         tool: '文本对比',
         title: '包含关系比对：纯包含关系不再标异常颜色',
         detail: '「包含关系比对」已优化：当 A/B 文本存在纯包含关系时，不再把被包含之外的部分标成异常颜色。',
@@ -892,6 +939,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/03',
         requester: '苗青',
+        type: 'add',
         tool: 'Excel 対比',
         title: '新增 .xlsb 格式支持 + 浮点精度优化',
         detail: 'Excel 对比工具现在支持 .xlsb（Excel Binary Workbook）格式的上传和对比。同时优化了数值比较逻辑，之前因为 Excel 公式计算产生的微小浮点误差（如 1744.31 vs 1744.3100000000002）会被误标为差异，现在会自动四舍五入到小数点后 2 位再比较，只有真正差 0.01 以上的才会被标出来。',
@@ -900,6 +948,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/03',
         requester: '张微',
+        type: 'improve',
         tool: 'Amazon DSP 設定チェック',
         title: '表格行高可以调整了',
         detail: '上传表格和下载数据进行对比后，在结果显示区的「列の表示切替」下方出现了「📏 行高調整」的滑块和输入框。拖动滑块就能让表格行变大或变小，方便查看内容多的单元格。如果某个格子文字被截断了，双击格子就能展开看全部内容，再双击收回。',
@@ -908,6 +957,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/09',
         requester: '张梦田',
+        type: 'add',
         tool: 'Amazon DSP 設定チェック',
         title: 'PVA PG案件の非設定項目を対象外処理',
         detail: 'PVA Programmatic Guaranteed 案件中，管理画面不设定的项目不再作为错误比较对象。\n本次对以下字段追加対象外处理：\n- Location targeting 1 of 2\n- Pacing profile\n- Base supply bid*\n- Maximum average CPM\n\n显示：対象外 / PGのため比較対象外\n\n注意：Line item budget 保持原逻辑；W:AD 灰色区域字段未新增比较；非 PG / 非 PVA 不受影响。',
@@ -916,6 +966,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/09',
         requester: '张梦田',
+        type: 'add',
         tool: '文本处理 tools_text.html',
         title: '对比工具追加「地域リスト比較」模式',
         detail: '日方地域リスト（北海道/宮城/茨城/…）与系统侧表記（東京都/神奈川県/…）因表記ゆれ無法良好匹配的问题。\n' +
@@ -931,6 +982,7 @@ const UPDATE_LOG = [
     {
         date: '2026/07/09',
         requester: '張羽凡',
+        type: 'new',
         tool: '地域表記変換チェック region_check.html',
         title: '新增独立模块「地域表記変換チェック」',
         detail: '日方 DV360 設定依頼中的地域記載有时全写在一列、有时分 A/B/C 列。' +
@@ -947,7 +999,6 @@ const UPDATE_LOG = [
                  '需 DV360 管理画面确认后才能从 CANDIDATE 升级为 CONFIRMED。',
         note: '当前状态：本地已提交（5148dc0），push 安全分类器暂不可用。',
     },
-    // 后续更新在这里追加
 ];
 
 const MAX_SIDEBAR = 10;
@@ -955,6 +1006,15 @@ const MAX_SIDEBAR = 10;
 // 统一排序函数：返回按日期降序排列的副本（不修改原数组）
 function getSortedUpdateLog() {
     return [...UPDATE_LOG].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function getTypeLabel(type) {
+    var m={'new':'🆕 新機能','add':'➕ 機能追加','improve':'🔧 改善','fix':'🐛 修正'};
+    return m[type]||'🔧 改善';
+}
+function getTypeClass(type) {
+    var m={'new':'new','add':'add','improve':'improve','fix':'fix'};
+    return m[type]||'improve';
 }
 
 function renderSidebarUpdates() {
@@ -967,6 +1027,7 @@ function renderSidebarUpdates() {
             <div>
                 <span class="update-card-date">${item.date}</span>
                 <span class="update-card-requester">${item.requester}</span>
+                <span class="upd-type upd-type-${getTypeClass(item.type)}">${getTypeLabel(item.type)}</span>
             </div>
             <div class="update-card-title">[${item.tool}] ${item.title}</div>
         </div>`).join('');
@@ -982,6 +1043,7 @@ function openUpdateModal(focusIndex) {
             <div class="modal-entry-meta">
                 ${item.date}
                 <span class="modal-entry-requester">${item.requester}</span>
+                <span class="upd-type-side upd-type-side-${getTypeClass(item.type)}">${getTypeLabel(item.type)}</span>
                 <span style="color:#999;margin-left:6px;">${item.tool}</span>
             </div>
             <div class="modal-entry-title">${item.title}</div>
