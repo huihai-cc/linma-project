@@ -245,91 +245,28 @@
             .accordion-body { grid-template-columns: 1fr; }
         }
 
-        /* ===== 右侧栏 ===== */
-        .sidebar {
-            position: sticky;
-            top: 20px;
-            max-height: calc(100vh - 40px);
-            background: rgba(255,255,255,0.9);
-            border-radius: 12px;
-            border: 1px solid rgba(205,216,228,0.82);
-            box-shadow: 0 10px 24px rgba(31,55,77,0.07);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            backdrop-filter: blur(8px);
-        }
-        .sidebar-header {
-            padding: 14px 16px 11px;
-            font-size: 0.88rem;
-            font-weight: bold;
-            color: #22384a;
-            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,252,255,0.86));
-            border-bottom: 1px solid rgba(228,232,237,0.78);
-            flex-shrink: 0;
-        }
-        .update-card {
-            padding: 10px 12px;
-            margin: 0 8px 6px;
-            cursor: pointer;
-            transition: background 0.15s, border-color 0.15s;
-            border: 1px solid rgba(232,237,242,0.9);
-            border-radius: 8px;
-            background: #ffffff;
-        }
-        .update-card:nth-child(even) { background: #f8fbff; }
-        .update-card:nth-child(odd) { background: #ffffff; }
-        .update-card:hover {
-            background: #eef6ff;
-            border-color: rgba(190,213,235,0.95);
-        }
-        .update-card:first-child { margin-top: 8px; }
-        .update-card:last-child { margin-bottom: 8px; }
-        .update-card-date {
-            font-size: 0.7rem;
-            color: #71808c;
-            font-weight: 600;
-        }
-        .update-card-requester {
-            display: inline-block;
-            background: linear-gradient(135deg, #2b84bd, #4aa6dc);
-            color: white;
-            border-radius: 999px;
-            padding: 1px 7px;
-            font-size: 0.65rem;
-            margin-left: 4px;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.22);
-        }
-        .update-card-title {
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: #263b4d;
-            margin-top: 4px;
-            line-height: 1.4;
-        }
-        #updateCardList {
-            overflow-y: auto;
-            flex: 1;
-            min-height: 0;
-            padding-top: 2px;
-        }
-        .sidebar-footer {
-            padding: 10px 16px;
-            text-align: center;
-            border-top: 1px solid rgba(228,232,237,0.78);
-            background: rgba(250,252,255,0.78);
-            flex-shrink: 0;
-        }
-        .sidebar-footer button {
-            background: none;
-            border: none;
-            color: #2478ac;
-            font-size: 0.78rem;
-            font-weight: 700;
-            cursor: pointer;
-            padding: 4px 12px;
-        }
-        .sidebar-footer button:hover { text-decoration: underline; }
+        /* ===== 近期更新 - 分组展示 ===== */
+        .update-group { margin:0 8px 10px; border-radius:8px; overflow:hidden; border:1px solid rgba(228,232,237,0.78); background:#fff; }
+        .update-group-header { padding:8px 12px; font-size:0.75rem; font-weight:700; display:flex; align-items:center; gap:6px; border-bottom:1px solid rgba(228,232,237,0.6); }
+        .ug-header-new { background:linear-gradient(135deg,#f3edf7,#faf5fc); color:#5b2c82; border-left:3px solid #7e3da2; }
+        .ug-header-add { background:linear-gradient(135deg,#edf7f1,#f5faf7); color:#1a6b3d; border-left:3px solid #1e8449; }
+        .ug-header-fix { background:linear-gradient(135deg,#fdf5ef,#fefaf5); color:#a65614; border-left:3px solid #d66f1c; }
+        .update-item { padding:8px 10px; cursor:pointer; border-bottom:1px solid rgba(228,232,237,0.5); transition:background 0.12s; }
+        .update-item:last-child { border-bottom:none; }
+        .update-item:hover { background:#f0f6fe; }
+        .update-item-meta { font-size:0.65rem; color:#888; display:flex; align-items:center; gap:4px; margin-bottom:3px; }
+        .update-item-date { font-weight:600; color:#71808c; }
+        .update-item-req { display:inline-block; background:linear-gradient(135deg,#2b84bd,#4aa6dc); color:white; border-radius:999px; padding:0 6px; font-size:0.6rem; box-shadow:inset 0 1px 0 rgba(255,255,255,0.22); line-height:1.6; }
+        .update-item-title { font-size:0.74rem; font-weight:600; color:#263b4d; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .update-item-desc { font-size:0.65rem; color:#8a9aa8; line-height:1.3; margin-top:2px; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
+        .sidebar #updateCardList { padding-top:6px; }
+
+        /* ===== 弹窗内保留等级标签 ===== */
+        .modal-entry .upd-type-side { display:inline-block; border-radius:999px; padding:1px 8px; font-size:0.7rem; font-weight:bold; margin-left:8px; color:white; }
+        .upd-type-side-new { background:#7e3da2; }
+        .upd-type-side-add { background:#1e8449; }
+        .upd-type-side-improve { background:#d66f1c; }
+        .upd-type-side-fix { background:#af3328; }
 
         /* ===== 履历弹窗 ===== */
         .modal-overlay {
@@ -415,27 +352,7 @@
             color: #856404;
         }
 
-        /* ===== 更新等级标签 ===== */
-        .upd-type { display:inline-block; border-radius:999px; padding:1px 7px; font-size:0.62rem; font-weight:bold; margin-left:4px; vertical-align:middle; line-height:1.5; letter-spacing:0.3px; }
-        .upd-type-new { background:linear-gradient(135deg,#7e3da2,#b87fd4); color:white; }
-        .upd-type-add { background:linear-gradient(135deg,#1e8449,#4ec97a); color:white; }
-        .upd-type-improve { background:linear-gradient(135deg,#d66f1c,#f5b56b); color:white; }
-        .upd-type-fix { background:linear-gradient(135deg,#af3328,#e07066); color:white; }
-        .sidebar .upd-type { font-size:0.58rem; padding:0 5px; }
-        .modal-entry .upd-type-side { display:inline-block; border-radius:999px; padding:1px 8px; font-size:0.7rem; font-weight:bold; margin-left:8px; color:white; }
-        .upd-type-side-new { background:#7e3da2; }
-        .upd-type-side-add { background:#1e8449; }
-        .upd-type-side-improve { background:#d66f1c; }
-        .upd-type-side-fix { background:#af3328; }
-        .upd-tag { display:inline-block; padding:0 6px; border-radius:3px; font-size:0.65rem; font-weight:bold; color:white; margin-right:4px; }
-        .upd-tag-new { background:#7e3da2; }
-        .upd-tag-add { background:#1e8449; }
-        .upd-tag-improve { background:#d66f1c; }
-        .upd-tag-fix { background:#af3328; }
-        .update-card { position:relative; }
-        .update-card-badge { position:absolute; top:6px; right:6px; font-size:0.6rem; }
-
-    </style>
+        </style>
 </head>
 <body>
 
@@ -843,6 +760,7 @@ const UPDATE_LOG = [
         tool: '地域表記変換チェック',
         title: '東洋経済新報社モードを追加',
         detail: '英語地域＋数値2列を日本語都道府県へ変換し、対象外を除外してExcel用3列データとしてコピーできる機能を追加。',
+        summary: '英語地域を日本語都道府県へ変換し、対象外を除外してExcel用3列データとしてコピー可能。',
         note: '',
     },
     {
@@ -852,6 +770,7 @@ const UPDATE_LOG = [
         tool: '文本处理工具',
         title: '重複行チェックを追加',
         detail: '貼り付けた内容から完全一致する行を同色で表示し、重複グループごとに快速定位できる機能を追加。',
+        summary: '完全一致行を同色表示し、重複グループごとに快速定位可能。',
         note: '',
     },
     {
@@ -1001,7 +920,7 @@ const UPDATE_LOG = [
     },
 ];
 
-const MAX_SIDEBAR = 10;
+const MAX_GROUP = 3;
 
 // 统一排序函数：返回按日期降序排列的副本（不修改原数组）
 function getSortedUpdateLog() {
@@ -1021,16 +940,35 @@ function renderSidebarUpdates() {
     const list = document.getElementById('updateCardList');
     if (!list) return;
     const sorted = getSortedUpdateLog();
-    const items = sorted.slice(0, MAX_SIDEBAR);
-    list.innerHTML = items.map((item, i) => `
-        <div class="update-card" onclick="openUpdateModal(${i})">
-            <div>
-                <span class="update-card-date">${item.date}</span>
-                <span class="update-card-requester">${item.requester}</span>
-                <span class="upd-type upd-type-${getTypeClass(item.type)}">${getTypeLabel(item.type)}</span>
-            </div>
-            <div class="update-card-title">[${item.tool}] ${item.title}</div>
-        </div>`).join('');
+    var groups={'new':{icon:'🆕',label:'新機能',cls:'new',items:[]},'add':{icon:'➕',label:'機能追加',cls:'add',items:[]},'fix':{icon:'🔧',label:'改善・修正',cls:'fix',items:[]}};
+    for(var i=0;i<sorted.length;i++){
+        var item=sorted[i];
+        if(item.type==='new'&&groups.new.items.length<MAX_GROUP)groups.new.items.push(item);
+        else if(item.type==='add'&&groups.add.items.length<MAX_GROUP)groups.add.items.push(item);
+        else if((item.type==='improve'||item.type==='fix')&&groups.fix.items.length<MAX_GROUP)groups.fix.items.push(item);
+    }
+    var html='';
+    var keys=['new','add','fix'];
+    var clsMap={'new':'ug-header-new','add':'ug-header-add','fix':'ug-header-fix'};
+    var iconMap={'fix':'🐛 ','improve':'🔧 '};
+    var sortedRef=getSortedUpdateLog();
+    for(var k=0;k<keys.length;k++){
+        var key=keys[k],g=groups[key];
+        if(g.items.length===0)continue;
+        html+='<div class="update-group"><div class="update-group-header '+clsMap[key]+'">'+g.icon+' '+g.label+'</div>';
+        for(var j=0;j<g.items.length;j++){
+            var item=g.items[j];
+            var idx=sortedRef.indexOf(item);
+            var subIcon=iconMap[item.type]||'';
+            html+='<div class="update-item" onclick="openUpdateModal('+idx+')">';
+            html+='<div class="update-item-meta"><span class="update-item-date">'+item.date+'</span> <span class="update-item-req">'+subIcon+item.requester+'</span></div>';
+            html+='<div class="update-item-title">['+item.tool+'] '+item.title+'</div>';
+            if(item.summary)html+='<div class="update-item-desc">'+item.summary+'</div>';
+            html+='</div>';
+        }
+        html+='</div>';
+    }
+    list.innerHTML=html;
 }
 
 function openUpdateModal(focusIndex) {
