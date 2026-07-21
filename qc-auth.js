@@ -4,7 +4,7 @@
 // ============================================================
 
 // ⚠️ 部署GAS后，把下面的URL替换为实际的Web App URL
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbw8vN6yeZ4Mrphhdojd7T69hwQM_LM_OZnjgHrZub1EYHkZ4oEol6vrQfNrk1xEXjEF/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxzt6UmeFpkloLSlMVzyeBD0x63gK_ddqlGYcW8f_OKgM1-Sk1QIGBIAssrt_tO9HRD/exec';
 
 // ==================== 认证检查 ====================
 
@@ -146,6 +146,16 @@ async function sendLog(tool, diffCount, criticalCount, note) {
     console.error('[sendLog] failed', { name: e && e.name, message: e && e.message, tool: tool });
     return { ok: false, error: 'sendLog error: ' + (e && e.message) };
   }
+}
+
+// 发送密码重置验证码
+async function sendResetCode(email) {
+  return await apiCall('sendResetCode', { email: (email || '').trim().toLowerCase() });
+}
+
+// 重置密码
+async function resetPassword(email, code, newPassword) {
+  return await apiCall('resetPassword', { email: (email || '').trim().toLowerCase(), code: code, newPassword: newPassword });
 }
 
 // ==================== 页面级认证守卫 ====================

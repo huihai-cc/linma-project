@@ -28,6 +28,10 @@ function doPost(e) {
         return handleLogin(data);
       case 'log':
         return handleLog(data);
+      case 'sendResetCode':
+        return handleSendResetCode(data);
+      case 'resetPassword':
+        return handleResetPassword(data);
       default:
         return json({ ok: false, error: '未知操作' });
     }
@@ -186,6 +190,172 @@ function handleLog(data) {
     monthLabel             // I: 月統計
   ]);
   return json({ ok: true });
+}
+
+// ==================== 密码重置 ====================
+
+const RESET_MAX_ATTEMPTS = 5; // 验证码最大尝试次数
+
+function handleSendResetCode(data) {
+  const { email } = data;
+  if (!email) {
+    return json({ ok: false, error: '邮箱为必填项' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // 查找用户（不区分大小写）
+  const usersSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('users');
+  const usersData = usersSheet.getDataRange().getValues();
+  let storedEmail = null;
+  let userName = '';
+
+  for (let i = 0; i < usersData.length; i++) {
+    if (String(usersData[i][0] || '').trim().toLowerCase() === normalizedEmail) {
+      storedEmail = usersData[i][0];
+      userName = usersData[i][1] || '';
+      break;
+    }
+  }
+
+  if (!storedEmail) {
+    return json({ ok: false, error: '该邮箱未注册' });
+  }
+
+  // 生成6位验证码
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+
+  // 存入 reset_codes sheet（清除该邮箱旧记录）
+  const resetSheet = getOrCreateResetCodesSheet();
+  removeResetCodeByEmail(resetSheet, normalizedEmail);
+  const expiry = new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000);
+  resetSheet.appendRow([normalizedEmail, code, 0, jstNow(), expiry.toISOString()]);
+
+  // 发送重置验证码邮件
+  try {
+    GmailApp.sendEmail(storedEmail,
+      '【惠海QCポータル】パスワードリセット認証コード / 密码重置验证码',
+      (userName || storedEmail) + ' 様\n\n' +
+      '惠海QCポータルのパスワードリセットがリクエストされました。\n' +
+      '下記の認証コードをパスワードリセット画面に入力してください。\n\n' +
+      'パスワードリセットのリクエストがありました。\n' +
+      '以下の認証コードを入力して、新しいパスワードを設定してください。\n\n' +
+      '■ 認証コード / 验证码：' + code + '\n' +
+      '■ 有効期限 / 有效期：' + CODE_EXPIRY_MINUTES + '分間 / ' + CODE_EXPIRY_MINUTES + '分钟\n\n' +
+      '※このメールに心当たりがない場合は、そのまま削除してください。\n' +
+      '※如果您没有请求重置密码，请忽略此邮件。\n\n' +
+      '---\n' +
+      '惠海QCポータル システム管理者'
+    );
+  } catch (mailErr) {
+    return json({ ok: false, error: '验证码邮件发送失败: ' + mailErr.toString() });
+  }
+
+  return json({ ok: true, message: '验证码已发送至 ' + storedEmail + '，有效期' + CODE_EXPIRY_MINUTES + '分钟' });
+}
+
+function handleResetPassword(data) {
+  const { email, code, newPassword } = data;
+  if (!email || !code || !newPassword) {
+    return json({ ok: false, error: '邮箱、验证码和新密码为必填项' });
+  }
+
+  if (newPassword.length < 8) {
+    return json({ ok: false, error: 'パスワードは8文字以上必要です / 密码至少需要8位' });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const resetSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('reset_codes');
+  if (!resetSheet) {
+    return json({ ok: false, error: '验证码已过期，请重新获取' });
+  }
+
+  const resetRows = resetSheet.getDataRange().getValues();
+  let foundRow = -1;
+
+  // 从最新记录开始查找
+  for (let i = resetRows.length - 1; i >= 0; i--) {
+    if (String(resetRows[i][0] || '').trim().toLowerCase() === normalizedEmail) {
+      foundRow = i;
+      break;
+    }
+  }
+
+  if (foundRow < 0) {
+    return json({ ok: false, error: '未找到验证请求，请重新获取验证码' });
+  }
+
+  // 检查过期（兼容 Sheet 可能返回的 Date 对象或字符串）
+  var expiryRaw = resetRows[foundRow][4];
+  var expiryDate = expiryRaw instanceof Date ? expiryRaw : new Date(String(expiryRaw || ''));
+  if (isNaN(expiryDate.getTime()) || expiryDate < new Date()) {
+    resetSheet.deleteRow(foundRow + 1);
+    return json({ ok: false, error: '验证码已过期，请重新获取' });
+  }
+
+  // 检查尝试次数
+  const attempts = parseInt(resetRows[foundRow][2]) || 0;
+  if (attempts >= RESET_MAX_ATTEMPTS) {
+    resetSheet.deleteRow(foundRow + 1);
+    return json({ ok: false, error: '验证码尝试次数过多，请重新获取' });
+  }
+
+  // 检查验证码
+  if (String(resetRows[foundRow][1]) !== String(code)) {
+    resetSheet.getRange(foundRow + 1, 3).setValue(attempts + 1);
+    const remaining = RESET_MAX_ATTEMPTS - attempts - 1;
+    return json({ ok: false, error: '验证码错误，剩余尝试次数: ' + remaining });
+  }
+
+  // 验证成功：更新密码
+  const usersSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('users');
+  const usersData = usersSheet.getDataRange().getValues();
+  let userRow = -1;
+  let storedEmail = '';
+
+  for (let i = 0; i < usersData.length; i++) {
+    if (String(usersData[i][0] || '').trim().toLowerCase() === normalizedEmail) {
+      userRow = i;
+      storedEmail = usersData[i][0];
+      break;
+    }
+  }
+
+  if (userRow < 0) {
+    return json({ ok: false, error: 'ユーザーが見つかりません / 用户不存在' });
+  }
+
+  // 使用存储的原始邮箱计算哈希（保持与登录算法完全一致）
+  const newHash = sha256(newPassword + storedEmail);
+  usersSheet.getRange(userRow + 1, 3).setValue(newHash);
+
+  // 删除已使用的验证码记录
+  resetSheet.deleteRow(foundRow + 1);
+
+  return json({ ok: true, message: 'パスワードが正常に更新されました。新しいパスワードでログインしてください。/ 密码修改成功，请使用新密码登录。' });
+}
+
+// ==================== Reset Codes Sheet 辅助 ====================
+
+function getOrCreateResetCodesSheet() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  let sheet = ss.getSheetByName('reset_codes');
+  if (!sheet) {
+    sheet = ss.insertSheet('reset_codes');
+    sheet.appendRow(['email', 'code', 'attempts', 'created_at', 'expiry']);
+  }
+  return sheet;
+}
+
+function removeResetCodeByEmail(sheet, email) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const rows = sheet.getDataRange().getValues();
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i][0] || '').trim().toLowerCase() === normalizedEmail) {
+      sheet.deleteRow(i + 1);
+    }
+  }
 }
 
 // ==================== Token 工具 ====================

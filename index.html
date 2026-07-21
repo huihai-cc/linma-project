@@ -381,6 +381,9 @@
             <input type="password" id="loginPwd" placeholder="密码" required minlength="4">
             <button type="submit" id="loginBtn">登 录</button>
             <div class="auth-msg" id="loginMsg"></div>
+            <div class="auth-hint" style="margin-top:6px;">
+                <a href="javascript:void(0)" onclick="showResetForm()" style="color:#7f8c8d;text-decoration:none;font-size:0.76rem;">パスワードをお忘れですか？</a>
+            </div>
         </form>
 
         <!-- 注册表单 -->
@@ -413,6 +416,30 @@
                 <button type="button" onclick="handleVerifyCode()">验证并注册</button>
                 <div class="auth-msg" id="regMsg2"></div>
                 <button type="button" style="background:none;color:#2980b9;border:none;font-size:0.78rem;cursor:pointer;" onclick="resetRegStep()">← 重新发送验证码</button>
+            </div>
+        </form>
+
+        <!-- 密码重置表单 -->
+        <form class="auth-form" id="resetForm" onsubmit="return false;">
+            <!-- Step1: 输入邮箱 -->
+            <div id="resetStep1">
+                <p style="font-size:0.82rem;color:#555;margin-bottom:8px;">パスワードをお忘れですか？<br>登録済みのメールアドレスを入力してください。</p>
+                <input type="email" id="resetEmail" placeholder="登録メールアドレス / 注册邮箱" required>
+                <button type="button" id="resetSendCodeBtn" onclick="handleResetSendCode()">認証コード送信 / 发送验证码</button>
+                <div class="auth-msg" id="resetMsg"></div>
+                <button type="button" style="background:none;color:#2980b9;border:none;font-size:0.78rem;cursor:pointer;" onclick="showLoginForm()">← ログインに戻る / 返回登录</button>
+            </div>
+
+            <!-- Step2: 输入验证码和新密码 -->
+            <div id="resetStep2" style="display:none;">
+                <input type="email" id="resetEmailConfirm" placeholder="登録メールアドレス" readonly style="background:#f5f5f5;color:#888;">
+                <input type="text" id="resetCode" placeholder="認証コード6桁 / 请输入6位验证码" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="off">
+                <input type="password" id="resetNewPwd" placeholder="新しいパスワード（8文字以上）/ 新密码（8位以上）" minlength="8" autocomplete="new-password">
+                <input type="password" id="resetNewPwd2" placeholder="新しいパスワード確認 / 确认新密码" minlength="8" autocomplete="new-password">
+                <button type="button" id="resetConfirmBtn" onclick="handleResetPassword()">パスワードを変更 / 确认修改</button>
+                <div class="auth-msg" id="resetMsg2"></div>
+                <button type="button" style="background:none;color:#2980b9;border:none;font-size:0.78rem;cursor:pointer;" onclick="resetBackToStep1()">← 認証コードを再送信 / 重新发送验证码</button>
+                <button type="button" style="background:none;color:#999;border:none;font-size:0.76rem;cursor:pointer;margin-top:4px;" onclick="showLoginForm()">← ログインに戻る / 返回登录</button>
             </div>
         </form>
     </div>
@@ -628,6 +655,11 @@ function switchTab(tab) {
     }
     document.getElementById('loginMsg').textContent = '';
     document.getElementById('regMsg').textContent = '';
+    // 清除重置表单的倒计时
+    if (typeof resetCooldownTimer !== 'undefined' && resetCooldownTimer) {
+        clearInterval(resetCooldownTimer);
+        resetCooldownTimer = null;
+    }
 }
 
 async function handleLogin(e) {
@@ -727,6 +759,151 @@ async function handleVerifyCode() {
     }
 }
 
+// ===== 密码重置流程 =====
+
+var resetEmailTemp = '';
+var resetCooldownTimer = null;
+
+function showResetForm() {
+    document.querySelectorAll('.auth-tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.auth-form').forEach(function(f){ f.classList.remove('active'); });
+    document.getElementById('resetForm').classList.add('active');
+    document.getElementById('resetStep1').style.display = 'block';
+    document.getElementById('resetStep2').style.display = 'none';
+    document.getElementById('resetMsg').textContent = '';
+    document.getElementById('resetMsg2').textContent = '';
+    document.getElementById('resetEmail').value = '';
+    document.getElementById('resetCode').value = '';
+    document.getElementById('resetNewPwd').value = '';
+    document.getElementById('resetNewPwd2').value = '';
+    resetEmailTemp = '';
+    if (resetCooldownTimer) { clearInterval(resetCooldownTimer); resetCooldownTimer = null; }
+    var btn = document.getElementById('resetSendCodeBtn');
+    btn.disabled = false;
+    btn.textContent = '認証コード送信 / 发送验证码';
+}
+
+function showLoginForm() {
+    document.querySelectorAll('.auth-form').forEach(function(f){ f.classList.remove('active'); });
+    document.getElementById('loginForm').classList.add('active');
+    document.querySelectorAll('.auth-tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelector('.auth-tab:first-child').classList.add('active');
+    document.getElementById('loginMsg').textContent = '';
+    document.getElementById('resetMsg').textContent = '';
+    document.getElementById('resetMsg2').textContent = '';
+    if (resetCooldownTimer) { clearInterval(resetCooldownTimer); resetCooldownTimer = null; }
+    var btn = document.getElementById('resetSendCodeBtn');
+    btn.disabled = false;
+    btn.textContent = '認証コード送信 / 发送验证码';
+}
+
+function resetBackToStep1() {
+    document.getElementById('resetStep1').style.display = 'block';
+    document.getElementById('resetStep2').style.display = 'none';
+    document.getElementById('resetMsg2').textContent = '';
+}
+
+async function handleResetSendCode() {
+    var msg = document.getElementById('resetMsg');
+    var btn = document.getElementById('resetSendCodeBtn');
+    msg.className = 'auth-msg';
+
+    var email = document.getElementById('resetEmail').value.trim();
+    if (!email) {
+        msg.className = 'auth-msg error';
+        msg.textContent = 'メールアドレスを入力してください / 请输入邮箱';
+        return;
+    }
+
+    msg.textContent = '⏳ 送信中...';
+    btn.disabled = true;
+
+    var result = await sendResetCode(email);
+
+    if (result.ok) {
+        msg.className = 'auth-msg success';
+        msg.textContent = result.message;
+        resetEmailTemp = email.trim().toLowerCase();
+        document.getElementById('resetEmailConfirm').value = resetEmailTemp;
+        document.getElementById('resetStep1').style.display = 'none';
+        document.getElementById('resetStep2').style.display = 'block';
+        document.getElementById('resetMsg2').textContent = '';
+        document.getElementById('resetCode').value = '';
+        document.getElementById('resetNewPwd').value = '';
+        document.getElementById('resetNewPwd2').value = '';
+        document.getElementById('resetCode').focus();
+
+        // 启动60秒倒计时
+        var seconds = 60;
+        btn.textContent = '再送信 (' + seconds + 's)';
+        resetCooldownTimer = setInterval(function(){
+            seconds--;
+            btn.textContent = '再送信 (' + seconds + 's)';
+            if (seconds <= 0) {
+                clearInterval(resetCooldownTimer);
+                resetCooldownTimer = null;
+                btn.textContent = '認証コード再送信 / 重新发送';
+                btn.disabled = false;
+            }
+        }, 1000);
+    } else {
+        msg.className = 'auth-msg error';
+        msg.textContent = result.error || '送信失敗 / 发送失败';
+        btn.disabled = false;
+    }
+}
+
+async function handleResetPassword() {
+    var msg = document.getElementById('resetMsg2');
+    var btn = document.getElementById('resetConfirmBtn');
+    msg.className = 'auth-msg';
+
+    var code = document.getElementById('resetCode').value.trim();
+    var newPwd = document.getElementById('resetNewPwd').value;
+    var newPwd2 = document.getElementById('resetNewPwd2').value;
+
+    if (!code || code.length !== 6) {
+        msg.className = 'auth-msg error';
+        msg.textContent = '認証コード6桁を入力してください / 请输入6位验证码';
+        return;
+    }
+
+    if (!newPwd || newPwd.length < 8) {
+        msg.className = 'auth-msg error';
+        msg.textContent = 'パスワードは8文字以上必要です / 密码至少需要8位';
+        return;
+    }
+
+    if (newPwd !== newPwd2) {
+        msg.className = 'auth-msg error';
+        msg.textContent = 'パスワードが一致しません / 两次输入的密码不一致';
+        return;
+    }
+
+    msg.textContent = '⏳ パスワード更新中...';
+    btn.disabled = true;
+
+    var result = await resetPassword(resetEmailTemp, code, newPwd);
+
+    if (result.ok) {
+        // 成功后保持按钮禁用，防止2秒倒计时内重复点击
+        msg.className = 'auth-msg success';
+        msg.textContent = result.message;
+        // 清空表单（密码和验证码不保留）
+        document.getElementById('resetEmail').value = '';
+        document.getElementById('resetCode').value = '';
+        document.getElementById('resetNewPwd').value = '';
+        document.getElementById('resetNewPwd2').value = '';
+        resetEmailTemp = '';
+        if (resetCooldownTimer) { clearInterval(resetCooldownTimer); resetCooldownTimer = null; }
+        setTimeout(function(){ showLoginForm(); }, 2000);
+    } else {
+        btn.disabled = false;
+        msg.className = 'auth-msg error';
+        msg.textContent = result.error || '変更失敗 / 修改失败';
+    }
+}
+
 function showMain() {
     document.getElementById('authSection').style.display = 'none';
     document.getElementById('mainSection').style.display = 'block';
@@ -753,6 +930,16 @@ function toggleAccordion(id) {
 
 // ===== 更新履历 =====
 const UPDATE_LOG = [
+    {
+        date: '2026/07/21',
+        requester: '徐丹彤',
+        type: 'add',
+        tool: '登录系统',
+        title: 'パスワードリセット機能を追加',
+        detail: '登録済みメールアドレスへの認証コード送信に対応し、利用者自身で新しいパスワードを設定できるようにしました。認証コードは10分間有効で、誤入力は最大5回までに制限されています。',
+        summary: '登録済みメールアドレスへ認証コードを送信し、利用者自身がパスワードを再設定可能に。認証コード10分有効、誤入力最大5回まで。',
+        note: '',
+    },
     {
         date: '2026/07/15',
         requester: '董馨宁',
