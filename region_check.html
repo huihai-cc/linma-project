@@ -420,6 +420,8 @@ const CONFIRMED_REGION_MASTER = [
   { media:"dv360", prefectureJp:"千葉県", municipalityJp:"船橋市", displayName:"Funabashi, Chiba, Japan", level:"市区町村" },
   { media:"dv360", prefectureJp:"千葉県", municipalityJp:"野田市", displayName:"Noda, Chiba, Japan", level:"市区町村" },
   { media:"dv360", prefectureJp:"千葉県", municipalityJp:"鎌ヶ谷市", displayName:"Kamagaya, Chiba, Japan", level:"市区町村" },
+  // ── 市区町村レベル（2026-07-23 DV360管理画面確認 御殿場市）──
+  { media:"dv360", prefectureJp:"静岡県", municipalityJp:"御殿場市", displayName:"Gotemba, Shizuoka, Japan", level:"市区町村" },
 ];
 
 // ============================================================
@@ -573,7 +575,7 @@ const CITY_EN = {
   '静岡市':'Shizuoka','浜松市':'Hamamatsu','沼津市':'Numazu','熱海市':'Atami',
   '三島市':'Mishima','富士宮市':'Fujinomiya','伊東市':'Ito','島田市':'Shimada',
   '富士市':'Fuji','磐田市':'Iwata','焼津市':'Yaizu','掛川市':'Kakegawa',
-  '藤枝市':'Fujieda','御殿場市':'Gotenba','袋井市':'Fukuroi','下田市':'Shimoda',
+  '藤枝市':'Fujieda','御殿場市':'Gotemba','袋井市':'Fukuroi','下田市':'Shimoda',
   '裾野市':'Susono','湖西市':'Kosai','伊豆市':'Izu','御前崎市':'Omaezaki',
   '菊川市':'Kikugawa','伊豆の国市':'Izunokuni','牧之原市':'Makinohara',
   '名古屋市':'Nagoya','豊橋市':'Toyohashi','岡崎市':'Okazaki','一宮市':'Ichinomiya',
@@ -1094,24 +1096,52 @@ function findMatches(parsed) {
     return { status: 'NG_未識別', displayName: '', note: '「' + prefecture + '」はマスタに登録されていません' };
   }
 
-  // 都道府県なし → 市区町村のみで全件検索（confirmed → candidate 両方）
-  // 【修正】都道府県不明の市区町村は自動確定禁止：常に WARN
+  // 都道府県なし → 市区町村のみで検索
+  // Step 1: 完全一致（municipalityJp 完全一致）
   const searchPool = [...confirmed, ...candidate];
-  const munExact  = searchPool.filter(m => m.municipalityJp === municipality);
+  const munExact = searchPool.filter(m => m.municipalityJp === municipality);
+  // 按「都道府県 + municipalityJp」去重（CONFIRMED/CANDIDATE 同一地域重複回避）
+  const exactDedup = new Map();
+  munExact.forEach(m => {
+    const key = m.prefectureJp + '\x00' + m.municipalityJp;
+    if (!exactDedup.has(key)) exactDedup.set(key, m);
+  });
+  const exactEntries = [...exactDedup.values()];
+  // 获取唯一的都道府県集合
+  const exactPrefs = [...new Set(exactEntries.map(m => m.prefectureJp))];
+
+  if (exactPrefs.length > 0) {
+    // 完全一致结果存在
+    if (exactPrefs.length === 1) {
+      // 唯一确定 → WARN_都道府県推定 + 显示转换结果
+      const matched = exactEntries.find(m => m.prefectureJp === exactPrefs[0]);
+      return {
+        status: 'WARN_都道府県推定',
+        displayName: matched ? matched.displayName : '',
+        note: '都道府県未入力のため「' + exactPrefs[0] + '」と推定しました。正式利用前に確認してください'
+      };
+    } else {
+      // 多个都道府県 → WARN_候補複数
+      const opts = exactPrefs.map(p => p + municipality).join('、');
+      return { status: 'WARN_候補複数', displayName: '', note: '候補: ' + opts + ' — 都道府県を確認してください' };
+    }
+  }
+
+  // Step 2: 完全一致0件 → 后缀候选搜索（仅用于提醒候选，不得自动确定）
   const munSuffix = municipality.length >= 2
     ? searchPool.filter(m => m.municipalityJp.endsWith(municipality) && m.municipalityJp !== municipality)
     : [];
-  const candidateMap = new Map();
-  [...munExact, ...munSuffix].forEach(m => {
-    if (!candidateMap.has(m.prefectureJp)) candidateMap.set(m.prefectureJp, m);
+  const suffixMap = new Map();
+  munSuffix.forEach(m => {
+    if (!suffixMap.has(m.prefectureJp)) suffixMap.set(m.prefectureJp, m);
   });
-  const candidates = [...candidateMap.values()];
+  const suffixCandidates = [...suffixMap.values()];
 
-  if (candidates.length === 0) {
+  if (suffixCandidates.length === 0) {
     return { status: 'NG_未識別', displayName: '', note: '都道府県が不明、かつマスタに該当する市区町村がありません' };
   }
-  const opts = candidates.map(m => m.prefectureJp + (m.municipalityJp ? m.municipalityJp : '')).join('、');
-  return { status: 'WARN_候補複数', displayName: '', note: '候補: ' + opts + ' — 都道府県を確認してください' };
+  const suffixOpts = suffixCandidates.map(m => m.prefectureJp + m.municipalityJp).join('、');
+  return { status: 'WARN_候補複数', displayName: '', note: '候補: ' + suffixOpts + ' — 都道府県を確認してください' };
 }
 
 // ============================================================
@@ -1124,6 +1154,7 @@ function getStatusBadge(status) {
     'WARN_市区町村未登録': ['status-badge status-warn-unreg','⚠ WARN_市区町村未登録'],
     'WARN_候補複数':    ['status-badge status-warn-multi', '⚠ WARN_候補複数'],
     'WARN_候補未確認':  ['status-badge status-warn-unconfirmed','🔶 WARN_候補未確認'],
+    'WARN_都道府県推定':['status-badge status-warn-unconfirmed','⚠ WARN_都道府県推定'],
     'NG_未識別':        ['status-badge status-ng',         '❌ NG_未識別'],
   };
   return map[status] || ['status-badge status-ng', '❌ NG_未識別'];
@@ -1248,16 +1279,18 @@ function renderResults(results) {
   const warnUnreg = results.filter(r => r.status === 'WARN_市区町村未登録').length;
   const warnMulti = results.filter(r => r.status === 'WARN_候補複数').length;
   const warnUnconfirmed = results.filter(r => r.status === 'WARN_候補未確認').length;
+  const warnPrefEstimated = results.filter(r => r.status === 'WARN_都道府県推定').length;
   const ng = results.filter(r => r.status === 'NG_未識別').length;
 
   document.getElementById('resultSummary').textContent =
-    '全' + total + '件 ✅' + okCity + ' ⬆' + okPref + ' 🔶' + warnUnconfirmed + ' ⚠' + (warnUnreg + warnMulti) + ' ❌' + ng;
+    '全' + total + '件 ✅' + okCity + ' ⬆' + okPref + ' 🔶' + warnUnconfirmed + ' ⚠' + (warnUnreg + warnMulti + warnPrefEstimated) + ' ❌' + ng;
 
   // 変換結果のlevel suffixをステータスから推定
   function levelSuffix(status, displayName) {
     if (status === 'OK_市区町村') return '（市区町村）';
     if (status === 'WARN_市区町村未登録') return '（都道府県）';
     if (status === 'OK_都道府県') return '（都道府県）';
+    if (status === 'WARN_都道府県推定') return '（市区町村）';
     if (status === 'WARN_候補未確認' && displayName) {
       return (displayName.match(/,/g) || []).length >= 2 ? '（市区町村）' : '（都道府県）';
     }
@@ -1289,7 +1322,7 @@ function renderResults(results) {
   section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // 使用統計ログ（DV360）
-  var warnTotal = warnUnreg + warnMulti + warnUnconfirmed;
+  var warnTotal = warnUnreg + warnMulti + warnUnconfirmed + warnPrefEstimated;
   var okTotal = okCity + okPref;
   sendLog('地域表記変換チェック-DV360', warnTotal + ng, ng, '入力' + total + '件／OK' + okTotal + '件／要確認' + warnTotal + '件／未識別' + ng + '件');
 }

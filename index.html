@@ -931,6 +931,16 @@ function toggleAccordion(id) {
 // ===== 更新履历 =====
 const UPDATE_LOG = [
     {
+        date: '2026/07/23',
+        requester: '冯翠梅',
+        type: 'improve',
+        tool: '地域表記変換チェック',
+        title: '都道府県未入力時の自動推定＋御殿場市表記修正',
+        detail: '都道府県が未入力の場合でも、市区町村名から一意に特定可能な都道府県を推定し、DV360用の地域表記を表示できるよう改善しました。また、静岡県御殿場市の英語表記を「Gotemba」に修正し、DV360確認済みデータとして正式登録しました。',
+        summary: '市区町村名のみから都道府県を推定するWARN_都道府県推定ロジックを追加。御殿場市の英語表記をGotembaに修正しCONFIRMEDマスタに登録。',
+        note: '',
+    },
+    {
         date: '2026/07/22',
         requester: 'BPO',
         type: 'fix',
