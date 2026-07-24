@@ -1183,18 +1183,62 @@ function readAllSegmentSheets(wb) {
             );
         }
         const data = isNewFMT
-            ? _readSegmentSheetNewFMT(rows)
+            ? _readSegmentSheetDynamic(rows)
             : _readSegmentSheetOldFMT(rows);
         segMap[sheetName] = data;
     }
     return segMap;
 }
 
+/**
+ * Sheet名正規化：トリム・全角スペース・連続スペース・改行を統一
+ */
+function _normalizeSheetName(name) {
+    return String(name || '')
+        .trim()
+        .replace(/　/g, ' ')   // 全角→半角スペース
+        .replace(/\s+/g, ' ')      // 連続スペース統一
+        .replace(/[\r\n]+/g, '');  // 改行削除
+}
+
 function _findSegmentForLI(audienceVal, segMap, liName) {
     if (!audienceVal || !audienceVal.includes('セグメントシート')) {
+        // ── 直接Sheet名参照モード ──
+        // audienceVal = "セグメント①" なら segMap["セグメント①"] を検索
+        const normAud = _normalizeSheetName(audienceVal);
+        if (!normAud) return { groups: [], groupOps: [] };
+
+        const matched = [];
+        for (const [sheetName, data] of Object.entries(segMap)) {
+            const normSheet = _normalizeSheetName(sheetName);
+            if (normSheet === normAud) {
+                // 完全一致
+                if (data.groups.length > 0) return data;
+                // 解析結果が空でも直参照と分かる場合はマーカーを返す
+                return { groups: [], groupOps: [], __directRef__: true, __sheetName__: sheetName };
+            }
+            // 部分一致（セグメント①〜⑨の数字部分など）は最終手段
+            // ただしユニーク候補かつデータが空でない場合のみ
+            if (data.groups.length > 0 && (normSheet.includes(normAud) || normAud.includes(normSheet))) {
+                matched.push({ sheetName, data, normSheet });
+            }
+        }
+
+        // 部分一致：ユニーク候補かつデータありの場合のみ採用
+        if (matched.length === 1) {
+            return matched[0].data;
+        }
+        if (matched.length > 1) {
+            // 複数候補あり→安全に空を返す（曖昧すぎる）
+            console.warn('セグメントシート参照曖昧:', audienceVal, '候補:', matched.map(m=>m.sheetName));
+            return { groups: [], groupOps: [], __directRef__: true, __ambiguous__: true };
+        }
+
+        // 何も見つからなければ空（通常Audienceとして扱われる）
         return { groups: [], groupOps: [] };
     }
-    // ★ 「セグメントシート（CTV）」など括弧内のキーワードを抽出
+
+    // ★ 既存：「セグメントシート（CTV）」など括弧内のキーワードを抽出
     const m = audienceVal.match(/セグメントシート[（(「]([^）)」]+)[）)」]/);
     let keyword = m ? m[1].trim() : '';
 
@@ -1235,56 +1279,167 @@ function _findSegmentForLI(audienceVal, segMap, liName) {
     return { groups: [], groupOps: [] };
 }
 
-// ===== 新FMT(Ver.1-6) =====
-// 行0: グループヘッダー
-// 行1: グループ間演算子
-// 行2: 含む/除外（C列=index2, H列=index7, M列=index12）
-// 行3: グループ内演算子
-// 行4: セグメント名ラベル
-// 行5～: セグメントデータ
-function _readSegmentSheetNewFMT(rows){
+// ===== セグメントシート動的解析（新FMT・直接Sheet名共通）=====
+// 固定行番号に依存せず、セル内容から「含む/除外」「セグメント名」ラベルを検出し、
+// 列ペアとデータ開始行を動的に特定する。
+// 以下の両形式をサポート：
+//   標準形式：含む/除外行とセグメント名行が別行（セグメントシート系）
+//   直接参照形式：含む/除外とセグメント名が同一行の隣接列（セグメント①系）
+function _readSegmentSheetDynamic(rows) {
     const result = { groups: [], groupOps: [] };
+    const MAX_SCAN = Math.min(15, rows.length);
+    const MAX_COL = 20;
 
-    // グループ間演算子：行1のE列(4)とJ列(9)
-    const row1 = rows[1] || [];
-    [4, 9].forEach(col => {
-        const op = String(row1[col] || '').trim();
-        if(op.includes('および') || op.toLowerCase().includes('and')){
-            result.groupOps.push('and');
-        } else if(op.includes('または') || op.toLowerCase().includes('or')){
-            result.groupOps.push('or');
+    // ── Step 1: 全セルスキャンで「含む/除外」と「セグメント名」の位置を収集 ──
+    // typePositions: [{row, col}]  (含む/除外のセル)
+    // segPositions:  [{row, col}]  (セグメント名のセル)
+    const typePos = [];
+    const segPos  = [];
+    for (let i = 0; i < MAX_SCAN; i++) {
+        const r = rows[i] || [];
+        for (let c = 0; c < Math.min(MAX_COL, r.length); c++) {
+            const v = String(r[c] || '').trim();
+            if (!v) continue;
+            if (v === '含む/除外') typePos.push({ row: i, col: c });
+            if (v === 'セグメント名') segPos.push({ row: i, col: c });
         }
-    });
+    }
 
-    // 含む/除外：行2のC列(2), H列(7), M列(12)
-    const row2 = rows[2] || [];
-    const TYPE_COLS = [2, 7, 12];
-    const SEG_COLS  = [1, 6, 11];
-    const DATA_START_ROW = 5;
+    // 含む/除外が見つからなければ空を返す（解析不能）
+    if (typePos.length === 0) return result;
 
-    TYPE_COLS.forEach((typeCol, idx) => {
-        const typeVal = String(row2[typeCol] || '').trim();
-        if(!typeVal) return;
+    // ── Step 2: 列ペア構築 ──
+    // 各 typePos に対して、隣接する（同一行の右隣/左隣、または同列別行）セグメント名列を探す
+    const usedSegCols = new Set();
+    const pairs = []; // [{typeCol, segCol, headerRow, type}]
 
-        const type = (typeVal.toLowerCase().includes('exclude') || typeVal.includes('除外'))
-            ? 'Exclude' : 'Include';
+    for (const tp of typePos) {
+        if (usedSegCols.has(tp.col)) continue; // 既に別のペアで使われている可能性
 
-        const segCol = SEG_COLS[idx];
+        let matchedSegCol = -1;
+        let headerRow = tp.row;
+
+        // ① 同一行の右隣にセグメント名があるか
+        if (segPos.some(sp => sp.row === tp.row && sp.col === tp.col + 1)) {
+            matchedSegCol = tp.col + 1;
+        }
+        // ② 同一行の左隣にセグメント名があるか（標準形式の一部）
+        else if (tp.col > 0 && segPos.some(sp => sp.row === tp.row && sp.col === tp.col - 1)) {
+            matchedSegCol = tp.col - 1;
+        }
+        // ③ 同列で別行のセグメント名（標準形式：type=行2, seg=行4-5）
+        else {
+            const sameColSeg = segPos.filter(sp => sp.col === tp.col);
+            if (sameColSeg.length > 0) {
+                // 最も近い後方行を採用
+                const nearest = sameColSeg.sort((a, b) => Math.abs(a.row - tp.row) - Math.abs(b.row - tp.row))[0];
+                matchedSegCol = nearest.col;
+                headerRow = Math.max(headerRow, nearest.row);
+            }
+        }
+
+        if (matchedSegCol >= 0) {
+            usedSegCols.add(tp.col);
+            usedSegCols.add(matchedSegCol);
+            pairs.push({ typeCol: tp.col, segCol: matchedSegCol, headerRow });
+        }
+    }
+
+    if (pairs.length === 0) return result;
+
+    // ── Step 3: データ開始行の判定 ──
+    // 全ペアの最大 headerRow の次の行から、最初のデータ行（Include/Excludeを含む行）を探す
+    const maxHeaderRow = Math.max(...pairs.map(p => p.headerRow));
+    let dataStart = maxHeaderRow + 1;
+
+    // ヘッダー直後のラベル行（グループ内演算子など）をスキップしてデータ開始行を特定
+    for (let i = dataStart; i < MAX_SCAN + 5 && i < rows.length; i++) {
+        const r = rows[i] || [];
+        // ラベル行判定
+        const cellTexts = [];
+        for (let c = 0; c < Math.min(8, r.length); c++) {
+            const v = String(r[c] || '').trim();
+            if (v) cellTexts.push(v);
+        }
+        const isLabelRow = cellTexts.some(t =>
+            ['グループ内演算子','グループ間演算子','グループ1','グループ2','グループ3',
+             '含む/除外','セグメント名'].includes(t)
+        );
+        if (isLabelRow) continue;
+
+        // データ行かどうか：いずれかのtypeColにInclude/Exclude相当の値がある
+        let hasData = false;
+        for (const p of pairs) {
+            const tv = String(r[p.typeCol] || '').trim().toLowerCase();
+            if (tv === 'include' || tv === 'exclude' || tv === '含む' || tv === '除外') {
+                hasData = true;
+                break;
+            }
+        }
+        if (hasData) { dataStart = i; break; }
+
+        // どのtypeColにも値がないがsegmentColに値がある場合もデータ行とみなす
+        // （Excludeグループでtype列が空の場合がある）
+        for (const p of pairs) {
+            const sv = String(r[p.segCol] || '').trim();
+            if (sv && !['セグメント名','グループ内演算子','含む/除外','グループ間演算子'].includes(sv) && !sv.startsWith('※')) {
+                hasData = true;
+                break;
+            }
+        }
+        if (hasData) { dataStart = i; break; }
+    }
+
+    // ── Step 4: グループ間演算子の抽出（dataStartより前の行から） ──
+    for (let i = 0; i < Math.min(dataStart, MAX_SCAN); i++) {
+        const r = rows[i] || [];
+        for (let c = 0; c < Math.min(MAX_COL, r.length); c++) {
+            if (result.groupOps.length >= 2) break;
+            const v = String(r[c] || '').trim();
+            if (v.includes('および') || v.toLowerCase() === 'and') {
+                if (!result.groupOps.includes('and')) result.groupOps.push('and');
+            } else if (v.includes('または') || v.toLowerCase() === 'or') {
+                if (!result.groupOps.includes('or')) result.groupOps.push('or');
+            }
+        }
+        if (result.groupOps.length >= 2) break;
+    }
+
+    // ── Step 5: 各ペアのデータ抽出 ──
+    for (const p of pairs) {
         const segments = [];
-        for(let i = DATA_START_ROW; i < rows.length; i++){
-            const seg = String(rows[i][segCol] || '').trim();
-            if(!seg) continue;
-            if(['セグメント名','グループ内演算子','含む/除外',
-                'グループ間演算子'].includes(seg)) continue;
-            segments.push(seg);
+        // 最初のデータ行の type 値を元にグループの type を確定
+        let groupType = 'Include';
+        const firstRow = rows[dataStart];
+        if (firstRow) {
+            const ft = String(firstRow[p.typeCol] || '').trim().toLowerCase();
+            if (ft.includes('exclude') || ft === '除外') groupType = 'Exclude';
         }
 
-        if(segments.length > 0){
-            result.groups.push({ type, segments });
-        }
-    });
+        for (let i = dataStart; i < rows.length; i++) {
+            const r = rows[i] || [];
+            const segVal = String(r[p.segCol] || '').trim();
+            if (!segVal) continue;
 
-    console.log('★新FMT結果:', JSON.stringify(result));
+            // ラベル類をスキップ
+            if (['セグメント名','グループ内演算子','含む/除外','グループ間演算子',
+                 'グループ1','グループ2','グループ3','および(and)','または(or)'].includes(segVal)) continue;
+            // コメント行
+            if (segVal.startsWith('※')) continue;
+            // type列に値がある場合のみ Include/Exclude 以外を排除
+            // （空の場合は旧コード互換でデータ行として扱う）
+            const rowType = String(r[p.typeCol] || '').trim().toLowerCase();
+            if (rowType && rowType !== 'include' && rowType !== 'exclude' && rowType !== '含む' && rowType !== '除外') {
+                continue;
+            }
+            segments.push(segVal);
+        }
+
+        if (segments.length > 0) {
+            result.groups.push({ type: groupType, segments });
+        }
+    }
+
     return result;
 }
 
@@ -1933,12 +2088,29 @@ const DL_COLUMNS_VIDEO = [
   checkFn:(s, v, dlRow)=>{
     const settingVal = (s.audience || '').trim();
 
-    // 設定表が「セグメントシート」参照の場合
-    const isSegSheet = settingVal.includes('セグメントシート');
+    // 設定表がセグメントシートを参照しているか：
+    // ① 文字列に「セグメントシート」を含む（従来式）
+    // ② 実際に __SEGMENT_SHEET__ が展開済み（直接Sheet名 or セグメントシート）
+    // ③ __directRef__ マーカーがある（直接Sheet名参照だが解析結果が空）
+    const seg = s.__SEGMENT_SHEET__;
+    const isSegSheet = settingVal.includes('セグメントシート')
+        || (seg && seg.groups && seg.groups.length > 0)
+        || (seg && seg.__directRef__);
 
     if(isSegSheet){
-        const seg = s.__SEGMENT_SHEET__;
-        if(!seg || seg.groups.length === 0) return null;
+        if(!seg || seg.groups.length === 0){
+            // セグメントシート参照だがデータなし
+            if(seg && seg.__directRef__){
+                const sname = seg.__sheetName__ || settingVal;
+                if(seg.__ambiguous__){
+                    s.__audience_diff__ = `セグメントシート参照「${settingVal}」が曖昧（複数候補あり）のため解析できません`;
+                } else {
+                    s.__audience_diff__ = `セグメントシート「${sname}」の解析結果が空です（フォーマット未対応の可能性）`;
+                }
+                return false;
+            }
+            return null;
+        }
 
         // 後台のAudience names列からIDを除去して名前リストを作成
         const rawNames = (v || '').split(';').map(item => {
@@ -1957,12 +2129,12 @@ const DL_COLUMNS_VIDEO = [
 
         // グループ数比較
         if(sIncludeGroups.length !== dIncludeGroups.length){
-            s.__audience_diff__ = 
+            s.__audience_diff__ =
                 `Includeグループ数不一致：設定表${sIncludeGroups.length}グループ / 後台${dIncludeGroups.length}グループ`;
             return false;
         }
         if(sExcludeGroups.length !== dExcludeGroups.length){
-            s.__audience_diff__ = 
+            s.__audience_diff__ =
                 `Excludeグループ数不一致：設定表${sExcludeGroups.length}グループ / 後台${dExcludeGroups.length}グループ`;
             return false;
         }
