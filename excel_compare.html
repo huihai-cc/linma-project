@@ -124,9 +124,18 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 <div class="controls" id="xlcomp-controls" style="display:none">
   <button class="btn-primary" id="xlcomp-start-btn" onclick="runXlComp()">📊 开始对比</button>
   <button class="btn-secondary" onclick="resetXlComp()">🗑️ 重新选择</button>
+  <span style="color:#999;font-size:0.82rem;margin:0 4px;">|</span>
+  <label style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
+    <input type="checkbox" id="xlcomp-bgcolor" style="accent-color:#e74c3c;" onchange="xlcompOnColorOptChange()"> 🎨 背景颜色
+  </label>
+  <label style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
+    <input type="checkbox" id="xlcomp-fontcolor" style="accent-color:#3498db;" onchange="xlcompOnColorOptChange()"> 🔤 字体颜色
+  </label>
+  <span id="xlcomp-color-note" style="display:none;font-size:0.72rem;color:#e67e22;margin-left:4px;"
+        title="颜色对比以单元格直接设置的样式为准，条件格式产生的显示颜色可能无法识别。">⚠ 条件格式颜色可能无法识别</span>
   <button id="btn-exp-xlcomp" onclick="exportXlComp()"
           style="display:none;background:#8e44ad;color:white;border:none;border-radius:4px;
-                 padding:8px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;">
+                 padding:8px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;margin-left:auto;">
     💾 导出HTML报告
   </button>
   <button id="xlcomp-btn-hide" onclick="xlcompToggleEq(true)"
@@ -166,6 +175,10 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
   <button class="view-btn" id="xlcomp-view-cell"
           style="background:#3498db;color:white;"
           onclick="xlcompSwitchView('cell')">📊 单元格</button>
+  <button class="view-btn" id="xlcomp-view-bgcolor"
+          onclick="xlcompSwitchView('bgcolor')">🎨 背景颜色</button>
+  <button class="view-btn" id="xlcomp-view-fontcolor"
+          onclick="xlcompSwitchView('fontcolor')">🔤 字体颜色</button>
   <button class="view-btn" id="xlcomp-view-formula"
           onclick="xlcompSwitchView('formula')">🔢 公式</button>
   <button class="view-btn" id="xlcomp-view-textbox"
@@ -222,6 +235,266 @@ let xlcompWbA   = null, xlcompWbB   = null;
 let xlcompResults = null;
 let xlcompHideEq  = false;
 let xlcompMode    = 'excel';
+
+// ===== 颜色对比オプション =====
+let xlcompCmpBg   = false; // 背景颜色对比
+let xlcompCmpFont = false; // 字体颜色对比
+
+function xlcompOnColorOptChange(){
+    xlcompCmpBg   = document.getElementById('xlcomp-bgcolor').checked;
+    xlcompCmpFont = document.getElementById('xlcomp-fontcolor').checked;
+    const note = document.getElementById('xlcomp-color-note');
+    if(note) note.style.display = (xlcompCmpBg || xlcompCmpFont) ? 'inline' : 'none';
+    xlcompUpdateColorViewBtns();
+}
+
+function xlcompUpdateColorViewBtns(){
+    const bgBtn = document.getElementById('xlcomp-view-bgcolor');
+    const fontBtn = document.getElementById('xlcomp-view-fontcolor');
+    if(bgBtn){ bgBtn.style.opacity = xlcompCmpBg ? '1' : '0.4'; bgBtn.style.pointerEvents = xlcompCmpBg ? 'auto' : 'none'; }
+    if(fontBtn){ fontBtn.style.opacity = xlcompCmpFont ? '1' : '0.4'; fontBtn.style.pointerEvents = xlcompCmpFont ? 'auto' : 'none'; }
+}
+
+// ===== Excel標準Indexedカラーテーブル（56色） =====
+const XLCOMP_INDEXED_COLORS = {
+    0:'#000000',  1:'#FFFFFF',  2:'#FF0000',  3:'#00FF00',  4:'#0000FF',
+    5:'#FFFF00',  6:'#FF00FF',  7:'#00FFFF',  8:'#000000',  9:'#FFFFFF',
+    10:'#FF0000', 11:'#00FF00', 12:'#0000FF', 13:'#FFFF00', 14:'#FF00FF',
+    15:'#00FFFF', 16:'#800000', 17:'#008000', 18:'#000080', 19:'#808000',
+    20:'#800080', 21:'#008080', 22:'#C0C0C0', 23:'#808080', 24:'#9999FF',
+    25:'#993366', 26:'#FFFFCC', 27:'#CCFFFF', 28:'#660066', 29:'#FF8080',
+    30:'#0066CC', 31:'#CCCCFF', 32:'#000080', 33:'#FF00FF', 34:'#FFFF00',
+    35:'#00FFFF', 36:'#800080', 37:'#800000', 38:'#008080', 39:'#0000FF',
+    40:'#00CCFF', 41:'#CCFFFF', 42:'#CCFFCC', 43:'#FFFF99', 44:'#99CCFF',
+    45:'#FF99CC', 46:'#CC99FF', 47:'#FFCC99', 48:'#3366FF', 49:'#33CCCC',
+    50:'#99CC00', 51:'#FFCC00', 52:'#FF9900', 53:'#FF6600', 54:'#666699',
+    55:'#969696', 56:'#003366', 57:'#339966', 58:'#003300', 59:'#333300',
+    60:'#993300', 61:'#993366', 62:'#333399', 63:'#333333',
+    64:'AUTO',    65:'AUTO',
+    81:'#000000'
+};
+
+// ===== Officeデフォルトテーマカラー =====
+function _xlcompGetDefaultTheme(){
+    return {
+        // clrScheme のデフォルト値（Office 2013+）
+        dk1:{rgb:'#000000'},   // theme 1: dark 1 = black
+        lt1:{rgb:'#FFFFFF'},   // theme 0: light 1 = white
+        dk2:{rgb:'#44546A'},   // theme 3: dark 2
+        lt2:{rgb:'#E7E6E6'},   // theme 2: light 2
+        accent1:{rgb:'#4472C4'}, // theme 4
+        accent2:{rgb:'#ED7D31'}, // theme 5
+        accent3:{rgb:'#A5A5A5'}, // theme 6
+        accent4:{rgb:'#FFC000'}, // theme 7
+        accent5:{rgb:'#5B9BD5'}, // theme 8
+        accent6:{rgb:'#70AD47'}, // theme 9
+        hlink:{rgb:'#0563C1'},    // theme 10
+        folHlink:{rgb:'#954F72'}  // theme 11
+    };
+}
+
+// テーマ番号 → テーマ名
+const XLCOMP_THEME_MAP = {0:'lt1',1:'dk1',2:'lt2',3:'dk2',4:'accent1',5:'accent2',6:'accent3',7:'accent4',8:'accent5',9:'accent6',10:'hlink',11:'folHlink'};
+
+function _xlcompResolveThemeColor(themeIdx, tint, wb){
+    // テーマカラーをRGBに解決する。wbの内部テーマデータを優先、なければデフォルト。
+    let themeColors = null;
+    try{
+        // SheetJS 0.20.1 内部: wb.Styles?.Themes? または wb.Themes
+        if(wb && wb.Styles && wb.Styles.Themes) themeColors = wb.Styles.Themes;
+        else if(wb && wb.Themes) themeColors = wb.Themes;
+    } catch(e){ /* ignore */ }
+
+    const themeName = XLCOMP_THEME_MAP[themeIdx];
+    const fallback = _xlcompGetDefaultTheme();
+
+    let baseRgb = null;
+    if(themeColors && themeColors[themeName] && themeColors[themeName].rgb){
+        baseRgb = themeColors[themeName].rgb;
+    } else if(fallback[themeName]){
+        baseRgb = fallback[themeName].rgb;
+    }
+
+    if(!baseRgb) return null;
+
+    // tint 計算（簡易版）
+    if(tint === undefined || tint === 0) return baseRgb;
+
+    const r = parseInt(baseRgb.substring(1,3), 16);
+    const g = parseInt(baseRgb.substring(3,5), 16);
+    const b = parseInt(baseRgb.substring(5,7), 16);
+
+    let nr, ng, nb;
+    if(tint < 0){
+        // 暗くする: RGB *= (1 + tint)
+        const factor = 1 + tint;
+        nr = Math.round(r * factor);
+        ng = Math.round(g * factor);
+        nb = Math.round(b * factor);
+    } else {
+        // 明るくする: RGB += (255 - RGB) * tint
+        nr = Math.round(r + (255 - r) * tint);
+        ng = Math.round(g + (255 - g) * tint);
+        nb = Math.round(b + (255 - b) * tint);
+    }
+    nr = Math.max(0, Math.min(255, nr));
+    ng = Math.max(0, Math.min(255, ng));
+    nb = Math.max(0, Math.min(255, nb));
+
+    return '#' + [nr,ng,nb].map(v => v.toString(16).toUpperCase().padStart(2,'0')).join('');
+}
+
+// ===== 色正規化 =====
+function xlcompNormalizeColor(colorObj, context, wb){
+    // context: 'fill' | 'font'
+    // 戻り値: "#RRGGBB" | "NONE" | "AUTO" | "UNKNOWN" | "THEME:N:TINT:T"（テーマ未解決時）
+
+    // 無効/undefined → コンテキスト依存
+    if(!colorObj || (typeof colorObj === 'object' && Object.keys(colorObj).length === 0)){
+        return context === 'fill' ? 'NONE' : 'AUTO';
+    }
+
+    // RGB値あり（最優先）
+    if(colorObj.rgb){
+        let rgb = String(colorObj.rgb).toUpperCase();
+        // ARGB (8桁) → RGB (6桁): FF808080 → 808080
+        if(rgb.length === 8) rgb = rgb.substring(2);
+        // 短縮形はそのまま（ありえないが念のため）
+        return '#' + rgb;
+    }
+
+    // テーマカラー
+    if(colorObj.theme !== undefined){
+        const resolved = _xlcompResolveThemeColor(colorObj.theme, colorObj.tint, wb);
+        if(resolved) return resolved;
+        // 未解決の場合はテーマ+チントの識別子で比較
+        const t = colorObj.tint !== undefined ? colorObj.tint : 0;
+        return 'THEME:' + colorObj.theme + ':TINT:' + t;
+    }
+
+    // インデックスカラー
+    if(colorObj.indexed !== undefined){
+        const idx = colorObj.indexed;
+        if(idx === 64 || idx === 65){
+            // システムカラー: 64=auto(前景), 65=auto(背景)
+            return context === 'font' ? 'AUTO' : 'NONE';
+        }
+        const mapped = XLCOMP_INDEXED_COLORS[idx];
+        if(mapped === 'AUTO') return 'AUTO';
+        if(mapped) return mapped;
+        return 'INDEXED:' + idx;
+    }
+
+    return 'UNKNOWN';
+}
+
+// ===== セルスタイルマップ構築（XML解析によるスタイルインデックス取得） =====
+async function _ensureCellStyleMap(wb, fileOrBuf, wbKey){
+    // wb._cellStyleMap: Map<sheetName, Map<addr, {fillId, fontId}>>
+    if(wb._cellStyleMap) return;
+    try{
+        await LibLoader.loadJSZip();
+        const JSZip = window.JSZip || (typeof JSZip !== 'undefined' ? JSZip : null);
+        if(!JSZip){ console.warn('JSZip未加载，无法解析字体颜色'); wb._cellStyleMap = new Map(); return; }
+
+        const zip = await JSZip.loadAsync(fileOrBuf);
+        const map = new Map();
+
+        for(let i = 0; i < wb.SheetNames.length; i++){
+            const sheetName = wb.SheetNames[i];
+            const sheetNum = i + 1;
+            // try xl/worksheets/sheet{N}.xml 和 rels-based paths
+            let sheetXml = null;
+            const directPath = 'xl/worksheets/sheet' + sheetNum + '.xml';
+            if(zip.files[directPath]){
+                sheetXml = await zip.files[directPath].async('string');
+            } else {
+                // 尝试通过 workbook.xml.rels 找路径
+                for(const [path, f] of Object.entries(zip.files)){
+                    if(f.dir) continue;
+                    if(path.match(new RegExp('worksheets/sheet' + sheetNum + '\.xml$'))){
+                        sheetXml = await f.async('string');
+                        break;
+                    }
+                }
+            }
+            if(!sheetXml) continue;
+
+            const cellMap = new Map();
+            // 匹配 <c r="A1" s="3"> 或 <c r="B5" s="3">
+            const regex = /<c r="([A-Z]+)(\d+)"[^>]*\bs="(\d+)"[^>]*>/g;
+            let m;
+            while((m = regex.exec(sheetXml)) !== null){
+                const addr = m[1] + m[2];
+                const styleIdx = parseInt(m[3], 10);
+                if(wb.Styles && wb.Styles.CellXf && wb.Styles.CellXf[styleIdx]){
+                    const xf = wb.Styles.CellXf[styleIdx];
+                    cellMap.set(addr, {
+                        fillId: xf.fillId !== undefined ? xf.fillId : 0,
+                        fontId: xf.fontId !== undefined ? xf.fontId : 0
+                    });
+                }
+            }
+            map.set(sheetName, cellMap);
+            console.log('📊 样式索引已构建: ' + sheetName + ' → ' + cellMap.size + ' cells');
+        }
+        wb._cellStyleMap = map;
+    } catch(e){
+        console.warn('样式索引构建失败:', e.message);
+        wb._cellStyleMap = new Map();
+    }
+}
+
+// ===== セルスタイル抽出（fill / font 色） =====
+function xlcompExtractCellColors(cell, wb, sheetName, addr){
+    // 戻り値: { fill: "#RRGGBB"|"NONE"|..., font: "#RRGGBB"|"AUTO"|... }
+    // NOTE: SheetJS 0.18.5 では cell.s に fill 情報のみが格納され、
+    //       フォント色は wb.Styles.Fonts からスタイルインデックス経由で取得する必要がある
+    let fillColor = 'NONE';
+    let fontColor = 'AUTO';
+
+    if(!cell) return { fill: fillColor, font: fontColor };
+
+    // --- 背景色（cell.s のトップレベルから直接取得） ---
+    if(cell.s && typeof cell.s === 'object'){
+        const pt = cell.s.patternType || '';
+        if(pt && pt.toLowerCase() !== 'none'){
+            const fg = cell.s.fgColor;
+            if(fg && Object.keys(fg).length > 0){
+                fillColor = xlcompNormalizeColor(fg, 'fill', wb);
+            }
+        }
+    }
+
+    // --- フォント色（wb._cellStyleMap 経由で Styles.Fonts から取得） ---
+    if(wb && wb._cellStyleMap && sheetName && addr){
+        const sheetMap = wb._cellStyleMap.get(sheetName);
+        if(sheetMap){
+            const styleInfo = sheetMap.get(addr);
+            if(styleInfo && wb.Styles && wb.Styles.Fonts){
+                const font = wb.Styles.Fonts[styleInfo.fontId];
+                if(font && font.color && Object.keys(font.color).length > 0){
+                    fontColor = xlcompNormalizeColor(font.color, 'font', wb);
+                }
+            }
+        }
+    }
+
+    return { fill: fillColor, font: fontColor };
+}
+
+// ===== 色の等価判定 =====
+function xlcompColorsEqual(c1, c2){
+    // 正規化済みの色文字列を比較
+    // NONE == NONE, AUTO == AUTO
+    // #FFFFFF == #FFFFFF
+    // THEME:x:TINT:y == THEME:x:TINT:y（未解決テーマ同士）
+    // UNKNOWN != anything（安全側：わからないなら差異扱いしない）
+    if(c1 === c2) return true;
+    // UNKNOWN 同士は「わからないので同一扱い」（誤検出防止）
+    if(c1 === 'UNKNOWN' || c2 === 'UNKNOWN') return true;
+    return false;
+}
 
 // ===== 初期化 =====
 document.addEventListener('DOMContentLoaded', function(){
@@ -358,7 +631,8 @@ function _readBothFiles(){
         reader.onload = e=>{
             try{
                 const data = new Uint8Array(e.target.result);
-                const wb = XLSX.read(data,{ type:'array', cellNF:true, cellDates:true, cellFormula:true });
+                const wb = XLSX.read(data,{ type:'array', cellStyles:true, cellNF:true, cellDates:true, cellFormula:true });
+                wb._rawBuf = e.target.result; // 保存原始バッファ（スタイルXML解析用）
                 cb(wb);
             } catch(err){
                 progress.classList.remove('show');
@@ -561,7 +835,9 @@ function xlcompSelectAll(val){
 }
 
 // ===== 対比実行 =====
-function doXlComp(){
+async function doXlComp(){
+    // 色比較オプションをチェックボックスから同期
+    xlcompOnColorOptChange();
     const selected=[...document.querySelectorAll('.xlcomp-sheet-cb:checked')].map(cb=>cb.dataset.sheet);
     if(!selected.length){ alert('请至少选择一个Sheet'); return; }
     window._xlcompSelectedSheets=selected;
@@ -569,6 +845,20 @@ function doXlComp(){
     const progress=document.getElementById('xlcomp-progress');
     progress.textContent='⏳ 正在对比中...';
     progress.classList.add('show');
+
+    // 色比較有効時：XMLスタイルマップを構築
+    if(xlcompCmpBg || xlcompCmpFont){
+        try{
+            progress.textContent='⏳ 正在解析样式信息...';
+            await _ensureCellStyleMap(xlcompWbA, xlcompWbA._rawBuf, 'A');
+            await _ensureCellStyleMap(xlcompWbB, xlcompWbB._rawBuf, 'B');
+            console.log('📊 样式索引构建完成: A=' + (xlcompWbA._cellStyleMap ? xlcompWbA._cellStyleMap.size : 0) + ' sheets, B=' + (xlcompWbB._cellStyleMap ? xlcompWbB._cellStyleMap.size : 0) + ' sheets');
+        } catch(e){
+            console.warn('样式索引构建失败，颜色对比可能不完整:', e.message);
+        }
+    }
+
+    progress.textContent='⏳ 正在对比中...';
 
     setTimeout(()=>{
         try{
@@ -595,9 +885,11 @@ function compareSheet(name){
 
     const wsA=xlcompWbA.Sheets[name];
     const wsB=xlcompWbB.Sheets[name];
-    const resA=sheetTo2D(wsA, XLCOMP_MAX_ROWS, XLCOMP_MAX_COLS);
-    const resB=sheetTo2D(wsB, XLCOMP_MAX_ROWS, XLCOMP_MAX_COLS);
+    const needColors = xlcompCmpBg || xlcompCmpFont;
+    const resA=sheetTo2D(wsA, XLCOMP_MAX_ROWS, XLCOMP_MAX_COLS, xlcompWbA, needColors, name);
+    const resB=sheetTo2D(wsB, XLCOMP_MAX_ROWS, XLCOMP_MAX_COLS, xlcompWbB, needColors, name);
     const arrA=resA.data, arrB=resB.data;
+    const colorsA=resA.colors, colorsB=resB.colors;
     const rawRowsA=resA.rawRows, rawRowsB=resB.rawRows;
 
     const truncated=rawRowsA>XLCOMP_MAX_ROWS||rawRowsB>XLCOMP_MAX_ROWS;
@@ -614,9 +906,12 @@ function compareSheet(name){
 
     const rows=[];
     let diffCount=0, addCount=0, delCount=0;
+    let bgDiffCount=0, fontDiffCount=0;
 
     for(let r=0;r<maxRows;r++){
         const rowA=arrA[r]||[], rowB=arrB[r]||[];
+        const colorRowA=colorsA?colorsA[r]||[]:[];
+        const colorRowB=colorsB?colorsB[r]||[]:[];
         const cells=[];
         let rowHasDiff=false;
 
@@ -624,14 +919,50 @@ function compareSheet(name){
             const vA=r<arrA.length?(rowA[c]!==undefined?rowA[c]:''):null;
             const vB=r<arrB.length?(rowB[c]!==undefined?rowB[c]:''):null;
             let status='eq';
+
+            // 内容比較
             if(vA===null&&vB!==null) status='add';
             else if(vA!==null&&vB===null) status='del';
             else if(typeof vA === 'number' && typeof vB === 'number' && isFinite(vA) && isFinite(vB)){
-                // 数值比较：四舍五入到小数点后2位，吸收浮点运算误差
                 if(Math.round(vA * 100) !== Math.round(vB * 100)) status = 'mod';
             } else if(String(vA)!==String(vB)) status='mod';
-            if(status!=='eq') rowHasDiff=true;
-            cells.push({ vA:vA===null?'':vA, vB:vB===null?'':vB, status });
+
+            // 色比較（オプション有効時のみ）
+            let bgDiff=false, fontDiff=false;
+            let fillA='', fillB='', fontA='', fontB='';
+            if(needColors && vA!==null && vB!==null){
+                const clrA = colorsA?colorRowA[c]||{fill:'NONE',font:'AUTO'}:{fill:'NONE',font:'AUTO'};
+                const clrB = colorsB?colorRowB[c]||{fill:'NONE',font:'AUTO'}:{fill:'NONE',font:'AUTO'};
+                fillA=clrA.fill; fillB=clrB.fill;
+                fontA=clrA.font; fontB=clrB.font;
+
+                if(xlcompCmpBg && !xlcompColorsEqual(clrA.fill, clrB.fill)){
+                    bgDiff=true;
+                }
+                if(xlcompCmpFont && !xlcompColorsEqual(clrA.font, clrB.font)){
+                    fontDiff=true;
+                }
+            }
+
+            // 差異タイプを合成
+            const diffTypes=[];
+            if(status!=='eq') diffTypes.push(status==='mod'?'内容差异':status==='add'?'新増':'削除');
+            if(bgDiff){ diffTypes.push('背景色差异'); bgDiffCount++; }
+            if(fontDiff){ diffTypes.push('字体色差异'); fontDiffCount++; }
+
+            if(diffTypes.length>0) rowHasDiff=true;
+            const combinedStatus = diffTypes.length===0 ? 'eq' : diffTypes.join('／');
+
+            // 内容同一だが色だけ異なる → 行ステータスはmod扱い
+            if(status==='eq' && (bgDiff||fontDiff)){
+                status = 'mod';
+            }
+
+            cells.push({
+                vA:vA===null?'':vA, vB:vB===null?'':vB,
+                fillA, fillB, fontA, fontB,
+                status, combinedStatus, bgDiff, fontDiff
+            });
         }
 
         let rowStatus='eq';
@@ -643,27 +974,66 @@ function compareSheet(name){
     }
 
     return { status:'both', rows, colHeaders, diffCount, addCount, delCount,
-             totalA:rawRowsA, totalB:rawRowsB, truncated, truncateMsg };
+             bgDiffCount, fontDiffCount,
+             totalA:rawRowsA, totalB:rawRowsB, truncated, truncateMsg,
+             cmpBg:xlcompCmpBg, cmpFont:xlcompCmpFont };
 }
 
-function sheetTo2D(ws, maxRows, maxCols){
+function sheetTo2D(ws, maxRows, maxCols, wb, needColors, sheetName){
+    // needColors: bool — 色情報を抽出するか
+    // sheetName: シート名（色抽出時のスタイルマップ参照用）
     const range=xlcompGetActualRange(ws);
-    if(!range) return { data:[], rawRows:0, rawCols:0 };
+    if(!range) return { data:[], rawRows:0, rawCols:0, colors:[] };
     const rawRows=range.e.r-range.s.r+1;
     const rawCols=range.e.c-range.s.c+1;
     const limitR=maxRows?Math.min(range.e.r, range.s.r+maxRows-1):range.e.r;
     const limitC=maxCols?Math.min(range.e.c, range.s.c+maxCols-1):range.e.c;
+
+    // 結合セルのスタイル参照先マップを作成
+    const mergeStyleMap = new Map(); // key: addr, value: master-addr
+    if(needColors && ws['!merges']){
+        ws['!merges'].forEach(m => {
+            const masterAddr = XLSX.utils.encode_cell(m.s);
+            for(let rr = m.s.r; rr <= m.e.r; rr++){
+                for(let cc = m.s.c; cc <= m.e.c; cc++){
+                    const slaveAddr = XLSX.utils.encode_cell({r:rr, c:cc});
+                    if(slaveAddr !== masterAddr){
+                        mergeStyleMap.set(slaveAddr, masterAddr);
+                    }
+                }
+            }
+        });
+    }
+
     const result=[];
+    const colorResult = needColors ? [] : null;
     for(let r=range.s.r;r<=limitR;r++){
         const row=[];
+        const colorRow = needColors ? [] : null;
         for(let c=range.s.c;c<=limitC;c++){
             const addr=XLSX.utils.encode_cell({r,c});
-            const cell=ws[addr];
+            let cell=ws[addr];
+
+            // 結合セル内の非マスターセル → マスターセルのスタイルを参照
+            let styleCell = cell;
+            if(needColors && mergeStyleMap.has(addr)){
+                const masterAddr = mergeStyleMap.get(addr);
+                const masterCell = ws[masterAddr];
+                if(masterCell && masterCell.s){
+                    styleCell = masterCell;
+                }
+            }
+
             row.push(cell?(cell.v!==undefined?cell.v:''):'');
+            if(needColors){
+                const colors = xlcompExtractCellColors(styleCell, wb, sheetName, addr);
+                colorRow.push(colors);
+            }
         }
         result.push(row);
+        if(needColors) colorResult.push(colorRow);
     }
-    return { data:result, rawRows, rawCols };
+    return { data:result, rawRows, rawCols, colors:colorResult };
 }
 
 // ===== 結果レンダリング =====
@@ -737,11 +1107,19 @@ function renderXlCompResult(){
 
         if(r.status==='only_a') html+=`<span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.78rem;">仅文件A有此Sheet</span>`;
         else if(r.status==='only_b') html+=`<span style="background:#27ae60;border-radius:10px;padding:2px 10px;font-size:0.78rem;">仅文件B有此Sheet</span>`;
-        else html+=`
+        else {
+            html+=`
             <span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.78rem;">修改 ${r.diffCount}行</span>
             <span style="background:#27ae60;border-radius:10px;padding:2px 10px;font-size:0.78rem;">新增 ${r.addCount}行</span>
             <span style="background:#c0392b;border-radius:10px;padding:2px 10px;font-size:0.78rem;">删除 ${r.delCount}行</span>
             <span style="background:#7f8c8d;border-radius:10px;padding:2px 10px;font-size:0.78rem;">A共${r.totalA}行 B共${r.totalB}行</span>`;
+            if(r.cmpBg && r.bgDiffCount !== undefined && r.bgDiffCount > 0){
+                html+=`<span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.78rem;">🎨 背景色差异 ${r.bgDiffCount}处</span>`;
+            }
+            if(r.cmpFont && r.fontDiffCount !== undefined && r.fontDiffCount > 0){
+                html+=`<span style="background:#8e44ad;border-radius:10px;padding:2px 10px;font-size:0.78rem;">🔤 字体色差异 ${r.fontDiffCount}处</span>`;
+            }
+        }
         html+=`</div>`;
 
         if(r.status==='only_a'||r.status==='only_b'){
@@ -759,6 +1137,7 @@ function renderXlCompResult(){
 
     const switcher=document.getElementById('xlcomp-view-switcher');
     if(switcher) switcher.style.display='flex';
+    xlcompUpdateColorViewBtns();
     result.innerHTML=html;
     _addBackToTopBtn();
     setTimeout(()=>{
@@ -813,9 +1192,40 @@ function charDiff(a, b){
     };
 }
 
+// ===== 色見本HTML生成ヘルパー =====
+function _colorSwatchHTML(hexColor, label){
+    // hexColor: "#RRGGBB" | "NONE" | "AUTO" | "UNKNOWN" | "THEME:..."
+    const isRealColor = hexColor && hexColor.startsWith('#');
+    const isNone = hexColor === 'NONE';
+    const isAuto = hexColor === 'AUTO';
+    const isUnknown = hexColor === 'UNKNOWN' || (!isRealColor && !isNone && !isAuto);
+
+    if(isNone){
+        return `<span style="display:inline-flex;align-items:center;gap:2px;font-size:0.68rem;color:#888;"
+                title="${label}: 无填充"><span style="display:inline-block;width:10px;height:10px;
+                border:1px dashed #ccc;background:transparent;border-radius:2px;vertical-align:middle;"></span> NONE</span>`;
+    }
+    if(isAuto){
+        return `<span style="display:inline-flex;align-items:center;gap:2px;font-size:0.68rem;color:#888;"
+                title="${label}: 自动颜色"><span style="display:inline-block;width:10px;height:10px;
+                border:1px solid #ccc;background:repeating-conic-gradient(#999 0% 25%,#fff 0% 50%) 50%/6px 6px;
+                border-radius:2px;vertical-align:middle;"></span> AUTO</span>`;
+    }
+    if(isUnknown){
+        return `<span style="display:inline-flex;align-items:center;gap:2px;font-size:0.68rem;color:#888;"
+                title="${label}: 无法解析">UNKNOWN</span>`;
+    }
+    // 実際の色
+    const borderColor = hexColor === '#FFFFFF' ? '#ccc' : hexColor;
+    return `<span style="display:inline-flex;align-items:center;gap:2px;font-size:0.68rem;"
+            title="${label}: ${hexColor}"><span style="display:inline-block;width:10px;height:10px;
+            background:${hexColor};border:1px solid ${borderColor};border-radius:2px;vertical-align:middle;"></span> ${hexColor}</span>`;
+}
+
 // ===== シートテーブルレンダリング =====
 function renderSheetTable(r, name){
     const rows=xlcompHideEq?r.rows.filter(row=>row.status!=='eq'):r.rows;
+    const showColors = r.cmpBg || r.cmpFont;
 
     const truncateHtml=r.truncated?`
     <div style="background:#fff3cd;border:1px solid #ffc107;border-top:none;
@@ -845,6 +1255,7 @@ function renderSheetTable(r, name){
         </div>`;
     }
 
+    // 列ヘッダー — 色対比ありの場合はファイルA/B各2列（値＋色）
     let html=truncateHtml+omitHtml+`
     <div style="overflow-x:auto;border:1px solid #ddd;border-top:none;
                 max-height:500px;overflow-y:auto;">
@@ -855,10 +1266,11 @@ function renderSheetTable(r, name){
             <th style="background:#dde;color:#556;padding:7px 10px;
                        border-bottom:2px solid #bbb;width:50px;text-align:center;">行号</th>
             <th style="background:#dde;color:#556;padding:7px 10px;
-                       border-bottom:2px solid #bbb;width:60px;text-align:center;">状态</th>`;
+                       border-bottom:2px solid #bbb;min-width:80px;text-align:center;${showColors?'min-width:150px;':''}">状态</th>`;
 
     r.colHeaders.forEach(col=>{
-        html+=`<th colspan="2" style="background:#c8e6ff;color:#1a3a6a;padding:7px 10px;
+        const span = showColors ? 2 : 2; // 値＋色情報を同じセル内に表示するのでspanはそのまま
+        html+=`<th colspan="${span}" style="background:#c8e6ff;color:#1a3a6a;padding:7px 10px;
                     border-bottom:2px solid #bbb;border-left:1px solid #bbb;
                     text-align:center;white-space:nowrap;">${col}</th>`;
     });
@@ -878,11 +1290,21 @@ function renderSheetTable(r, name){
 
     renderRows.forEach(row=>{
         const bg=row.status==='add'?'#e8ffe8':row.status==='del'?'#ffe8e8':row.status==='mod'?'#fff8e8':'white';
-        const statusIcon=
-            row.status==='add'?'<span style="color:#27ae60;font-weight:bold;">＋新増</span>':
-            row.status==='del'?'<span style="color:#e74c3c;font-weight:bold;">－削除</span>':
-            row.status==='mod'?'<span style="color:#e67e22;font-weight:bold;">≠変更</span>':
-            '<span style="color:#bbb;">＝同じ</span>';
+
+        // 行ステータス表示 — 色差異がある場合は combinedStatus を使う
+        let statusIcon;
+        if(row.status==='add'){
+            statusIcon='<span style="color:#27ae60;font-weight:bold;">＋新増</span>';
+        } else if(row.status==='del'){
+            statusIcon='<span style="color:#e74c3c;font-weight:bold;">－削除</span>';
+        } else if(row.status==='mod'){
+            // 最初の差異セルから combinedStatus を取得して表示
+            const diffCell = row.cells.find(c => c.combinedStatus && c.combinedStatus !== 'eq');
+            const combined = diffCell ? diffCell.combinedStatus : '≠変更';
+            statusIcon=`<span style="color:#e67e22;font-weight:bold;">≠ ${esc(combined)}</span>`;
+        } else {
+            statusIcon='<span style="color:#bbb;">＝同じ</span>';
+        }
 
         html+=`<tr style="background:${bg};border-bottom:1px solid #eee;">
             <td style="text-align:center;color:#888;font-size:0.75rem;padding:5px 8px;
@@ -891,21 +1313,48 @@ function renderSheetTable(r, name){
                        white-space:nowrap;">${statusIcon}</td>`;
 
         row.cells.forEach(cell=>{
-            const cellBgA=cell.status==='add'?'#f0f0f0':cell.status==='del'?'#ffcccc':cell.status==='mod'?'#fff3cd':'white';
-            const cellBgB=cell.status==='add'?'#ccffcc':cell.status==='del'?'#f0f0f0':cell.status==='mod'?'#fff3cd':'white';
-            const borderL=cell.status!=='eq'?'2px solid #e74c3c':'1px solid #eee';
+            const cellStatus = cell.status==='mod'&&cell.combinedStatus&&cell.combinedStatus!=='eq' ? 'mod' : cell.status;
+            const cellBgA=cellStatus==='add'?'#f0f0f0':cellStatus==='del'?'#ffcccc':cellStatus==='mod'?'#fff3cd':'white';
+            const cellBgB=cellStatus==='add'?'#ccffcc':cellStatus==='del'?'#f0f0f0':cellStatus==='mod'?'#fff3cd':'white';
+            const borderL=cellStatus!=='eq'?'2px solid #e74c3c':'1px solid #eee';
             let displayA=esc(String(cell.vA))||'&nbsp;';
             let displayB=esc(String(cell.vB))||'&nbsp;';
-            if(cell.status==='mod'){ const diff=charDiff(String(cell.vA),String(cell.vB)); displayA=diff.left; displayB=diff.right; }
-            const isDiff=cell.status!=='eq';
+            if(cell.status==='mod'&&String(cell.vA)!==String(cell.vB)){
+                const diff=charDiff(String(cell.vA),String(cell.vB));
+                displayA=diff.left; displayB=diff.right;
+            }
+            const isDiff=cellStatus!=='eq';
+
+            // 色情報をタイトルに追記
+            let titleExtraA='', titleExtraB='';
+            if(showColors){
+                const fa=cell.fillA||'NONE', fb=cell.fillB||'NONE';
+                const fta=cell.fontA||'AUTO', ftb=cell.fontB||'AUTO';
+                titleExtraA=` (背景色:${fa} 字体色:${fta})`;
+                titleExtraB=` (背景色:${fb} 字体色:${ftb})`;
+            }
+
+            // セル内容 — 値の下に色情報を表示
+            let colorInfoA='', colorInfoB='';
+            if(showColors){
+                colorInfoA = `<div style="margin-top:2px;line-height:1.3;display:flex;flex-direction:column;gap:1px;">
+                    ${_colorSwatchHTML(cell.fillA||'NONE', '背景色')}
+                    ${_colorSwatchHTML(cell.fontA||'AUTO', '字体色')}
+                </div>`;
+                colorInfoB = `<div style="margin-top:2px;line-height:1.3;display:flex;flex-direction:column;gap:1px;">
+                    ${_colorSwatchHTML(cell.fillB||'NONE', '背景色')}
+                    ${_colorSwatchHTML(cell.fontB||'AUTO', '字体色')}
+                </div>`;
+            }
+
             html+=`
-            <td style="padding:5px 10px;background:${cellBgA};border-left:${borderL};
-                       max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-                title="${esc(String(cell.vA))}">${displayA}</td>
-            <td style="padding:5px 10px;background:${cellBgB};
-                       max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+            <td style="padding:4px 8px;background:${cellBgA};border-left:${borderL};
+                       max-width:250px;overflow:hidden;white-space:nowrap;vertical-align:top;"
+                title="${esc(String(cell.vA))}${titleExtraA}">${displayA}${colorInfoA}</td>
+            <td style="padding:4px 8px;background:${cellBgB};
+                       max-width:250px;overflow:hidden;white-space:nowrap;vertical-align:top;"
                 ${isDiff?'data-diff="1"':''}
-                title="${esc(String(cell.vB))}">${displayB}</td>`;
+                title="${esc(String(cell.vB))}${titleExtraB}">${displayB}${colorInfoB}</td>`;
         });
         html+=`</tr>`;
     });
@@ -1006,19 +1455,24 @@ let xlcompFormulaResults=null;
 function xlcompSwitchView(view){
     xlcompNavRows=[]; xlcompNavIdx=-1;
     xlcompFormulaNavRows=[]; xlcompFormulaNavIdx=-1;
+    _tbNavRows=[]; _tbNavIdx=-1;
+    xlcompBgNavRows=[]; xlcompBgNavIdx=-1;
+    xlcompFontNavRows=[]; xlcompFontNavIdx=-1;
     xlcompCurrentView=view;
 
-    ['cell','formula','textbox'].forEach(v=>{
+    ['cell','bgcolor','fontcolor','formula','textbox'].forEach(v=>{
         const btn=document.getElementById('xlcomp-view-'+v);
         if(btn){ btn.style.background='transparent'; btn.style.color='#bdc3c7'; }
     });
-    const colors={ cell:'#3498db', formula:'#8e44ad', textbox:'#16a085' };
+    const colors={ cell:'#3498db', bgcolor:'#e67e22', fontcolor:'#9b59b6', formula:'#8e44ad', textbox:'#16a085' };
     const btn=document.getElementById('xlcomp-view-'+view);
     if(btn){ btn.style.background=colors[view]; btn.style.color='white'; }
 
-    if(view==='cell')    renderXlCompResult();
-    else if(view==='formula') renderFormulaView();
-    else if(view==='textbox') renderTextboxView();
+    if(view==='cell')        renderXlCompResult();
+    else if(view==='bgcolor')   renderBgColorView();
+    else if(view==='fontcolor') renderFontColorView();
+    else if(view==='formula')   renderFormulaView();
+    else if(view==='textbox')   renderTextboxView();
 }
 
 // ===== 公式対比 =====
@@ -1357,11 +1811,299 @@ function compareTextboxes(tbA, tbB){
     return diffs;
 }
 
+// ===== 背景颜色对比ビュー =====
+let xlcompBgNavRows=[], xlcompBgNavIdx=-1;
+
+function xlcompBgInitNav(){
+    xlcompBgNavRows=[]; xlcompBgNavIdx=-1;
+    document.querySelectorAll('#xlcomp-result .bg-diff-row').forEach(el=>{ xlcompBgNavRows.push(el); });
+    const info=document.getElementById('xlcomp-bg-nav-info');
+    if(info) info.textContent='0 / '+xlcompBgNavRows.length;
+}
+
+function xlcompBgNav(dir){
+    if(!xlcompBgNavRows.length){ xlcompBgInitNav(); if(!xlcompBgNavRows.length) return; }
+    if(xlcompBgNavIdx>=0&&xlcompBgNavIdx<xlcompBgNavRows.length){ xlcompBgNavRows[xlcompBgNavIdx].style.outline=''; xlcompBgNavRows[xlcompBgNavIdx].style.boxShadow=''; }
+    xlcompBgNavIdx=(xlcompBgNavIdx+dir+xlcompBgNavRows.length)%xlcompBgNavRows.length;
+    const target=xlcompBgNavRows[xlcompBgNavIdx];
+    target.style.outline='3px solid #f39c12';
+    target.style.outlineOffset='-2px';
+    target.style.boxShadow='0 0 12px rgba(243,156,18,0.9)';
+    target.scrollIntoView({behavior:'smooth',block:'center'});
+    const info=document.getElementById('xlcomp-bg-nav-info');
+    if(info) info.textContent=(xlcompBgNavIdx+1)+' / '+xlcompBgNavRows.length;
+}
+
+function renderBgColorView(){
+    if(!xlcompResults) return;
+    const result=document.getElementById('xlcomp-result');
+
+    // Collect all bg color diffs
+    const allDiffs=[];
+    Object.entries(xlcompResults).forEach(([name,r])=>{
+        if(!r.cmpBg||!r.rows) return;
+        r.rows.forEach(row=>{
+            row.cells.forEach((cell,cIdx)=>{
+                if(cell.bgDiff){
+                    const colLetter=r.colHeaders[cIdx]||XLSX.utils.encode_col(cIdx);
+                    allDiffs.push({
+                        sheet: name,
+                        rowNo: row.rowNo,
+                        col: colLetter,
+                        addr: colLetter+row.rowNo,
+                        fillA: cell.fillA,
+                        fillB: cell.fillB
+                    });
+                }
+            });
+        });
+    });
+
+    const totalDiffs=allDiffs.length;
+
+    let html=`
+    <div style="background:#d35400;color:white;border-radius:8px 8px 0 0;padding:12px 16px;
+                display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+                position:sticky;top:0;z-index:100;box-shadow:0 3px 10px rgba(0,0,0,0.3);">
+        <span style="font-weight:bold;font-size:0.95rem;">🎨 背景颜色差异</span>
+        <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">背景色差异：${totalDiffs}处</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <button onclick="xlcompBgNav(-1)"
+                    style="background:#e74c3c;color:white;border:none;border-radius:6px;
+                           padding:6px 16px;font-size:0.85rem;font-weight:bold;cursor:pointer;"
+                    onmouseover="this.style.background='#c0392b'"
+                    onmouseout="this.style.background='#e74c3c'">⬆ 上一差异</button>
+            <span id="xlcomp-bg-nav-info"
+                  style="background:#e74c3c;color:white;padding:5px 16px;
+                         border-radius:20px;font-size:0.88rem;font-weight:bold;
+                         min-width:90px;text-align:center;">
+                0 / ${totalDiffs}
+            </span>
+            <button onclick="xlcompBgNav(1)"
+                    style="background:#e74c3c;color:white;border:none;border-radius:6px;
+                           padding:6px 16px;font-size:0.85rem;font-weight:bold;cursor:pointer;"
+                    onmouseover="this.style.background='#c0392b'"
+                    onmouseout="this.style.background='#e74c3c'">下一差异 ⬇</button>
+        </div>
+    </div>`;
+
+    if(totalDiffs===0){
+        html+=`<div style="padding:30px;text-align:center;color:#27ae60;
+                           background:#eafaf1;border-radius:0 0 6px 6px;
+                           border:1px solid #a9dfbf;font-size:1rem;">🎨 背景颜色差异はありません</div>`;
+        result.innerHTML=html;
+        setTimeout(()=>xlcompBgInitNav(),100);
+        return;
+    }
+
+    // Group by sheet
+    const bySheet={};
+    allDiffs.forEach(d=>{
+        if(!bySheet[d.sheet]) bySheet[d.sheet]=[];
+        bySheet[d.sheet].push(d);
+    });
+
+    Object.entries(bySheet).forEach(([sheetName,diffs])=>{
+        html+=`
+        <div style="margin-bottom:16px;margin-top:8px;">
+            <div style="background:#a04000;color:white;padding:8px 16px;
+                        display:flex;align-items:center;gap:12px;">
+                <span style="font-weight:bold;">📋 ${esc(sheetName)}</span>
+                <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.78rem;">${diffs.length}处背景色差异</span>
+            </div>
+            <div style="overflow-x:auto;border:1px solid #e67e22;border-top:none;">
+            <table style="width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:0.82rem;">
+                <thead style="position:sticky;top:0;z-index:5;">
+                    <tr>
+                        <th style="background:#fdebd0;color:#7a3a00;padding:7px 10px;
+                                   border-bottom:2px solid #e67e22;width:80px;text-align:center;">单元格</th>
+                        <th style="background:#fdebd0;color:#7a3a00;padding:7px 10px;
+                                   border-bottom:2px solid #e67e22;border-left:1px solid #f5cba7;text-align:center;">◀ 文件A 背景色</th>
+                        <th style="background:#fdebd0;color:#7a3a00;padding:7px 10px;
+                                   border-bottom:2px solid #e67e22;border-left:1px solid #f5cba7;text-align:center;">▶ 文件B 背景色</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        diffs.forEach(d=>{
+            html+=`
+                <tr class="bg-diff-row" style="border-bottom:1px solid #eee;">
+                    <td style="text-align:center;color:#a04000;font-weight:bold;padding:6px 10px;background:#fef5e7;border-right:1px solid #fdebd0;">${d.addr}</td>
+                    <td style="padding:6px 12px;background:white;border-left:2px solid #e74c3c;white-space:nowrap;">${_colorSwatchHTML(d.fillA,'背景色')}</td>
+                    <td style="padding:6px 12px;background:white;border-left:2px solid #27ae60;white-space:nowrap;">${_colorSwatchHTML(d.fillB,'背景色')}</td>
+                </tr>`;
+        });
+        html+=`</tbody></table></div></div>`;
+    });
+
+    result.innerHTML=html;
+    setTimeout(()=>xlcompBgInitNav(),100);
+}
+
+// ===== 字体颜色对比ビュー =====
+let xlcompFontNavRows=[], xlcompFontNavIdx=-1;
+
+function xlcompFontInitNav(){
+    xlcompFontNavRows=[]; xlcompFontNavIdx=-1;
+    document.querySelectorAll('#xlcomp-result .font-diff-row').forEach(el=>{ xlcompFontNavRows.push(el); });
+    const info=document.getElementById('xlcomp-font-nav-info');
+    if(info) info.textContent='0 / '+xlcompFontNavRows.length;
+}
+
+function xlcompFontNav(dir){
+    if(!xlcompFontNavRows.length){ xlcompFontInitNav(); if(!xlcompFontNavRows.length) return; }
+    if(xlcompFontNavIdx>=0&&xlcompFontNavIdx<xlcompFontNavRows.length){ xlcompFontNavRows[xlcompFontNavIdx].style.outline=''; xlcompFontNavRows[xlcompFontNavIdx].style.boxShadow=''; }
+    xlcompFontNavIdx=(xlcompFontNavIdx+dir+xlcompFontNavRows.length)%xlcompFontNavRows.length;
+    const target=xlcompFontNavRows[xlcompFontNavIdx];
+    target.style.outline='3px solid #f39c12';
+    target.style.outlineOffset='-2px';
+    target.style.boxShadow='0 0 12px rgba(243,156,18,0.9)';
+    target.scrollIntoView({behavior:'smooth',block:'center'});
+    const info=document.getElementById('xlcomp-font-nav-info');
+    if(info) info.textContent=(xlcompFontNavIdx+1)+' / '+xlcompFontNavRows.length;
+}
+
+function _fontColorPreviewHtml(content, fontColor){
+    if(content===undefined||content===null||content==='') return '<span style="color:#999;font-size:0.75rem;">(空)</span>';
+    const displayText = esc(String(content));
+    const isRealColor = fontColor && fontColor.startsWith('#');
+    const colorSwatch = _colorSwatchHTML(fontColor, '字体色');
+
+    let contentHtml;
+    if(isRealColor){
+        contentHtml = `<div style="color:${fontColor};font-weight:bold;font-size:0.92rem;padding:4px 6px;background:#fafafa;border-radius:3px;display:inline-block;">${displayText}</div>`;
+    } else {
+        contentHtml = `<div style="font-size:0.88rem;padding:4px 6px;background:#fafafa;border-radius:3px;">${displayText}</div>`;
+    }
+
+    return contentHtml + `<div style="margin-top:4px;font-size:0.72rem;color:#888;">${colorSwatch}</div>`;
+}
+
+function renderFontColorView(){
+    if(!xlcompResults) return;
+    const result=document.getElementById('xlcomp-result');
+
+    // Collect all font color diffs
+    const allDiffs=[];
+    Object.entries(xlcompResults).forEach(([name,r])=>{
+        if(!r.cmpFont||!r.rows) return;
+        r.rows.forEach(row=>{
+            row.cells.forEach((cell,cIdx)=>{
+                if(cell.fontDiff){
+                    const colLetter=r.colHeaders[cIdx]||XLSX.utils.encode_col(cIdx);
+                    const hasContentDiff = cell.status!=='eq';
+                    allDiffs.push({
+                        sheet: name,
+                        rowNo: row.rowNo,
+                        col: colLetter,
+                        addr: colLetter+row.rowNo,
+                        vA: cell.vA,
+                        vB: cell.vB,
+                        fontA: cell.fontA,
+                        fontB: cell.fontB,
+                        hasContentDiff
+                    });
+                }
+            });
+        });
+    });
+
+    const totalDiffs=allDiffs.length;
+
+    let html=`
+    <div style="background:#7d3c98;color:white;border-radius:8px 8px 0 0;padding:12px 16px;
+                display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+                position:sticky;top:0;z-index:100;box-shadow:0 3px 10px rgba(0,0,0,0.3);">
+        <span style="font-weight:bold;font-size:0.95rem;">🔤 字体颜色差异</span>
+        <span style="background:#9b59b6;border-radius:10px;padding:2px 10px;font-size:0.8rem;">字体色差异：${totalDiffs}处</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <button onclick="xlcompFontNav(-1)"
+                    style="background:#e74c3c;color:white;border:none;border-radius:6px;
+                           padding:6px 16px;font-size:0.85rem;font-weight:bold;cursor:pointer;"
+                    onmouseover="this.style.background='#c0392b'"
+                    onmouseout="this.style.background='#e74c3c'">⬆ 上一差异</button>
+            <span id="xlcomp-font-nav-info"
+                  style="background:#e74c3c;color:white;padding:5px 16px;
+                         border-radius:20px;font-size:0.88rem;font-weight:bold;
+                         min-width:90px;text-align:center;">
+                0 / ${totalDiffs}
+            </span>
+            <button onclick="xlcompFontNav(1)"
+                    style="background:#e74c3c;color:white;border:none;border-radius:6px;
+                           padding:6px 16px;font-size:0.85rem;font-weight:bold;cursor:pointer;"
+                    onmouseover="this.style.background='#c0392b'"
+                    onmouseout="this.style.background='#e74c3c'">下一差异 ⬇</button>
+        </div>
+    </div>`;
+
+    if(totalDiffs===0){
+        html+=`<div style="padding:30px;text-align:center;color:#27ae60;
+                           background:#eafaf1;border-radius:0 0 6px 6px;
+                           border:1px solid #a9dfbf;font-size:1rem;">🔤 字体颜色差异はありません</div>`;
+        result.innerHTML=html;
+        setTimeout(()=>xlcompFontInitNav(),100);
+        return;
+    }
+
+    // Group by sheet
+    const bySheet={};
+    allDiffs.forEach(d=>{
+        if(!bySheet[d.sheet]) bySheet[d.sheet]=[];
+        bySheet[d.sheet].push(d);
+    });
+
+    Object.entries(bySheet).forEach(([sheetName,diffs])=>{
+        html+=`
+        <div style="margin-bottom:16px;margin-top:8px;">
+            <div style="background:#6c3483;color:white;padding:8px 16px;
+                        display:flex;align-items:center;gap:12px;">
+                <span style="font-weight:bold;">📋 ${esc(sheetName)}</span>
+                <span style="background:#9b59b6;border-radius:10px;padding:2px 10px;font-size:0.78rem;">${diffs.length}处字体色差异</span>
+            </div>
+            <div style="overflow-x:auto;border:1px solid #9b59b6;border-top:none;">
+            <table style="width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:0.82rem;">
+                <thead style="position:sticky;top:0;z-index:5;">
+                    <tr>
+                        <th style="background:#e8daef;color:#4a235a;padding:7px 10px;
+                                   border-bottom:2px solid #9b59b6;width:80px;text-align:center;">单元格</th>
+                        <th style="background:#e8daef;color:#4a235a;padding:7px 10px;
+                                   border-bottom:2px solid #9b59b6;border-left:1px solid #d2b4de;text-align:center;">◀ 文件A 内容／字体色</th>
+                        <th style="background:#e8daef;color:#4a235a;padding:7px 10px;
+                                   border-bottom:2px solid #9b59b6;border-left:1px solid #d2b4de;text-align:center;">▶ 文件B 内容／字体色</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        diffs.forEach(d=>{
+            const contentDiffTag = d.hasContentDiff
+                ? ' <span style="background:#f39c12;color:white;border-radius:3px;padding:1px 6px;font-size:0.65rem;">同时存在内容差异</span>'
+                : '';
+            html+=`
+                <tr class="font-diff-row" style="border-bottom:1px solid #eee;">
+                    <td style="text-align:center;color:#6c3483;font-weight:bold;padding:6px 10px;background:#f5eef8;border-right:1px solid #d2b4de;">${d.addr}</td>
+                    <td style="padding:6px 12px;background:white;border-left:2px solid #e74c3c;max-width:300px;overflow:hidden;vertical-align:top;">${_fontColorPreviewHtml(d.vA,d.fontA)}${contentDiffTag}</td>
+                    <td style="padding:6px 12px;background:white;border-left:2px solid #27ae60;max-width:300px;overflow:hidden;vertical-align:top;">${_fontColorPreviewHtml(d.vB,d.fontB)}${contentDiffTag}</td>
+                </tr>`;
+        });
+        html+=`</tbody></table></div></div>`;
+    });
+
+    result.innerHTML=html;
+    setTimeout(()=>xlcompFontInitNav(),100);
+}
+
 // ===== リセット =====
 function resetXlComp(){
     xlcompFileA=null; xlcompFileB=null;
     xlcompWbA=null; xlcompWbB=null;
     xlcompResults=null; xlcompHideEq=false;
+
+    // カラーチェックボックスリセット
+    const cbBg=document.getElementById('xlcomp-bgcolor');
+    const cbFont=document.getElementById('xlcomp-fontcolor');
+    const note=document.getElementById('xlcomp-color-note');
+    if(cbBg) cbBg.checked=false;
+    if(cbFont) cbFont.checked=false;
+    if(note) note.style.display='none';
+    xlcompCmpBg=false; xlcompCmpFont=false;
 
     ['a','b'].forEach(side=>{
         const drop=document.getElementById('xlcomp-drop-'+side);
@@ -1387,6 +2129,61 @@ function resetXlComp(){
 function exportXlComp(){
     if(!xlcompResults){ alert('请先对比'); return; }
     const result=document.getElementById('xlcomp-result');
+    let optInfo = '';
+    if(xlcompCmpBg) optInfo += '　背景颜色对比：有効';
+    if(xlcompCmpFont) optInfo += '　字体颜色对比：有効';
+    if(!xlcompCmpBg && !xlcompCmpFont) optInfo = '　颜色对比：無効';
+    // Build color extra sections
+    let colorExtraHtml='';
+    if(xlcompCmpBg){
+        const bgDiffs=[];
+        Object.entries(xlcompResults).forEach(([name,r])=>{
+            if(!r.cmpBg||!r.rows) return;
+            r.rows.forEach(row=>{
+                row.cells.forEach((cell,cIdx)=>{
+                    if(cell.bgDiff){
+                        const colLetter=r.colHeaders[cIdx]||XLSX.utils.encode_col(cIdx);
+                        bgDiffs.push({sheet:name, addr:colLetter+row.rowNo, fillA:cell.fillA, fillB:cell.fillB});
+                    }
+                });
+            });
+        });
+        if(bgDiffs.length){
+            const bySheet={};
+            bgDiffs.forEach(d=>{ if(!bySheet[d.sheet]) bySheet[d.sheet]=[]; bySheet[d.sheet].push(d); });
+            colorExtraHtml+='<h3 style="color:#d35400;margin-top:24px;">🎨 背景颜色差异一览</h3>';
+            Object.entries(bySheet).forEach(([sn,diffs])=>{
+                colorExtraHtml+=`<h4 style="color:#a04000;">📋 ${esc(sn)} (${diffs.length}处)</h4><table><tr><th>单元格</th><th>文件A背景色</th><th>文件B背景色</th></tr>`;
+                diffs.forEach(d=>{ colorExtraHtml+=`<tr><td>${d.addr}</td><td>${d.fillA}</td><td>${d.fillB}</td></tr>`; });
+                colorExtraHtml+='</table>';
+            });
+        }
+    }
+    if(xlcompCmpFont){
+        const fontDiffs=[];
+        Object.entries(xlcompResults).forEach(([name,r])=>{
+            if(!r.cmpFont||!r.rows) return;
+            r.rows.forEach(row=>{
+                row.cells.forEach((cell,cIdx)=>{
+                    if(cell.fontDiff){
+                        const colLetter=r.colHeaders[cIdx]||XLSX.utils.encode_col(cIdx);
+                        fontDiffs.push({sheet:name, addr:colLetter+row.rowNo, vA:cell.vA, vB:cell.vB, fontA:cell.fontA, fontB:cell.fontB});
+                    }
+                });
+            });
+        });
+        if(fontDiffs.length){
+            const bySheet={};
+            fontDiffs.forEach(d=>{ if(!bySheet[d.sheet]) bySheet[d.sheet]=[]; bySheet[d.sheet].push(d); });
+            colorExtraHtml+='<h3 style="color:#7d3c98;margin-top:24px;">🔤 字体颜色差异一览</h3>';
+            Object.entries(bySheet).forEach(([sn,diffs])=>{
+                colorExtraHtml+=`<h4 style="color:#6c3483;">📋 ${esc(sn)} (${diffs.length}处)</h4><table><tr><th>单元格</th><th>文件A内容</th><th>文件A字体色</th><th>文件B内容</th><th>文件B字体色</th></tr>`;
+                diffs.forEach(d=>{ colorExtraHtml+=`<tr><td>${d.addr}</td><td>${esc(String(d.vA))}</td><td>${d.fontA}</td><td>${esc(String(d.vB))}</td><td>${d.fontB}</td></tr>`; });
+                colorExtraHtml+='</table>';
+            });
+        }
+    }
+
     const html=`<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
     <title>Excel对比报告</title>
     <style>
@@ -1394,11 +2191,14 @@ function exportXlComp(){
         table{border-collapse:collapse;width:100%;font-size:0.82rem;}
         th,td{padding:6px 10px;border:1px solid #ddd;}
         th{background:#f0f0f0;}
+        h3{font-size:1.1rem;padding-bottom:4px;border-bottom:2px solid #ddd;}
+        h4{font-size:0.95rem;margin:12px 0 4px;}
     </style></head>
     <body>
     <h2>📊 Excel对比报告 — ${new Date().toLocaleString()}</h2>
-    <p>文件A：${xlcompFileA.name} ／ 文件B：${xlcompFileB.name}</p>
+    <p>文件A：${xlcompFileA.name} ／ 文件B：${xlcompFileB.name}${optInfo}</p>
     ${result.innerHTML}
+    ${colorExtraHtml}
     </body></html>`;
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
@@ -1418,6 +2218,7 @@ async function readExcelsFromZip(zipFile){
         try{
             const buf=await file.async('arraybuffer');
             const wb=XLSX.read(new Uint8Array(buf),{ type:'array', cellStyles:true, cellNF:true, cellDates:true, cellFormula:true });
+            wb._rawBuf = buf; // 保存原始バッファ（スタイルXML解析用）
             const fileName=path.split('/').pop();
             const key=excels[fileName]?path:fileName;
             excels[key]={ wb, fullPath:path, fileName };
@@ -1428,6 +2229,8 @@ async function readExcelsFromZip(zipFile){
 
 async function runZipComp(){
     if(!xlcompFileA||!xlcompFileB){ alert('请先上传两个ZIP文件'); return; }
+    // 色比較オプションをチェックボックスから同期
+    xlcompOnColorOptChange();
     const progress=document.getElementById('xlcomp-progress');
     progress.textContent='⏳ 正在解压并读取...';
     progress.classList.add('show');
@@ -1470,6 +2273,18 @@ async function runZipComp(){
         const zipResult={ onlyA, onlyB, common, files:{} };
         onlyA.forEach(name=>{ zipResult.files[name]={ status:'only_a', sheets:{} }; });
         onlyB.forEach(name=>{ zipResult.files[name]={ status:'only_b', sheets:{} }; });
+
+        // 色比較有効時：全ワークブックのスタイルマップを構築
+        if(xlcompCmpBg || xlcompCmpFont){
+            progress.textContent='⏳ 正在解析样式信息...';
+            const allWbs = [...Object.values(excelsA), ...Object.values(excelsB)];
+            for(const entry of allWbs){
+                if(entry.wb._rawBuf && !entry.wb._cellStyleMap){
+                    try{ await _ensureCellStyleMap(entry.wb, entry.wb._rawBuf, entry.fileName); }
+                    catch(e){ console.warn('样式构建失败:', entry.fileName, e.message); }
+                }
+            }
+        }
 
         for(const name of common){
             const wbA=excelsA[name].wb;

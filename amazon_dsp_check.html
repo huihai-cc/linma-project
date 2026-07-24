@@ -142,6 +142,14 @@ const LibLoader = {
     <option value="amazon_ott">Amazon OTT</option>
   </select>
   <span id="sc-system-badge"></span>
+  <label for="sc-case-mode-select">🧭 案件区分：</label>
+  <select id="sc-case-mode-select">
+    <option value="">-- 案件区分を選択してください --</option>
+    <option value="initial">初期案件</option>
+    <option value="creative_addition">CR追加案件</option>
+  </select>
+  <span id="sc-case-mode-error"
+        style="display:none;color:#c0392b;font-size:0.78rem;font-weight:bold;"></span>
 </div>
 
 <!-- アップロード＆結果エリア -->
@@ -244,6 +252,7 @@ let SC_COL_NO_W  = SC_COL_NO_W_DEFAULT;
 let SC_COL_LI_W  = SC_COL_LI_W_DEFAULT;
 let SC_ROW_HEIGHT = 50;   // 行高（默认50px，用户可调整）
 let scSystem = '';
+let scCaseMode = '';
 
 // ===== sessionStorage 读写函数 =====
 function scSaveRowHeight(val){
@@ -286,6 +295,10 @@ const SC_SYSTEMS = {
     amazon_pva: { label: 'Amazon DSP（PVA）',     color: '#e74c3c', badge_bg: '#e74c3c' },
     amazon_ott: { label: 'Amazon OTT', color: '#8e44ad', badge_bg: '#8e44ad' },
 };
+const SC_CASE_MODES = {
+    initial: '初期案件',
+    creative_addition: 'CR追加案件',
+};
 
 // ===== 初期化 =====
 document.addEventListener('DOMContentLoaded', function(){
@@ -311,6 +324,12 @@ document.addEventListener('DOMContentLoaded', function(){
             document.getElementById('sc-system-badge').style.display = 'none';
             document.getElementById('sc-upload-area').style.display = 'none';
         }
+    });
+    document.getElementById('sc-case-mode-select').addEventListener('change', function(){
+        scCaseMode = this.value;
+        const error = document.getElementById('sc-case-mode-error');
+        error.textContent = '';
+        error.style.display = 'none';
     });
     initScMultiDrop('setting');
     initScMultiDrop('download');
@@ -438,6 +457,15 @@ window.scRemoveFile = function(side, idx){
 
 // ===== チェック実行 =====
 function runSettingCheck(){
+    const modeError = document.getElementById('sc-case-mode-error');
+    if(!Object.prototype.hasOwnProperty.call(SC_CASE_MODES, scCaseMode)){
+        modeError.textContent = '案件区分（初期案件／CR追加案件）を選択してください。';
+        modeError.style.display = 'inline';
+        document.getElementById('sc-case-mode-select').focus();
+        return;
+    }
+    modeError.textContent = '';
+    modeError.style.display = 'none';
     if(!scFilesS.length || !scFilesD.length){ alert('設定表とダウンロードデータを両方アップロードしてください'); return; }
     if(!scSystem){ alert('案件タイプを選択してください'); return; }
     const progress = document.getElementById('sc-progress');
@@ -484,7 +512,7 @@ function _doSettingCheck(){
     setTimeout(()=>{
         try{
             if(scSystem.startsWith('amazon')){
-                scResults = checkAmazon(scWbsS, scWbsD, scSystem);
+                scResults = checkAmazon(scWbsS, scWbsD, scSystem, scCaseMode);
             } else {
                 scResults = { error: 'このシステムは未対応です。' };
             }
@@ -1378,6 +1406,37 @@ function fixLiNameColumnFromPreviousHeader(allRows, headerRowIdx, colIdx){
     colIdx['LI_NAME'] = 1;
 }
 
+/**
+ * 规范化表头单元格文本：trim、全角空格→半角、合并连续空白、转小写
+ */
+function _normalizeHeaderCell(val) {
+    return String(val)
+        .trim()
+        .replace(/　/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+/**
+ * 判断某行是否为第二层表头行——每个单元格独立精确匹配，≥2个命中时返回true
+ * @param {Array} row - 行数据（单元格数组）
+ * @param {string[]} keywords - 精确匹配的关键词列表（小写）
+ * @returns {boolean}
+ */
+function _isSecondHeaderRow(row, keywords) {
+    let matchCount = 0;
+    for (let c = 0; c < row.length; c++) {
+        const cell = _normalizeHeaderCell(row[c]);
+        if (!cell) continue;
+        if (keywords.includes(cell)) {
+            matchCount++;
+            if (matchCount >= 2) return true;
+        }
+    }
+    return false;
+}
+
 function readSettingTableVideo(wb, system){
     const areaSheetData = readAreaSheet(wb);  // ★ エリアシート読み込み
     const allSegmentSheets = readAllSegmentSheets(wb);  // ★ 全セグメントシート読み込み
@@ -1426,9 +1485,7 @@ function readSettingTableVideo(wb, system){
                 // ★ 「Device type」「Start day」でチェック（「Device」のみだと
                 //    データ行の "Phones & Portable Media Devices" 等に誤一致するため）
                 for(let j=i+1; j<Math.min(i+5,allRows.length); j++){
-                    const rs2 = allRows[j].join(' ');
-                    if(rs2.includes('Start day') || rs2.includes('Start time') || rs2.includes('End day')
-                       || rs2.includes('Device type') || rs2.includes('Mobile environment')){
+                    if(_isSecondHeaderRow(allRows[j], ['start day','start time','end day','device type','mobile environment'])){
                         headerRowIdx = j; break;
                     }
                 }
@@ -2141,8 +2198,724 @@ function matchAndCompareVideo(settingData, downloadMap, system){
     return results;
 }
 
+// ===== Creative配信日時チェック（DSP/PVA/OTT共通・LIロジックから独立） =====
+function _normalizeCreativeHeader(v){
+    return String(v ?? '')
+        .normalize('NFKC')
+        .replace(/[\s\u3000]+/g, '')
+        .toLowerCase();
+}
+
+function normalizeCreativeName(v){
+    return String(v ?? '')
+        .replace(/\r\n?/g, '\n')
+        .replace(/\u3000/g, ' ')
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .join(' ')
+        .replace(/[ \t]+/g, ' ')
+        .trim();
+}
+
+function _creativeKey(liName, creativeName){
+    const li = normalizeCreativeName(liName);
+    const cr = normalizeCreativeName(creativeName);
+    return `${li.length}:${li}|${cr.length}:${cr}`;
+}
+
+function _creativeDisplayValue(v){
+    if(v === null || v === undefined || v === '') return '';
+    if(v instanceof Date && !isNaN(v)){
+        const y = v.getFullYear();
+        const m = String(v.getMonth()+1).padStart(2,'0');
+        const d = String(v.getDate()).padStart(2,'0');
+        const hh = String(v.getHours()).padStart(2,'0');
+        const mm = String(v.getMinutes()).padStart(2,'0');
+        return `${y}-${m}-${d} ${hh}:${mm}`;
+    }
+    return String(v).trim();
+}
+
+function _creativeValidDate(y,m,d){
+    const dt = new Date(Date.UTC(y,m-1,d));
+    return dt.getUTCFullYear()===y && dt.getUTCMonth()===m-1 && dt.getUTCDate()===d;
+}
+
+function _creativeDateResult(raw,y,m,d){
+    if(!_creativeValidDate(y,m,d)){
+        return { ok:false, value:'', raw:_creativeDisplayValue(raw), error:'日付として解析できません' };
+    }
+    return {
+        ok:true,
+        value:`${String(y).padStart(4,'0')}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`,
+        raw:_creativeDisplayValue(raw),
+        error:''
+    };
+}
+
+function normalizeCreativeDate(v){
+    const raw = _creativeDisplayValue(v);
+    if(v === null || v === undefined || v === ''){
+        return { ok:false, value:'', raw, error:'日付が空白です' };
+    }
+    if(v instanceof Date && !isNaN(v)){
+        return _creativeDateResult(v,v.getFullYear(),v.getMonth()+1,v.getDate());
+    }
+
+    if(typeof v === 'number' && isFinite(v)){
+        if(v < 1) return { ok:false, value:'', raw, error:'日付のExcelシリアル値が不正です' };
+        const dt = new Date(Date.UTC(1899,11,30) + Math.floor(v)*86400000);
+        return _creativeDateResult(v,dt.getUTCFullYear(),dt.getUTCMonth()+1,dt.getUTCDate());
+    }
+
+    const s = String(v).normalize('NFKC').trim();
+    let m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+    if(m) return _creativeDateResult(v,+m[1],+m[2],+m[3]);
+
+    m = s.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})(?:\s.*)?$/);
+    if(m) return _creativeDateResult(v,+m[1],+m[2],+m[3]);
+
+    m = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})(?:\s.*)?$/);
+    if(m) return _creativeDateResult(v,+m[3],+m[1],+m[2]);
+
+    m = s.match(/^(\d{2})-(\d{2})-(\d{4})-\d{2}-\d{2}$/);
+    if(m) return _creativeDateResult(v,+m[3],+m[1],+m[2]);
+
+    const monthMap = {
+        jan:1,january:1,feb:2,february:2,mar:3,march:3,apr:4,april:4,
+        may:5,jun:6,june:6,jul:7,july:7,aug:8,august:8,sep:9,september:9,
+        oct:10,october:10,nov:11,november:11,dec:12,december:12
+    };
+    m = s.match(/^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$/);
+    if(m && monthMap[m[1].toLowerCase()]){
+        return _creativeDateResult(v,+m[3],monthMap[m[1].toLowerCase()],+m[2]);
+    }
+
+    if(/^\d+(?:\.\d+)?$/.test(s)){
+        const num = Number(s);
+        if(num >= 1 && num < 100000){
+            const dt = new Date(Date.UTC(1899,11,30) + Math.floor(num)*86400000);
+            return _creativeDateResult(v,dt.getUTCFullYear(),dt.getUTCMonth()+1,dt.getUTCDate());
+        }
+    }
+    return { ok:false, value:'', raw, error:`日付形式を解析できません：${raw}` };
+}
+
+function normalizeCreativeTime(v){
+    const raw = _creativeDisplayValue(v);
+    if(v === null || v === undefined || v === ''){
+        return { ok:false, value:'', raw, error:'時間が空白です' };
+    }
+    if(v instanceof Date && !isNaN(v)){
+        return {
+            ok:true,
+            value:`${String(v.getHours()).padStart(2,'0')}:${String(v.getMinutes()).padStart(2,'0')}`,
+            raw,
+            error:''
+        };
+    }
+    if(typeof v === 'number' && isFinite(v)){
+        const fraction = ((v % 1) + 1) % 1;
+        const total = Math.round(fraction * 1440) % 1440;
+        return {
+            ok:true,
+            value:`${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`,
+            raw,
+            error:''
+        };
+    }
+
+    const s = String(v).normalize('NFKC').trim();
+    let m = s.match(/^(\d{1,2})[:：](\d{1,2})(?:[:：]\d{1,2})?\s*(AM|PM)?$/i);
+    if(m){
+        let hh = +m[1], mm = +m[2];
+        const period = (m[3]||'').toUpperCase();
+        if(period){
+            if(hh < 1 || hh > 12 || mm > 59){
+                return { ok:false, value:'', raw, error:`時間形式を解析できません：${raw}` };
+            }
+            if(period==='AM' && hh===12) hh=0;
+            if(period==='PM' && hh!==12) hh+=12;
+        } else if(hh > 23 || mm > 59){
+            return { ok:false, value:'', raw, error:`時間形式を解析できません：${raw}` };
+        }
+        return {
+            ok:true,
+            value:`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`,
+            raw,
+            error:''
+        };
+    }
+    if(/^(?:0?\.\d+|0|1)$/.test(s)){
+        return normalizeCreativeTime(Number(s));
+    }
+    return { ok:false, value:'', raw, error:`時間形式を解析できません：${raw}` };
+}
+
+function parseCreativeDownloadDateTime(v){
+    const raw = _creativeDisplayValue(v);
+    const s = String(v ?? '').normalize('NFKC').trim();
+    let m = s.match(/^(\d{2})-(\d{2})-(\d{4})-(\d{2})-(\d{2})$/);
+    if(m){
+        const date = _creativeDateResult(v,+m[3],+m[1],+m[2]);
+        const hh=+m[4], mm=+m[5];
+        if(!date.ok || hh>23 || mm>59){
+            return { ok:false, date:'', time:'', raw, error:'ダウンロード日時を解析できません' };
+        }
+        return {
+            ok:true,
+            date:date.value,
+            time:`${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`,
+            raw
+        };
+    }
+
+    m = s.match(/^(.+?)[T\s]+(\d{1,2}[:：]\d{2}(?:\s*(?:AM|PM))?)$/i);
+    if(m){
+        const date = normalizeCreativeDate(m[1]);
+        const time = normalizeCreativeTime(m[2]);
+        if(date.ok && time.ok) return { ok:true, date:date.value, time:time.value, raw };
+    }
+    if(v instanceof Date && !isNaN(v)){
+        const date = normalizeCreativeDate(v);
+        const time = normalizeCreativeTime(v);
+        if(date.ok && time.ok) return { ok:true, date:date.value, time:time.value, raw };
+    }
+    return { ok:false, date:'', time:'', raw, error:`ダウンロード日時を解析できません：${raw||'空白'}` };
+}
+
+function _creativeSettingHeaderInfo(rows){
+    let best = null;
+    for(let r=0; r<Math.min(rows.length,150); r++){
+        const cols = {};
+        rows[r].forEach((v,c)=>{
+            const h = _normalizeCreativeHeader(v);
+            if(!h) return;
+            if(h.includes('ラインアイテム名') && cols.liName===undefined) cols.liName=c;
+            if(h.includes('設定クリエイティブ名') && h.includes('自動入力') && cols.creativeAuto===undefined) cols.creativeAuto=c;
+            if(h.includes('設定クリエイティブ名') && h.includes('変更') && cols.creativeChanged===undefined) cols.creativeChanged=c;
+            if(h==='ステータス' && cols.settingStatus===undefined) cols.settingStatus=c;
+            if(h.includes('配信開始日') && cols.startDate===undefined) cols.startDate=c;
+            if(h.includes('配信開始時間') && cols.startTime===undefined) cols.startTime=c;
+            if(h.includes('配信停止日') && cols.endDate===undefined) cols.endDate=c;
+            if(h.includes('配信停止時間') && cols.endTime===undefined) cols.endTime=c;
+        });
+        if(cols.creativeAuto===undefined && cols.creativeChanged>0){
+            cols.creativeAuto=cols.creativeChanged-1;
+        }
+        const required = ['liName','startDate','startTime','endDate','endTime'];
+        const score = required.filter(k=>cols[k]!==undefined).length
+            + ((cols.creativeAuto!==undefined || cols.creativeChanged!==undefined) ? 1 : 0)
+            + (cols.settingStatus!==undefined ? 1 : 0);
+        if(!best || score>best.score) best={ rowIdx:r, cols, score };
+    }
+    if(!best) return null;
+    const missing = ['liName','startDate','startTime','endDate','endTime']
+        .filter(k=>best.cols[k]===undefined);
+    if(best.cols.creativeAuto===undefined && best.cols.creativeChanged===undefined){
+        missing.push('creativeName');
+    }
+    return { ...best, missing, complete:missing.length===0 };
+}
+
+function readCreativeSettingDataMulti(wbsS,caseMode){
+    const rows = [], files = [], diagnostics = [];
+    const unrelated = /説明|注意|サンプル|sample|template|テンプレート|選択項目/i;
+    let additionHeaderFound = false;
+    wbsS.forEach(({wb,fileName})=>{
+        const candidates = wb.SheetNames
+            .map((sheetName,index)=>({sheetName,index,ws:wb.Sheets[sheetName]}))
+            .filter(x=>x.ws && x.ws['!ref']
+                && normalizeCreativeName(x.sheetName).includes('入稿物管理表')
+                && !unrelated.test(x.sheetName));
+        if(!candidates.length){
+            diagnostics.push({
+                level:'error', code:'SETTING_SHEET_NOT_FOUND', fileName,
+                message:'Sheet名に「入稿物管理表」を含む対象Sheetが見つかりません'
+            });
+            files.push({fileName,sheetName:'',headerRow:null,rowCount:0});
+            return;
+        }
+
+        candidates.forEach(x=>{
+            x.sheetRows = XLSX.utils.sheet_to_json(x.ws,{header:1,defval:'',raw:false});
+            x.header = _creativeSettingHeaderInfo(x.sheetRows);
+            x.score = x.header ? x.header.score : 0;
+        });
+        candidates.sort((a,b)=>b.score-a.score || a.index-b.index);
+        const target = candidates[0];
+        if(!target.header || !target.header.complete){
+            const missing = target.header ? target.header.missing.join(', ') : '必要表頭';
+            diagnostics.push({
+                level:'error', code:'SETTING_HEADERS_NOT_FOUND', fileName,
+                sheetName:target.sheetName,
+                message:`入稿物管理表の必要表頭が見つかりません：${missing}`
+            });
+            files.push({fileName,sheetName:target.sheetName,headerRow:null,rowCount:0});
+            return;
+        }
+
+        const { cols, rowIdx } = target.header;
+        if(caseMode==='creative_addition' && cols.settingStatus===undefined){
+            diagnostics.push({
+                level:'error', code:'SETTING_STATUS_HEADER_NOT_FOUND', fileName,
+                sheetName:target.sheetName,
+                message:'CR追加案件に必要な「ステータス」表頭が見つかりません'
+            });
+            files.push({fileName,sheetName:target.sheetName,headerRow:rowIdx+1,rowCount:0});
+            return;
+        }
+        if(caseMode==='creative_addition') additionHeaderFound = true;
+        let count = 0;
+        for(let r=rowIdx+1; r<target.sheetRows.length; r++){
+            const row = target.sheetRows[r];
+            const liName = normalizeCreativeName(row[cols.liName]);
+            if(!liName) continue;
+            const settingStatus = cols.settingStatus!==undefined
+                ? normalizeCreativeName(row[cols.settingStatus]) : '';
+            if(caseMode==='creative_addition' && settingStatus!=='追加') continue;
+            const autoName = cols.creativeAuto!==undefined
+                ? normalizeCreativeName(row[cols.creativeAuto]) : '';
+            const changedName = cols.creativeChanged!==undefined
+                ? normalizeCreativeName(row[cols.creativeChanged]) : '';
+            const creativeName = changedName || autoName;
+            rows.push({
+                liName,
+                creativeName,
+                creativeNameSource:changedName ? '変更した場合' : '自動入力',
+                settingStatus,
+                startDate:row[cols.startDate],
+                startTime:row[cols.startTime],
+                endDate:row[cols.endDate],
+                endTime:row[cols.endTime],
+                source:{fileName,sheetName:target.sheetName,rowNumber:r+1}
+            });
+            count++;
+        }
+        files.push({
+            fileName, sheetName:target.sheetName,
+            headerRow:rowIdx+1, rowCount:count
+        });
+    });
+    if(caseMode==='creative_addition' && additionHeaderFound && rows.length===0){
+        diagnostics.push({
+            level:'error', code:'NO_ADDITION_ROWS',
+            message:'入稿物管理表にステータス＝追加の対象行が見つかりません'
+        });
+    }
+    return { rows, files, diagnostics };
+}
+
+function _creativeDownloadHeaderInfo(rows){
+    let best = null;
+    for(let r=0; r<Math.min(rows.length,80); r++){
+        const cols = {};
+        rows[r].forEach((v,c)=>{
+            const h = _normalizeCreativeHeader(v);
+            if(h==='linename' && cols.liName===undefined) cols.liName=c;
+            if(h==='creativename' && cols.creativeName===undefined) cols.creativeName=c;
+            if(h==='startdate' && cols.startDate===undefined) cols.startDate=c;
+            if(h==='enddate' && cols.endDate===undefined) cols.endDate=c;
+            if(h==='active/inactive' && cols.activeStatus===undefined) cols.activeStatus=c;
+        });
+        const missing = ['liName','creativeName','startDate','endDate','activeStatus']
+            .filter(k=>cols[k]===undefined);
+        const score = 5-missing.length;
+        if(!best || score>best.score) best={rowIdx:r,cols,missing,score,complete:missing.length===0};
+    }
+    return best;
+}
+
+function readCreativeDownloadDataMulti(wbsD){
+    const rows = [], files = [], diagnostics = [];
+    const junk = /For informational purposes|Name of the Creative|start time override|Follow instructions|Choose from dropdown|READ ONLY|Don't delete/i;
+    const unrelated = /instructions|reference|format rules|_namedrangedata/i;
+    wbsD.forEach(({wb,fileName})=>{
+        const candidates = [];
+        wb.SheetNames.forEach((sheetName,index)=>{
+            if(unrelated.test(sheetName)) return;
+            const ws=wb.Sheets[sheetName];
+            if(!ws || !ws['!ref']) return;
+            const sheetRows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+            const header=_creativeDownloadHeaderInfo(sheetRows);
+            const nameMatch=_normalizeCreativeHeader(sheetName).includes('creativeassociations');
+            if(nameMatch || (header && header.complete)){
+                candidates.push({
+                    sheetName,index,ws,sheetRows,header,nameMatch,
+                    score:(nameMatch?100:0)+(header?header.score*10:0)
+                });
+            }
+        });
+        if(!candidates.length){
+            diagnostics.push({
+                level:'error', code:'DOWNLOAD_SHEET_NOT_FOUND', fileName,
+                message:'CREATIVE ASSOCIATIONS Sheetまたは必要表頭を持つSheetが見つかりません'
+            });
+            files.push({fileName,sheetName:'',headerRow:null,rowCount:0});
+            return;
+        }
+
+        const complete = candidates.filter(x=>x.header && x.header.complete);
+        if(!complete.length){
+            const named = candidates.filter(x=>x.nameMatch).sort((a,b)=>b.index-a.index)[0] || candidates[0];
+            const missing = named.header ? named.header.missing.join(', ') : '必要表頭';
+            const statusMissing = named.header?.missing?.includes('activeStatus');
+            diagnostics.push({
+                level:'error',
+                code:statusMissing ? 'DOWNLOAD_STATUS_HEADER_NOT_FOUND' : 'DOWNLOAD_HEADERS_NOT_FOUND',
+                fileName,
+                sheetName:named.sheetName,
+                message:statusMissing
+                    ? 'CREATIVE ASSOCIATIONSに「Active/Inactive」表頭が見つかりません'
+                    : `CREATIVE ASSOCIATIONSの必要表頭が見つかりません：${missing}`
+            });
+            files.push({fileName,sheetName:named.sheetName,headerRow:null,rowCount:0});
+            return;
+        }
+
+        complete.sort((a,b)=>b.score-a.score || b.index-a.index);
+        const target=complete[0];
+        const {cols,rowIdx}=target.header;
+        let count=0;
+        for(let r=rowIdx+1; r<target.sheetRows.length; r++){
+            const row=target.sheetRows[r];
+            const liName=normalizeCreativeName(row[cols.liName]);
+            const creativeName=normalizeCreativeName(row[cols.creativeName]);
+            if(!liName && !creativeName) continue;
+            if(junk.test(liName) || junk.test(creativeName)) continue;
+            rows.push({
+                liName, creativeName,
+                startDateTime:row[cols.startDate],
+                endDateTime:row[cols.endDate],
+                activeStatus:row[cols.activeStatus],
+                source:{fileName,sheetName:target.sheetName,rowNumber:r+1}
+            });
+            count++;
+        }
+        files.push({
+            fileName,sheetName:target.sheetName,
+            headerRow:rowIdx+1,rowCount:count
+        });
+    });
+    return { rows, files, diagnostics };
+}
+
+function _creativeIsLiInherited(v){
+    return _normalizeCreativeHeader(v) === _normalizeCreativeHeader('LIに準ずる');
+}
+
+function normalizeCreativeStatus(v){
+    const raw=_creativeDisplayValue(v);
+    const value=normalizeCreativeName(v).toUpperCase();
+    if(!value){
+        return {ok:false,value:'',raw,error:'Active/Inactiveが空白です'};
+    }
+    if(value!=='ACTIVE' && value!=='INACTIVE'){
+        return {ok:false,value,raw,error:`Active/Inactiveを認識できません：${raw}`};
+    }
+    return {ok:true,value,raw,error:''};
+}
+
+function _resolveCreativeExpected(rawValue,liRow,liField,type){
+    const inherited=_creativeIsLiInherited(rawValue);
+    const source=inherited ? 'LIに準ずる' : '入稿物管理表指定';
+    if(inherited && !liRow){
+        return {
+            ok:false, value:'', source, raw:_creativeDisplayValue(rawValue),
+            error:'対応するLIが見つからず「LIに準ずる」を解析できません'
+        };
+    }
+    const resolvedRaw=inherited ? liRow[liField] : rawValue;
+    const parsed=type==='date'
+        ? normalizeCreativeDate(resolvedRaw)
+        : normalizeCreativeTime(resolvedRaw);
+    return { ...parsed, source, raw:_creativeDisplayValue(resolvedRaw) };
+}
+
+function compareCreativeData(settingData,downloadData,liSettingRows,caseMode){
+    const diagnostics=[
+        ...(settingData?.diagnostics||[]),
+        ...(downloadData?.diagnostics||[])
+    ];
+    const settingRows=settingData?.rows||[];
+    const downloadRows=downloadData?.rows||[];
+    const expectedStatus=caseMode==='creative_addition' ? 'INACTIVE' : 'ACTIVE';
+    const liMap=new Map();
+    (liSettingRows||[]).forEach(row=>{
+        const key=normalizeCreativeName(row.__LI_NAME__);
+        if(key && !liMap.has(key)) liMap.set(key,row);
+    });
+
+    const downloadMap=new Map();
+    downloadRows.forEach((row,index)=>{
+        const key=_creativeKey(row.liName,row.creativeName);
+        if(!downloadMap.has(key)) downloadMap.set(key,[]);
+        downloadMap.get(key).push({row,index});
+    });
+    const usedDownload=new Set();
+    const items=[];
+
+    settingRows.forEach(sRow=>{
+        const key=_creativeKey(sRow.liName,sRow.creativeName);
+        const queue=downloadMap.get(key)||[];
+        const selected=queue.find(x=>!usedDownload.has(x.index));
+        const dRow=selected ? selected.row : null;
+        if(selected) usedDownload.add(selected.index);
+        const liRow=liMap.get(normalizeCreativeName(sRow.liName))||null;
+
+        const expected={
+            startDate:_resolveCreativeExpected(sRow.startDate,liRow,'start_day','date'),
+            startTime:_resolveCreativeExpected(sRow.startTime,liRow,'start_time','time'),
+            endDate:_resolveCreativeExpected(sRow.endDate,liRow,'end_day','date'),
+            endTime:_resolveCreativeExpected(sRow.endTime,liRow,'end_time','time')
+        };
+        const start=dRow ? parseCreativeDownloadDateTime(dRow.startDateTime)
+                         : {ok:false,date:'',time:'',raw:'',error:'ダウンロードデータ未一致'};
+        const end=dRow ? parseCreativeDownloadDateTime(dRow.endDateTime)
+                       : {ok:false,date:'',time:'',raw:'',error:'ダウンロードデータ未一致'};
+        const actual={
+            startDate:{ok:start.ok,value:start.date||'',raw:start.raw||'',error:start.error||''},
+            startTime:{ok:start.ok,value:start.time||'',raw:start.raw||'',error:start.error||''},
+            endDate:{ok:end.ok,value:end.date||'',raw:end.raw||'',error:end.error||''},
+            endTime:{ok:end.ok,value:end.time||'',raw:end.raw||'',error:end.error||''}
+        };
+        const fields={};
+        for(const field of ['startDate','startTime','endDate','endTime']){
+            const exp=expected[field], act=actual[field];
+            let status='not_compared', error='';
+            if(dRow){
+                if(!exp.ok || !act.ok){
+                    status='error';
+                    error=[exp.error,act.error].filter(Boolean).join(' / ');
+                } else {
+                    status=exp.value===act.value ? 'match' : 'mismatch';
+                }
+            }
+            fields[field]={
+                expected:exp.value||'',
+                actual:act.value||'',
+                source:exp.source,
+                status,
+                settingRaw:exp.raw||'',
+                downloadRaw:act.raw||'',
+                error
+            };
+        }
+        const parsedStatus=dRow
+            ? normalizeCreativeStatus(dRow.activeStatus)
+            : {ok:false,value:'',raw:'',error:'ダウンロードデータ未一致'};
+        fields.status={
+            expected:expectedStatus,
+            actual:parsedStatus.value||'',
+            source:'案件区分',
+            status:!dRow ? 'not_compared'
+                : !parsedStatus.ok ? 'error'
+                : parsedStatus.value===expectedStatus ? 'match' : 'mismatch',
+            settingRaw:expectedStatus,
+            downloadRaw:parsedStatus.raw||'',
+            error:dRow && !parsedStatus.ok ? parsedStatus.error : ''
+        };
+
+        let matchStatus, unmatchedReason='';
+        if(!sRow.liName || !sRow.creativeName){
+            matchStatus='error';
+            unmatchedReason=!sRow.liName ? '設定表のLI名が空白です' : '設定表のCR名が空白です';
+        } else if(!dRow){
+            matchStatus='setting_only';
+            unmatchedReason='設定表にCRがありますが、ダウンロードデータに同一の（LI名, CR名）が見つかりません';
+        } else if(Object.values(fields).some(f=>f.status==='error')){
+            matchStatus='error';
+            unmatchedReason=Object.values(fields).map(f=>f.error).filter(Boolean)[0]||'日時を解析できません';
+        } else if(Object.values(fields).some(f=>f.status==='mismatch')){
+            matchStatus='mismatch';
+        } else {
+            matchStatus='match';
+        }
+
+        items.push({
+            liName:sRow.liName,
+            creativeName:sRow.creativeName,
+            creativeNameSource:sRow.creativeNameSource,
+            settingStatus:sRow.settingStatus||'',
+            settingSource:sRow.source,
+            downloadSource:dRow?.source||null,
+            fields,
+            matchStatus,
+            overallMatch:matchStatus==='match' ? true : matchStatus==='mismatch' ? false : null,
+            unmatchedReason
+        });
+    });
+
+    if(caseMode==='initial') downloadRows.forEach((dRow,index)=>{
+        if(usedDownload.has(index)) return;
+        const start=parseCreativeDownloadDateTime(dRow.startDateTime);
+        const end=parseCreativeDownloadDateTime(dRow.endDateTime);
+        const parsedStatus=normalizeCreativeStatus(dRow.activeStatus);
+        const fields={
+            startDate:{expected:'',actual:start.date||'',source:'',status:'not_compared',settingRaw:'',downloadRaw:start.raw||'',error:start.error||''},
+            startTime:{expected:'',actual:start.time||'',source:'',status:'not_compared',settingRaw:'',downloadRaw:start.raw||'',error:start.error||''},
+            endDate:{expected:'',actual:end.date||'',source:'',status:'not_compared',settingRaw:'',downloadRaw:end.raw||'',error:end.error||''},
+            endTime:{expected:'',actual:end.time||'',source:'',status:'not_compared',settingRaw:'',downloadRaw:end.raw||'',error:end.error||''},
+            status:{expected:expectedStatus,actual:parsedStatus.value||'',source:'案件区分',status:'not_compared',
+                settingRaw:expectedStatus,downloadRaw:parsedStatus.raw||'',error:parsedStatus.error||''}
+        };
+        items.push({
+            liName:dRow.liName,
+            creativeName:dRow.creativeName,
+            creativeNameSource:'',
+            settingStatus:'',
+            settingSource:null,
+            downloadSource:dRow.source,
+            fields,
+            matchStatus:'download_only',
+            overallMatch:null,
+            unmatchedReason:'ダウンロードデータにCRがありますが、設定表に同一の（LI名, CR名）が見つかりません'
+        });
+    });
+
+    return {
+        caseMode,
+        settingCount:settingRows.length,
+        downloadCount:downloadRows.length,
+        settingFiles:settingData?.files||[],
+        downloadFiles:downloadData?.files||[],
+        diagnostics,
+        items,
+        matchCount:items.filter(x=>x.matchStatus==='match').length,
+        mismatchCount:items.filter(x=>x.matchStatus==='mismatch').length,
+        settingOnlyCount:items.filter(x=>x.matchStatus==='setting_only').length,
+        downloadOnlyCount:items.filter(x=>x.matchStatus==='download_only').length,
+        errorCount:items.filter(x=>x.matchStatus==='error').length,
+        downloadMatchedCount:items.filter(x=>x.settingSource&&x.downloadSource).length,
+        notFoundCount:items.filter(x=>x.matchStatus==='setting_only').length,
+        dateTimeMismatchCount:items.reduce((sum,item)=>sum+
+            ['startDate','startTime','endDate','endTime']
+                .filter(k=>item.fields?.[k]?.status==='mismatch').length,0),
+        statusMismatchCount:items.filter(item=>
+            item.fields?.status?.status==='mismatch' || item.fields?.status?.status==='error'
+        ).length
+    };
+}
+
+function renderCreativeResultSection(creative){
+    if(!creative){
+        return `<section style="margin-top:18px;background:white;border:1px solid #f5b7b1;border-radius:8px;padding:16px;">
+            <h2 style="font-size:1rem;color:#c0392b;">🎨 Creative 配信日時チェック</h2>
+            <div style="margin-top:10px;color:#c0392b;">CR解析結果が生成されませんでした。</div>
+        </section>`;
+    }
+    const diagnostics=(creative.diagnostics||[]).map(d=>`
+        <div style="margin-top:6px;padding:8px 10px;border-radius:5px;background:#fdeaea;color:#922b21;font-size:0.76rem;">
+            <strong>${esc(d.code||'PARSE_ERROR')}</strong>：
+            ${esc(d.message||'解析エラー')}
+            ${d.fileName?`<span style="color:#777;">／${esc(d.fileName)}</span>`:''}
+            ${d.sheetName?`<span style="color:#777;">／${esc(d.sheetName)}</span>`:''}
+        </div>`).join('');
+    const statusMeta={
+        match:{label:'完全一致',color:'#1e8449',bg:'#d5f5e3'},
+        mismatch:{label:'不一致',color:'#c0392b',bg:'#fde8e8'},
+        setting_only:{label:'DL未発見',color:'#856404',bg:'#fff3cd'},
+        download_only:{label:'設定表未発見',color:'#856404',bg:'#fff3cd'},
+        error:{label:'解析エラー',color:'#922b21',bg:'#f5b7b1'}
+    };
+    const caseModeLabel=SC_CASE_MODES[creative.caseMode]||'未選択';
+    const fieldLabels={
+        startDate:'配信開始日',startTime:'配信開始時間',
+        endDate:'配信停止日',endTime:'配信停止時間'
+    };
+    const rows=(creative.items||[]).map(item=>{
+        const meta=statusMeta[item.matchStatus]||statusMeta.error;
+        const sourceText=item.settingSource
+            ? `${item.settingSource.fileName} / ${item.settingSource.sheetName} / 行${item.settingSource.rowNumber}`
+            : '';
+        const downloadText=item.downloadSource
+            ? `${item.downloadSource.fileName} / ${item.downloadSource.sheetName} / 行${item.downloadSource.rowNumber}`
+            : '';
+        const crStatus=item.fields?.status||{};
+        const crStatusIcon=crStatus.status==='match'?'✅'
+            : crStatus.status==='mismatch'?'❌'
+            : crStatus.status==='error'?'⚠️':'—';
+        const crStatusBg=crStatus.status==='match'?'#f0fff5'
+            : crStatus.status==='mismatch'?'#fff1f0'
+            : crStatus.status==='error'?'#fff3cd':'#fafafa';
+        const fieldCells=Object.keys(fieldLabels).map(key=>{
+            const f=item.fields?.[key]||{};
+            const icon=f.status==='match'?'✅':f.status==='mismatch'?'❌':f.status==='error'?'⚠️':'—';
+            const bg=f.status==='match'?'#f0fff5':f.status==='mismatch'?'#fff1f0':f.status==='error'?'#fff3cd':'#fafafa';
+            return `<td style="border:1px solid #ddd;padding:7px;vertical-align:top;background:${bg};min-width:145px;">
+                <div style="font-weight:bold;font-size:0.72rem;">${icon} ${fieldLabels[key]}</div>
+                <div style="font-size:0.7rem;margin-top:4px;"><span style="color:#777;">設定：</span>${esc(f.expected||'—')}</div>
+                <div style="font-size:0.7rem;"><span style="color:#777;">DL：</span>${esc(f.actual||'—')}</div>
+                ${f.source?`<div style="font-size:0.65rem;color:#2874a6;margin-top:3px;">来源：${esc(f.source)}</div>`:''}
+                ${f.error?`<div style="font-size:0.65rem;color:#922b21;margin-top:3px;white-space:normal;">${esc(f.error)}</div>`:''}
+            </td>`;
+        }).join('');
+        return `<tr>
+            <td style="border:1px solid #ddd;padding:7px;vertical-align:top;min-width:150px;">
+                <div style="font-weight:bold;font-size:0.74rem;word-break:break-all;">${esc(item.liName||'—')}</div>
+            </td>
+            <td style="border:1px solid #ddd;padding:7px;vertical-align:top;min-width:220px;">
+                <div style="font-size:0.72rem;word-break:break-all;">${esc(item.creativeName||'—')}</div>
+                ${item.creativeNameSource?`<div style="font-size:0.65rem;color:#2874a6;margin-top:3px;">CR名：${esc(item.creativeNameSource)}</div>`:''}
+            </td>
+            <td style="border:1px solid #ddd;padding:7px;vertical-align:top;min-width:90px;">
+                <div style="font-size:0.72rem;font-weight:bold;">${esc(item.settingStatus||'—')}</div>
+            </td>
+            <td style="border:1px solid #ddd;padding:7px;vertical-align:top;background:${crStatusBg};min-width:150px;">
+                <div style="font-weight:bold;font-size:0.72rem;">${crStatusIcon} CR状態</div>
+                <div style="font-size:0.7rem;margin-top:4px;"><span style="color:#777;">設定期待：</span>${esc(crStatus.expected||'—')}</div>
+                <div style="font-size:0.7rem;"><span style="color:#777;">ダウンロード：</span>${esc(crStatus.actual||'—')}</div>
+                ${crStatus.error?`<div style="font-size:0.65rem;color:#922b21;margin-top:3px;">${esc(crStatus.error)}</div>`:''}
+            </td>
+            ${fieldCells}
+            <td style="border:1px solid #ddd;padding:7px;vertical-align:top;background:${meta.bg};min-width:150px;">
+                <div style="font-weight:bold;color:${meta.color};font-size:0.74rem;">${meta.label}</div>
+                ${item.unmatchedReason?`<div style="font-size:0.66rem;color:#922b21;margin-top:4px;white-space:normal;">${esc(item.unmatchedReason)}</div>`:''}
+                ${sourceText?`<div style="font-size:0.62rem;color:#777;margin-top:5px;word-break:break-all;">設定：${esc(sourceText)}</div>`:''}
+                ${downloadText?`<div style="font-size:0.62rem;color:#777;margin-top:3px;word-break:break-all;">DL：${esc(downloadText)}</div>`:''}
+            </td>
+        </tr>`;
+    }).join('');
+    return `<section style="margin-top:18px;background:white;border:1px solid #ddd;border-radius:8px;padding:14px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <h2 style="font-size:1rem;color:#2c3e50;">🎨 Creative 配信日時チェック</h2>
+            <span style="font-size:0.73rem;color:white;background:#8e44ad;border-radius:10px;padding:2px 9px;">案件区分：${esc(caseModeLabel)}</span>
+            <span style="font-size:0.73rem;color:#555;">設定表 CR対象：${creative.settingCount}件</span>
+            <span style="font-size:0.73rem;color:#1e8449;">ダウンロードマッチ：${creative.downloadMatchedCount}件</span>
+            <span style="font-size:0.73rem;color:#856404;">未找到：${creative.notFoundCount}件</span>
+            <span style="font-size:0.73rem;color:#c0392b;">日時不一致：${creative.dateTimeMismatchCount}項目</span>
+            <span style="font-size:0.73rem;color:#922b21;">状態不一致：${creative.statusMismatchCount}件</span>
+            ${creative.caseMode==='initial'&&creative.downloadOnlyCount>0
+                ? `<span style="font-size:0.73rem;color:#856404;">DL側のみ：${creative.downloadOnlyCount}件</span>`:''}
+            ${creative.errorCount>0
+                ? `<span style="font-size:0.73rem;color:#922b21;">解析エラー：${creative.errorCount}件</span>`:''}
+        </div>
+        ${diagnostics}
+        <div style="overflow:auto;margin-top:12px;max-height:620px;">
+            <table style="border-collapse:collapse;width:max-content;min-width:100%;font-size:0.75rem;">
+                <thead><tr style="background:#34495e;color:white;">
+                    <th style="padding:7px;border:1px solid #566573;">LI名</th>
+                    <th style="padding:7px;border:1px solid #566573;">CR名</th>
+                    <th style="padding:7px;border:1px solid #566573;">ステータス</th>
+                    <th style="padding:7px;border:1px solid #566573;">CR状態</th>
+                    <th style="padding:7px;border:1px solid #566573;">配信開始日</th>
+                    <th style="padding:7px;border:1px solid #566573;">配信開始時間</th>
+                    <th style="padding:7px;border:1px solid #566573;">配信停止日</th>
+                    <th style="padding:7px;border:1px solid #566573;">配信停止時間</th>
+                    <th style="padding:7px;border:1px solid #566573;">総合判定・来源</th>
+                </tr></thead>
+                <tbody>${rows||`<tr><td colspan="9" style="padding:16px;text-align:center;color:#777;">CRデータがありません</td></tr>`}</tbody>
+            </table>
+        </div>
+    </section>`;
+}
+
 // ===== checkAmazon（複数ファイル対応版） =====
-function checkAmazon(wbsS, wbsD, system){
+function checkAmazon(wbsS, wbsD, system, caseMode){
+    if(!Object.prototype.hasOwnProperty.call(SC_CASE_MODES, caseMode)){
+        return { error:'案件区分（初期案件／CR追加案件）を選択してください。' };
+    }
     let allSettingData = [];
 
     // ★ PVA/OTT は専用読み取り関数を使用
@@ -2156,22 +2929,36 @@ function checkAmazon(wbsS, wbsD, system){
         allSettingData = allSettingData.concat(rows);
     });
 
-    // ★ PVA/OTT は VIDEO LINE ITEMS を読む
-    const downloadData = (system === 'amazon_pva' || system === 'amazon_ott')
-        ? readDownloadDataVideoMulti(wbsD)
-        : readDownloadDataDSPMulti(wbsD);
+    const liSkipped = caseMode==='creative_addition';
+    // CR追加案件ではLI設定値だけを参照し、LIダウンロード読取・比較は実行しない
+    const downloadData = liSkipped
+        ? {liMap:{},files:[],ioDownloadMap:{}}
+        : (system === 'amazon_pva' || system === 'amazon_ott')
+            ? readDownloadDataVideoMulti(wbsD)
+            : readDownloadDataDSPMulti(wbsD);
+    const creativeSettingData = readCreativeSettingDataMulti(wbsS,caseMode);
+    const creativeDownloadData = readCreativeDownloadDataMulti(wbsD);
+    const creative = compareCreativeData(
+        creativeSettingData, creativeDownloadData, allSettingData, caseMode
+    );
+    const liItems = liSkipped ? [] :
+        (system === 'amazon_pva' || system === 'amazon_ott')
+            ? matchAndCompareVideo(allSettingData, downloadData.liMap, system)
+            : matchAndCompareDSP(allSettingData, downloadData.liMap, system);
 
     return {
         system,
+        caseMode,
+        caseModeLabel:SC_CASE_MODES[caseMode],
+        liSkipped,
         settingCount:  allSettingData.length,
         downloadCount: Object.keys(downloadData.liMap).length,
         downloadFiles: downloadData.files,
         settingData:   allSettingData,
         downloadData:  downloadData.liMap,
         ioDownloadMap: downloadData.ioDownloadMap,
-        items: (system === 'amazon_pva' || system === 'amazon_ott')
-            ? matchAndCompareVideo(allSettingData, downloadData.liMap, system)
-            : matchAndCompareDSP(allSettingData, downloadData.liMap, system),
+        items: liItems,
+        creative,
     };
 }
 
@@ -3658,6 +4445,26 @@ function renderScResult(){
             ❌ ${scResults.error}</div>`;
         return;
     }
+    if(scResults.caseMode==='creative_addition'){
+        const additionSys=SC_SYSTEMS[scResults.system]||{};
+        document.getElementById('sc-filter-btns').style.display='none';
+        result.innerHTML=`
+            <div style="background:#2c3e50;color:white;border-radius:8px;
+                        padding:12px 16px;display:flex;align-items:center;
+                        gap:10px;flex-wrap:wrap;margin-top:16px;">
+                <span style="font-weight:bold;font-size:0.95rem;">✅ ${esc(additionSys.label||scResults.system)} チェック結果</span>
+                <span style="background:#8e44ad;border-radius:10px;padding:2px 10px;font-size:0.8rem;">
+                    案件区分：CR追加案件
+                </span>
+            </div>
+            <div style="margin-top:10px;padding:10px 14px;background:#f4ecf7;
+                        border:1px solid #c39bd3;border-radius:6px;color:#6c3483;
+                        font-weight:bold;font-size:0.82rem;">
+                LIチェック：CR追加案件のため対象外
+            </div>
+            ${renderCreativeResultSection(scResults.creative)}`;
+        return;
+    }
 
     const { items, settingCount, system, downloadFiles, downloadData } = scResults;
     const sys=SC_SYSTEMS[system]||{};
@@ -3781,6 +4588,9 @@ const visibleCols = activeCols.filter(col=>{
                 padding:12px 16px;display:flex;align-items:center;
                 gap:10px;flex-wrap:wrap;margin-top:16px;">
         <span style="font-weight:bold;font-size:0.95rem;">✅ ${sys.label||system} チェック結果</span>
+        <span style="background:#8e44ad;border-radius:10px;padding:2px 10px;font-size:0.8rem;">
+            案件区分：${esc(SC_CASE_MODES[scResults.caseMode]||'未選択')}
+        </span>
         <span style="background:#7f8c8d;border-radius:10px;padding:2px 10px;font-size:0.8rem;">
             設定表：${settingCount}件 / ${scFilesS.length}ファイル
         </span>
@@ -4232,6 +5042,7 @@ col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n
     }
 
     html+=`</tbody></table></div></div>`;
+    html+=renderCreativeResultSection(scResults.creative);
     result.innerHTML=html;
 
     // ★ 行高調整コントロールにイベントリスナーをバインド
@@ -4353,6 +5164,8 @@ function resetSettingCheck(){
     document.getElementById('sc-result-area').innerHTML='';
     document.getElementById('sc-progress').classList.remove('show');
     document.getElementById('sc-filter-btns').style.display='none';
+    const modeError=document.getElementById('sc-case-mode-error');
+    if(modeError){ modeError.textContent=''; modeError.style.display='none'; }
 }
 
 // ===== グローバル公開 =====
