@@ -28,7 +28,6 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
 .header-btn:hover{background:rgba(255,255,255,.2);}
 .update-trigger{position:relative;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.72rem;transition:all .15s;}
 .update-trigger:hover{background:rgba(255,255,255,.2);}
-.update-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:.58rem;min-width:16px;height:16px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:700;}
 
 /* ===== Main Layout ===== */
 .main{max-width:1680px;margin:0 auto;padding:24px clamp(16px,3vw,40px) 60px;}
@@ -115,18 +114,20 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
 .drawer-title{font-size:.92rem;font-weight:700;}
 .drawer-close{background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--text2);padding:4px 8px;border-radius:6px;transition:all .15s;}
 .drawer-close:hover{background:var(--bg);color:var(--text);}
-.drawer-body{flex:1;overflow-y:auto;padding:16px 20px;}
-.drawer-group{margin-bottom:16px;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.drawer-body{flex:1;overflow-y:auto;padding:16px 20px;width:100%;box-sizing:border-box;}
+.drawer-group{margin-bottom:16px;border:1px solid var(--border);border-radius:12px;overflow:hidden;width:100%;min-width:0;box-sizing:border-box;}
 .drawer-group-header{padding:8px 14px;font-size:.72rem;font-weight:700;display:flex;align-items:center;gap:6px;}
 .dg-new{background:#f5f3ff;color:#5b21b6;border-left:3px solid #7c3aed;}
 .dg-add{background:#f0fdf4;color:#166534;border-left:3px solid #22c55e;}
 .dg-fix{background:#fffbeb;color:#92400e;border-left:3px solid #f59e0b;}
-.drawer-item{padding:10px 14px;border-top:1px solid var(--border);cursor:pointer;transition:background .12s;}
+.drawer-item{padding:10px 14px;border-top:1px solid var(--border);cursor:pointer;transition:background .12s;width:100%;min-width:0;box-sizing:border-box;}
 .drawer-item:hover{background:#f0f6fe;}
-.drawer-item-meta{font-size:.62rem;color:var(--text2);display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.drawer-item-meta{font-size:.62rem;color:var(--text2);display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;}
 .drawer-item-req{background:#e0f2fe;color:#0369a1;padding:0 6px;border-radius:999px;font-size:.58rem;font-weight:600;}
-.drawer-item-title{font-size:.74rem;font-weight:600;color:var(--text);line-height:1.35;}
-.drawer-item-desc{font-size:.64rem;color:var(--text2);margin-top:2px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.drawer-item-title{font-size:.74rem;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word;overflow-wrap:anywhere;}
+.drawer-item-desc{font-size:.64rem;color:var(--text2);margin-top:2px;line-height:1.3;word-break:break-word;overflow-wrap:anywhere;}
+.update-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:.58rem;min-width:16px;height:16px;border-radius:999px;display:none;align-items:center;justify-content:center;font-weight:700;}
+.update-badge.visible{display:flex;}
 
 /* ===== Update Detail Modal ===== */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:300;justify-content:center;align-items:flex-start;padding:40px 20px;overflow-y:auto;}
@@ -362,7 +363,7 @@ var UPDATE_LOG=[
   {date:'2026/07/24',requester:'杨蒙蒙',type:'fix',tool:'Amazon DSP 設定チェック',title:'PVA設定シートの読込不具合を修正',detail:'備考欄をヘッダーと誤認し、LIを読み込めない問題を修正しました。',summary:'PVA設定シート内の備考欄が第二層ヘッダーと誤判定され、LIが0件になる不具合を修正。',note:''},
   {date:'2026/07/24',requester:'马林',type:'add',tool:'Amazon DSP 設定チェック',title:'Creative比較を追加',detail:'設定シートのCreative名を基準に、ダウンロードデータのCR設定を確認できるようにしました。',summary:'Amazon DSP CR対比機能を追加。設定シートのCreative名を基準にダウンロードデータのCR設定を比較可能。',note:''},
   {date:'2026/07/23',requester:'冯翠梅',type:'improve',tool:'地域表記変換チェック',title:'都道府県未入力時の自動推定＋御殿場市表記修正',detail:'都道府県が未入力の場合でも、市区町村名から一意に特定可能な都道府県を推定し、DV360用の地域表記を表示できるよう改善しました。また、静岡県御殿場市の英語表記を「Gotemba」に修正し、DV360確認済みデータとして正式登録しました。',summary:'市区町村名のみから都道府県を推定するWARN_都道府県推定ロジックを追加。御殿場市の英語表記をGotembaに修正しCONFIRMEDマスタに登録。',note:''},
-  {date:'2026/07/22',requester:'BPO',type:'fix',tool:'DV360 設定チェック',title:'YouTube / TrueView 五階層比較を強化',detail:'YouTube / TrueView のCP・IO・LI・GP・CR解析、名称マッチング、要確認判定、SDF側のみの未匹配集計を強化しました。実データ10件で設定表xlsxとSDF.zipの解析・比較・集計を検証済みです。',summary:'YouTube / TrueView の五階層比較と未匹配集計を強化し、実データ10件で検証。',note:''},
+  {date:'2026/07/22',requester:'马林',type:'fix',tool:'DV360 設定チェック',title:'YouTube / TrueView 五階層比較を強化',detail:'YouTube / TrueView のCP・IO・LI・GP・CR解析、名称マッチング、要確認判定、SDF側のみの未匹配集計を強化しました。実データ10件で設定表xlsxとSDF.zipの解析・比較・集計を検証済みです。',summary:'YouTube / TrueView の五階層比較と未匹配集計を強化し、実データ10件で検証。',note:''},
   {date:'2026/07/21',requester:'徐丹彤',type:'add',tool:'登录系统',title:'パスワードリセット機能を追加',detail:'登録済みメールアドレスへの認証コード送信に対応し、利用者自身で新しいパスワードを設定できるようにしました。認証コードは10分間有効で、誤入力は最大5回までに制限されています。',summary:'登録済みメールアドレスへ認証コードを送信し、利用者自身がパスワードを再設定可能に。認証コード10分有効、誤入力最大5回まで。',note:''},
   {date:'2026/07/15',requester:'董馨宁',type:'new',tool:'地域表記変換チェック',title:'東洋経済新報社モードを追加',detail:'英語地域＋数値2列を日本語都道府県へ変換し、対象外を除外してExcel用3列データとしてコピーできる機能を追加。',summary:'英語地域を日本語都道府県へ変換し、対象外を除外してExcel用3列データとしてコピー可能。',note:''},
   {date:'2026/07/15',requester:'董馨宁',type:'add',tool:'文本处理工具',title:'重複行チェックを追加',detail:'貼り付けた内容から完全一致する行を同色で表示し、重複グループごとに快速定位できる機能を追加。',summary:'完全一致行を同色表示し、重複グループごとに快速定位可能。',note:''},
@@ -472,7 +473,7 @@ function showMain(){
   currentUser=getUser();
   if(currentUser){document.getElementById('headerUser').textContent='👤 '+currentUser.name+' ('+currentUser.email+')';}
   renderGroups();renderRecent();renderDrawer();initSearch();
-  document.getElementById('updateCount').textContent=UPDATE_LOG.length;
+  updateBadge();
 }
 
 // ==================== Card Rendering ====================
@@ -559,7 +560,28 @@ function doSearch(q){
 }
 
 // ==================== Drawer ====================
-function openDrawer(){document.getElementById('drawerOverlay').classList.add('open');document.getElementById('drawer').classList.add('open');document.body.style.overflow='hidden';}
+function getUpdateId(item){return item.date+'|'+item.type+'|'+item.requester+'|'+item.title;}
+function getUnreadCount(){
+  var sorted=UPDATE_LOG.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  if(!sorted.length)return 0;
+  var lastSeen=localStorage.getItem('qc_updates_last_seen');
+  if(!lastSeen){localStorage.setItem('qc_updates_last_seen',getUpdateId(sorted[0]));return 0;}
+  var count=0;
+  for(var i=0;i<sorted.length;i++){if(getUpdateId(sorted[i])===lastSeen)break;count++;}
+  return count;
+}
+function updateBadge(){
+  var badge=document.getElementById('updateCount');
+  var n=getUnreadCount();
+  if(n>0){badge.textContent=n>99?'99+':String(n);badge.classList.add('visible');}
+  else{badge.classList.remove('visible');}
+}
+function markUpdatesRead(){
+  var sorted=UPDATE_LOG.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  if(sorted.length)localStorage.setItem('qc_updates_last_seen',getUpdateId(sorted[0]));
+  updateBadge();
+}
+function openDrawer(){document.getElementById('drawerOverlay').classList.add('open');document.getElementById('drawer').classList.add('open');document.body.style.overflow='hidden';markUpdatesRead();}
 function closeDrawer(){document.getElementById('drawerOverlay').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.style.overflow='';}
 function renderDrawer(){
   var body=document.getElementById('drawerBody'),lang=isJa();
@@ -574,9 +596,11 @@ function renderDrawer(){
       var idx=sorted.indexOf(item);
       var title=(lang&&item.title_ja)?item.title_ja:item.title;
       var summary=(lang&&item.summary_ja)?item.summary_ja:(item.summary||'');
-      html+='<div class="drawer-item" onclick="openUpdateModal('+idx+')"><div class="drawer-item-meta"><span>'+item.date+'</span><span class="drawer-item-req">'+item.requester+'</span><span style="color:#94a3b8;">'+item.tool+'</span></div>';
+      html+='<div class="drawer-item" onclick="openUpdateModal('+idx+')">';
+      html+='<div class="drawer-item-meta"><span>'+item.date+'</span><span class="drawer-item-req">'+item.requester+'</span><span style="color:#94a3b8;">'+item.tool+'</span></div>';
       html+='<div class="drawer-item-title">'+title+'</div>';
-      if(summary)html+='<div class="drawer-item-desc">'+summary+'</div></div>';
+      if(summary)html+='<div class="drawer-item-desc">'+summary+'</div>';
+      html+='</div>';
     });
     html+='</div>';
   });
