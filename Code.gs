@@ -496,6 +496,8 @@ const TOOL_NAME_JA = {
   '图片对比':                  '画像比較',
   'OCR文字提取':               'OCR文字抽出',
   'ターゲット推薦ツール':      'ターゲット推薦ツール',
+  'Excel文件轻量化':           'Excelファイル軽量化',
+  'Excel对比_高速模式':       'Excel比較_高速モード',
 };
 
 function rebuildSummary() {

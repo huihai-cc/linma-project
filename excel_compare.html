@@ -51,6 +51,51 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 /* 結果エリア */
 #xlcomp-result { padding:0 20px 40px; }
 
+/* 高速モード用スタイル */
+.fast-mode-indicator { background:#e67e22; color:white; border-radius:10px; padding:2px 10px; font-size:0.72rem; font-weight:bold; display:none; }
+.fast-mode-indicator.show { display:inline-block; }
+.mode-btn.active-fast { background:#e67e22 !important; color:white !important; }
+/* 高速モード進捗 */
+.xl-fast-progress { display:none; background:#fff8e8; border:2px solid #e67e22; border-radius:8px; padding:14px 20px; margin:12px 20px; }
+.xl-fast-progress.show { display:block; }
+.xl-fast-progress .fp-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+.xl-fast-progress .fp-title { font-size:0.9rem; font-weight:bold; color:#7a5000; }
+.xl-fast-progress .fp-stats { font-size:0.78rem; color:#a07000; display:flex; gap:14px; flex-wrap:wrap; }
+.xl-fast-progress .fp-bar-outer { height:8px; background:#f0d080; border-radius:4px; overflow:hidden; margin:8px 0; }
+.xl-fast-progress .fp-bar-inner { height:100%; background:#e67e22; border-radius:4px; transition:width 0.3s; width:0%; }
+.xl-fast-progress .fp-phase { font-size:0.75rem; color:#a07000; }
+.btn-cancel { background:#c0392b; color:white; border:none; border-radius:4px; padding:6px 16px; font-size:0.82rem; cursor:pointer; font-weight:bold; display:none; }
+.btn-cancel.show { display:inline-block; }
+.btn-cancel:hover { background:#922b21; }
+/* 高速モード提案ダイアログ */
+.xl-fast-suggest { background:#fff8e8; border:2px solid #e67e22; border-radius:8px; padding:14px 20px; margin:12px 20px; display:none; }
+.xl-fast-suggest.show { display:block; }
+.xl-fast-suggest .fs-title { font-size:0.92rem; font-weight:bold; color:#7a5000; margin-bottom:6px; }
+.xl-fast-suggest .fs-desc { font-size:0.82rem; color:#a07000; margin-bottom:10px; line-height:1.5; }
+/* 高速モードコントロール */
+.xl-fast-controls { display:none; background:#fef9e7; border:1px solid #f0c060; border-radius:8px; padding:12px 16px; margin:12px 20px; }
+.xl-fast-controls.show { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+/* 高速モード差分リスト */
+.xl-fast-result { padding:0 20px 40px; }
+.xl-fast-diff-table { width:100%; border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.82rem; }
+.xl-fast-diff-table th { background:#34495e; color:white; padding:7px 10px; border-bottom:2px solid #2c3e50; position:sticky; top:0; z-index:5; text-align:left; }
+.xl-fast-diff-table td { padding:5px 10px; border-bottom:1px solid #eee; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xl-fast-diff-table tr:nth-child(even) { background:#fafafa; }
+.xl-fast-diff-table tr:nth-child(odd) { background:white; }
+.xl-fast-diff-table tr:hover { background:#fff8e8; }
+.xl-fast-sheet-filter { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.xl-fast-sheet-chip { background:white; border:1px solid #ddd; border-radius:14px; padding:3px 12px; font-size:0.78rem; cursor:pointer; transition:all 0.15s; }
+.xl-fast-sheet-chip:hover { border-color:#e67e22; }
+.xl-fast-sheet-chip.active { background:#e67e22; color:white; border-color:#e67e22; }
+.xl-fast-load-more { display:block; width:100%; background:#f0f0f0; color:#555; border:1px solid #ddd; border-radius:6px; padding:10px; font-size:0.85rem; cursor:pointer; margin-top:12px; text-align:center; }
+.xl-fast-load-more:hover { background:#e0e0e0; }
+.xl-fast-result-header { background:#2c3e50; color:white; border-radius:8px 8px 0 0; padding:12px 16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; position:sticky; top:0; z-index:100; }
+.xl-fast-cancelled-banner { background:#ffe0e0; border:2px solid #e74c3c; border-radius:8px; padding:12px 20px; margin:12px 20px; text-align:center; font-size:0.9rem; color:#c0392b; font-weight:bold; display:none; }
+.xl-fast-cancelled-banner.show { display:block; }
+.xl-fast-disabled-note { background:#f0f0f0; border:1px solid #ddd; border-radius:4px; padding:6px 12px; font-size:0.75rem; color:#999; display:inline-block; margin-left:6px; }
+.large-file-warning { background:#ffe0e0; border:2px solid #e74c3c; border-radius:8px; padding:12px 20px; margin:12px 20px; font-size:0.85rem; color:#c0392b; display:none; }
+.large-file-warning.show { display:block; }
+
 @media(max-width:600px){
   .drop-wrap { grid-template-columns:1fr; }
 }
@@ -58,6 +103,7 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 </head>
 <body>
 <script src="qc-auth.js"></script>
+<script src="qc-i18n.js"></script>
 <style>
 .qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
 .qc-userbar a{color:#67e8f9;text-decoration:none;}
@@ -79,42 +125,95 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 
 
 <header>
-  <h1>📊 Excel対比</h1>
-  <span class="badge">🔒 完全本地运行</span>
+  <h1 data-i18n="compareTitle">📊 Excel対比</h1>
+  <span class="badge" data-i18n="compareBadge">🔒 完全本地运行</span>
+  <span id="xlcomp-build-id"
+        style="background:#fff3cd;color:#7a5200;border:2px solid #ffc107;border-radius:5px;
+               padding:4px 10px;font-size:0.82rem;font-weight:800;letter-spacing:0.02em;">
+    Build: FASTMODE-DEBUG-20260724-01
+  </span>
+  <span class="lang-switch" style="margin-left:8px;"><button onclick="setLanguage('zh-CN')" id="langZh" style="background:none;border:none;color:#fff;cursor:pointer;font-size:0.75rem;opacity:0.6;">中文</button><span style="opacity:0.4;color:#fff;">｜</span><button onclick="setLanguage('ja-JP')" id="langJa" style="background:none;border:none;color:#fff;cursor:pointer;font-size:0.75rem;opacity:0.6;">日本語</button></span>
 </header>
 
 <div class="back-nav">
-  <a href="index.html" class="back-btn">← 返回导航页</a>
-  <span style="color:#bdc3c7;font-size:0.82rem;">对比两个Excel文件的差异</span>
+  <a href="index.html" class="back-btn" data-i18n="backNav">← 返回导航页</a>
+  <span style="color:#bdc3c7;font-size:0.82rem;" data-i18n="compareSubDesc">对比两个Excel文件的差异</span>
 </div>
 
 <!-- モード切替バー -->
 <div class="mode-bar">
-  <span style="color:#bdc3c7;font-size:0.82rem;">对比模式：</span>
+  <span style="color:#bdc3c7;font-size:0.82rem;" data-i18n="compareModeLabel">对比模式：</span>
   <button class="mode-btn" id="xlcomp-mode-excel"
           style="background:#3498db;color:white;"
-          onclick="xlcompSetMode('excel')">📊 Excel对比</button>
+          onclick="xlcompSetMode('excel')" data-i18n="compareModeExcel">📊 Excel对比</button>
   <button class="mode-btn" id="xlcomp-mode-zip"
-          onclick="xlcompSetMode('zip')">🗜️ ZIP包对比</button>
+          onclick="xlcompSetMode('zip')" data-i18n="compareModeZip">🗜️ ZIP包对比</button>
+  <span style="color:#7f8c8d;margin:0 4px;">|</span>
+  <button class="mode-btn" id="xlcomp-mode-fast"
+          onclick="xlcompToggleFastMode()" data-i18n="compareModeFast">⚡ 大文件高速模式</button>
+  <span class="fast-mode-indicator" id="xlcomp-fast-indicator" data-i18n="compareFastIndicator">⚡ 高速模式</span>
+</div>
+
+<!-- 超大ファイル警告 -->
+<div class="large-file-warning" id="xlcomp-oversize-warn">
+  ⚠️ <b data-i18n="compareLargeFileWarn">ブラウザでの処理上限を超える可能性があります。</b>（ファイルが300MBを超えています）<br>
+  <span style="font-size:0.8rem;" data-i18n="compareOversizeRecommend">大文件高速模式のご利用を強く推奨します。</span>
+</div>
+
+<!-- 高速モード提案 -->
+<div class="xl-fast-suggest" id="xlcomp-fast-suggest">
+  <div class="fs-title" data-i18n="compareFastSuggestTitle">⚡ 大容量ファイルを検出しました</div>
+  <div class="fs-desc" data-i18n="compareFastSuggestDesc">高速モードでは選択したSheetのみを比較し、差異一覧を簡易表示します。</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button onclick="xlcompEnableFastMode()"
+            style="background:#e67e22;color:white;border:none;border-radius:6px;
+                   padding:8px 22px;font-size:0.88rem;font-weight:bold;cursor:pointer;"
+            data-i18n="compareFastEnable">⚡ 高速モードを有効にする</button>
+    <button onclick="xlcompDismissFastSuggest()"
+            style="background:#95a5a6;color:white;border:none;border-radius:6px;
+                   padding:8px 18px;font-size:0.85rem;cursor:pointer;"
+            data-i18n="compareFastDismiss">標準モードのまま</button>
+  </div>
+</div>
+
+<!-- 高速モード コントロール -->
+<div class="xl-fast-controls" id="xlcomp-fast-controls">
+  <button id="xlcomp-fast-cancel-btn" class="btn-cancel show" onclick="xlcompFastCancel()" data-i18n="compareCancel">⏹ 取消</button>
+  <span style="color:#999;font-size:0.82rem;" id="xlcomp-fast-ctrl-info" data-i18n="compareFastCtrlInfo">请选择要对比的Sheet</span>
+</div>
+
+<!-- 高速モード 進捗 -->
+<div class="xl-fast-progress" id="xlcomp-fast-progress">
+  <div class="fp-header">
+    <span class="fp-title" id="xlcomp-fp-title">⏳ 処理中...</span>
+    <span class="fp-stats" id="xlcomp-fp-stats"></span>
+  </div>
+  <div class="fp-bar-outer"><div class="fp-bar-inner" id="xlcomp-fp-bar"></div></div>
+  <div class="fp-phase" id="xlcomp-fp-phase"></div>
+</div>
+
+<!-- キャンセルバナー -->
+<div class="xl-fast-cancelled-banner" id="xlcomp-cancelled-banner" data-i18n-html="compareCancelled">
+  ⚠️ 比較をキャンセルしました — 以下の結果は<b>不完全</b>です
 </div>
 
 <!-- ファイルドロップ -->
 <div class="drop-wrap">
   <div>
-    <div class="drop-label" id="xlcomp-label-a">📊 文件 A（旧版本／原版）</div>
+    <div class="drop-label" id="xlcomp-label-a" data-i18n="compareFileALabel">📊 文件 A（旧版本／原版）</div>
     <div class="xl-drop-area" id="xlcomp-drop-a">
       <div class="drop-icon">📊</div>
-      <div class="drop-text">拖入 Excel 文件 A</div>
-      <div class="drop-sub">支持 .xlsx / .xls / .xlsm / .xlsb</div>
+      <div class="drop-text" data-i18n="compareDropA">拖入 Excel 文件 A</div>
+      <div class="drop-sub" data-i18n="compareDropSupport">支持 .xlsx / .xls / .xlsm / .xlsb</div>
       <input type="file" id="xlcomp-input-a" accept=".xlsx,.xls,.xlsm,.xlsb" style="display:none">
     </div>
   </div>
   <div>
-    <div class="drop-label" id="xlcomp-label-b">📊 文件 B（新版本／对照）</div>
+    <div class="drop-label" id="xlcomp-label-b" data-i18n="compareFileBLabel">📊 文件 B（新版本／对照）</div>
     <div class="xl-drop-area" id="xlcomp-drop-b">
       <div class="drop-icon">📊</div>
-      <div class="drop-text">拖入 Excel 文件 B</div>
-      <div class="drop-sub">支持 .xlsx / .xls / .xlsm / .xlsb</div>
+      <div class="drop-text" data-i18n="compareDropB">拖入 Excel 文件 B</div>
+      <div class="drop-sub" data-i18n="compareDropSupport">支持 .xlsx / .xls / .xlsm / .xlsb</div>
       <input type="file" id="xlcomp-input-b" accept=".xlsx,.xls,.xlsm,.xlsb" style="display:none">
     </div>
   </div>
@@ -122,77 +221,89 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 
 <!-- コントロールバー（両ファイル揃ったら表示） -->
 <div class="controls" id="xlcomp-controls" style="display:none">
-  <button class="btn-primary" id="xlcomp-start-btn" onclick="runXlComp()">📊 开始对比</button>
-  <button class="btn-secondary" onclick="resetXlComp()">🗑️ 重新选择</button>
+  <button class="btn-primary" id="xlcomp-start-btn" onclick="runXlComp()" data-i18n="compareStart">📊 开始对比</button>
+  <button class="btn-secondary" onclick="resetXlComp()" data-i18n="compareReset">🗑️ 重新选择</button>
   <span style="color:#999;font-size:0.82rem;margin:0 4px;">|</span>
   <label style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
-    <input type="checkbox" id="xlcomp-bgcolor" style="accent-color:#e74c3c;" onchange="xlcompOnColorOptChange()"> 🎨 背景颜色
+    <input type="checkbox" id="xlcomp-bgcolor" style="accent-color:#e74c3c;" onchange="xlcompOnColorOptChange()"> <span data-i18n="compareBgColorOpt">🎨 背景颜色</span>
   </label>
   <label style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
-    <input type="checkbox" id="xlcomp-fontcolor" style="accent-color:#3498db;" onchange="xlcompOnColorOptChange()"> 🔤 字体颜色
+    <input type="checkbox" id="xlcomp-fontcolor" style="accent-color:#3498db;" onchange="xlcompOnColorOptChange()"> <span data-i18n="compareFontColorOpt">🔤 字体颜色</span>
   </label>
   <span id="xlcomp-color-note" style="display:none;font-size:0.72rem;color:#e67e22;margin-left:4px;"
-        title="颜色对比以单元格直接设置的样式为准，条件格式产生的显示颜色可能无法识别。">⚠ 条件格式颜色可能无法识别</span>
+        title="颜色对比以单元格直接设置的样式为准，条件格式产生的显示颜色可能无法识别。" data-i18n="compareColorNote">⚠ 条件格式颜色可能无法识别</span>
   <button id="btn-exp-xlcomp" onclick="exportXlComp()"
           style="display:none;background:#8e44ad;color:white;border:none;border-radius:4px;
-                 padding:8px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;margin-left:auto;">
-    💾 导出HTML报告
+                 padding:8px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;margin-left:auto;"
+          data-i18n="compareExport">💾 导出HTML报告
   </button>
   <button id="xlcomp-btn-hide" onclick="xlcompToggleEq(true)"
           style="display:none;background:#3498db;color:white;border:none;border-radius:4px;
-                 padding:8px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;">
-    🙈 隐藏相同行
+                 padding:8px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;"
+          data-i18n="compareHideEq">🙈 隐藏相同行
   </button>
   <button id="xlcomp-btn-show" onclick="xlcompToggleEq(false)"
           style="display:none;background:#27ae60;color:white;border:none;border-radius:4px;
-                 padding:8px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;">
-    👁️ 显示全部行
+                 padding:8px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;"
+          data-i18n="compareShowAll">👁️ 显示全部行
   </button>
 </div>
 
 <!-- シート選択 -->
 <div class="sheet-select-box" id="xlcomp-sheet-select">
-  <h3>📋 选择要对比的 Sheet</h3>
+  <h3 data-i18n="compareSheetTitle">📋 选择要对比的 Sheet</h3>
   <div id="xlcomp-sheet-list"></div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
     <button onclick="xlcompSelectAll(true)"
             style="background:#3498db;color:white;border:none;border-radius:4px;
-                   padding:5px 14px;font-size:0.82rem;cursor:pointer;">全选</button>
+                   padding:5px 14px;font-size:0.82rem;cursor:pointer;" data-i18n="compareSelectAll">全选</button>
     <button onclick="xlcompSelectAll(false)"
             style="background:#95a5a6;color:white;border:none;border-radius:4px;
-                   padding:5px 14px;font-size:0.82rem;cursor:pointer;">全不选</button>
-    <button onclick="doXlComp()"
+                   padding:5px 14px;font-size:0.82rem;cursor:pointer;" data-i18n="compareDeselectAll">全不选</button>
+    <button id="xlcomp-standard-sheet-start-btn" onclick="doXlComp()"
             style="background:#e74c3c;color:white;border:none;border-radius:4px;
-                   padding:5px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;">
-      ▶ 开始对比选中Sheet
-    </button>
+                    padding:5px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;"
+            data-i18n="compareStandardStart">▶ 通常比較を開始</button>
+    <button id="xlcomp-fast-start-btn" onclick="xlcompFastPhase2Start()"
+            style="display:none;background:#e67e22;color:white;border:none;border-radius:4px;
+                    padding:5px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;"
+            data-i18n="compareFastStart">⚡ 高速比較を開始</button>
   </div>
 </div>
 
 <!-- ビュー切替バー -->
 <div class="view-switcher" id="xlcomp-view-switcher">
-  <span style="color:#bdc3c7;font-size:0.82rem;">视图：</span>
+  <span style="color:#bdc3c7;font-size:0.82rem;" data-i18n="compareViewLabel">视图：</span>
   <button class="view-btn" id="xlcomp-view-cell"
           style="background:#3498db;color:white;"
-          onclick="xlcompSwitchView('cell')">📊 单元格</button>
+          onclick="xlcompSwitchView('cell')" data-i18n="compareViewCell">📊 单元格</button>
   <button class="view-btn" id="xlcomp-view-bgcolor"
-          onclick="xlcompSwitchView('bgcolor')">🎨 背景颜色</button>
+          onclick="xlcompSwitchView('bgcolor')" data-i18n="compareViewBgColor">🎨 背景颜色</button>
   <button class="view-btn" id="xlcomp-view-fontcolor"
-          onclick="xlcompSwitchView('fontcolor')">🔤 字体颜色</button>
+          onclick="xlcompSwitchView('fontcolor')" data-i18n="compareViewFontColor">🔤 字体颜色</button>
   <button class="view-btn" id="xlcomp-view-formula"
-          onclick="xlcompSwitchView('formula')">🔢 公式</button>
+          onclick="xlcompSwitchView('formula')" data-i18n="compareViewFormula">🔢 公式</button>
   <button class="view-btn" id="xlcomp-view-textbox"
-          onclick="xlcompSwitchView('textbox')">📝 文本框</button>
+          onclick="xlcompSwitchView('textbox')" data-i18n="compareViewTextbox">📝 文本框</button>
 </div>
 
 <!-- プログレス -->
-<div class="xl-progress" id="xlcomp-progress">⏳ 正在读取...</div>
+<div class="xl-progress" id="xlcomp-progress" data-i18n="compareReading">⏳ 正在读取...</div>
 
 <!-- 結果 -->
 <div id="xlcomp-result"></div>
 
 <script>
 'use strict';
+
+const XLCOMP_BUILD_ID = 'FASTMODE-DEBUG-20260724-01';
+console.log(
+    '[ExcelCompare Build]',
+    XLCOMP_BUILD_ID,
+    location.href,
+    document.currentScript?.src || 'inline',
+    new Date().toISOString()
+);
 
 // ===== CDN加载器 =====
 const LibLoader = {
@@ -235,6 +346,149 @@ let xlcompWbA   = null, xlcompWbB   = null;
 let xlcompResults = null;
 let xlcompHideEq  = false;
 let xlcompMode    = 'excel';
+
+// ===== 高速モード状態変数 =====
+let xlcompFastMode    = false;   // 高速モードON/OFF
+let xlcompFastPhase   = 'idle';  // idle | listing | comparing | done | cancelled
+let xlcompCancelFlag  = false;   // 取消フラグ
+let xlcompRawBufA     = null;    // ファイルA生ArrayBuffer
+let xlcompRawBufB     = null;    // ファイルB生ArrayBuffer
+let xlcompFastSheets  = [];      // 高速モード処理対象Sheet名リスト
+let xlcompFastDiffs   = [];      // 全差異レコード {sheet, addr, row, col, vA, vB, type}
+let xlcompFastStats   = {};      // 各Sheet統計 {sheetName: {diffCount, addCount, delCount, totalCells}}
+let xlcompFastRenderIdx = 0;     // 現在のレンダリングページ先頭Index
+const XLCOMP_FAST_PAGE_SIZE = 100; // 1ページあたりの表示件数
+let xlcompFastSheetFilter = null; // 現在のSheetフィルタ（null=全Sheet）
+let xlcompFastWbSlimCache = new Map(); // phase2 で再利用する軽量wbキャッシュ
+
+window.__xlcompRuntimeInfo = function(){
+    const info = {
+        buildId: XLCOMP_BUILD_ID,
+        href: location.href,
+        xlsxVersion: typeof XLSX !== 'undefined' ? XLSX?.version : null,
+        rawABytes: xlcompRawBufA?.byteLength || 0,
+        rawBBytes: xlcompRawBufB?.byteLength || 0,
+        phase1SheetNamesA: xlcompWbA?.SheetNames || null,
+        phase1SheetNamesB: xlcompWbB?.SheetNames || null,
+        selectedSheets: [...document.querySelectorAll('.xlcomp-sheet-cb:checked')]
+            .map(cb => cb.dataset.sheet),
+        fastMode: xlcompFastMode,
+        fastPhase: xlcompFastPhase,
+        timestamp: new Date().toISOString()
+    };
+
+    console.table(info);
+    return info;
+};
+
+function _xlcompSyncCompareEntryButtons(){
+    const standardButton = document.getElementById('xlcomp-standard-sheet-start-btn');
+    const fastButton = document.getElementById('xlcomp-fast-start-btn');
+    const fastCancelButton = document.getElementById('xlcomp-fast-cancel-btn');
+    const fastControls = document.getElementById('xlcomp-fast-controls');
+    const sheetSelect = document.getElementById('xlcomp-sheet-select');
+    const isFastExcelMode = xlcompMode === 'excel' && xlcompFastMode;
+    const fastReady =
+        isFastExcelMode &&
+        !!xlcompRawBufA &&
+        !!xlcompRawBufB &&
+        sheetSelect?.style.display === 'block' &&
+        xlcompFastPhase !== 'listing' &&
+        xlcompFastPhase !== 'comparing';
+    const fastComparing = isFastExcelMode && xlcompFastPhase === 'comparing';
+
+    if(standardButton){
+        standardButton.style.display = isFastExcelMode || xlcompMode !== 'excel'
+            ? 'none'
+            : 'inline-block';
+        standardButton.disabled = isFastExcelMode || xlcompMode !== 'excel';
+    }
+
+    if(fastButton){
+        fastButton.style.display = fastReady ? 'inline-block' : 'none';
+        fastButton.disabled = !fastReady;
+    }
+
+    if(fastCancelButton){
+        if(fastComparing) fastCancelButton.classList.add('show');
+        else fastCancelButton.classList.remove('show');
+        fastCancelButton.disabled = !fastComparing;
+    }
+
+    if(fastControls){
+        if(fastComparing) fastControls.classList.add('show');
+        else fastControls.classList.remove('show');
+    }
+}
+
+function _fastShowDetailedError(err, context = {}){
+    const catchId = context.catchId || 'UNKNOWN';
+    const stackInfo = _fastParseStackLocation(err);
+    const canTagError = !!err && (typeof err === 'object' || typeof err === 'function');
+
+    if(canTagError && !err.xlcompFirstCatchId){
+        err.xlcompFirstCatchId = catchId;
+        err.xlcompFirstCatchContext = {
+            stage: context.stage || xlcompFastPhase,
+            currentSheet: context.currentSheet || null,
+            errorElementId: context.errorElementId || 'xlcomp-result'
+        };
+    }
+
+    const firstCatchId = canTagError ? (err.xlcompFirstCatchId || catchId) : catchId;
+    const firstContext = canTagError ? (err.xlcompFirstCatchContext || context) : context;
+    const message = err?.message || String(err);
+    const errorElementId = firstContext.errorElementId || context.errorElementId || 'xlcomp-result';
+    const errorElement = document.getElementById(errorElementId);
+
+    console.error('[' + catchId + ']', err, err?.stack);
+    console.error('[FAST MODE REAL ERROR]', {
+        catchId,
+        firstCatchId,
+        buildId: XLCOMP_BUILD_ID,
+        message,
+        stack: stackInfo.stack,
+        functionName: stackInfo.functionName,
+        source: stackInfo.source,
+        lineNumber: stackInfo.lineNumber,
+        columnNumber: stackInfo.columnNumber,
+        phase: xlcompFastPhase,
+        selectedSheets: [...document.querySelectorAll('.xlcomp-sheet-cb:checked')]
+            .map(cb => cb.dataset.sheet),
+        rawABytes: xlcompRawBufA?.byteLength || 0,
+        rawBBytes: xlcompRawBufB?.byteLength || 0,
+        xlsxVersion: typeof XLSX !== 'undefined' ? XLSX?.version : null,
+        href: location.href,
+        ...context
+    });
+
+    const details =
+        `Catch: ${firstCatchId}\n` +
+        (firstCatchId !== catchId ? `Current Catch: ${catchId}\n` : '') +
+        `Build: ${XLCOMP_BUILD_ID}\n` +
+        `Message: ${message}\n` +
+        `Function: ${stackInfo.functionName}\n` +
+        `Location: ${stackInfo.source || location.href}:${stackInfo.lineNumber || '?'}:${stackInfo.columnNumber || '?'}\n` +
+        `Stage: ${firstContext.stage || context.stage || xlcompFastPhase}\n` +
+        `Sheet: ${firstContext.currentSheet || context.currentSheet || '(未确定)'}\n` +
+        `URL: ${location.href}\n` +
+        `Stack:\n${stackInfo.stack}`;
+
+    if(errorElement){
+        errorElement.textContent = details;
+        errorElement.style.whiteSpace = 'pre-wrap';
+        errorElement.style.wordBreak = 'break-all';
+        if(errorElementId === 'xlcomp-result'){
+            errorElement.style.cssText +=
+                'display:block;margin:20px;padding:16px;background:#fff5f5;' +
+                'border:2px solid #e74c3c;border-radius:8px;color:#6b1f1a;';
+        } else {
+            errorElement.classList.add('show');
+        }
+    }
+
+    return details;
+}
 
 // ===== 颜色对比オプション =====
 let xlcompCmpBg   = false; // 背景颜色对比
@@ -498,8 +752,10 @@ function xlcompColorsEqual(c1, c2){
 
 // ===== 初期化 =====
 document.addEventListener('DOMContentLoaded', function(){
+    if (typeof applyI18n === 'function') applyI18n();
     initXlCompDrop('a');
     initXlCompDrop('b');
+    _xlcompSyncCompareEntryButtons();
 });
 
 // ===== ドロップ初期化 =====
@@ -526,26 +782,34 @@ function initXlCompDrop(side){
 
 // ===== ファイル受取 =====
 function handleXlCompFile(side, file){
+    document.getElementById('xlcomp-sheet-select').style.display = 'none';
+    document.getElementById('xlcomp-fast-controls').classList.remove('show');
+    _xlcompSyncCompareEntryButtons();
+
+    // ZIPモード
     if(xlcompMode === 'zip'){
         if(!file.name.match(/\.zip$/i)){ alert('请上传 ZIP 文件'); return; }
+        if(xlcompFastMode){ alert('高速モードではZIP比較は利用できません。標準モードに切り替えてください。'); return; }
         if(side==='a') xlcompFileA=file; else xlcompFileB=file;
 
         const drop = document.getElementById('xlcomp-drop-'+side);
         drop.innerHTML = `
             <div class="drop-icon">✅</div>
-            <div class="drop-text">${file.name}</div>
+            <div class="drop-text">${esc(file.name)}</div>
             <div class="drop-sub">${(file.size/1024/1024).toFixed(2)} MB　点击重新选择</div>
             <input type="file" id="xlcomp-input-${side}" accept=".zip" style="display:none">
         `;
         initXlCompDrop(side);
     } else {
+        // Excelモード
         if(!file.name.match(/\.(xlsx|xls|xlsm|xlsb)$/i)){ alert('请上传 Excel 文件'); return; }
-        if(side==='a') xlcompFileA=file; else xlcompFileB=file;
+        if(side==='a'){ xlcompFileA=file; _fastCleanupRawBuf('A'); }
+        else { xlcompFileB=file; _fastCleanupRawBuf('B'); }
 
         const drop = document.getElementById('xlcomp-drop-'+side);
         drop.innerHTML = `
             <div class="drop-icon">✅</div>
-            <div class="drop-text">${file.name}</div>
+            <div class="drop-text">${esc(file.name)}</div>
             <div class="drop-sub">${(file.size/1024/1024).toFixed(2)} MB　点击重新选择</div>
             <input type="file" id="xlcomp-input-${side}" accept=".xlsx,.xls,.xlsm,.xlsb" style="display:none">
         `;
@@ -553,13 +817,115 @@ function handleXlCompFile(side, file){
     }
 
     if(xlcompFileA && xlcompFileB){
-        document.getElementById('xlcomp-controls').style.display = 'flex';
-        document.getElementById('xlcomp-controls').style.flexWrap = 'wrap';
+        // 高速モードが有効なら標準コントロールをスキップしてPhase1へ
+        if(xlcompFastMode){
+            document.getElementById('xlcomp-controls').style.display = 'none';
+            _fastAfterBothFilesReady();
+        } else {
+            document.getElementById('xlcomp-controls').style.display = 'flex';
+            document.getElementById('xlcomp-controls').style.flexWrap = 'wrap';
+            // 大容量ファイル検出
+            _fastCheckLargeFiles();
+        }
     }
+    _xlcompSyncCompareEntryButtons();
+}
+
+// ===== 大容量ファイル検出と高速モード提案 =====
+function _fastCheckLargeFiles(){
+    if(xlcompMode !== 'excel') return; // ZIP模式不触发
+    if(xlcompFastMode) return; // 已启用高速模式
+
+    const sizeA = xlcompFileA ? xlcompFileA.size : 0;
+    const sizeB = xlcompFileB ? xlcompFileB.size : 0;
+    const sizeMB_A = sizeA / 1024 / 1024;
+    const sizeMB_B = sizeB / 1024 / 1024;
+    const totalMB = (sizeA + sizeB) / 1024 / 1024;
+
+    const oversizeWarn = document.getElementById('xlcomp-oversize-warn');
+    const fastSuggest = document.getElementById('xlcomp-fast-suggest');
+
+    // 300MB超の強提醒
+    if(sizeMB_A > 300 || sizeMB_B > 300){
+        if(oversizeWarn) oversizeWarn.classList.add('show');
+        if(fastSuggest) fastSuggest.classList.add('show');
+        return;
+    }
+    if(oversizeWarn) oversizeWarn.classList.remove('show');
+
+    // 50MB単体 または 100MB合計 で高速モード提案
+    if(sizeMB_A >= 50 || sizeMB_B >= 50 || totalMB >= 100){
+        if(fastSuggest) fastSuggest.classList.add('show');
+    }
+}
+
+// ===== 高速モード提案応答 =====
+function xlcompEnableFastMode(){
+    xlcompFastMode = true;
+    document.getElementById('xlcomp-fast-suggest').classList.remove('show');
+    document.getElementById('xlcomp-fast-indicator').classList.add('show');
+    document.getElementById('xlcomp-mode-fast').classList.add('active-fast');
+    _xlcompSyncCompareEntryButtons();
+    // 重新触发上传逻辑以进入高速模式流程
+    _fastAfterBothFilesReady();
+}
+
+function xlcompDismissFastSuggest(){
+    document.getElementById('xlcomp-fast-suggest').classList.remove('show');
+    document.getElementById('xlcomp-oversize-warn').classList.remove('show');
+}
+
+// ===== 高速モード手動切替 =====
+function xlcompToggleFastMode(){
+    if(xlcompMode === 'zip'){
+        alert('ZIP比較モードでは高速モードは利用できません。');
+        return;
+    }
+    xlcompFastMode = !xlcompFastMode;
+    const btn = document.getElementById('xlcomp-mode-fast');
+    const indicator = document.getElementById('xlcomp-fast-indicator');
+
+    if(xlcompFastMode){
+        btn.classList.add('active-fast');
+        indicator.classList.add('show');
+        // 如果文件已上传，进入高速模式流程
+        if(xlcompFileA && xlcompFileB){
+            _fastCleanupAll();
+            _fastAfterBothFilesReady();
+        }
+    } else {
+        btn.classList.remove('active-fast');
+        indicator.classList.remove('show');
+        _fastCleanupAll();
+        // 恢复标准模式UI
+        document.getElementById('xlcomp-fast-controls').classList.remove('show');
+        document.getElementById('xlcomp-fast-progress').classList.remove('show');
+        document.getElementById('xlcomp-cancelled-banner').classList.remove('show');
+        document.getElementById('xlcomp-fast-suggest').classList.remove('show');
+        document.getElementById('xlcomp-oversize-warn').classList.remove('show');
+        document.getElementById('xlcomp-result').innerHTML = '';
+        document.getElementById('xlcomp-sheet-select').style.display = 'none';
+        if(xlcompFileA && xlcompFileB){
+            document.getElementById('xlcomp-controls').style.display = 'flex';
+        }
+    }
+    _xlcompSyncCompareEntryButtons();
 }
 
 // ===== モード切替 =====
 function xlcompSetMode(mode){
+    // 高速モード中はZIPモードに切替不可
+    if(xlcompFastMode && mode === 'zip'){
+        alert('高速モードではZIP比較は利用できません。先に高速モードを解除してください。');
+        return;
+    }
+    // ZIPに切替時は高速モードを解除
+    if(mode === 'zip' && xlcompFastMode){
+        xlcompFastMode = false;
+        document.getElementById('xlcomp-fast-indicator').classList.remove('show');
+        document.getElementById('xlcomp-mode-fast').classList.remove('active-fast');
+        _fastCleanupAll();
+    }
     xlcompMode = mode;
 
     const excelBtn = document.getElementById('xlcomp-mode-excel');
@@ -597,6 +963,7 @@ function xlcompSetMode(mode){
     document.getElementById('xlcomp-result').innerHTML='';
     initXlCompDrop('a');
     initXlCompDrop('b');
+    _xlcompSyncCompareEntryButtons();
 }
 
 function _resetDropHint(drop, side, type){
@@ -616,6 +983,15 @@ function _resetDropHint(drop, side, type){
 // ===== Excel読込 =====
 function runXlComp(){
     if(!xlcompFileA||!xlcompFileB){ alert('请先上传两个文件'); return; }
+
+    // 高速モードの場合はPhase1へ
+    if(xlcompFastMode){
+        document.getElementById('xlcomp-controls').style.display = 'none';
+        document.getElementById('xlcomp-sheet-select').style.display = 'none';
+        _fastPhase1_ReadDirectory();
+        return;
+    }
+
     const progress = document.getElementById('xlcomp-progress');
     progress.textContent='⏳ 正在读取文件...';
     progress.classList.add('show');
@@ -828,6 +1204,7 @@ function _showSheetSelect(){
 
     document.getElementById('xlcomp-sheet-select').style.display='block';
     document.getElementById('xlcomp-result').innerHTML='';
+    _xlcompSyncCompareEntryButtons();
 }
 
 function xlcompSelectAll(val){
@@ -836,6 +1213,10 @@ function xlcompSelectAll(val){
 
 // ===== 対比実行 =====
 async function doXlComp(){
+    if(xlcompFastMode){
+        return xlcompFastPhase2Start();
+    }
+
     // 色比較オプションをチェックボックスから同期
     xlcompOnColorOptChange();
     const selected=[...document.querySelectorAll('.xlcomp-sheet-cb:checked')].map(cb=>cb.dataset.sheet);
@@ -878,6 +1259,10 @@ async function doXlComp(){
 
 // ===== シート対比コア =====
 function compareSheet(name){
+    if(!xlcompWbA?.Sheets || !xlcompWbB?.Sheets){
+        throw new Error('标准模式Workbook未初始化。当前可能处于高速模式。');
+    }
+
     const inA=xlcompWbA.SheetNames.includes(name);
     const inB=xlcompWbB.SheetNames.includes(name);
     if(!inA) return { status:'only_b', rows:[] };
@@ -2450,6 +2835,1043 @@ function xlzipToggleDetail(id, headerEl){
     const arrow=headerEl.querySelector('span:last-child');
     if(arrow) arrow.textContent=isHidden?'▲':'▼';
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 大文件高速模式 — 核心函数
+// ═══════════════════════════════════════════════════════════════
+
+// ===== 高速モード：両ファイルアップロード後処理 =====
+function _fastAfterBothFilesReady(){
+    // 隐藏标准模式控件
+    document.getElementById('xlcomp-controls').style.display = 'none';
+    document.getElementById('xlcomp-sheet-select').style.display = 'none';
+    document.getElementById('xlcomp-result').innerHTML = '';
+    _xlcompSyncCompareEntryButtons();
+
+    // 自動的にPhase1を開始
+    if(xlcompFileA && xlcompFileB){
+        _fastPhase1_ReadDirectory();
+    }
+}
+
+// ===== 高速モードPhase1：ワークブックディレクトリ読取 =====
+async function _fastPhase1_ReadDirectory(){
+    if(!xlcompFileA || !xlcompFileB) return;
+
+    xlcompFastPhase = 'listing';
+    xlcompCancelFlag = false;
+    _fastCleanupAll();
+    _xlcompSyncCompareEntryButtons();
+
+    const progress = document.getElementById('xlcomp-fast-progress');
+    progress.classList.add('show');
+    document.getElementById('xlcomp-fp-title').textContent = '⏳ Phase 1：ワークブック情報を読み取り中...';
+    document.getElementById('xlcomp-fp-stats').textContent = '';
+    document.getElementById('xlcomp-fp-phase').textContent = 'ファイルからSheet一覧を取得中（セルデータは未解析）';
+    const bar = document.getElementById('xlcomp-fp-bar');
+    bar.style.width = '10%';
+
+    document.getElementById('xlcomp-fast-controls').classList.remove('show');
+    document.getElementById('xlcomp-cancelled-banner').classList.remove('show');
+    document.getElementById('xlcomp-result').innerHTML = '';
+    document.getElementById('xlcomp-sheet-select').style.display = 'none';
+
+    try {
+        await LibLoader.loadXLSX();
+
+        // ファイルA 読取（bookSheets:true — セル解析なし）
+        const t0 = Date.now();
+        document.getElementById('xlcomp-fp-phase').textContent = 'ファイルA のSheet一覧を取得中...';
+        bar.style.width = '25%';
+        await new Promise(r => setTimeout(r, 10));
+
+        const bufA = await _readFileAsArrayBuffer(xlcompFileA);
+        if(xlcompCancelFlag){ _fastOnCancel(); return; }
+        xlcompRawBufA = bufA;
+        const wbA = XLSX.read(new Uint8Array(bufA), {type:'array', bookSheets:true});
+        console.log('📊 [高速Phase1] ファイルA 読取: ' + ((Date.now()-t0)/1000).toFixed(1) + 's, ' + wbA.SheetNames.length + ' sheets');
+
+        // ファイルB 読取
+        const t1 = Date.now();
+        document.getElementById('xlcomp-fp-phase').textContent = 'ファイルB のSheet一覧を取得中...';
+        bar.style.width = '50%';
+        await new Promise(r => setTimeout(r, 10));
+
+        const bufB = await _readFileAsArrayBuffer(xlcompFileB);
+        if(xlcompCancelFlag){ _fastOnCancel(); return; }
+        xlcompRawBufB = bufB;
+        const wbB = XLSX.read(new Uint8Array(bufB), {type:'array', bookSheets:true});
+        console.log('📊 [高速Phase1] ファイルB 読取: ' + ((Date.now()-t1)/1000).toFixed(1) + 's, ' + wbB.SheetNames.length + ' sheets');
+
+        // Sheet情報を収集
+        xlcompWbA = wbA; // bookSheets:trueなのでSheetsオブジェクトは空、SheetNamesのみ
+        xlcompWbB = wbB;
+
+        bar.style.width = '80%';
+        document.getElementById('xlcomp-fp-phase').textContent = 'Sheet一覧を構築中...';
+        await new Promise(r => setTimeout(r, 10));
+
+        // Sheet一覧を表示
+        _fastBuildSheetList(wbA, wbB);
+
+        bar.style.width = '100%';
+        document.getElementById('xlcomp-fp-title').textContent = '✅ Phase 1 完了';
+        document.getElementById('xlcomp-fp-stats').textContent =
+            'ファイルA: ' + wbA.SheetNames.length + ' sheets ／ ファイルB: ' + wbB.SheetNames.length + ' sheets';
+        document.getElementById('xlcomp-fp-phase').textContent =
+            '処理時間: ' + ((Date.now()-t0)/1000).toFixed(1) + '秒 — 比較するSheetを選択して「高速比較を開始」をクリック';
+
+        // コントロール表示
+        setTimeout(() => {
+            progress.classList.remove('show');
+            document.getElementById('xlcomp-fast-ctrl-info').textContent =
+                'Sheetを選択してから開始してください';
+            _xlcompSyncCompareEntryButtons();
+        }, 500);
+
+        xlcompFastPhase = 'idle'; // 選択待ち
+
+    } catch(err){
+        _fastShowDetailedError(err, {
+            catchId: 'FAST-CATCH-09',
+            stage: 'Phase 1 / Workbook Directory',
+            currentSheet: null,
+            errorElementId: 'xlcomp-result'
+        });
+        progress.classList.remove('show');
+        document.getElementById('xlcomp-fp-title').textContent = '❌ 読取失敗: ' + err.message;
+        xlcompFastPhase = 'idle';
+        _xlcompSyncCompareEntryButtons();
+        throw err;
+    }
+}
+
+// ===== File → ArrayBuffer =====
+function _readFileAsArrayBuffer(file){
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = () => reject(new Error('ファイル読取エラー'));
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+// ===== 高速モードSheet一覧構築 =====
+function _fastBuildSheetList(wbA, wbB){
+    const sheetsA = new Set(wbA.SheetNames);
+    const sheetsB = new Set(wbB.SheetNames);
+    const allSheets = [...new Set([...wbA.SheetNames, ...wbB.SheetNames])];
+
+    const listDiv = document.getElementById('xlcomp-sheet-list');
+    listDiv.innerHTML = '';
+
+    allSheets.forEach(name => {
+        const inA = sheetsA.has(name), inB = sheetsB.has(name);
+
+        let statusTag = '';
+        if(inA && !inB) statusTag = '<span style="background:#f39c12;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;margin-left:4px;">仅A有</span>';
+        else if(!inA && inB) statusTag = '<span style="background:#27ae60;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;margin-left:4px;">仅B有</span>';
+
+        const item = document.createElement('label');
+        item.style.cssText = `display:flex;align-items:center;gap:6px;background:white;border:1px solid #ddd;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:0.82rem;transition:all 0.15s;`;
+        item.innerHTML = `
+            <input type="checkbox" class="xlcomp-sheet-cb" data-sheet="${esc(name)}"
+                   checked style="accent-color:#e67e22;">
+            <span style="color:#333">${esc(name)}</span>
+            ${statusTag}
+        `;
+        item.addEventListener('mouseenter', ()=>{ item.style.borderColor = '#e67e22'; });
+        item.addEventListener('mouseleave', ()=>{ item.style.borderColor = '#ddd'; });
+        listDiv.appendChild(item);
+    });
+
+    document.getElementById('xlcomp-sheet-select').style.display = 'block';
+    _xlcompSyncCompareEntryButtons();
+
+    // 選択数監視（全選択で二次確認）
+    const totalCount = allSheets.length;
+    if(totalCount > 10){
+        const warnDiv = document.getElementById('xlcomp-sheet-select');
+        const existingWarn = warnDiv.querySelector('.xlcomp-fast-sheet-warn');
+        if(existingWarn) existingWarn.remove();
+        const warn = document.createElement('div');
+        warn.className = 'xlcomp-fast-sheet-warn';
+        warn.style.cssText = `background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 16px;margin-bottom:12px;font-size:0.82rem;color:#856404;`;
+        warn.innerHTML = `⚠️ <b>${totalCount}個のSheetがあります。</b>選択数が多いほど処理時間とメモリ使用量が増加します。必要なSheetのみ選択してください。`;
+        warnDiv.insertBefore(warn, warnDiv.firstChild);
+    }
+
+    // シート選択変更時に全選択チェック
+    listDiv.querySelectorAll('.xlcomp-sheet-cb').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const checked = listDiv.querySelectorAll('.xlcomp-sheet-cb:checked');
+            document.getElementById('xlcomp-fast-ctrl-info').textContent =
+                checked.length + ' / ' + totalCount + ' Sheet選択中';
+        });
+    });
+}
+
+// ===== 高速モードPhase2：選択Sheet読取・検証 =====
+function _fastCreatePhase2Error({ sheetName, stage, fileLabel, reason, actualSheetNames }){
+    const names = Array.isArray(actualSheetNames) ? actualSheetNames : [];
+    const shownNames = names.slice(0, 12);
+    const namesText = shownNames.length
+        ? shownNames.join(', ') + (names.length > shownNames.length ? ` ...（全${names.length}件）` : '')
+        : '(なし)';
+    const message = [
+        '高速模式读取失败',
+        'Sheet：' + (sheetName || '(未确定)'),
+        '阶段：' + (stage || 'Phase 2 / Workbook Parse'),
+        '文件：' + (fileLabel || '(未确定)'),
+        '原因：' + (reason || '不明なエラー'),
+        '实际SheetNames：' + namesText
+    ].join('\n');
+    const error = new Error(message);
+    error.xlcompFastDetails = {
+        sheetName: sheetName || null,
+        stage: stage || 'Phase 2 / Workbook Parse',
+        fileLabel: fileLabel || null,
+        reason: reason || '不明なエラー',
+        actualSheetNames: names.slice(0, 50)
+    };
+    return error;
+}
+
+function _fastParseStackLocation(err){
+    const stack = typeof err?.stack === 'string' ? err.stack : '';
+    const frame = stack.split('\n').find(line => /^\s*at\s+/.test(line)) || '';
+    const named = frame.match(/^\s*at\s+(.*?)\s+\((.*):(\d+):(\d+)\)\s*$/);
+    const anonymous = named ? null : frame.match(/^\s*at\s+(.*):(\d+):(\d+)\s*$/);
+
+    return {
+        stack: stack || '(stack unavailable)',
+        functionName: named?.[1] || (anonymous ? '(anonymous)' : '(unknown)'),
+        source: named?.[2] || anonymous?.[1] || null,
+        lineNumber: Number(named?.[3] || anonymous?.[2]) || null,
+        columnNumber: Number(named?.[4] || anonymous?.[3]) || null
+    };
+}
+
+function _fastReadSelectedSheet(rawBuffer, sheetName, fileLabel, readOptions){
+    const stage = 'Phase 2 / Workbook Parse';
+    if(!(rawBuffer instanceof ArrayBuffer) || rawBuffer.byteLength === 0){
+        throw _fastCreatePhase2Error({
+            sheetName, stage, fileLabel,
+            reason: 'Phase 1のArrayBufferが存在しない、または空です',
+            actualSheetNames: []
+        });
+    }
+    if(typeof XLSX === 'undefined' || typeof XLSX.read !== 'function'){
+        throw _fastCreatePhase2Error({
+            sheetName, stage, fileLabel,
+            reason: 'XLSX.readが利用できません',
+            actualSheetNames: []
+        });
+    }
+
+    const started = Date.now();
+    let workbook;
+    try {
+        workbook = XLSX.read(new Uint8Array(rawBuffer), {
+            type: 'array',
+            sheets: [sheetName],
+            cellFormula: !!readOptions.cellFormula,
+            cellStyles: !!readOptions.cellStyles,
+            cellNF: true,
+            cellDates: true
+        });
+    } catch(cause){
+        _fastShowDetailedError(cause, {
+            catchId: 'FAST-CATCH-06',
+            stage,
+            currentSheet: sheetName,
+            fileLabel,
+            errorElementId: 'xlcomp-result'
+        });
+        throw cause;
+    }
+
+    if(workbook && typeof workbook.then === 'function'){
+        throw _fastCreatePhase2Error({
+            sheetName, stage, fileLabel,
+            reason: 'XLSX.readがWorkbookではなくPromiseを返しました',
+            actualSheetNames: []
+        });
+    }
+
+    const actualSheetNames = Array.isArray(workbook?.SheetNames) ? workbook.SheetNames : [];
+    if(!workbook || typeof workbook !== 'object'){
+        throw _fastCreatePhase2Error({
+            sheetName, stage, fileLabel,
+            reason: 'XLSX.readがWorkbookオブジェクトを返しませんでした',
+            actualSheetNames
+        });
+    }
+    if(!workbook.Sheets || typeof workbook.Sheets !== 'object'){
+        throw _fastCreatePhase2Error({
+            sheetName, stage, fileLabel,
+            reason: 'XLSX.read未返回Sheets对象',
+            actualSheetNames
+        });
+    }
+
+    const worksheet = workbook.Sheets[sheetName];
+    if(!worksheet){
+        throw _fastCreatePhase2Error({
+            sheetName, stage, fileLabel,
+            reason: '目标worksheet不存在',
+            actualSheetNames: Object.keys(workbook.Sheets)
+        });
+    }
+
+    const parseMs = Date.now() - started;
+    console.log('✅ [Phase2] 目标Sheet读取完成:', {
+        fileLabel,
+        sheetName,
+        parseMs,
+        sheetKeys: Object.keys(workbook.Sheets),
+        worksheetExists: true
+    });
+    return { workbook, worksheet, parseMs };
+}
+
+// ===== 高速モードPhase2：選択Sheet比較開始 =====
+async function xlcompFastPhase2Start(){
+    if(xlcompFastPhase === 'comparing') return; // 二重実行防止
+
+    const selected = [...document.querySelectorAll('.xlcomp-sheet-cb:checked')].map(cb => cb.dataset.sheet);
+    if(!selected.length){ alert('少なくとも1つのSheetを選択してください'); return; }
+
+    // 全Sheet選択時の二次確認
+    const allCbs = document.querySelectorAll('.xlcomp-sheet-cb');
+    if(selected.length === allCbs.length && allCbs.length > 10){
+        if(!confirm(selected.length + '個の全Sheetを比較します。処理に時間がかかる可能性があります。続行しますか？')) return;
+    } else if(selected.length > 20){
+        if(!confirm(selected.length + '個のSheetを比較します。処理に時間がかかる可能性があります。続行しますか？')) return;
+    }
+
+    // リセット
+    xlcompCancelFlag = false;
+    xlcompFastPhase = 'comparing';
+    xlcompFastDiffs = [];
+    xlcompFastStats = {};
+    xlcompFastRenderIdx = 0;
+    xlcompFastSheetFilter = null;
+    xlcompFastWbSlimCache = new Map();
+
+    document.getElementById('xlcomp-cancelled-banner').classList.remove('show');
+    document.getElementById('xlcomp-result').innerHTML = '';
+
+    const progress = document.getElementById('xlcomp-fast-progress');
+    progress.classList.add('show');
+    document.getElementById('xlcomp-fast-controls').classList.remove('show');
+    document.getElementById('xlcomp-fast-start-btn').style.display = 'none';
+    _xlcompSyncCompareEntryButtons();
+
+    const bar = document.getElementById('xlcomp-fp-bar');
+    const totalSheets = selected.length;
+    let activeErrorContext = {
+        sheetName: null,
+        stage: 'Phase 2 / Workbook Parse',
+        fileLabel: null,
+        actualSheetNames: []
+    };
+
+    try {
+        const totalStart = Date.now();
+        let grandDiffCount = 0;
+
+        // Phase 1メタデータからシートマッピング構築（念のため再検証）
+        console.log('🔍 [Phase2] Phase1メタデータ確認:', {
+            wbA_SheetNames: xlcompWbA?.SheetNames?.length + ' sheets',
+            wbB_SheetNames: xlcompWbB?.SheetNames?.length + ' sheets',
+            rawBufA_exists: !!(xlcompRawBufA),
+            rawBufB_exists: !!(xlcompRawBufB),
+            rawBufA_size: xlcompRawBufA ? (xlcompRawBufA.byteLength/1024/1024).toFixed(1) + 'MB' : 'null',
+            rawBufB_size: xlcompRawBufB ? (xlcompRawBufB.byteLength/1024/1024).toFixed(1) + 'MB' : 'null',
+            selected: selected
+        });
+
+        for(let i = 0; i < selected.length; i++){
+            if(xlcompCancelFlag){ _fastOnCancel(); return; }
+
+            const displayName = selected[i];
+            activeErrorContext = {
+                sheetName: displayName,
+                stage: 'Phase 2 / Sheet Mapping',
+                fileLabel: '文件A / 文件B',
+                actualSheetNames: []
+            };
+            try {
+
+            // ファイルA/BそれぞれのSheet名を独立に取得
+            const sheetNameA = xlcompWbA?.SheetNames?.find(n => n === displayName) || null;
+            const sheetNameB = xlcompWbB?.SheetNames?.find(n => n === displayName) || null;
+            const inA = !!sheetNameA;
+            const inB = !!sheetNameB;
+
+            console.log('📋 [Phase2] Sheetマッピング:', {
+                displayName,
+                sheetNameA, sheetNameB, inA, inB,
+                idxA: xlcompWbA?.SheetNames?.indexOf(displayName),
+                idxB: xlcompWbB?.SheetNames?.indexOf(displayName)
+            });
+
+            // 進捗更新
+            const pct = Math.round((i / totalSheets) * 100);
+            bar.style.width = pct + '%';
+            document.getElementById('xlcomp-fp-title').textContent =
+                '⏳ ' + (i+1) + ' / ' + totalSheets + ' Sheet 処理中：' + displayName;
+            document.getElementById('xlcomp-fp-stats').textContent =
+                '差異 ' + grandDiffCount + '件（累計）';
+            document.getElementById('xlcomp-fp-phase').textContent = '準備中...';
+
+            // メインスレッドを譲る
+            await new Promise(r => setTimeout(r, 20));
+
+            // 片方にしかないSheet
+            if(!inA){
+                console.log('⚠️ [Phase2] ' + displayName + ' はファイルAに存在しません');
+                xlcompFastStats[displayName] = { status:'only_b', diffCount:0, totalCells:0 };
+                continue;
+            }
+            if(!inB){
+                console.log('⚠️ [Phase2] ' + displayName + ' はファイルBに存在しません');
+                xlcompFastStats[displayName] = { status:'only_a', diffCount:0, totalCells:0 };
+                continue;
+            }
+
+            // Sheet解析 — 読取結果を共通入口で検証
+            const needColors = xlcompCmpBg || xlcompCmpFont;
+            const needFormula = false; // 高速モードデフォルトOFF
+
+            // ファイルA：シート名指定
+            document.getElementById('xlcomp-fp-phase').textContent = 'ファイルA解析中: ' + sheetNameA;
+            await new Promise(r => setTimeout(r, 10));
+            activeErrorContext = {
+                sheetName: sheetNameA,
+                stage: 'Phase 2 / Workbook Parse',
+                fileLabel: '文件A',
+                actualSheetNames: xlcompWbA?.SheetNames || []
+            };
+            const parsedA = _fastReadSelectedSheet(
+                xlcompRawBufA,
+                sheetNameA,
+                '文件A',
+                { cellFormula: needFormula, cellStyles: needColors }
+            );
+            const wbA_slim = parsedA.workbook;
+            const wsA = parsedA.worksheet;
+
+            // ファイルB：シート名指定
+            document.getElementById('xlcomp-fp-phase').textContent = 'ファイルB解析中: ' + sheetNameB;
+            await new Promise(r => setTimeout(r, 10));
+            activeErrorContext = {
+                sheetName: sheetNameB,
+                stage: 'Phase 2 / Workbook Parse',
+                fileLabel: '文件B',
+                actualSheetNames: xlcompWbB?.SheetNames || []
+            };
+            const parsedB = _fastReadSelectedSheet(
+                xlcompRawBufB,
+                sheetNameB,
+                '文件B',
+                { cellFormula: needFormula, cellStyles: needColors }
+            );
+            const wbB_slim = parsedB.workbook;
+            const wsB = parsedB.worksheet;
+
+            // 🔍 防御的診断ログ
+            console.log('🔍 [Phase2] XLSX.read結果:', {
+                sheetNameA, sheetNameB,
+                wbA_slim_exists: !!wbA_slim,
+                wbB_slim_exists: !!wbB_slim,
+                wbA_Sheets_exists: !!(wbA_slim && wbA_slim.Sheets),
+                wbB_Sheets_exists: !!(wbB_slim && wbB_slim.Sheets),
+                wbA_Sheets_keys: wbA_slim && wbA_slim.Sheets ? Object.keys(wbA_slim.Sheets) : 'N/A',
+                wbB_Sheets_keys: wbB_slim && wbB_slim.Sheets ? Object.keys(wbB_slim.Sheets) : 'N/A',
+                wbA_SheetNames: wbA_slim?.SheetNames,
+                wbB_SheetNames: wbB_slim?.SheetNames
+            });
+
+            if(xlcompCancelFlag){ _fastOnCancel(); return; }
+
+            // スパース比較
+            activeErrorContext = {
+                sheetName: displayName,
+                stage: 'Phase 2 / Cell Compare',
+                fileLabel: '文件A / 文件B',
+                actualSheetNames: [sheetNameA, sheetNameB]
+            };
+            document.getElementById('xlcomp-fp-phase').textContent = 'セル比較中: ' + displayName;
+            await new Promise(r => setTimeout(r, 10));
+
+            // ！refが異常に大きい場合の警告
+            const refA = wsA['!ref'] || null;
+            const refB = wsB['!ref'] || null;
+            console.log('📏 [Phase2] ' + displayName + ' ref: A=' + refA + ' B=' + refB);
+            if(refA && refB){
+                const drA = XLSX.utils.decode_range(refA);
+                const drB = XLSX.utils.decode_range(refB);
+                const rowsA = drA.e.r - drA.s.r + 1;
+                const rowsB = drB.e.r - drB.s.r + 1;
+                if(rowsA > 1000000 || rowsB > 1000000){
+                    console.warn('⚠️ Sheet [' + displayName + '] の!refが異常に大きい: A=' + refA + ' B=' + refB);
+                    document.getElementById('xlcomp-fp-phase').textContent =
+                        '⚠️ ' + displayName + ': セル範囲が非常に大きいため処理に時間がかかる可能性があります...';
+                }
+            }
+
+            const result = _fastCompareSheetSparse(displayName, wsA, wsB, wbA_slim, wbB_slim, needColors);
+            console.log('✅ [Phase2] ' + displayName + ' 比較完了: ' + result.diffs.length + ' diffs, ' + result.totalCells + ' cells');
+
+            xlcompFastDiffs.push(...result.diffs);
+            xlcompFastStats[displayName] = {
+                status: 'both',
+                diffCount: result.diffCount,
+                addCount: result.addCount,
+                delCount: result.delCount,
+                totalCells: result.totalCells,
+                bgDiffCount: result.bgDiffCount || 0,
+                fontDiffCount: result.fontDiffCount || 0,
+                parseMsA: parsedA.parseMs,
+                parseMsB: parsedB.parseMs
+            };
+            grandDiffCount += result.diffCount + result.addCount + result.delCount;
+
+            // 差異数上限チェック
+            if(xlcompFastDiffs.length > 50000){
+                console.warn('⚠️ 差異が50,000件を超えました。レンダリングを停止し、エクスポート用データのみ保持します。');
+                document.getElementById('xlcomp-fp-phase').textContent =
+                    '⚠️ 差異が50,000件を超えました。これ以上のレンダリングは停止します。';
+                break;
+            }
+
+            // Sheet処理完了 → テンポラリ明示解放
+            wbA_slim.Sheets = null;
+            wbB_slim.Sheets = null;
+
+            // メインスレッド譲渡
+            await new Promise(r => setTimeout(r, 30));
+            } catch(err){
+                _fastShowDetailedError(err, {
+                    catchId: 'FAST-CATCH-05',
+                    stage: activeErrorContext.stage,
+                    currentSheet: displayName,
+                    fileLabel: activeErrorContext.fileLabel,
+                    errorElementId: 'xlcomp-result'
+                });
+                throw err;
+            }
+        }
+
+        if(!xlcompCancelFlag){
+            bar.style.width = '100%';
+            document.getElementById('xlcomp-fp-title').textContent = '✅ 比較完了';
+            document.getElementById('xlcomp-fp-stats').textContent =
+                '処理Sheet: ' + selected.length + ' ／ 総差異: ' + grandDiffCount + '件 ／ ' +
+                '処理時間: ' + ((Date.now()-totalStart)/1000).toFixed(1) + '秒';
+            document.getElementById('xlcomp-fp-phase').textContent = '結果を表示中...';
+            xlcompFastPhase = 'done';
+
+            // 結果表示
+            _fastRenderDiffList();
+
+            setTimeout(() => {
+                progress.classList.remove('show');
+                document.getElementById('xlcomp-fast-ctrl-info').textContent =
+                    '比較完了。再実行する場合は再度「高速比較を開始」をクリック';
+                _xlcompSyncCompareEntryButtons();
+            }, 500);
+
+            // ログ送信（例外はPhase2主catchへそのまま伝播）
+            sendLog('Excel对比_高速模式', grandDiffCount, 1,
+                '高速模式: ' + selected.length + '/' + totalSheets + ' sheets, ' + grandDiffCount + ' diffs, ' +
+                ((Date.now()-totalStart)/1000).toFixed(1) + 's'
+            );
+        }
+
+    } catch(err){
+        if(err?.message === 'CANCELLED'){
+            _fastOnCancel();
+            return;
+        }
+        _fastShowDetailedError(err, {
+            catchId: 'FAST-CATCH-04',
+            stage: activeErrorContext.stage,
+            currentSheet: activeErrorContext.sheetName,
+            fileLabel: activeErrorContext.fileLabel,
+            errorElementId: 'xlcomp-result'
+        });
+        progress.classList.remove('show');
+        document.getElementById('xlcomp-fp-title').textContent = '❌ 高速模式读取失败';
+        document.getElementById('xlcomp-fp-phase').textContent =
+            'Build: ' + XLCOMP_BUILD_ID +
+            ' / ' + activeErrorContext.stage +
+            ' / Sheet: ' + (activeErrorContext.sheetName || '(未确定)');
+        xlcompFastPhase = 'idle';
+        _xlcompSyncCompareEntryButtons();
+        throw err;
+    }
+}
+
+// ===== 高速モード：スパースセル比較 =====
+function _fastCompareSheetSparse(sheetName, wsA, wsB, wbA, wbB, needColors){
+    try {
+    // 実際のセルアドレスのみを収集（!ref範囲を走査しない）
+    const cellsA = {}, cellsB = {};
+    const rawKeysA = [], rawKeysB = [];
+
+    if(wsA){
+        for(const key of Object.keys(wsA)){
+            if(key.startsWith('!')) continue;
+            const cell = wsA[key];
+            const v = (cell && cell.v !== undefined) ? cell.v : '';
+            cellsA[key] = { v, cell };
+            rawKeysA.push(key);
+        }
+    }
+    if(wsB){
+        for(const key of Object.keys(wsB)){
+            if(key.startsWith('!')) continue;
+            const cell = wsB[key];
+            const v = (cell && cell.v !== undefined) ? cell.v : '';
+            cellsB[key] = { v, cell };
+            rawKeysB.push(key);
+        }
+    }
+
+    const totalCells = Math.max(rawKeysA.length, rawKeysB.length);
+
+    // アドレス統合
+    const allKeysSet = new Set([...Object.keys(cellsA), ...Object.keys(cellsB)]);
+    const allKeys = [...allKeysSet].sort((a,b) => {
+        const ca = XLSX.utils.decode_cell(a);
+        const cb = XLSX.utils.decode_cell(b);
+        return ca.r - cb.r || ca.c - cb.c;
+    });
+
+    const diffs = [];
+    let diffCount = 0, addCount = 0, delCount = 0;
+    let bgDiffCount = 0, fontDiffCount = 0;
+
+    // 行ごとにグループ化して分塊処理
+    const CHUNK_ROWS = 500;
+    const rows = new Map();
+    allKeys.forEach(addr => {
+        const dec = XLSX.utils.decode_cell(addr);
+        if(!rows.has(dec.r)) rows.set(dec.r, []);
+        rows.get(dec.r).push(addr);
+    });
+    const sortedRows = [...rows.keys()].sort((a,b) => a-b);
+
+    for(let ri = 0; ri < sortedRows.length; ri += CHUNK_ROWS){
+        const chunkRows = sortedRows.slice(ri, ri + CHUNK_ROWS);
+
+        for(const rowNum of chunkRows){
+            const addrs = rows.get(rowNum);
+            for(const addr of addrs){
+                const entryA = cellsA[addr];
+                const entryB = cellsB[addr];
+                const vA = entryA ? entryA.v : null;
+                const vB = entryB ? entryB.v : null;
+
+                let diffType = null;
+                if(vA === null && vB !== null && vB !== ''){ diffType = 'add'; addCount++; }
+                else if(vA !== null && vA !== '' && vB === null){ diffType = 'del'; delCount++; }
+                else if(vA !== null && vB !== null){
+                    if(typeof vA === 'number' && typeof vB === 'number' && isFinite(vA) && isFinite(vB)){
+                        if(Math.abs(vA - vB) > 0.001) diffType = 'mod';
+                    } else if(String(vA) !== String(vB)){
+                        diffType = 'mod';
+                    }
+                } else if(vA === null && vB === null){
+                    continue; // 両方nullは差異なし
+                }
+
+                // 色差異（オプション有効時のみ）
+                let bgDiff = false, fontDiff = false;
+                let fillA = 'NONE', fillB = 'NONE', fontA = 'AUTO', fontB = 'AUTO';
+
+                if(needColors && diffType){
+                    const cellA = entryA ? entryA.cell : null;
+                    const cellB = entryB ? entryB.cell : null;
+                    const colorsA = xlcompExtractCellColors(cellA, wbA, sheetName, addr);
+                    const colorsB = xlcompExtractCellColors(cellB, wbB, sheetName, addr);
+                    fillA = colorsA.fill; fillB = colorsB.fill;
+                    fontA = colorsA.font; fontB = colorsB.font;
+                    if(xlcompCmpBg && !xlcompColorsEqual(fillA, fillB)){ bgDiff = true; bgDiffCount++; }
+                    if(xlcompCmpFont && !xlcompColorsEqual(fontA, fontB)){ fontDiff = true; fontDiffCount++; }
+                }
+
+                if(diffType || bgDiff || fontDiff){
+                    const dec = XLSX.utils.decode_cell(addr);
+                    diffs.push({
+                        sheet: sheetName,
+                        addr,
+                        row: dec.r + 1,
+                        col: XLSX.utils.encode_col(dec.c),
+                        vA: vA === null ? '' : String(vA),
+                        vB: vB === null ? '' : String(vB),
+                        type: diffType || 'mod',
+                        combinedType: diffType ? (diffType==='mod'?'内容差异':diffType==='add'?'新增':'删除') + (bgDiff?'／背景色差异':'') + (fontDiff?'／字体色差异':'') : (bgDiff?'背景色差异':'') + (fontDiff?'／字体色差异':''),
+                        bgDiff, fontDiff,
+                        fillA, fillB, fontA, fontB
+                    });
+                    if(diffType === 'mod') diffCount++;
+                }
+            }
+        }
+    }
+
+    return { diffs, diffCount, addCount, delCount, totalCells, bgDiffCount, fontDiffCount };
+    } catch(err){
+        _fastShowDetailedError(err, {
+            catchId: 'FAST-CATCH-07',
+            stage: 'Phase 2 / Sparse Compare',
+            currentSheet: sheetName,
+            errorElementId: 'xlcomp-result'
+        });
+        throw err;
+    }
+}
+
+// ===== 高速モード：結果レンダリング（コンパクト差異リスト） =====
+function _fastRenderDiffList(){
+    try {
+    const result = document.getElementById('xlcomp-result');
+    const diffs = xlcompFastDiffs;
+    const stats = xlcompFastStats;
+
+    // Sheet情報収集
+    const sheetNames = Object.keys(stats);
+    const totalDiffCount = diffs.length;
+    const isCancelled = xlcompFastPhase === 'cancelled';
+
+    if(diffs.length === 0 && !isCancelled){
+        result.innerHTML = `
+        <div style="padding:40px;text-align:center;background:#eafaf1;border-radius:8px;
+                    border:1px solid #a9dfbf;margin:20px;">
+            <span style="font-size:1.2rem;color:#27ae60;">✅ 選択したSheetに差異はありません</span>
+        </div>`;
+        return;
+    }
+
+    xlcompFastRenderIdx = 0;
+
+    // ヘッダー
+    let html = `
+    <div class="xl-fast-result-header">
+        <span style="font-weight:bold;font-size:0.95rem;">⚡ 高速比較結果${isCancelled ? '（途中）' : ''}</span>
+        <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">差異件数：${totalDiffCount}</span>
+        <span style="background:#7f8c8d;border-radius:10px;padding:2px 10px;font-size:0.8rem;">Sheet数：${sheetNames.length}</span>
+        ${totalDiffCount > 50000 ? '<span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.8rem;">⚠ 50,000件超過（表示制限中）</span>' : ''}
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <button onclick="_fastNavDiff(-1)"
+                    style="background:#e74c3c;color:white;border:none;border-radius:6px;
+                           padding:5px 14px;font-size:0.82rem;font-weight:bold;cursor:pointer;"
+                    onmouseover="this.style.background='#c0392b'"
+                    onmouseout="this.style.background='#e74c3c'">⬆ 上一差异</button>
+            <span id="xlcomp-fast-nav-info"
+                  style="background:#e74c3c;color:white;padding:4px 14px;
+                         border-radius:20px;font-size:0.85rem;font-weight:bold;
+                         min-width:80px;text-align:center;">0 / ${Math.min(totalDiffCount, 50000)}</span>
+            <button onclick="_fastNavDiff(1)"
+                    style="background:#e74c3c;color:white;border:none;border-radius:6px;
+                           padding:5px 14px;font-size:0.82rem;font-weight:bold;cursor:pointer;"
+                    onmouseover="this.style.background='#c0392b'"
+                    onmouseout="this.style.background='#e74c3c'">下一差异 ⬇</button>
+        </div>
+    </div>`;
+
+    // Sheet統計サマリーチップ
+    html += '<div style="background:#f8f8f8;border:1px solid #ddd;padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px;">';
+    html += `<button onclick="_fastFilterSheet(null)" class="xl-fast-sheet-chip${xlcompFastSheetFilter===null?' active':''}">全Sheet (${totalDiffCount})</button>`;
+    sheetNames.forEach(sn => {
+        const s = stats[sn];
+        const cnt = s.diffCount + (s.addCount||0) + (s.delCount||0);
+        if(cnt > 0 || s.status !== 'both'){
+            html += `<button onclick="_fastFilterSheet('${esc(sn).replace(/'/g,"\\'")}')"
+                     class="xl-fast-sheet-chip${xlcompFastSheetFilter===sn?' active':''}">${esc(sn)} (${cnt})</button>`;
+        }
+    });
+    html += '</div>';
+
+    // 差異テーブル
+    html += '<div style="overflow-x:auto;border:1px solid #ddd;max-height:600px;overflow-y:auto;" id="xlcomp-fast-table-wrap">';
+    html += '<table class="xl-fast-diff-table"><thead><tr>';
+    html += '<th style="width:160px;">Sheet</th><th style="width:80px;">单元格</th>';
+    html += '<th style="min-width:150px;">文件A</th><th style="min-width:150px;">文件B</th>';
+    html += '<th style="width:130px;">差异类型</th>';
+    html += '</tr></thead><tbody id="xlcomp-fast-tbody"></tbody></table>';
+    html += '</div>';
+
+    // 「もっと見る」ボタン
+    html += `<button class="xl-fast-load-more" id="xlcomp-fast-loadmore" onclick="_fastLoadMore()">
+        さらに表示（残り <span id="xlcomp-fast-remaining">0</span> 件）
+    </button>`;
+
+    // エクスポート
+    html += `<div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button onclick="_fastExportResults('csv')"
+                style="background:#27ae60;color:white;border:none;border-radius:6px;
+                       padding:8px 18px;font-size:0.85rem;font-weight:bold;cursor:pointer;">
+            💾 CSVエクスポート</button>
+        <button onclick="_fastExportResults('html')"
+                style="background:#8e44ad;color:white;border:none;border-radius:6px;
+                       padding:8px 18px;font-size:0.85rem;font-weight:bold;cursor:pointer;">
+            📄 HTMLレポート</button>
+    </div>`;
+
+    result.innerHTML = html;
+
+    // 初期100件レンダリング
+    _fastLoadMore();
+
+    // ナビゲーション初期化
+    setTimeout(() => {
+        try {
+            _fastInitNav();
+        } catch(err){
+            _fastShowDetailedError(err, {
+                catchId: 'FAST-CATCH-12',
+                stage: 'Phase 2 / Result Navigation Init',
+                currentSheet: xlcompFastSheetFilter || null,
+                errorElementId: 'xlcomp-result'
+            });
+            throw err;
+        }
+    }, 200);
+    } catch(err){
+        _fastShowDetailedError(err, {
+            catchId: 'FAST-CATCH-08',
+            stage: 'Phase 2 / Result Render',
+            currentSheet: xlcompFastSheetFilter ||
+                [...document.querySelectorAll('.xlcomp-sheet-cb:checked')].map(cb => cb.dataset.sheet)[0] ||
+                null,
+            errorElementId: 'xlcomp-result'
+        });
+        throw err;
+    }
+}
+
+// ===== 高速モード：ページング表示 =====
+function _fastLoadMore(){
+    const tbody = document.getElementById('xlcomp-fast-tbody');
+    const remaining = document.getElementById('xlcomp-fast-remaining');
+    const loadMoreBtn = document.getElementById('xlcomp-fast-loadmore');
+    if(!tbody) return;
+
+    const diffs = _fastGetFilteredDiffs();
+    const start = xlcompFastRenderIdx;
+    const end = Math.min(start + XLCOMP_FAST_PAGE_SIZE, diffs.length);
+    const chunk = diffs.slice(start, end);
+
+    let html = '';
+    chunk.forEach(d => {
+        const vA_display = esc(String(d.vA||'')).substring(0, 200) || '&nbsp;';
+        const vB_display = esc(String(d.vB||'')).substring(0, 200) || '&nbsp;';
+        const typeColor = d.type === 'mod' ? '#e67e22' : d.type === 'add' ? '#27ae60' : '#e74c3c';
+        html += `<tr class="xlcomp-fast-diff-row" data-sheet="${esc(d.sheet)}" data-addr="${d.addr}">
+            <td title="${esc(d.sheet)}">${esc(d.sheet).substring(0,30)}</td>
+            <td style="font-weight:bold;color:#2c3e50;">${d.addr}</td>
+            <td style="color:#c0392b;max-width:250px;" title="${esc(String(d.vA||''))}">${vA_display}</td>
+            <td style="color:#27ae60;max-width:250px;" title="${esc(String(d.vB||''))}">${vB_display}</td>
+            <td><span style="background:${typeColor};color:white;border-radius:3px;padding:1px 6px;font-size:0.75rem;">${d.combinedType||d.type}</span></td>
+        </tr>`;
+    });
+    tbody.innerHTML += html;
+    xlcompFastRenderIdx = end;
+
+    const remainCount = diffs.length - end;
+    if(remaining) remaining.textContent = remainCount;
+    if(loadMoreBtn){
+        if(remainCount <= 0){
+            loadMoreBtn.style.display = 'none';
+        } else {
+            loadMoreBtn.style.display = 'block';
+        }
+    }
+}
+
+// ===== 高速モード：Sheetフィルタ =====
+function _fastGetFilteredDiffs(){
+    if(!xlcompFastSheetFilter) return xlcompFastDiffs;
+    return xlcompFastDiffs.filter(d => d.sheet === xlcompFastSheetFilter);
+}
+
+function _fastFilterSheet(sheetName){
+    xlcompFastSheetFilter = sheetName;
+    xlcompFastRenderIdx = 0;
+    const tbody = document.getElementById('xlcomp-fast-tbody');
+    if(tbody) tbody.innerHTML = '';
+    _fastLoadMore();
+    // チップのアクティブ状態更新
+    document.querySelectorAll('.xl-fast-sheet-chip').forEach(chip => {
+        chip.classList.remove('active');
+    });
+}
+
+// ===== 高速モード：差異ナビゲーション =====
+let _fastNavDiffs = [], _fastNavIdx = -1;
+
+function _fastInitNav(){
+    _fastNavDiffs = document.querySelectorAll('.xlcomp-fast-diff-row');
+    _fastNavIdx = -1;
+    const info = document.getElementById('xlcomp-fast-nav-info');
+    if(info) info.textContent = '0 / ' + _fastNavDiffs.length;
+}
+
+function _fastNavDiff(dir){
+    if(!_fastNavDiffs.length){ _fastInitNav(); if(!_fastNavDiffs.length) return; }
+    if(_fastNavIdx >= 0 && _fastNavIdx < _fastNavDiffs.length){
+        _fastNavDiffs[_fastNavIdx].style.outline = '';
+        _fastNavDiffs[_fastNavIdx].style.boxShadow = '';
+    }
+    _fastNavIdx = (_fastNavIdx + dir + _fastNavDiffs.length) % _fastNavDiffs.length;
+    const target = _fastNavDiffs[_fastNavIdx];
+    target.style.outline = '3px solid #f39c12';
+    target.style.outlineOffset = '-2px';
+    target.style.boxShadow = '0 0 12px rgba(243,156,18,0.9)';
+    target.scrollIntoView({behavior:'smooth', block:'center'});
+    const info = document.getElementById('xlcomp-fast-nav-info');
+    if(info) info.textContent = (_fastNavIdx + 1) + ' / ' + _fastNavDiffs.length;
+}
+
+// ===== 高速モード：進捗更新 =====
+function _fastUpdateProgress(title, stats, phase, pct){
+    const el_title = document.getElementById('xlcomp-fp-title');
+    const el_stats = document.getElementById('xlcomp-fp-stats');
+    const el_phase = document.getElementById('xlcomp-fp-phase');
+    const bar = document.getElementById('xlcomp-fp-bar');
+    if(el_title) el_title.textContent = title;
+    if(el_stats) el_stats.textContent = stats;
+    if(el_phase) el_phase.textContent = phase;
+    if(bar) bar.style.width = (pct||0) + '%';
+}
+
+// ===== 高速モード：取消 =====
+function xlcompFastCancel(){
+    if(xlcompFastPhase !== 'comparing'){
+        // Phase1完了後の再実行に必要なBuffer/SheetNamesは保持する
+        xlcompCancelFlag = false;
+        document.getElementById('xlcomp-fast-progress').classList.remove('show');
+        _xlcompSyncCompareEntryButtons();
+        return;
+    }
+    xlcompCancelFlag = true;
+    document.getElementById('xlcomp-fp-title').textContent = '⏹ キャンセル中...';
+    document.getElementById('xlcomp-fp-phase').textContent = '処理を停止しています...';
+}
+
+function _fastOnCancel(){
+    xlcompFastPhase = 'cancelled';
+    xlcompCancelFlag = false;
+
+    const progress = document.getElementById('xlcomp-fast-progress');
+    progress.classList.remove('show');
+
+    document.getElementById('xlcomp-cancelled-banner').classList.add('show');
+
+    // 部分結果がある場合は表示
+    if(xlcompFastDiffs.length > 0){
+        _fastRenderDiffList();
+    } else {
+        document.getElementById('xlcomp-result').innerHTML = `
+        <div style="padding:40px;text-align:center;color:#888;">
+            ⚠️ 比較をキャンセルしました。差異は検出されませんでした。
+        </div>`;
+    }
+
+    _xlcompSyncCompareEntryButtons();
+}
+
+// ===== 高速モード：エクスポート =====
+function _fastExportResults(format){
+    const diffs = _fastGetFilteredDiffs();
+    if(!diffs.length){ alert('エクスポートする差異がありません'); return; }
+
+    if(format === 'csv'){
+        const BOM = '﻿';
+        let csv = BOM + 'Sheet,セル,行,列,ファイルA,ファイルB,差異タイプ\n';
+        diffs.forEach(d => {
+            const escapeCSV = v => '"' + String(v||'').replace(/"/g,'""') + '"';
+            csv += [d.sheet, d.addr, d.row, d.col, d.vA, d.vB, d.combinedType||d.type].map(escapeCSV).join(',') + '\n';
+        });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+        a.download = 'Excel对比_高速模式_' + new Date().toISOString().slice(0,10) + '.csv';
+        a.click();
+    } else if(format === 'html'){
+        let html = `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
+        <title>Excel对比报告（高速模式）</title>
+        <style>
+            body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:#f5f5f5;padding:20px;}
+            table{border-collapse:collapse;width:100%;font-size:0.82rem;}
+            th,td{padding:6px 10px;border:1px solid #ddd;}
+            th{background:#34495e;color:white;}
+            tr:nth-child(even){background:#fafafa;}
+            h2{color:#2c3e50;}
+        </style></head>
+        <body>
+        <h2>⚡ Excel对比报告（高速模式）— ${new Date().toLocaleString()}</h2>
+        <p>文件A：${esc(xlcompFileA?.name||'?')} (${(xlcompFileA?.size/1024/1024||0).toFixed(1)}MB) ／
+           文件B：${esc(xlcompFileB?.name||'?')} (${(xlcompFileB?.size/1024/1024||0).toFixed(1)}MB)</p>
+        <p>差異件数：${diffs.length} ／ Sheet数：${Object.keys(xlcompFastStats).length}</p>
+        ${xlcompFastPhase==='cancelled'?'<p style="color:#e74c3c;font-weight:bold;">⚠ 比較はキャンセルされました（不完全な結果）</p>':''}
+        <table><tr><th>Sheet</th><th>セル</th><th>行</th><th>列</th><th>ファイルA</th><th>ファイルB</th><th>差異タイプ</th></tr>`;
+        diffs.forEach(d => {
+            html += `<tr><td>${esc(d.sheet)}</td><td>${d.addr}</td><td>${d.row}</td><td>${d.col}</td>
+                <td>${esc(String(d.vA||''))}</td><td>${esc(String(d.vB||''))}</td>
+                <td>${esc(d.combinedType||d.type)}</td></tr>`;
+        });
+        html += '</table></body></html>';
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([html], {type:'text/html;charset=utf-8'}));
+        a.download = 'Excel对比_高速模式_' + new Date().toISOString().slice(0,10) + '.html';
+        a.click();
+    }
+}
+
+// ===== 高速モード：メモリクリーンアップ =====
+function _fastCleanupAll(){
+    xlcompRawBufA = null;
+    xlcompRawBufB = null;
+    xlcompFastDiffs = [];
+    xlcompFastStats = {};
+    xlcompFastRenderIdx = 0;
+    xlcompFastSheetFilter = null;
+    xlcompFastWbSlimCache = new Map();
+    xlcompCancelFlag = false;
+    xlcompFastSheets = [];
+
+    // 標準wbもクリア（高速モードのbookSheets:trueで作られたもの）
+    if(xlcompFastMode){
+        xlcompWbA = null;
+        xlcompWbB = null;
+    }
+}
+
+function _fastCleanupRawBuf(side){
+    if(side === 'A') xlcompRawBufA = null;
+    else xlcompRawBufB = null;
+}
+
+// ===== 標準モード resetXlComp 拡張 =====
+const _origResetXlComp = resetXlComp;
+resetXlComp = function(){
+    _origResetXlComp();
+    // 高速モードもクリーンアップ
+    _fastCleanupAll();
+    document.getElementById('xlcomp-fast-progress').classList.remove('show');
+    document.getElementById('xlcomp-fast-controls').classList.remove('show');
+    document.getElementById('xlcomp-cancelled-banner').classList.remove('show');
+    document.getElementById('xlcomp-fast-suggest').classList.remove('show');
+    document.getElementById('xlcomp-oversize-warn').classList.remove('show');
+    xlcompFastPhase = 'idle';
+    xlcompFastWbSlimCache = new Map();
+    _xlcompSyncCompareEntryButtons();
+};
 </script>
 </body>
 </html>

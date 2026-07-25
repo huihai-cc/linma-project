@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel文件轻量化</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI','Noto Sans SC',sans-serif; background:#f5f5f5; color:#333; min-height:100vh; }
+header { background:#2c3e50; color:white; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
+header h1 { font-size:1.2rem; letter-spacing:1px; }
+.badge { background:#27ae60; border-radius:12px; padding:3px 12px; font-size:0.75rem; }
+.back-nav { background:#34495e; padding:8px 20px; display:flex; align-items:center; gap:12px; }
+.back-btn { background:#2980b9; color:white; border:none; border-radius:4px; padding:5px 14px; font-size:0.82rem; cursor:pointer; text-decoration:none; display:inline-block; }
+.back-btn:hover { background:#1a6fa8; }
+button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; font-weight:bold; cursor:pointer; transition:all 0.2s; }
+button:disabled { opacity:0.5; cursor:not-allowed; }
+.btn-primary { background:#e74c3c; color:white; }
+.btn-primary:hover:not(:disabled) { background:#c0392b; }
+.btn-secondary { background:#95a5a6; color:white; }
+.btn-secondary:hover:not(:disabled) { background:#7f8c8d; }
+.btn-success { background:#27ae60; color:white; }
+.btn-success:hover:not(:disabled) { background:#1e8449; }
+.btn-cancel { background:#c0392b; color:white; }
+.btn-cancel:hover:not(:disabled) { background:#922b21; }
+.btn-main { background:#e74c3c; color:white; padding:12px 32px; font-size:1rem; border-radius:6px; }
+.btn-main:hover:not(:disabled) { background:#c0392b; transform:translateY(-1px); box-shadow:0 2px 8px rgba(231,76,60,0.3); }
+.btn-main:disabled { background:#bdc3c7; transform:none; box-shadow:none; }
+.btn-fast { background:#27ae60; color:white; padding:10px 24px; font-size:0.92rem; border-radius:6px; }
+.btn-fast:hover:not(:disabled) { background:#1e8449; }
+
+.container { max-width:1100px; margin:0 auto; padding:16px 20px; }
+
+/* 流程进度 */
+.step-bar { display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:18px; background:white; border-radius:8px; padding:14px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+.step-item { display:flex; align-items:center; gap:8px; }
+.step-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.82rem; font-weight:bold; background:#e0e0e0; color:#999; transition:all 0.3s; }
+.step-item.active .step-num { background:#3498db; color:white; }
+.step-item.done .step-num { background:#27ae60; color:white; }
+.step-label { font-size:0.8rem; color:#999; font-weight:500; }
+.step-item.active .step-label { color:#2c3e50; font-weight:bold; }
+.step-item.done .step-label { color:#27ae60; }
+.step-line { width:40px; height:2px; background:#e0e0e0; margin:0 10px; }
+.step-line.done { background:#27ae60; }
+
+.safety-notice { background:#eafaf1; border:1px solid #27ae60; border-radius:6px; padding:12px 16px; margin-bottom:16px; font-size:0.82rem; color:#1a5276; }
+.safety-notice ul { margin:6px 0 0 18px; line-height:1.9; }
+
+.upload-area { border:2px dashed #3498db; border-radius:8px; padding:40px; text-align:center; cursor:pointer; transition:all 0.3s; background:#f0f7ff; margin-bottom:16px; }
+.upload-area:hover, .upload-area.dragover { background:#dbeeff; border-color:#1a6fa8; }
+.upload-area .drop-icon { font-size:2.5rem; margin-bottom:8px; }
+.upload-area .drop-text { color:#2980b9; font-size:0.95rem; font-weight:bold; }
+.upload-area .drop-sub { color:#999; font-size:0.78rem; margin-top:6px; }
+.upload-area.has-file { border-color:#27ae60; background:#eafaf1; }
+
+.section { background:white; border-radius:8px; padding:16px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+.section h3 { font-size:0.92rem; color:#2c3e50; margin-bottom:12px; border-bottom:2px solid #3498db; padding-bottom:6px; }
+.section.hidden { display:none; }
+
+.detect-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+.detect-table th { background:#2c3e50; color:white; padding:6px 8px; text-align:left; white-space:nowrap; }
+.detect-table td { padding:5px 8px; border-bottom:1px solid #eee; vertical-align:middle; }
+.detect-table tr:hover td { background:#f8f9fa; }
+.detect-table .num { text-align:right; font-family:'Courier New',monospace; }
+.safety-safe { color:#27ae60; font-weight:bold; }
+.safety-manual { color:#e67e22; font-weight:bold; }
+.safety-none { color:#999; }
+
+.diag-summary { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:14px; }
+.diag-item { background:#f8f9fa; border-radius:6px; padding:8px 10px; }
+.diag-item .label { font-size:0.7rem; color:#666; }
+.diag-item .value { font-size:0.92rem; font-weight:bold; color:#2c3e50; margin-top:2px; }
+
+.guide-text { background:#eaf7ff; border:1px solid #3498db; border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:0.85rem; color:#1a5276; font-weight:500; }
+
+.warning-box { background:#fef9e7; border:1px solid #f39c12; border-radius:6px; padding:10px 14px; margin:10px 0; font-size:0.8rem; color:#7d6608; }
+.warning-box.danger { background:#fdedec; border-color:#e74c3c; color:#922b21; }
+.warning-box strong { display:block; margin-bottom:4px; }
+
+.action-bar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:14px 0 4px; }
+
+.progress-bar-outer { height:10px; background:#e0e0e0; border-radius:5px; overflow:hidden; margin:10px 0; }
+.progress-bar-inner { height:100%; background:#3498db; border-radius:5px; transition:width 0.3s; width:0%; }
+.progress-info { font-size:0.8rem; color:#555; line-height:1.8; }
+.progress-info .phase { font-weight:bold; color:#2c3e50; }
+
+.result-summary { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:14px; }
+.result-item { background:#f8f9fa; border-radius:6px; padding:8px 10px; text-align:center; }
+.result-item .rl { font-size:0.7rem; color:#666; }
+.result-item .rv { font-size:1rem; font-weight:bold; color:#2c3e50; margin-top:2px; }
+.result-item .rv.good { color:#27ae60; }
+.result-item .rv.warn { color:#e67e22; }
+
+.download-area { text-align:center; padding:16px; background:#eafaf1; border-radius:8px; margin-top:12px; }
+.download-area .file-size { font-size:0.82rem; color:#555; margin-top:6px; }
+
+.modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal-box { background:white; border-radius:8px; padding:24px; max-width:560px; width:90%; max-height:80vh; overflow-y:auto; }
+.modal-box h3 { margin-bottom:12px; color:#2c3e50; }
+.modal-box .modal-body { font-size:0.85rem; line-height:1.8; margin-bottom:16px; }
+.modal-box .modal-body .item { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #f5f5f5; }
+.modal-box .modal-body .item .k { color:#666; }
+.modal-box .modal-body .item .v { font-weight:bold; }
+.modal-box .modal-actions { display:flex; gap:10px; justify-content:flex-end; }
+
+/* 详情弹窗 */
+.detail-section { margin-bottom:12px; }
+.detail-section h4 { font-size:0.82rem; color:#2c3e50; margin-bottom:6px; }
+.detail-table { width:100%; border-collapse:collapse; font-size:0.72rem; font-family:'Courier New',monospace; }
+.detail-table th { background:#ecf0f1; padding:3px 6px; text-align:left; }
+.detail-table td { padding:3px 6px; border-bottom:1px solid #f0f0f0; }
+
+/* 公式模式选择 */
+.mode-card { border:2px solid #e0e0e0; border-radius:8px; padding:14px; margin-bottom:10px; cursor:pointer; transition:all 0.2s; }
+.mode-card:hover { border-color:#3498db; background:#f8fbff; }
+.mode-card.selected { border-color:#3498db; background:#eaf4ff; }
+.mode-card .mode-title { font-size:0.9rem; font-weight:bold; color:#2c3e50; }
+.mode-card .mode-desc { font-size:0.78rem; color:#666; margin-top:4px; }
+.mode-card .mode-tag { display:inline-block; font-size:0.68rem; padding:1px 6px; border-radius:8px; background:#27ae60; color:white; margin-left:8px; }
+
+.formula-sheet-list { display:flex; flex-direction:column; gap:2px; max-height:200px; overflow-y:auto; border:1px solid #eee; border-radius:6px; padding:6px; margin-top:8px; }
+.formula-sheet-item { display:flex; align-items:center; gap:8px; padding:4px 8px; font-size:0.8rem; border-radius:4px; }
+.formula-sheet-item:hover { background:#f0f7ff; }
+
+.footer-note { text-align:center; font-size:0.72rem; color:#999; padding:20px; }
+</style>
+</head>
+<body>
+<script src="qc-auth.js"></script>
+<script src="qc-i18n.js"></script>
+<style>
+.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
+.qc-userbar a{color:#67e8f9;text-decoration:none;}
+</style>
+<div class="qc-userbar" id="qcUserBar">
+  <span id="qcUserInfo"></span>
+  <span><a href="index.html">&#x2190; 返回门户</a></span>
+</div>
+<script>
+(function(){
+  var u = guardPage();
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
+  else {
+    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
+  }
+})();
+</script>
+
+<header>
+  <h1 data-i18n="cleanerTitle">📊 Excel文件轻量化</h1>
+  <span class="badge" data-i18n="cleanerBadge">🔒 完全本地处理 | ZIP/XML v4.1</span>
+  <span class="lang-switch" style="margin-left:auto;"><button onclick="setLanguage('zh-CN')" id="langZh" style="background:none;border:none;color:#fff;cursor:pointer;font-size:0.75rem;opacity:0.6;">中文</button><span style="opacity:0.4;color:#fff;">｜</span><button onclick="setLanguage('ja-JP')" id="langJa" style="background:none;border:none;color:#fff;cursor:pointer;font-size:0.75rem;opacity:0.6;">日本語</button></span>
+</header>
+<div class="back-nav">
+  <a href="index.html" class="back-btn" data-i18n="backHome">← 返回主页</a>
+  <span style="color:#bdc3c7;font-size:0.78rem;" data-i18n="cleanerSubDesc">清理无效公式尾部，生成轻量版Excel。原文件不修改。</span>
+</div>
+
+<div class="container">
+  <!-- 流程进度 -->
+  <div class="step-bar">
+    <div class="step-item active" id="step1"><span class="step-num">1</span><span class="step-label" data-i18n="cleanerStep1">无效尾部检测</span></div>
+    <div class="step-line" id="line1"></div>
+    <div class="step-item" id="step2"><span class="step-num">2</span><span class="step-label" data-i18n="cleanerStep2">公式处理设置</span></div>
+    <div class="step-line" id="line2"></div>
+    <div class="step-item" id="step3"><span class="step-num">3</span><span class="step-label" data-i18n="cleanerStep3">生成并下载</span></div>
+  </div>
+
+  <!-- 安全说明 -->
+  <div class="safety-notice">
+    <strong data-i18n="cleanerSafetyTitle">🛡️ 安全说明</strong>
+    <ul>
+      <li data-i18n="cleanerSafety1">文件只在浏览器本地处理，不上传服务器。</li>
+      <li data-i18n="cleanerSafety2">原文件不会被修改或覆盖，工具生成新文件。</li>
+      <li data-i18n="cleanerSafety3">使用ZIP/XML级直接处理，不解析全部单元格到内存。</li>
+      <li data-i18n="cleanerSafety4">输出文件用于校正、确认和归档。如需追加数据请使用原文件。</li>
+    </ul>
+  </div>
+
+  <!-- 上传区 -->
+  <div class="upload-area" id="uploadArea">
+    <div class="drop-icon">📁</div>
+    <div class="drop-text" data-i18n="cleanerUploadDrop">拖拽Excel文件到此处</div>
+    <div class="drop-sub" data-i18n="cleanerUploadSub">或点击选择文件（仅支持 .xlsx）</div>
+    <input type="file" id="fileInput" accept=".xlsx" style="display:none">
+  </div>
+
+  <!-- 检测进度 -->
+  <div class="section hidden" id="detectProgressSection">
+    <h3>⏳ 正在检测无效尾部</h3>
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="detectProgressBar"></div></div>
+    <div class="progress-info">
+      <div>阶段: <span class="phase" id="detectProgPhase">正在读取本地文件</span></div>
+      <div id="detectProgMessage">请稍候...</div>
+      <div id="detectProgEstimate" style="color:#3498db;font-size:0.78rem;"></div>
+      <div id="detectProgElapsed" style="color:#e67e22;font-weight:bold;"></div>
+    </div>
+    <div class="warning-box" id="detectTimeoutWarn" style="display:none;"></div>
+    <details style="margin-top:10px;font-size:0.75rem;color:#666;">
+      <summary style="cursor:pointer;">查看处理详情</summary>
+      <div id="detectTimingLog" style="max-height:200px;overflow-y:auto;font-family:monospace;white-space:pre-wrap;margin-top:6px;"></div>
+    </details>
+  </div>
+
+  <!-- 检测结果（步骤1） -->
+  <div class="section hidden" id="detectResultSection">
+    <h3>📋 步骤1：无效尾部检测结果</h3>
+    <div class="diag-summary" id="detectSummary"></div>
+    <div class="guide-text" id="detectGuide"></div>
+    <div style="overflow-x:auto;max-height:360px;overflow-y:auto;">
+      <table class="detect-table">
+        <thead><tr>
+          <th><input type="checkbox" id="checkAll" onchange="toggleAllSheets(this)"></th>
+          <th data-i18n="cleanerSheetName">Sheet名</th><th class="num" data-i18n="cleanerCurrentEnd">当前末行</th><th class="num" data-i18n="cleanerRealEnd">真实数据末行</th>
+          <th class="num" data-i18n="cleanerRemoveRows">可删除行数</th><th class="num" data-i18n="cleanerTailFormulas">尾部公式数</th><th data-i18n="cleanerJudgment">判定</th><th data-i18n="cleanerAction">操作</th>
+        </tr></thead>
+        <tbody id="detectBody"></tbody>
+      </table>
+    </div>
+    <div class="action-bar">
+      <button class="btn-fast" id="btnQuickMode" onclick="quickMode()">⚡ 推荐轻量化</button>
+      <button class="btn-main" id="btnNextStep" onclick="goToStep2()">下一步：公式处理设置 →</button>
+      <button class="btn-secondary" onclick="resetAll()">重新选择文件</button>
+    </div>
+  </div>
+
+  <!-- 步骤2：公式处理设置 -->
+  <div class="section hidden" id="formulaSection">
+    <h3>⚙️ 步骤2：公式处理方式</h3>
+    <div class="warning-box">
+      <strong>💡 提示</strong>仅清理无效尾部通常已经能显著减小文件。公式值化可进一步提高打开和浏览速度，但输出文件将不能重新计算公式。
+    </div>
+    <div class="mode-card selected" id="modeKeep" onclick="selectMode('keep')">
+      <div class="mode-title">保留公式 <span class="mode-tag">默认推荐</span></div>
+      <div class="mode-desc">仅裁剪无效尾部，不修改真实数据区域中的公式。</div>
+    </div>
+    <div class="mode-card" id="modeAll" onclick="selectMode('all')">
+      <div class="mode-title">全部Sheet公式值化</div>
+      <div class="mode-desc">对所有保留Sheet中的安全公式进行值化（有缓存值的公式→固定值）。</div>
+    </div>
+    <div class="mode-card" id="modeSelected" onclick="selectMode('selected')">
+      <div class="mode-title">指定Sheet公式值化</div>
+      <div class="mode-desc">仅对用户勾选的Sheet进行公式值化。</div>
+      <div class="formula-sheet-list hidden" id="formulaSheetList"></div>
+    </div>
+    <div class="action-bar">
+      <button class="btn-secondary" onclick="backToStep1()">← 返回步骤1</button>
+      <button class="btn-main" onclick="goToStep3()">下一步：确认并生成 →</button>
+    </div>
+  </div>
+
+  <!-- 步骤3：确认并生成 -->
+  <div class="section hidden" id="confirmSection">
+    <h3>🚀 步骤3：生成轻量版Excel</h3>
+    <div id="confirmInfo"></div>
+    <div class="action-bar">
+      <button class="btn-secondary" onclick="backToStep2()">← 返回步骤2</button>
+      <button class="btn-main" id="btnGenerate" onclick="startGenerate()">生成轻量版Excel</button>
+      <button class="btn-cancel" id="btnCancelGen" onclick="cancelProcess()" style="display:none;">取消</button>
+    </div>
+  </div>
+
+  <!-- 处理进度 -->
+  <div class="section hidden" id="processProgressSection">
+    <h3>⏳ 正在生成轻量版</h3>
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="procProgressBar"></div></div>
+    <div class="progress-info">
+      <div>阶段: <span class="phase" id="procProgPhase">-</span></div>
+      <div id="procProgMessage">准备中...</div>
+      <div id="procProgElapsed" style="color:#e67e22;font-weight:bold;"></div>
+    </div>
+  </div>
+
+  <!-- 结果 -->
+  <div class="section hidden" id="resultSection">
+    <h3>✅ 处理完成</h3>
+    <div class="result-summary" id="resultSummary"></div>
+    <div class="download-area" id="downloadArea" style="display:none;">
+      <button class="btn-success" id="btnDownload" onclick="downloadResult()" style="padding:12px 32px;font-size:1rem;">⬇️ 下载轻量版Excel</button>
+      <div class="file-size" id="downloadInfo"></div>
+    </div>
+    <div class="warning-box" style="margin-top:12px;">
+      <strong>📌 提示</strong>请用Excel打开输出文件确认内容正确。原文件未被修改。如需追加数据请继续使用原文件。
+    </div>
+  </div>
+
+  <div class="footer-note" data-i18n="cleanerFooter">
+    Excel文件轻量化 v4.1 ZIP/XML | JSZip 3.10.1 | 全部在浏览器内完成<br>
+    <span style="font-size:0.68rem;color:#aaa;">[CleanerBuild] ZIP-XML-20260725-05 | 常量/公式区分判定 | 字节级扫描 | 不创建100MB+字符串</span>
+  </div>
+</div>
+
+<!-- 确认弹窗 -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <h3 id="modalTitle">确认</h3>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal(false)">取消</button>
+      <button class="btn-primary" id="modalConfirmBtn" onclick="closeModal(true)">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="modal-overlay" id="detailOverlay">
+  <div class="modal-box" style="max-width:700px;">
+    <h3 id="detailTitle">Sheet详情</h3>
+    <div class="modal-body" id="detailBody" style="max-height:60vh;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeDetail()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ========== 状态 ==========
+let worker = null;
+let currentFile = null;
+let detectionData = null;
+let resultBlobUrl = null;
+let isProcessing = false;
+let isDetecting = false;
+let detectTimer = null;
+let procTimer = null;
+let procStartTime = 0;
+let formulaMode = 'keep';
+let modalCallback = null;
+
+console.log('[CleanerBuild] ZIP-XML-20260725-05 | const/formula distinction | byte-level scan');
+if (typeof applyI18n === 'function') applyI18n();
+
+// ========== 初始化 ==========
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+
+uploadArea.addEventListener('click', () => fileInput.click());
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault(); uploadArea.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+// ========== 文件处理 ==========
+function handleFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext !== 'xlsx') { alert('仅支持 .xlsx 格式。'); return; }
+  if (file.size > 500 * 1024 * 1024) {
+    if (!confirm(`文件大小 ${(file.size/1048576).toFixed(0)}MB 非常大，可能处理失败。是否继续？`)) return;
+  }
+  currentFile = file;
+  uploadArea.classList.add('has-file');
+  uploadArea.querySelector('.drop-text').textContent = '📄 ' + file.name;
+  uploadArea.querySelector('.drop-sub').textContent = `${(file.size/1048576).toFixed(2)} MB | 点击可更换文件`;
+  hideAllSections();
+  setStep(1);
+  startDetection(file);
+}
+
+function startDetection(file) {
+  isDetecting = true;
+  detectStartTime = performance.now();
+  showSection('detectProgressSection', true);
+  setDetectProgress(0, '正在读取本地文件', `正在读取 ${(file.size/1048576).toFixed(0)}MB 文件到内存...`);
+  showEstimate(file.size);
+  document.getElementById('detectTimingLog').textContent = '';
+  document.getElementById('detectTimeoutWarn').style.display = 'none';
+
+  detectTimer = setInterval(() => {
+    const elapsed = (performance.now() - detectStartTime) / 1000;
+    document.getElementById('detectProgElapsed').textContent = `已用时间：${elapsed.toFixed(0)}秒`;
+    checkTimeout(elapsed);
+  }, 1000);
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const buf = e.target.result;
+    const readMs = performance.now() - detectStartTime;
+    appendTiming(`[主线程] 文件读取完成: ${readMs.toFixed(0)}ms`);
+    setDetectProgress(5, '正在发送到Worker', '文件读取完成，正在初始化Worker...');
+    initWorker();
+    worker.postMessage({ type: 'detect', buffer: buf, fileName: file.name }, [buf]);
+    appendTiming(`[主线程] postMessage已发送 (Transferable)`);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+let detectStartTime = 0;
+
+function showEstimate(fileBytes) {
+  const mb = fileBytes / 1048576;
+  let est;
+  if (mb < 50) est = '约5～20秒';
+  else if (mb < 150) est = '约20～60秒';
+  else if (mb < 250) est = '约30秒～2分钟';
+  else est = '约1～5分钟';
+  document.getElementById('detectProgEstimate').textContent = `预计时间：${est}`;
+}
+
+function checkTimeout(elapsedSec) {
+  const warn = document.getElementById('detectTimeoutWarn');
+  if (elapsedSec >= 300) {
+    warn.style.display = 'block'; warn.className = 'warning-box danger';
+    warn.innerHTML = '<strong>⚠️ 处理时间异常</strong>已超过300秒。当前文件可能包含超大Sheet或浏览器内存不足。<br>可继续等待，或取消后重试。展开“查看处理详情”确认当前阶段。';
+  } else if (elapsedSec >= 120) {
+    warn.style.display = 'block'; warn.className = 'warning-box';
+    warn.innerHTML = '<strong>⚠️ 已超过通常处理时间</strong>正在继续分析，请保持页面打开。';
+  } else if (elapsedSec >= 60) {
+    warn.style.display = 'block'; warn.className = 'warning-box';
+    warn.innerHTML = '大文件处理中，请保持页面打开。';
+  }
+}
+
+function appendTiming(text) {
+  const el = document.getElementById('detectTimingLog');
+  el.textContent += text + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+function setDetectProgress(pct, phase, message) {
+  document.getElementById('detectProgressBar').style.width = pct + '%';
+  document.getElementById('detectProgPhase').textContent = phase;
+  document.getElementById('detectProgMessage').textContent = message;
+}
+
+// ========== Worker ==========
+function initWorker() {
+  if (worker) { worker.terminate(); worker = null; }
+  worker = new Worker('./excel_formula_cleaner_worker.js');
+  worker.onmessage = onWorkerMessage;
+  worker.onerror = function(e) {
+    isProcessing = false; isDetecting = false;
+    clearInterval(detectTimer); clearInterval(procTimer);
+    hideAllSections();
+    alert('Worker错误：' + e.message);
+  };
+}
+
+function onWorkerMessage(e) {
+  const msg = e.data;
+  switch (msg.type) {
+    case 'progress': handleProgress(msg); break;
+    case 'timing': handleTiming(msg); break;
+    case 'detection': handleDetection(msg.data); break;
+    case 'result': handleResult(msg.data); break;
+    case 'error':
+      isProcessing = false; isDetecting = false;
+      clearInterval(detectTimer); clearInterval(procTimer);
+      hideAllSections();
+      alert('❌ 错误：' + msg.message);
+      break;
+    case 'cancelled':
+      isProcessing = false; isDetecting = false;
+      clearInterval(detectTimer); clearInterval(procTimer);
+      showSection('processProgressSection', false);
+      showSection('confirmSection', true);
+      document.getElementById('btnGenerate').style.display = '';
+      document.getElementById('btnCancelGen').style.display = 'none';
+      break;
+  }
+}
+
+function handleTiming(msg) {
+  const elapsed = (msg.elapsedMs / 1000).toFixed(1);
+  let line = `[Worker] ${msg.stage}: ${elapsed}s`;
+  if (msg.sheet) line += ` | ${msg.sheet}`;
+  if (msg.readMs) line += ` | 读取${msg.readMs}ms`;
+  if (msg.analyzeMs) line += ` | 分析${msg.analyzeMs}ms`;
+  if (msg.xmlMB) line += ` | ${msg.xmlMB}MB`;
+  if (msg.sheetCount) line += ` | ${msg.sheetCount}sheets`;
+  appendTiming(line);
+}
+
+function handleProgress(msg) {
+  if (isDetecting) {
+    let pct = 5;
+    let phase = '正在打开压缩包';
+    if (msg.phase === 'worker_start') { pct = 6; phase = '正在打开压缩包'; }
+    else if (msg.phase === 'zip_done') { pct = 15; phase = '压缩包已打开'; }
+    else if (msg.phase === 'detect' && msg.total) { pct = 15 + Math.round((msg.current / msg.total) * 80); phase = `正在检测Sheet ${msg.current}/${msg.total}`; }
+    else if (msg.phase === 'detect_scan') { phase = '正在分析Sheet内容'; }
+    setDetectProgress(Math.min(pct, 95), phase, msg.message);
+  } else if (isProcessing) {
+    const phaseMap = { zip_read:'正在打开压缩包', zip_done:'压缩包已打开', trim:'正在裁剪尾部', convert:'正在值化公式', compress:'正在重新压缩' };
+    document.getElementById('procProgPhase').textContent = phaseMap[msg.phase] || msg.phase;
+    document.getElementById('procProgMessage').textContent = msg.message;
+    let pct = 0;
+    if (msg.phase === 'trim' && msg.total) pct = Math.round((msg.current / msg.total) * 40);
+    else if (msg.phase === 'convert' && msg.total) pct = 40 + Math.round((msg.current / msg.total) * 30);
+    else if (msg.phase === 'compress') pct = 75;
+    document.getElementById('procProgressBar').style.width = pct + '%';
+  }
+}
+
+// ========== 检测结果 ==========
+function handleDetection(data) {
+  detectionData = data;
+  isDetecting = false;
+  clearInterval(detectTimer);
+  showSection('detectProgressSection', false);
+  setDetectProgress(100, '完成', '检测完成');
+
+  // 过滤有尾部膨胀的Sheet
+  const tailSheets = data.sheets.filter(s => !s.skip && s.tailRows >= 100);
+  const safeSheets = tailSheets.filter(s => s.safety === 'safe');
+  const manualSheets = tailSheets.filter(s => s.safety === 'manual');
+  const noneSheets = tailSheets.filter(s => s.safety === 'none');
+
+  // 摘要
+  const totalTailFormulas = tailSheets.reduce((a, s) => a + (s.tailFormulas || 0), 0);
+  const totalRemovableRows = tailSheets.reduce((a, s) => a + (s.removableRows || 0), 0);
+
+  document.getElementById('detectSummary').innerHTML = `
+    <div class="diag-item"><div class="label">文件名</div><div class="value" style="font-size:0.72rem;word-break:break-all;">${escHtml(data.fileName)}</div></div>
+    <div class="diag-item"><div class="label">文件大小</div><div class="value">${formatSize(data.fileSize)}</div></div>
+    <div class="diag-item"><div class="label">Sheet总数</div><div class="value">${data.sheetCount}</div></div>
+    <div class="diag-item"><div class="label">有尾部膨胀</div><div class="value">${tailSheets.length} 个</div></div>
+    <div class="diag-item"><div class="label">安全可清理</div><div class="value" style="color:#27ae60">${safeSheets.length} 个</div></div>
+    <div class="diag-item"><div class="label">需人工确认</div><div class="value" style="color:#e67e22">${manualSheets.length} 个</div></div>
+    <div class="diag-item"><div class="label">尾部公式总数</div><div class="value">${totalTailFormulas.toLocaleString()}</div></div>
+    <div class="diag-item"><div class="label">检测耗时</div><div class="value">${(data.detectTime/1000).toFixed(1)}秒</div></div>`;
+
+  document.getElementById('detectGuide').textContent = tailSheets.length > 0
+    ? `检测到 ${tailSheets.length} 个Sheet存在无效公式尾部。安全可清理项已默认勾选。`
+    : '未检测到明显的无效公式尾部。可直接进入公式处理步骤。';
+
+  // 构建表格
+  const tbody = document.getElementById('detectBody');
+  tbody.innerHTML = tailSheets.map(s => {
+    const safetyLabel = s.safety === 'safe' ? '<span class="safety-safe">安全可清理</span>'
+      : s.safety === 'manual' ? '<span class="safety-manual">建议人工确认</span>'
+      : '<span class="safety-none">不自动处理</span>';
+    const checked = s.safety === 'safe' ? 'checked' : '';
+    const disabled = s.safety === 'none' ? 'disabled' : '';
+    return `<tr>
+      <td><input type="checkbox" class="sheet-check" data-name="${escAttr(s.name)}" data-cutrow="${s.candidateEndRow}" ${checked} ${disabled}></td>
+      <td>${escHtml(s.name)}</td>
+      <td class="num">${(s.maxRow||0).toLocaleString()}</td>
+      <td class="num">${(s.candidateEndRow||0).toLocaleString()}</td>
+      <td class="num">${(s.removableRows||0).toLocaleString()}</td>
+      <td class="num">${(s.tailFormulas||0).toLocaleString()}</td>
+      <td>${safetyLabel}</td>
+      <td><button class="btn-secondary btn-detail" style="padding:2px 8px;font-size:0.72rem;" data-sheet="${escAttr(s.name)}">详情</button></td>
+    </tr>`;
+  }).join('');
+
+  // 无尾部Sheet不显示为清理对象
+  showSection('detectResultSection', true);
+  setStep(1);
+
+  // 绑定详情按钮事件
+  document.querySelectorAll('.btn-detail').forEach(btn => {
+    btn.addEventListener('click', () => showDetail(btn.dataset.sheet));
+  });
+
+  setTimeout(() => document.getElementById('detectResultSection').scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+}
+
+// ========== Sheet全选 ==========
+function toggleAllSheets(el) {
+  document.querySelectorAll('.sheet-check:not(:disabled)').forEach(cb => cb.checked = el.checked);
+}
+
+// ========== 详情弹窗 ==========
+function showDetail(sheetName) {
+  if (!detectionData) return;
+  const s = detectionData.sheets.find(x => x.name === sheetName);
+  if (!s) return;
+
+  document.getElementById('detailTitle').textContent = `详情：${sheetName}`;
+  let html = '';
+
+  html += `<div class="detail-section"><h4>📊 基本信息</h4>
+    <div class="item"><span class="k">Dimension</span><span class="v">${s.dimension || '-'}</span></div>
+    <div class="item"><span class="k">当前最大行</span><span class="v">${(s.maxRow||0).toLocaleString()}</span></div>
+    <div class="item"><span class="k">真实数据末行</span><span class="v">${(s.candidateEndRow||0).toLocaleString()}</span></div>
+    <div class="item"><span class="k">尾部行数</span><span class="v">${(s.tailRows||0).toLocaleString()}</span></div>
+    <div class="item"><span class="k">尾部公式数</span><span class="v">${(s.tailFormulas||0).toLocaleString()}</span></div>
+    <div class="item"><span class="k">缓存值分布</span><span class="v">0/空:${(s.tailZero||0).toLocaleString()} | 占位符:${(s.tailEmpty||0).toLocaleString()} | 错误:${(s.tailError||0).toLocaleString()} | 其他:${(s.tailOther||0).toLocaleString()}</span></div>
+    <div class="item"><span class="k">安全等级</span><span class="v">${s.safety}</span></div>
+  </div>`;
+
+  // 公式模板
+  if (s.tailTemplates && s.tailTemplates.length > 0) {
+    html += `<div class="detail-section"><h4>📐 主要尾部公式模板</h4><table class="detail-table"><tr><th>模板</th><th>数量</th><th>示例</th></tr>`;
+    s.tailTemplates.forEach(t => { html += `<tr><td>${escHtml(t.template)}</td><td>${t.count.toLocaleString()}</td><td>${escHtml(t.sample)}</td></tr>`; });
+    html += `</table></div>`;
+  }
+
+  // 涉及列
+  if (s.tailColumns && s.tailColumns.length > 0) {
+    html += `<div class="detail-section"><h4>📋 尾部涉及列</h4><p style="font-size:0.78rem;">${s.tailColumns.join(', ')}</p></div>`;
+  }
+
+  // 最后真实数据示例
+  if (s.detailSamples && s.detailSamples.lastBusiness && s.detailSamples.lastBusiness.length > 0) {
+    html += `<div class="detail-section"><h4>✅ 最后${s.detailSamples.lastBusiness.length}行真实数据</h4><table class="detail-table"><tr><th>行</th><th>单元格示例</th></tr>`;
+    s.detailSamples.lastBusiness.forEach(r => {
+      const cellStr = r.cells.map(c => `${c.ref}=${c.formula ? 'f:'+c.formula : (c.value||'')}`).join(' | ');
+      html += `<tr><td>${r.row}</td><td>${escHtml(cellStr).substring(0, 200)}</td></tr>`;
+    });
+    html += `</table></div>`;
+  }
+
+  // 尾部前几行示例
+  if (s.detailSamples && s.detailSamples.firstTail && s.detailSamples.firstTail.length > 0) {
+    html += `<div class="detail-section"><h4>🗑️ 即将删除区域前${s.detailSamples.firstTail.length}行</h4><table class="detail-table"><tr><th>行</th><th>单元格示例</th></tr>`;
+    s.detailSamples.firstTail.forEach(r => {
+      const cellStr = r.cells.map(c => `${c.ref}=${c.formula ? 'f:'+c.formula : (c.value||'')}`).join(' | ');
+      html += `<tr><td>${r.row}</td><td>${escHtml(cellStr).substring(0, 200)}</td></tr>`;
+    });
+    html += `</table></div>`;
+  }
+
+  // 风险说明 + 判定理由
+  html += `<div class="detail-section"><h4>⚠️ 裁剪风险说明</h4><p style="font-size:0.78rem;color:#666;">`;
+  if (s.safety === 'safe') {
+    html += '检测到真实业务数据已结束，后续仅存在批量下拉公式和占位结果。<br>';
+    html += '判定理由：关键业务列已无常量数据，后续仅公式缓存值（0/空字符串/占位符），连续至工作表底部。';
+  } else if (s.safety === 'manual') {
+    html += '该Sheet尾部存在不确定因素（可能有非常量数据或尾部不够长），建议人工确认后再决定是否裁剪。';
+  } else {
+    html += '该Sheet无明显可清理尾部或尾部过短。';
+  }
+  html += `</p></div>`;
+
+  document.getElementById('detailBody').innerHTML = html;
+  document.getElementById('detailOverlay').classList.add('show');
+}
+
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('show'); }
+
+// ========== 步骤导航 ==========
+function setStep(n) {
+  ['step1','step2','step3'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active', 'done');
+    if (i + 1 < n) el.classList.add('done');
+    else if (i + 1 === n) el.classList.add('active');
+  });
+  document.getElementById('line1').classList.toggle('done', n > 1);
+  document.getElementById('line2').classList.toggle('done', n > 2);
+}
+
+function goToStep2() {
+  showSection('detectResultSection', false);
+  showSection('formulaSection', true);
+  setStep(2);
+  buildFormulaSheetList();
+  document.getElementById('formulaSection').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function backToStep1() {
+  showSection('formulaSection', false);
+  showSection('detectResultSection', true);
+  setStep(1);
+}
+
+function goToStep3() {
+  showSection('formulaSection', false);
+  showSection('confirmSection', true);
+  setStep(3);
+  buildConfirmInfo();
+  document.getElementById('confirmSection').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function backToStep2() {
+  showSection('confirmSection', false);
+  showSection('formulaSection', true);
+  setStep(2);
+}
+
+// ========== 公式模式 ==========
+function selectMode(mode) {
+  formulaMode = mode;
+  document.querySelectorAll('.mode-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById(mode === 'keep' ? 'modeKeep' : mode === 'all' ? 'modeAll' : 'modeSelected').classList.add('selected');
+  document.getElementById('formulaSheetList').classList.toggle('hidden', mode !== 'selected');
+}
+
+function buildFormulaSheetList() {
+  if (!detectionData) return;
+  const list = document.getElementById('formulaSheetList');
+  const sheets = detectionData.sheets.filter(s => !s.skip && s.totalFormulas > 0);
+  list.innerHTML = sheets.map(s => `<label class="formula-sheet-item">
+    <input type="checkbox" class="formula-sheet-check" data-name="${escAttr(s.name)}">
+    <span>${escHtml(s.name)}</span>
+    <span style="color:#888;font-size:0.72rem;margin-left:auto;">${(s.totalFormulas||0).toLocaleString()}个公式</span>
+  </label>`).join('');
+}
+
+// ========== 推荐模式 ==========
+function quickMode() {
+  // 推荐轻量化：清理所有安全可清理尾部 + 保留公式 + 直接生成
+  const trimSheets = getTrimSheets();
+  if (trimSheets.length === 0) { alert('没有可清理的Sheet。'); return; }
+  formulaMode = 'keep';
+  executeGenerate(trimSheets);
+}
+
+// ========== 确认信息 ==========
+function buildConfirmInfo() {
+  const trimSheets = getTrimSheets();
+  const totalRows = trimSheets.reduce((a, s) => {
+    const info = detectionData.sheets.find(x => x.name === s.name);
+    return a + (info ? info.removableRows || 0 : 0);
+  }, 0);
+  const totalFormulas = trimSheets.reduce((a, s) => {
+    const info = detectionData.sheets.find(x => x.name === s.name);
+    return a + (info ? info.tailFormulas || 0 : 0);
+  }, 0);
+
+  const modeLabel = formulaMode === 'keep' ? '保留公式' : formulaMode === 'all' ? '全部Sheet值化' : '指定Sheet值化';
+  let formulaSheetCount = 0;
+  if (formulaMode === 'all') formulaSheetCount = detectionData.sheets.filter(s => !s.skip).length;
+  else if (formulaMode === 'selected') formulaSheetCount = document.querySelectorAll('.formula-sheet-check:checked').length;
+
+  document.getElementById('confirmInfo').innerHTML = `
+    <div class="modal-body" style="margin-bottom:0;">
+      <div class="item"><span class="k">将清理的Sheet数</span><span class="v">${trimSheets.length} 个</span></div>
+      <div class="item"><span class="k">预计删除行数</span><span class="v">${totalRows.toLocaleString()} 行</span></div>
+      <div class="item"><span class="k">预计删除尾部公式</span><span class="v">${totalFormulas.toLocaleString()} 个</span></div>
+      <div class="item"><span class="k">公式处理模式</span><span class="v">${modeLabel}</span></div>
+      ${formulaMode !== 'keep' ? `<div class="item"><span class="k">值化Sheet数</span><span class="v">${formulaSheetCount} 个</span></div>` : ''}
+      <div class="item"><span class="k">原文件</span><span class="v" style="color:#27ae60">不会被修改</span></div>
+      <div class="item"><span class="k">输出用途</span><span class="v">校正、确认、归档</span></div>
+      <p style="margin-top:10px;font-size:0.78rem;color:#888;">如需追加数据，应继续使用原文件。</p>
+    </div>`;
+}
+
+// ========== 生成 ==========
+function getTrimSheets() {
+  return Array.from(document.querySelectorAll('.sheet-check:checked')).map(cb => ({
+    name: cb.dataset.name,
+    cutRow: parseInt(cb.dataset.cutrow)
+  }));
+}
+
+function startGenerate() {
+  const trimSheets = getTrimSheets();
+  if (trimSheets.length === 0 && formulaMode === 'keep') {
+    alert('请至少选择一个要清理的Sheet，或选择公式值化模式。');
+    return;
+  }
+
+  // 确认弹窗（推荐模式跳过）
+  if (trimSheets.length > 0 || formulaMode !== 'keep') {
+    executeGenerate(trimSheets);
+  }
+}
+
+function executeGenerate(trimSheets) {
+  if (!currentFile) return;
+  isProcessing = true;
+  procStartTime = performance.now();
+
+  // 使用日志（仅记录一次，失败不阻断功能）
+  if (typeof sendLog === 'function') {
+    sendLog('Excel文件轻量化', trimSheets.length, 1, '公式模式:' + formulaMode).catch(function(){});
+  }
+
+  hideAllSections();
+  showSection('processProgressSection', true);
+  document.getElementById('procProgressBar').style.width = '0%';
+  document.getElementById('procProgPhase').textContent = '准备中';
+  document.getElementById('procProgMessage').textContent = '正在读取文件...';
+  document.getElementById('procProgElapsed').textContent = '';
+  document.getElementById('btnGenerate').style.display = 'none';
+  document.getElementById('btnCancelGen').style.display = 'inline-block';
+
+  procTimer = setInterval(() => {
+    document.getElementById('procProgElapsed').textContent = `已用时间：${((performance.now()-procStartTime)/1000).toFixed(0)}秒`;
+  }, 1000);
+
+  let formulaSheets = [];
+  if (formulaMode === 'selected') {
+    formulaSheets = Array.from(document.querySelectorAll('.formula-sheet-check:checked')).map(cb => cb.dataset.name);
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const buf = e.target.result;
+    initWorker();
+    worker.postMessage({
+      type: 'process', buffer: buf, fileName: currentFile.name,
+      options: { trimSheets, formulaMode, formulaSheets }
+    }, [buf]);
+  };
+  reader.readAsArrayBuffer(currentFile);
+}
+
+function cancelProcess() {
+  if (worker) worker.postMessage({ type: 'cancel' });
+  document.getElementById('procProgMessage').textContent = '⚠️ 已发送取消请求。压缩阶段可能无法立即停止。';
+}
+
+// ========== 结果 ==========
+function handleResult(data) {
+  isProcessing = false;
+  clearInterval(procTimer);
+  showSection('processProgressSection', false);
+  document.getElementById('procProgressBar').style.width = '100%';
+
+  if (resultBlobUrl) { URL.revokeObjectURL(resultBlobUrl); resultBlobUrl = null; }
+  const blob = new Blob([data.buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  resultBlobUrl = URL.createObjectURL(blob);
+
+  const reduction = data.inputSize - data.outputSize;
+  const reductionPct = ((reduction / data.inputSize) * 100).toFixed(1);
+  const t = data.timing;
+
+  document.getElementById('resultSummary').innerHTML = `
+    <div class="result-item"><div class="rl">原文件大小</div><div class="rv">${formatSize(data.inputSize)}</div></div>
+    <div class="result-item"><div class="rl">输出文件大小</div><div class="rv">${formatSize(data.outputSize)}</div></div>
+    <div class="result-item"><div class="rl">缩减大小</div><div class="rv ${reduction>0?'good':'warn'}">${reduction>0?'-':'+'}${formatSize(Math.abs(reduction))}</div></div>
+    <div class="result-item"><div class="rl">缩减比例</div><div class="rv ${reduction>0?'good':'warn'}">${reductionPct}%</div></div>
+    <div class="result-item"><div class="rl">已裁剪Sheet</div><div class="rv">${data.trimmedSheetCount} 个</div></div>
+    <div class="result-item"><div class="rl">已删除行数</div><div class="rv good">${data.totalTrimmedRows.toLocaleString()}</div></div>
+    <div class="result-item"><div class="rl">已删除尾部公式</div><div class="rv good">${data.totalTrimmedFormulas.toLocaleString()}</div></div>
+    <div class="result-item"><div class="rl">已值化公式</div><div class="rv">${data.totalConverted.toLocaleString()}</div></div>
+    <div class="result-item"><div class="rl">跳过公式</div><div class="rv ${data.totalSkipped>0?'warn':''}">${data.totalSkipped.toLocaleString()}</div></div>
+    <div class="result-item"><div class="rl">总耗时</div><div class="rv">${(t.totalTime/1000).toFixed(1)}秒</div></div>
+    <div class="result-item"><div class="rl">ZIP读取</div><div class="rv">${(t.zipReadTime/1000).toFixed(1)}秒</div></div>
+    <div class="result-item"><div class="rl">裁剪耗时</div><div class="rv">${(t.trimTime/1000).toFixed(1)}秒</div></div>
+    ${data.formulaMode !== 'keep' ? `<div class="result-item"><div class="rl">值化耗时</div><div class="rv">${(t.convertTime/1000).toFixed(1)}秒</div></div>` : ''}
+    <div class="result-item"><div class="rl">压缩耗时</div><div class="rv">${(t.compressTime/1000).toFixed(1)}秒</div></div>`;
+
+  // 错误Sheet
+  if (data.errors && data.errors.length > 0) {
+    document.getElementById('resultSummary').innerHTML += data.errors.map(e =>
+      `<div class="result-item"><div class="rl">⚠️ ${escHtml(e.name)}</div><div class="rv warn" style="font-size:0.72rem;">${escHtml(e.error)}</div></div>`).join('');
+  }
+
+  document.getElementById('downloadArea').style.display = 'block';
+  document.getElementById('downloadInfo').textContent = `${data.outputName} (${formatSize(data.outputSize)})`;
+  document.getElementById('btnDownload').dataset.url = resultBlobUrl;
+  document.getElementById('btnDownload').dataset.name = data.outputName;
+
+  showSection('resultSection', true);
+  setStep(3);
+  setTimeout(() => document.getElementById('resultSection').scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+}
+
+function downloadResult() {
+  const btn = document.getElementById('btnDownload');
+  const a = document.createElement('a');
+  a.href = btn.dataset.url; a.download = btn.dataset.name; a.click();
+}
+
+// ========== 工具函数 ==========
+function showSection(id, show) { document.getElementById(id).classList.toggle('hidden', !show); }
+function hideAllSections() {
+  ['detectProgressSection','detectResultSection','formulaSection','confirmSection','processProgressSection','resultSection'].forEach(id => showSection(id, false));
+}
+
+function resetAll() {
+  if (worker) { worker.terminate(); worker = null; }
+  clearInterval(detectTimer); clearInterval(procTimer);
+  if (resultBlobUrl) { URL.revokeObjectURL(resultBlobUrl); resultBlobUrl = null; }
+  currentFile = null; detectionData = null;
+  isProcessing = false; isDetecting = false; formulaMode = 'keep';
+  uploadArea.classList.remove('has-file');
+  uploadArea.querySelector('.drop-text').textContent = '拖拽Excel文件到此处';
+  uploadArea.querySelector('.drop-sub').textContent = '或点击选择文件（仅支持 .xlsx）';
+  fileInput.value = '';
+  hideAllSections();
+  setStep(1);
+  selectMode('keep');
+}
+
+function formatSize(bytes) {
+  if (bytes >= 1073741824) return (bytes/1073741824).toFixed(2) + ' GB';
+  if (bytes >= 1048576) return (bytes/1048576).toFixed(2) + ' MB';
+  if (bytes >= 1024) return (bytes/1024).toFixed(1) + ' KB';
+  return bytes + ' B';
+}
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { return s.replace(/&/g,'&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+function closeModal(confirmed) {
+  document.getElementById('modalOverlay').classList.remove('show');
+  if (confirmed && modalCallback) modalCallback();
+  modalCallback = null;
+}
+</script>
+</body>
+</html>

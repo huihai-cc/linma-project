@@ -1,1270 +1,611 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>惠海 QC ポータル</title>
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            font-family: 'Segoe UI', 'Noto Sans SC', sans-serif;
-            background:
-                radial-gradient(circle at top left, rgba(52,152,219,0.12), transparent 34%),
-                linear-gradient(135deg, #eef3f8 0%, #f7f9fc 46%, #edf2f6 100%);
-            color: #333;
-            min-height: 100vh;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>惠海 QC ポータル</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#F8FAFC;--card:#FFFFFF;--text:#0F172A;--text2:#64748B;--border:#E2E8F0;
+  --common:#5e6d75;--ka1:#2478ac;--ka2:#229759;--ka3:#7e3da2;--ka4:#d66f1c;--ka5:#af3328;--ka6:#128e77;
+  --radius:16px;--shadow:0 1px 3px rgba(15,23,42,.06),0 4px 12px rgba(15,23,42,.04);
+  --shadow-hover:0 8px 24px rgba(15,23,42,.10);
+}
+body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
-        header {
-            background: linear-gradient(135deg, #14212d 0%, #20384c 62%, #1a252f 100%);
-            color: white;
-            padding: 16px 32px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 8px 24px rgba(15,34,50,0.18);
-            border-bottom: 1px solid rgba(255,255,255,0.12);
-            position: relative;
-        }
-        header::after {
-            content: '';
-            position: absolute;
-            left: 0; right: 0; bottom: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(103,232,249,0.45), transparent);
-        }
-        header h1 { font-size: 1.2rem; letter-spacing: 1px; font-weight: 700; }
-        .header-right { display:flex; align-items:center; gap:16px; }
-        .header-user { font-size:0.85rem; opacity:0.85; }
-        .header-btn {
-            background: rgba(255,255,255,0.12); color:#fff; border:1px solid rgba(255,255,255,0.28);
-            padding:5px 14px; border-radius:4px; cursor:pointer; font-size:0.78rem;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.12);
-        }
-        .header-btn:hover { background: rgba(255,255,255,0.25); }
+/* ===== Header ===== */
+.header{position:sticky;top:0;z-index:100;background:rgba(15,23,42,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);padding:0 clamp(16px,3vw,40px);height:56px;display:flex;align-items:center;justify-content:space-between;}
+.header-left{display:flex;align-items:center;gap:12px;}
+.header-logo{font-size:1.05rem;font-weight:700;color:#fff;letter-spacing:.5px;}
+.header-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.lang-sw{display:flex;align-items:center;gap:2px;font-size:.72rem;}
+.lang-sw button{background:none;border:none;color:rgba(255,255,255,.55);cursor:pointer;font-size:.72rem;padding:3px 5px;border-radius:4px;transition:all .15s;}
+.lang-sw button:hover,.lang-sw button.active{color:#fff;background:rgba(255,255,255,.12);}
+.lang-sw .sep{color:rgba(255,255,255,.3);}
+.header-user{font-size:.78rem;color:rgba(255,255,255,.8);}
+.header-btn{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.72rem;transition:all .15s;}
+.header-btn:hover{background:rgba(255,255,255,.2);}
+.update-trigger{position:relative;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.72rem;transition:all .15s;}
+.update-trigger:hover{background:rgba(255,255,255,.2);}
+.update-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:.58rem;min-width:16px;height:16px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:700;}
 
-        /* ===== 登录/注册区域 ===== */
-        #authSection {
-            display: flex; justify-content: center; align-items: center;
-            min-height: calc(100vh - 60px);
-        }
-        .auth-box {
-            background: #fff; border-radius: 12px; padding: 32px 28px;
-            width: 400px; max-width: 90vw;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
-        .auth-tabs { display:flex; gap:0; margin-bottom:24px; }
-        .auth-tab {
-            flex:1; text-align:center; padding:10px;
-            font-size:0.9rem; font-weight:700; cursor:pointer;
-            border-bottom:3px solid #e4e8ed; color:#999; background:none; border-top:none; border-left:none; border-right:none; outline:none;
-        }
-        .auth-tab.active { border-bottom-color:#2980b9; color:#2980b9; }
-        .auth-form { display:none; flex-direction:column; gap:14px; }
-        .auth-form.active { display:flex; }
-        .auth-form input, .auth-form select {
-            padding:10px 12px; border:1px solid #ddd; border-radius:6px; font-size:0.9rem; outline:none;
-        }
-        .auth-form input:focus, .auth-form select:focus { border-color:#2980b9; }
-        .auth-form button {
-            padding:11px; background:#2980b9; color:#fff; border:none; border-radius:6px;
-            font-size:0.95rem; font-weight:700; cursor:pointer;
-        }
-        .auth-form button:hover { background:#2471a3; }
-        .auth-msg { font-size:0.82rem; min-height:20px; text-align:center; }
-        .auth-msg.error { color:#e74c3c; }
-        .auth-msg.success { color:#27ae60; }
-        .auth-hint { font-size:0.7rem; color:#999; text-align:center; margin-top:4px; }
+/* ===== Main Layout ===== */
+.main{max-width:1680px;margin:0 auto;padding:24px clamp(16px,3vw,40px) 60px;}
 
-        /* ===== 工具列表（登录后显示） ===== */
-        #mainSection { display:none; }
+/* ===== Auth ===== */
+#authSection{display:flex;justify-content:center;align-items:center;min-height:calc(100vh - 56px);}
+.auth-box{background:var(--card);border-radius:var(--radius);padding:32px 28px;width:400px;max-width:90vw;box-shadow:var(--shadow-hover);border:1px solid var(--border);}
+.auth-tabs{display:flex;gap:0;margin-bottom:24px;}
+.auth-tab{flex:1;text-align:center;padding:10px;font-size:.9rem;font-weight:700;cursor:pointer;border:none;border-bottom:3px solid var(--border);color:var(--text2);background:none;outline:none;}
+.auth-tab.active{border-bottom-color:#6366f1;color:#6366f1;}
+.auth-form{display:none;flex-direction:column;gap:14px;}
+.auth-form.active{display:flex;}
+.auth-form input,.auth-form select{padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:.9rem;outline:none;background:var(--bg);color:var(--text);}
+.auth-form input:focus,.auth-form select:focus{border-color:#6366f1;}
+.auth-form button{padding:11px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:700;cursor:pointer;transition:background .15s;}
+.auth-form button:hover{background:#4f46e5;}
+.auth-msg{font-size:.82rem;min-height:20px;text-align:center;}
+.auth-msg.error{color:#ef4444;}
+.auth-msg.success{color:#22c55e;}
+.auth-hint{font-size:.7rem;color:var(--text2);text-align:center;margin-top:4px;}
 
-        .container {
-            max-width: 1200px;
-            margin: 24px auto;
-            padding: 0 24px 40px;
-            display: grid;
-            grid-template-columns: 1fr 280px;
-            gap: 20px;
-            align-items: start;
-        }
+/* ===== Search ===== */
+.search-area{margin-bottom:28px;}
+.search-box{position:relative;max-width:640px;}
+.search-input{width:100%;padding:12px 16px 12px 42px;border:1px solid var(--border);border-radius:12px;font-size:.88rem;background:var(--card);color:var(--text);outline:none;transition:all .2s;box-shadow:var(--shadow);}
+.search-input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
+.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:.9rem;pointer-events:none;}
+.search-kbd{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:.62rem;color:var(--text2);background:var(--bg);border:1px solid var(--border);padding:2px 6px;border-radius:4px;}
+.search-tags{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+.search-tag{font-size:.68rem;padding:3px 10px;border-radius:999px;background:var(--card);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all .15s;}
+.search-tag:hover{border-color:#6366f1;color:#6366f1;}
+.search-count{font-size:.72rem;color:var(--text2);margin-top:8px;display:none;}
+.search-empty{font-size:.82rem;color:var(--text2);margin-top:16px;display:none;text-align:center;padding:32px 0;}
 
-        /* ===== 手风琴 ===== */
-        .accordion {
-            background: rgba(255,255,255,0.88);
-            border: 1px solid rgba(205,216,228,0.82);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 24px rgba(31,55,77,0.06);
-            backdrop-filter: blur(8px);
-        }
-        /* 默认折叠的accordion（2~6课、定例会） */
-        /* 初始状态：无collapsed类 → 折叠；有collapsed类 → 展开 */
-        .accordion.default-collapsed .accordion-body { display: none; }
-        .accordion.default-collapsed .accordion-arrow { transform: rotate(-90deg); }
-        .accordion.default-collapsed.collapsed .accordion-body { display: grid; }
-        .accordion.default-collapsed.collapsed .accordion-arrow { transform: rotate(0deg); }
-        
-        .accordion-header {
-            display: flex; align-items: center; gap: 12px;
-            padding: 13px 18px; cursor: pointer; user-select: none; transition: background 0.15s;
-            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,252,255,0.86));
-            border-bottom: 1px solid rgba(228,232,237,0.78);
-        }
-        .accordion-header:hover { background: linear-gradient(180deg, #fff, #f5f9fd); }
-        .accordion-arrow {
-            font-size: 0.75rem; color: #587082; transition: transform 0.2s;
-            width: 16px; text-align: center;
-        }
-        .accordion.collapsed .accordion-arrow { transform: rotate(-90deg); }
-        .accordion-label {
-            display: inline-flex; align-items: center; border-radius: 999px;
-            padding: 3px 12px; font-size: 0.76rem; font-weight: bold;
-            color: white; letter-spacing: 0.5px; min-width: 48px; justify-content: center;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 3px 8px rgba(31,55,77,0.12);
-        }
-        .label-common { background: linear-gradient(135deg, #5e6d75, #7d8b92); }
-        .label-1 { background: linear-gradient(135deg, #2478ac, #3b9bd2); }
-        .label-2 { background: linear-gradient(135deg, #229759, #35b978); }
-        .label-3 { background: linear-gradient(135deg, #7e3da2, #a061bf); }
-        .label-4 { background: linear-gradient(135deg, #d66f1c, #f0a047); }
-        .label-5 { background: linear-gradient(135deg, #af3328, #d65b50); }
-        .label-6 { background: linear-gradient(135deg, #128e77, #2cb79e); }
-        .accordion-title { font-size: 0.9rem; font-weight: 700; color: #22384a; }
-        .accordion-sub { font-size: 0.72rem; color: #95a5a6; margin-left: auto; }
-        .accordion-body {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 8px; padding: 0 16px 14px; transition: all 0.25s;
-        }
-        .accordion.collapsed .accordion-body { display: none; }
+/* ===== Section ===== */
+.section{margin-bottom:24px;}
+.section-header{display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;user-select:none;}
+.section-dot{width:4px;height:20px;border-radius:2px;}
+.section-label{font-size:.72rem;font-weight:700;color:#fff;padding:2px 10px;border-radius:999px;letter-spacing:.5px;}
+.section-title{font-size:.88rem;font-weight:700;color:var(--text);}
+.section-count{font-size:.68rem;color:var(--text2);margin-left:4px;}
+.section-arrow{margin-left:auto;font-size:.65rem;color:var(--text2);transition:transform .2s;}
+.section.collapsed .section-arrow{transform:rotate(-90deg);}
+.section.collapsed .section-grid{display:none;}
 
-        /* ===== 卡片 ===== */
-        .card {
-            background: linear-gradient(135deg, #ffffff 0%, #f6f9fc 100%);
-            border: 1px solid rgba(211,222,233,0.9); border-radius: 10px;
-            padding: 10px 10px; text-decoration: none; color: #333;
-            display: flex; flex-direction: column; gap: 4px;
-            transition: all 0.18s; cursor: pointer; position: relative;
-            min-width: 0; min-height: 92px;
-            box-shadow: 0 2px 8px rgba(31,55,77,0.04);
-        }
-        .card:nth-child(4n+1) { background: linear-gradient(135deg, #ffffff 0%, #f1f7fc 100%); }
-        .card:nth-child(4n+2) { background: linear-gradient(135deg, #ffffff 0%, #f4faf5 100%); }
-        .card:nth-child(4n+3) { background: linear-gradient(135deg, #ffffff 0%, #faf6fc 100%); }
-        .card:nth-child(4n+4) { background: linear-gradient(135deg, #ffffff 0%, #fff8ef 100%); }
-        .card:hover {
-            background: white; border-color: rgba(52,152,219,0.7);
-            box-shadow: 0 8px 20px rgba(52,152,219,0.16); transform: translateY(-2px);
-        }
-        .card-icon { font-size: 1.28rem; line-height: 1; filter: drop-shadow(0 2px 3px rgba(31,55,77,0.12)); }
-        .card-name { font-size: 0.8rem; font-weight: 700; line-height: 1.25; color: #23394b; }
-        .card-desc {
-            font-size: 0.68rem; color: #71808c; line-height: 1.35;
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        .card-disabled {
-            opacity: 0.6; cursor: not-allowed;
-        }
-        .card-disabled:hover {
-            background: linear-gradient(135deg, #ffffff 0%, #f4faf5 100%); border-color: #e4e8ed;
-            box-shadow: none; transform: none;
-        }
-        .placeholder-card {
-            background: rgba(250,250,250,0.78); border: 1px dashed #d8dee6; border-radius: 10px;
-            padding: 10px 10px; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 6px;
-            color: #bbb; min-height: 72px;
-        }
-        .placeholder-icon { font-size: 1.4rem; }
-        .placeholder-text { font-size: 0.78rem; }
+/* ===== Card Grid ===== */
+.section-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:4px 0 8px;}
+@media(max-width:1280px){.section-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
+@media(max-width:1024px){.section-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:768px){.section-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:390px){.section-grid{grid-template-columns:1fr;}}
 
-        /* ===== 定例会报告书长条链接 ===== */
-        .report-strip {
-            grid-column: 1 / -1;
-        }
-        .report-link {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: linear-gradient(135deg, #ffffff 0%, #f6f9fc 100%);
-            border: 1px solid rgba(211,222,233,0.9);
-            border-radius: 10px;
-            padding: 14px 18px;
-            text-decoration: none;
-            color: #333;
-            transition: all 0.18s;
-            cursor: pointer;
-            width: 100%;
-        }
-        .report-link:hover {
-            background: #fff;
-            border-color: #3498db;
-            box-shadow: 0 8px 20px rgba(52,152,219,0.14);
-        }
-        .report-icon { font-size: 1.3rem; line-height: 1; }
-        .report-title { font-size: 0.88rem; font-weight: 600; flex: 1; line-height: 1.4; }
-        .report-desc { font-size: 0.72rem; color: #95a5a6; line-height: 1.4; }
-        .report-arrow { font-size: 1.1rem; color: #999; transition: transform 0.18s; }
-        .report-link:hover .report-arrow { transform: translateX(3px); color: #3498db; }
+/* ===== Recent Grid ===== */
+.recent-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:4px 0 8px;}
+@media(max-width:1024px){.recent-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:768px){.recent-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:390px){.recent-grid{grid-template-columns:1fr;}}
 
-        @media (min-width: 1024px) {
-            .container { max-width: 1280px; }
-            #acc-ka1 .accordion-body,
-            #acc-ka2 .accordion-body,
-            #acc-ka3 .accordion-body,
-            #acc-ka4 .accordion-body,
-            #acc-ka5 .accordion-body,
-            #acc-ka6 .accordion-body {
-                grid-template-columns: repeat(5, minmax(0, 1fr));
-            }
-            #acc-common .accordion-body {
-                grid-template-columns: repeat(4, minmax(0, 1fr));
-            }
-        }
-        @media (max-width: 1023px) and (min-width: 769px) {
-            .container { grid-template-columns: 1fr; }
-            .sidebar { position: static; }
-            .accordion-body { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-        }
-        @media (max-width: 768px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
-            .sidebar {
-                position: static;
-            }
-        }
-        @media (max-width: 540px) {
-            .accordion-body { grid-template-columns: repeat(2, 1fr); }
-            .container { margin: 16px auto; padding: 0 12px; }
-            header { padding: 12px 16px; }
-            header h1 { font-size: 1rem; }
-        }
-        @media (max-width: 360px) {
-            .accordion-body { grid-template-columns: 1fr; }
-        }
+/* ===== Card ===== */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-decoration:none;color:var(--text);display:flex;flex-direction:column;gap:6px;transition:all .18s;cursor:pointer;position:relative;box-shadow:var(--shadow);border-left:3px solid var(--border);min-height:110px;}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover);border-color:#cbd5e1;}
+.card:active{transform:scale(.985);}
+.card-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:var(--bg);}
+.card-name{font-size:.8rem;font-weight:700;line-height:1.3;color:var(--text);}
+.card-desc{font-size:.68rem;color:var(--text2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1;}
+.card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;}
+.card-badge{font-size:.58rem;padding:2px 7px;border-radius:999px;font-weight:600;}
+.badge-new{background:#ede9fe;color:#6d28d9;}
+.badge-update{background:#dcfce7;color:#166534;}
+.badge-dev{background:#f1f5f9;color:#64748b;}
+.badge-soon{background:#fef3c7;color:#92400e;}
+.badge-local{background:#e0f2fe;color:#075985;}
+.card-arrow{font-size:.7rem;color:#cbd5e1;transition:all .15s;}
+.card:hover .card-arrow{color:#6366f1;transform:translateX(2px);}
+.card-disabled{opacity:.55;cursor:not-allowed;pointer-events:none;}
+.card-disabled:hover{transform:none;box-shadow:var(--shadow);}
 
-        /* ===== 近期更新 - 分组展示 ===== */
-        .update-group { margin:0 8px 10px; border-radius:8px; overflow:hidden; border:1px solid rgba(228,232,237,0.78); background:#fff; }
-        .update-group-header { padding:8px 12px; font-size:0.75rem; font-weight:700; display:flex; align-items:center; gap:6px; border-bottom:1px solid rgba(228,232,237,0.6); }
-        .ug-header-new { background:linear-gradient(135deg,#f3edf7,#faf5fc); color:#5b2c82; border-left:3px solid #7e3da2; }
-        .ug-header-add { background:linear-gradient(135deg,#edf7f1,#f5faf7); color:#1a6b3d; border-left:3px solid #1e8449; }
-        .ug-header-fix { background:linear-gradient(135deg,#fdf5ef,#fefaf5); color:#a65614; border-left:3px solid #d66f1c; }
-        .update-item { padding:8px 10px; cursor:pointer; border-bottom:1px solid rgba(228,232,237,0.5); transition:background 0.12s; }
-        .update-item:last-child { border-bottom:none; }
-        .update-item:hover { background:#f0f6fe; }
-        .update-item-meta { font-size:0.65rem; color:#888; display:flex; align-items:center; gap:4px; margin-bottom:3px; }
-        .update-item-date { font-weight:600; color:#71808c; }
-        .update-item-req { display:inline-block; background:linear-gradient(135deg,#2b84bd,#4aa6dc); color:white; border-radius:999px; padding:0 6px; font-size:0.6rem; box-shadow:inset 0 1px 0 rgba(255,255,255,0.22); line-height:1.6; }
-        .update-item-title { font-size:0.74rem; font-weight:600; color:#263b4d; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-        .update-item-desc { font-size:0.65rem; color:#8a9aa8; line-height:1.3; margin-top:2px; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
-        .sidebar #updateCardList { padding-top:6px; }
+/* ===== Drawer ===== */
+.drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;}
+.drawer-overlay.open{opacity:1;pointer-events:auto;}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:90vw;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:201;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 32px rgba(15,23,42,.12);display:flex;flex-direction:column;}
+.drawer.open{transform:translateX(0);}
+.drawer-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.drawer-title{font-size:.92rem;font-weight:700;}
+.drawer-close{background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--text2);padding:4px 8px;border-radius:6px;transition:all .15s;}
+.drawer-close:hover{background:var(--bg);color:var(--text);}
+.drawer-body{flex:1;overflow-y:auto;padding:16px 20px;}
+.drawer-group{margin-bottom:16px;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.drawer-group-header{padding:8px 14px;font-size:.72rem;font-weight:700;display:flex;align-items:center;gap:6px;}
+.dg-new{background:#f5f3ff;color:#5b21b6;border-left:3px solid #7c3aed;}
+.dg-add{background:#f0fdf4;color:#166534;border-left:3px solid #22c55e;}
+.dg-fix{background:#fffbeb;color:#92400e;border-left:3px solid #f59e0b;}
+.drawer-item{padding:10px 14px;border-top:1px solid var(--border);cursor:pointer;transition:background .12s;}
+.drawer-item:hover{background:#f0f6fe;}
+.drawer-item-meta{font-size:.62rem;color:var(--text2);display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.drawer-item-req{background:#e0f2fe;color:#0369a1;padding:0 6px;border-radius:999px;font-size:.58rem;font-weight:600;}
+.drawer-item-title{font-size:.74rem;font-weight:600;color:var(--text);line-height:1.35;}
+.drawer-item-desc{font-size:.64rem;color:var(--text2);margin-top:2px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 
-        /* ===== 弹窗内保留等级标签 ===== */
-        .modal-entry .upd-type-side { display:inline-block; border-radius:999px; padding:1px 8px; font-size:0.7rem; font-weight:bold; margin-left:8px; color:white; }
-        .upd-type-side-new { background:#7e3da2; }
-        .upd-type-side-add { background:#1e8449; }
-        .upd-type-side-improve { background:#d66f1c; }
-        .upd-type-side-fix { background:#af3328; }
+/* ===== Update Detail Modal ===== */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:300;justify-content:center;align-items:flex-start;padding:40px 20px;overflow-y:auto;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--card);border-radius:var(--radius);width:100%;max-width:600px;box-shadow:0 10px 40px rgba(15,23,42,.2);overflow:hidden;}
+.modal-header{padding:18px 24px;background:#0f172a;color:#fff;display:flex;justify-content:space-between;align-items:center;font-size:1rem;font-weight:bold;}
+.modal-close{background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;padding:4px 8px;}
+.modal-close:hover{color:#fff;}
+.modal-body{padding:16px 24px 24px;max-height:70vh;overflow-y:auto;}
+.modal-entry{padding:14px 0;border-bottom:1px solid var(--border);}
+.modal-entry:last-child{border-bottom:none;}
+.modal-entry-meta{font-size:.75rem;color:var(--text2);margin-bottom:4px;}
+.modal-entry-requester{background:#6366f1;color:#fff;border-radius:3px;padding:0 6px;font-size:.65rem;margin-left:4px;}
+.modal-entry-title{font-size:.88rem;font-weight:600;color:var(--text);margin-bottom:6px;}
+.modal-entry-detail{font-size:.82rem;color:var(--text2);line-height:1.6;white-space:pre-wrap;}
+.modal-entry-note{margin-top:8px;padding:8px 12px;background:#fffbeb;border-radius:6px;font-size:.78rem;color:#92400e;}
+.upd-type-side{display:inline-block;border-radius:999px;padding:1px 8px;font-size:.7rem;font-weight:bold;margin-left:8px;color:#fff;}
+.upd-type-side-new{background:#7c3aed;}
+.upd-type-side-add{background:#22c55e;}
+.upd-type-side-improve{background:#f59e0b;}
+.upd-type-side-fix{background:#ef4444;}
 
-        /* ===== 履历弹窗 ===== */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 9999;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 40px 20px;
-            overflow-y: auto;
-        }
-        .modal-overlay.show { display: flex; }
-        .modal-box {
-            background: white;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 600px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            overflow: hidden;
-        }
-        .modal-header {
-            padding: 18px 24px;
-            background: #1a252f;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 1rem;
-            font-weight: bold;
-        }
-        .modal-close {
-            background: none;
-            border: none;
-            color: #bdc3c7;
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 4px 8px;
-        }
-        .modal-close:hover { color: white; }
-        .modal-body {
-            padding: 16px 24px 24px;
-            max-height: 70vh;
-            overflow-y: auto;
-        }
-        .modal-entry {
-            padding: 14px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .modal-entry:last-child { border-bottom: none; }
-        .modal-entry-meta {
-            font-size: 0.75rem;
-            color: #95a5a6;
-            margin-bottom: 4px;
-        }
-        .modal-entry-requester {
-            background: #3498db;
-            color: white;
-            border-radius: 3px;
-            padding: 0 6px;
-            font-size: 0.65rem;
-            margin-left: 4px;
-        }
-        .modal-entry-title {
-            font-size: 0.88rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 6px;
-        }
-        .modal-entry-detail {
-            font-size: 0.82rem;
-            color: #555;
-            line-height: 1.6;
-            white-space: pre-wrap;
-        }
-        .modal-entry-note {
-            margin-top: 8px;
-            padding: 8px 12px;
-            background: #fff8e1;
-            border-radius: 6px;
-            font-size: 0.78rem;
-            color: #856404;
-        }
+/* ===== Footer ===== */
+.footer{text-align:center;padding:20px;font-size:.68rem;color:var(--text2);border-top:1px solid var(--border);}
 
-        </style>
+/* ===== Responsive Header ===== */
+@media(max-width:768px){
+  .header{height:auto;min-height:56px;padding:10px clamp(12px,3vw,24px);flex-wrap:wrap;gap:8px;}
+  .header-right{gap:8px;}
+}
+</style>
 </head>
 <body>
 
 <script src="qc-auth.js"></script>
+<script src="qc-i18n.js"></script>
 
 <!-- ===== Header ===== -->
-<header>
-    <h1>🛠️ 惠海 QC ポータル</h1>
-    <div class="header-right" id="headerRight" style="display:none;">
-        <span class="header-user" id="headerUser"></span>
-        <button class="header-btn" onclick="logout()">退出</button>
-    </div>
-</header>
+<div class="header">
+  <div class="header-left">
+    <span class="header-logo" data-i18n="portalTitle">🛠️ 惠海 QC ポータル</span>
+  </div>
+  <div class="header-right" id="headerRight" style="display:none;">
+    <span class="lang-sw"><button onclick="portalSetLang('zh-CN')" id="langZh">中文</button><span class="sep">｜</span><button onclick="portalSetLang('ja-JP')" id="langJa">日本語</button></span>
+    <span class="header-user" id="headerUser"></span>
+    <button class="update-trigger" onclick="openDrawer()" id="updateTriggerBtn"><span data-i18n="recentUpdates">📢 近期更新</span><span class="update-badge" id="updateCount">0</span></button>
+    <button class="header-btn" onclick="logout()" data-i18n="logout">退出</button>
+  </div>
+</div>
 
 <!-- ===== 登录/注册 ===== -->
 <div id="authSection">
-    <div class="auth-box">
-        <div class="auth-tabs">
-            <button class="auth-tab active" onclick="switchTab('login')">登录</button>
-            <button class="auth-tab" onclick="switchTab('register')">注册</button>
-        </div>
-
-        <!-- 登录表单 -->
-        <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)">
-            <input type="email" id="loginEmail" placeholder="公司邮箱" required>
-            <input type="password" id="loginPwd" placeholder="密码" required minlength="4">
-            <button type="submit" id="loginBtn">登 录</button>
-            <div class="auth-msg" id="loginMsg"></div>
-            <div class="auth-hint" style="margin-top:6px;">
-                <a href="javascript:void(0)" onclick="showResetForm()" style="color:#7f8c8d;text-decoration:none;font-size:0.76rem;">パスワードをお忘れですか？</a>
-            </div>
-        </form>
-
-        <!-- 注册表单 -->
-        <form class="auth-form" id="regForm" onsubmit="return false;">
-            <input type="text" id="regName" placeholder="姓名" required>
-            <input type="email" id="regEmail" placeholder="公司邮箱" required>
-            <select id="regDept">
-                <option value="">选择课室（可选）</option>
-                <option value="1課">1課</option>
-                <option value="2課">2課</option>
-                <option value="3課">3課</option>
-                <option value="4課">4課</option>
-                <option value="5課">5課</option>
-                <option value="6課">6課</option>
-                <option value="AP財務">AP財務</option>
-                <option value="管理者">管理者</option>
-            </select>
-            <input type="password" id="regPwd" placeholder="设置密码（4位以上）" required minlength="4">
-
-            <!-- Step1: 发送验证码 -->
-            <div id="regStep1">
-                <button type="button" onclick="handleSendCode()">发送验证码</button>
-                <div class="auth-msg" id="regMsg"></div>
-                <div class="auth-hint">仅限公司邮箱注册（@hakuhodody-one / @dac / @adpro-inc / @huihai-info）</div>
-            </div>
-
-            <!-- Step2: 输入验证码 -->
-            <div id="regStep2" style="display:none;">
-                <input type="text" id="regCode" placeholder="请输入6位验证码" maxlength="6" pattern="[0-9]{6}">
-                <button type="button" onclick="handleVerifyCode()">验证并注册</button>
-                <div class="auth-msg" id="regMsg2"></div>
-                <button type="button" style="background:none;color:#2980b9;border:none;font-size:0.78rem;cursor:pointer;" onclick="resetRegStep()">← 重新发送验证码</button>
-            </div>
-        </form>
-
-        <!-- 密码重置表单 -->
-        <form class="auth-form" id="resetForm" onsubmit="return false;">
-            <!-- Step1: 输入邮箱 -->
-            <div id="resetStep1">
-                <p style="font-size:0.82rem;color:#555;margin-bottom:8px;">パスワードをお忘れですか？<br>登録済みのメールアドレスを入力してください。</p>
-                <input type="email" id="resetEmail" placeholder="登録メールアドレス / 注册邮箱" required>
-                <button type="button" id="resetSendCodeBtn" onclick="handleResetSendCode()">認証コード送信 / 发送验证码</button>
-                <div class="auth-msg" id="resetMsg"></div>
-                <button type="button" style="background:none;color:#2980b9;border:none;font-size:0.78rem;cursor:pointer;" onclick="showLoginForm()">← ログインに戻る / 返回登录</button>
-            </div>
-
-            <!-- Step2: 输入验证码和新密码 -->
-            <div id="resetStep2" style="display:none;">
-                <input type="email" id="resetEmailConfirm" placeholder="登録メールアドレス" readonly style="background:#f5f5f5;color:#888;">
-                <input type="text" id="resetCode" placeholder="認証コード6桁 / 请输入6位验证码" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="off">
-                <input type="password" id="resetNewPwd" placeholder="新しいパスワード（8文字以上）/ 新密码（8位以上）" minlength="8" autocomplete="new-password">
-                <input type="password" id="resetNewPwd2" placeholder="新しいパスワード確認 / 确认新密码" minlength="8" autocomplete="new-password">
-                <button type="button" id="resetConfirmBtn" onclick="handleResetPassword()">パスワードを変更 / 确认修改</button>
-                <div class="auth-msg" id="resetMsg2"></div>
-                <button type="button" style="background:none;color:#2980b9;border:none;font-size:0.78rem;cursor:pointer;" onclick="resetBackToStep1()">← 認証コードを再送信 / 重新发送验证码</button>
-                <button type="button" style="background:none;color:#999;border:none;font-size:0.76rem;cursor:pointer;margin-top:4px;" onclick="showLoginForm()">← ログインに戻る / 返回登录</button>
-            </div>
-        </form>
+  <div class="auth-box">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">登录</button>
+      <button class="auth-tab" onclick="switchTab('register')">注册</button>
     </div>
+    <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)">
+      <input type="email" id="loginEmail" placeholder="公司邮箱" required>
+      <input type="password" id="loginPwd" placeholder="密码" required minlength="4">
+      <button type="submit" id="loginBtn">登 录</button>
+      <div class="auth-msg" id="loginMsg"></div>
+      <div class="auth-hint" style="margin-top:6px;">
+        <a href="javascript:void(0)" onclick="showResetForm()" style="color:var(--text2);text-decoration:none;font-size:.76rem;">パスワードをお忘れですか？</a>
+      </div>
+    </form>
+    <form class="auth-form" id="regForm" onsubmit="return false;">
+      <input type="text" id="regName" placeholder="姓名" required>
+      <input type="email" id="regEmail" placeholder="公司邮箱" required>
+      <select id="regDept">
+        <option value="">选择课室（可选）</option>
+        <option value="1課">1課</option><option value="2課">2課</option><option value="3課">3課</option>
+        <option value="4課">4課</option><option value="5課">5課</option><option value="6課">6課</option>
+        <option value="AP財務">AP財務</option><option value="管理者">管理者</option>
+      </select>
+      <input type="password" id="regPwd" placeholder="设置密码（4位以上）" required minlength="4">
+      <div id="regStep1">
+        <button type="button" onclick="handleSendCode()">发送验证码</button>
+        <div class="auth-msg" id="regMsg"></div>
+        <div class="auth-hint">仅限公司邮箱注册（@hakuhodody-one / @dac / @adpro-inc / @huihai-info）</div>
+      </div>
+      <div id="regStep2" style="display:none;">
+        <input type="text" id="regCode" placeholder="请输入6位验证码" maxlength="6" pattern="[0-9]{6}">
+        <button type="button" onclick="handleVerifyCode()">验证并注册</button>
+        <div class="auth-msg" id="regMsg2"></div>
+        <button type="button" style="background:none;color:#6366f1;border:none;font-size:.78rem;cursor:pointer;" onclick="resetRegStep()">← 重新发送验证码</button>
+      </div>
+    </form>
+    <form class="auth-form" id="resetForm" onsubmit="return false;">
+      <div id="resetStep1">
+        <p style="font-size:.82rem;color:var(--text2);margin-bottom:8px;">パスワードをお忘れですか？<br>登録済みのメールアドレスを入力してください。</p>
+        <input type="email" id="resetEmail" placeholder="登録メールアドレス / 注册邮箱" required>
+        <button type="button" id="resetSendCodeBtn" onclick="handleResetSendCode()">認証コード送信 / 发送验证码</button>
+        <div class="auth-msg" id="resetMsg"></div>
+        <button type="button" style="background:none;color:#6366f1;border:none;font-size:.78rem;cursor:pointer;" onclick="showLoginForm()">← ログインに戻る / 返回登录</button>
+      </div>
+      <div id="resetStep2" style="display:none;">
+        <input type="email" id="resetEmailConfirm" placeholder="登録メールアドレス" readonly style="background:var(--bg);color:var(--text2);">
+        <input type="text" id="resetCode" placeholder="認証コード6桁 / 请输入6位验证码" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="off">
+        <input type="password" id="resetNewPwd" placeholder="新しいパスワード（8文字以上）/ 新密码（8位以上）" minlength="8" autocomplete="new-password">
+        <input type="password" id="resetNewPwd2" placeholder="新しいパスワード確認 / 确认新密码" minlength="8" autocomplete="new-password">
+        <button type="button" id="resetConfirmBtn" onclick="handleResetPassword()">パスワードを変更 / 确认修改</button>
+        <div class="auth-msg" id="resetMsg2"></div>
+        <button type="button" style="background:none;color:#6366f1;border:none;font-size:.78rem;cursor:pointer;" onclick="resetBackToStep1()">← 認証コードを再送信 / 重新发送验证码</button>
+        <button type="button" style="background:none;color:var(--text2);border:none;font-size:.76rem;cursor:pointer;margin-top:4px;" onclick="showLoginForm()">← ログインに戻る / 返回登录</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- ===== 工具列表（登录后显示） ===== -->
-<div id="mainSection">
-    <div class="container">
-
-    <div id="leftCol" style="display:flex;flex-direction:column;gap:14px;">
-
-    <!-- ===== 共通ツール ===== -->
-    <div class="accordion" id="acc-common">
-        <div class="accordion-header" onclick="toggleAccordion('acc-common')">
-            <span class="accordion-arrow">▼</span>
-            <span class="accordion-label label-common">共通</span>
-            <span class="accordion-title">共通ツール</span>
-        </div>
-        <div class="accordion-body">
-            <a class="card" href="tools_text.html" target="_blank">
-                <span class="card-icon">🔍</span>
-                <span class="card-name">文本对比工具</span>
-                <span class="card-desc">逐行比較・包含関係・記号チェックに加え、完全一致行の色分けと重複位置への快速定位に対応</span>
-            </a>
-            <a class="card" href="excel_clean.html" target="_blank">
-                <span class="card-icon">🧹</span>
-                <span class="card-name">Excel 清洗</span>
-                <span class="card-desc">不要データの除去・整形</span>
-            </a>
-            <a class="card" href="excel_compare.html" target="_blank">
-                <span class="card-icon">📊</span>
-                <span class="card-name">Excel 対比</span>
-                <span class="card-desc">2ファイルの差分チェック</span>
-            </a>
-            <a class="card" href="image_compare.html" target="_blank">
-                <span class="card-icon">🖼️</span>
-                <span class="card-name">图片对比</span>
-                <span class="card-desc">画像の並べて比較</span>
-            </a>
-        </div>
+<div class="main" id="mainSection" style="display:none;">
+  <div class="search-area">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="searchInput" type="text" placeholder="搜索工具名称、课室或功能…（Ctrl + K）">
+      <span class="search-kbd">Ctrl K</span>
     </div>
-
-    <!-- ===== 1課 ===== -->
-    <div class="accordion" id="acc-ka1">
-        <div class="accordion-header" onclick="toggleAccordion('acc-ka1')">
-            <span class="accordion-arrow">▼</span>
-            <span class="accordion-label label-1">1課</span>
-            <span class="accordion-title">広告設定チェック・入稿</span>
-        </div>
-        <div class="accordion-body">
-            <a class="card" href="amazon_dsp_check.html" target="_blank">
-                <span class="card-icon">📋</span>
-                <span class="card-name">Amazon DSP 設定チェック</span>
-                <span class="card-desc">Display / PVA / OTT 対応</span>
-            </a>
-            <div class="card card-disabled">
-                <span class="card-icon">📈</span>
-                <span class="card-name">DV360 設定チェック <span style="font-size:0.6rem;background:#95a5a6;color:white;border-radius:3px;padding:1px 6px;margin-left:4px;vertical-align:middle;">開発中</span></span>
-                <span class="card-desc">Display / Youtube / OTT 対応（Youtube優先）※準備中</span>
-            </div>
-            <a class="card" href="region_check.html" target="_blank">
-                <span class="card-icon">🗾</span>
-                <span class="card-name">地域表記変換チェック</span>
-                <span class="card-desc">日方地域記載の変換に加え、東洋経済新報社向け英語地域→日本語都道府県変換に対応</span>
-            </a>
-            <a class="card" href="upload.html" target="_blank">
-                <span class="card-icon">📤</span>
-                <span class="card-name">読売専用 アップロード</span>
-                <span class="card-desc">読売新聞向け入稿ツール</span>
-            </a>
-            <a class="card" href="yomiko_kanri.html" target="_blank">
-                <span class="card-icon">📋</span>
-                <span class="card-name">読売ルール管理</span>
-                <span class="card-desc">広告ルールの閲覧・編集・追加</span>
-            </a>
-        </div>
+    <div class="search-tags" id="searchTags"></div>
+    <div class="search-count" id="searchCount"></div>
+    <div class="search-empty" id="searchEmpty">未找到匹配工具</div>
+  </div>
+  <div class="section" id="recentSection">
+    <div class="section-header" style="cursor:default;">
+      <span class="section-dot" style="background:#6366f1;"></span>
+      <span class="section-title" id="recentTitle">⭐ 常用工具</span>
     </div>
-
-    <!-- ===== 2課 ===== -->
-    <div class="accordion" id="acc-ka2">
-        <div class="accordion-header" onclick="toggleAccordion('acc-ka2')">
-            <span class="accordion-arrow">▼</span>
-            <span class="accordion-label label-2">2課</span>
-            <span class="accordion-title">2課 ツール</span>
-        </div>
-        <div class="accordion-body">
-            <a class="card" href="ターゲット推薦ツール 2.html" target="_blank">
-                <span class="card-icon">🎯</span>
-                <span class="card-name">ターゲット推薦ツール</span>
-                <span class="card-desc">SEM見積向けターゲティング推薦</span>
-            </a>
-        </div>
-    </div>
-
-    <!-- ===== 3課 ===== -->
-    <div class="accordion default-collapsed" id="acc-ka3">
-        <div class="accordion-header" onclick="toggleAccordion('acc-ka3')">
-            <span class="accordion-arrow">▼</span>
-            <span class="accordion-label label-3">3課</span>
-            <span class="accordion-title">3課 ツール</span>
-        </div>
-        <div class="accordion-body">
-            <div class="placeholder-card">
-                <span class="placeholder-icon">📦</span>
-                <span class="placeholder-text">準備中</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== 4課 ===== -->
-    <div class="accordion default-collapsed" id="acc-ka4">
-        <div class="accordion-header" onclick="toggleAccordion('acc-ka4')">
-            <span class="accordion-arrow">▼</span>
-            <span class="accordion-label label-4">4課</span>
-            <span class="accordion-title">4課 ツール</span>
-        </div>
-        <div class="accordion-body">
-            <div class="placeholder-card">
-                <span class="placeholder-icon">📦</span>
-                <span class="placeholder-text">準備中</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== 5課 ===== -->
-    <div class="accordion default-collapsed" id="acc-ka5">
-        <div class="accordion-header" onclick="toggleAccordion('acc-ka5')">
-            <span class="accordion-arrow">▼</span>
-            <span class="accordion-label label-5">5課</span>
-            <span class="accordion-title">5課 ツール</span>
-        </div>
-        <div class="accordion-body">
-            <div class="placeholder-card">
-                <span class="placeholder-icon">📦</span>
-                <span class="placeholder-text">準備中</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== 6課 ===== -->
-    <div class="accordion default-collapsed" id="acc-ka6">
-        <div class="accordion-header" onclick="toggleAccordion('acc-ka6')">
-            <span class="accordion-arrow">▼</span>
-            <span class="accordion-label label-6">6課</span>
-            <span class="accordion-title">6課 ツール</span>
-        </div>
-        <div class="accordion-body">
-            <div class="placeholder-card">
-                <span class="placeholder-icon">📦</span>
-                <span class="placeholder-text">準備中</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- ===== 定例会報告書 ===== -->
-    <div class="accordion default-collapsed" id="acc-report">
-        <div class="accordion-header" onclick="toggleAccordion('acc-report')">
-            <span class="accordion-arrow">▼</span>
-            <span class="accordion-label" style="background:#1a252f;">報告</span>
-            <span class="accordion-title">定例会報告書</span>
-        </div>
-        <div class="accordion-body" id="reportBody">
-            <div class="report-strip" id="reportStrip" style="display:none;">
-                <a class="report-link" id="reportCard" href="bpo_weekly_report_malin.html" target="_blank">
-                    <span class="report-icon">📋</span>
-                    <span class="report-title">【1课】BPO定例会 · 馬 林 · 业务改善报告</span>
-                    <span class="report-desc">年度目标 · 效率指标 · 核心成果 · 工作计划 · 课长周定例</span>
-                    <span class="report-arrow">→</span>
-                </a>
-            </div>
-            <div class="placeholder-card" id="reportLock" style="display:none;">
-                <span class="placeholder-icon">🔒</span>
-                <span class="placeholder-text">管理者専用</span>
-            </div>
-        </div>
-    </div>
-    </div>
-
-    <!-- 右侧：更新栏 -->
-    <div class="sidebar" id="rightSidebar">
-        <div class="sidebar-header">📢 近期更新</div>
-        <div id="updateCardList"></div>
-        <div class="sidebar-footer">
-            <button onclick="openUpdateModal()">查看全部更新 →</button>
-        </div>
-    </div>
-
-    </div>
+    <div class="recent-grid" id="recentGrid"></div>
+  </div>
+  <div id="groupsContainer"></div>
 </div>
 
-<!-- 更新履历弹窗 -->
+<!-- Footer -->
+<div class="footer" id="footerBar" style="display:none;">惠海 QC ポータル — BPO品質チェックツール</div>
+
+<!-- ===== Drawer ===== -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <span class="drawer-title" id="drawerTitle">📢 近期更新</span>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<!-- ===== 更新履历弹窗 ===== -->
 <div class="modal-overlay" id="updateModal" onclick="closeUpdateModal()">
-    <div class="modal-box" onclick="event.stopPropagation()">
-        <div class="modal-header">
-            <span>📋 更新履历</span>
-            <button class="modal-close" onclick="closeUpdateModal()">✕</button>
-        </div>
-        <div class="modal-body"></div>
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span id="modalTitle">📋 更新履历</span>
+      <button class="modal-close" onclick="closeUpdateModal()">✕</button>
     </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
 </div>
 
 <script>
-// ==================== Auth UI Logic ====================
+// ==================== Portal i18n ====================
+var PORTAL_DICT = {
+  'zh-CN': {
+    searchPh:'搜索工具名称、课室或功能…（Ctrl + K）', noResult:'未找到匹配工具',
+    recentTitle:'⭐ 常用工具', drawerTitle:'📢 近期更新', modalTitle:'📋 更新履历',
+    commonTools:'共通工具', ka1:'広告設定チェック・入稿', ka2:'2課 ツール', ka3:'3課 ツール',
+    ka4:'4課 ツール', ka5:'5課 ツール', ka6:'6課 ツール', report:'定例会報告書',
+    searchCount:'找到 {n} 个工具', updateBtn:'📢 近期更新'
+  },
+  'ja-JP': {
+    searchPh:'ツール名・課・機能を検索…（Ctrl + K）', noResult:'一致するツールが見つかりません',
+    recentTitle:'⭐ よく使うツール', drawerTitle:'📢 最近の更新', modalTitle:'📋 更新履歴',
+    commonTools:'共通ツール', ka1:'広告設定チェック・入稿', ka2:'2課 ツール', ka3:'3課 ツール',
+    ka4:'4課 ツール', ka5:'5課 ツール', ka6:'6課 ツール', report:'定例会報告書',
+    searchCount:'{n} 件見つかりました', updateBtn:'📢 最近の更新'
+  }
+};
+function pt(key){ var lang=(typeof getLanguage==='function')?getLanguage():'zh-CN'; return (PORTAL_DICT[lang]||PORTAL_DICT['zh-CN'])[key]||key; }
+function isJa(){ return (typeof getLanguage==='function')&&getLanguage()==='ja-JP'; }
 
-function switchTab(tab) {
-    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-    if (tab === 'login') {
-        document.querySelector('.auth-tab:first-child').classList.add('active');
-        document.getElementById('loginForm').classList.add('active');
-    } else {
-        document.querySelector('.auth-tab:last-child').classList.add('active');
-        document.getElementById('regForm').classList.add('active');
-    }
-    document.getElementById('loginMsg').textContent = '';
-    document.getElementById('regMsg').textContent = '';
-    // 清除重置表单的倒计时
-    if (typeof resetCooldownTimer !== 'undefined' && resetCooldownTimer) {
-        clearInterval(resetCooldownTimer);
-        resetCooldownTimer = null;
-    }
+function portalSetLang(lang){
+  if(typeof setLanguage==='function') setLanguage(lang);
+  applyPortalI18n(); renderGroups(); renderRecent(); renderDrawer();
+}
+function applyPortalI18n(){
+  var lang=(typeof getLanguage==='function')?getLanguage():'zh-CN';
+  document.documentElement.lang=(lang==='ja-JP')?'ja':'zh-CN';
+  if(typeof applyI18n==='function') applyI18n();
+  document.getElementById('searchInput').placeholder=pt('searchPh');
+  document.getElementById('searchEmpty').textContent=pt('noResult');
+  document.getElementById('recentTitle').textContent=pt('recentTitle');
+  document.getElementById('drawerTitle').textContent=pt('drawerTitle');
+  document.getElementById('modalTitle').textContent=pt('modalTitle');
+  var zh=document.getElementById('langZh'),ja=document.getElementById('langJa');
+  if(zh)zh.classList.toggle('active',lang==='zh-CN');
+  if(ja)ja.classList.toggle('active',lang==='ja-JP');
 }
 
-async function handleLogin(e) {
-    e.preventDefault();
-    const btn = document.getElementById('loginBtn');
-    const msg = document.getElementById('loginMsg');
-    msg.className = 'auth-msg';
-    msg.textContent = '⏳ 正在验证...';
-    btn.disabled = true;
-    btn.textContent = '验证中...';
-    const email = document.getElementById('loginEmail').value.trim();
-    const pwd = document.getElementById('loginPwd').value;
-    const result = await loginUser(email, pwd);
-    btn.disabled = false;
-    btn.textContent = '登 录';
-    if (result.ok) {
-        msg.className = 'auth-msg success';
-        msg.textContent = '登录成功！';
-        showMain();
-    } else {
-        msg.className = 'auth-msg error';
-        msg.textContent = result.error || '登录失败';
-    }
-}
+// ==================== Tool Data ====================
+var TOOLS=[
+  {group:'common',icon:'🔍',name:'文本对比工具',name_ja:'テキスト比較ツール',desc:'逐行比較・包含関係・記号チェック、色分けと重複定位',desc_ja:'行比較・包含関係・記号チェック、色分けと重複定位',href:'tools_text.html',badge:'local'},
+  {group:'common',icon:'🧹',name:'Excel清洗',name_ja:'Excelクリーニング',desc:'不要データの除去・整形',desc_ja:'不要データの除去・整形',href:'excel_clean.html',badge:'local'},
+  {group:'common',icon:'🪶',name:'Excel文件轻量化',name_ja:'Excelファイル軽量化',desc:'清理无效公式尾部，可选公式值化，提升大型文件打开速度',desc_ja:'不要な数式末尾を整理、数式値化対応、大容量ファイルの速度改善',href:'excel_formula_cleaner.html',badge:'new'},
+  {group:'common',icon:'📊',name:'Excel対比',name_ja:'Excel比較',desc:'2ファイルの差分チェック',desc_ja:'2ファイルの差分チェック',href:'excel_compare.html',badge:'update'},
+  {group:'common',icon:'🖼️',name:'图片对比',name_ja:'画像比較',desc:'画像の並べて比較',desc_ja:'画像の並べて比較',href:'image_compare.html',badge:'local'},
+  {group:'ka1',icon:'📋',name:'Amazon DSP 設定チェック',name_ja:'Amazon DSP 設定チェック',desc:'Display / PVA / OTT 対応',desc_ja:'Display / PVA / OTT 対応',href:'amazon_dsp_check.html',badge:''},
+  {group:'ka1',icon:'📈',name:'DV360 設定チェック',name_ja:'DV360 設定チェック',desc:'Display / Youtube / OTT 対応※準備中',desc_ja:'Display / Youtube / OTT 対応※準備中',href:'',disabled:true,badge:'dev'},
+  {group:'ka1',icon:'🗾',name:'地域表記変換チェック',name_ja:'地域表記変換チェック',desc:'日方地域記載の変換、東洋経済新報社向け英語地域→日本語変換',desc_ja:'日方地域記載の変換、東洋経済新報社向け英語地域→日本語変換',href:'region_check.html',badge:''},
+  {group:'ka1',icon:'📤',name:'読売専用 アップロード',name_ja:'読売専用 アップロード',desc:'読売新聞向け入稿ツール',desc_ja:'読売新聞向け入稿ツール',href:'upload.html',badge:''},
+  {group:'ka1',icon:'📋',name:'読売ルール管理',name_ja:'読売ルール管理',desc:'広告ルールの閲覧・編集・追加',desc_ja:'広告ルールの閲覧・編集・追加',href:'yomiko_kanri.html',badge:''},
+  {group:'ka2',icon:'🎯',name:'ターゲット推薦ツール',name_ja:'ターゲット推薦ツール',desc:'SEM見積向けターゲティング推薦',desc_ja:'SEM見積向けターゲティング推薦',href:'ターゲット推薦ツール 2.html',badge:''},
+  {group:'ka3',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
+  {group:'ka4',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
+  {group:'ka5',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
+  {group:'ka6',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
+  {group:'report',icon:'📋',name:'BPO定例会 報告書',name_ja:'BPO定例会 報告書',desc:'年度目标・効率指標・核心成果・工作计划',desc_ja:'年度目標・効率指標・核心成果・業務計画',href:'bpo_weekly_report_malin.html',badge:'',perm:'管理者'}
+];
+var GROUPS=[
+  {id:'common',color:'var(--common)',labelKey:'commonTools',label:'共通',expanded:true},
+  {id:'ka1',color:'var(--ka1)',labelKey:'ka1',label:'1課',expanded:true},
+  {id:'ka2',color:'var(--ka2)',labelKey:'ka2',label:'2課',expanded:true},
+  {id:'ka3',color:'var(--ka3)',labelKey:'ka3',label:'3課',expanded:false},
+  {id:'ka4',color:'var(--ka4)',labelKey:'ka4',label:'4課',expanded:false},
+  {id:'ka5',color:'var(--ka5)',labelKey:'ka5',label:'5課',expanded:false},
+  {id:'ka6',color:'var(--ka6)',labelKey:'ka6',label:'6課',expanded:false},
+  {id:'report',color:'#1a252f',labelKey:'report',label:'報告',expanded:false}
+];
+var BADGE_MAP={'new':{cls:'badge-new',zh:'NEW',ja:'NEW'},'update':{cls:'badge-update',zh:'更新',ja:'更新'},'dev':{cls:'badge-dev',zh:'开发中',ja:'開発中'},'soon':{cls:'badge-soon',zh:'准备中',ja:'準備中'},'local':{cls:'badge-local',zh:'本地处理',ja:'ローカル'}};
+var SEARCH_TAGS=['Excel','Amazon','DV360','地域','文本','图片'];
 
-// ===== 注册两步流程 =====
-
-var regEmailTemp = ''; // 暂存正在验证的邮箱
-
-function resetRegStep() {
-    document.getElementById('regStep1').style.display = 'block';
-    document.getElementById('regStep2').style.display = 'none';
-    document.getElementById('regMsg').textContent = '';
-    document.getElementById('regMsg2').textContent = '';
-}
-
-async function handleSendCode() {
-    const msg = document.getElementById('regMsg');
-    msg.className = 'auth-msg';
-    const name = document.getElementById('regName').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const dept = document.getElementById('regDept').value;
-    const pwd = document.getElementById('regPwd').value;
-
-    if (!name || !email || !pwd) {
-        msg.className = 'auth-msg error';
-        msg.textContent = '请填写所有必填项';
-        return;
-    }
-
-    // 前端预检邮箱尾缀
-    var allowed = ['@hakuhodody-one.co.jp','@dac.co.jp','@adpro-inc.co.jp','@huihai-info.com'];
-    if (!allowed.some(function(d){ return email.toLowerCase().endsWith(d); })) {
-        msg.className = 'auth-msg error';
-        msg.textContent = '仅限公司邮箱注册';
-        return;
-    }
-
-    msg.textContent = '⏳ 正在发送验证码...';
-    const result = await sendVerifyCode(email, name, pwd, dept);
-    if (result.ok) {
-        msg.className = 'auth-msg success';
-        msg.textContent = result.message;
-        regEmailTemp = email;
-        document.getElementById('regStep1').style.display = 'none';
-        document.getElementById('regStep2').style.display = 'block';
-        document.getElementById('regMsg2').textContent = '';
-        document.getElementById('regCode').value = '';
-        document.getElementById('regCode').focus();
-    } else {
-        msg.className = 'auth-msg error';
-        msg.textContent = result.error || '发送失败';
-    }
-}
-
-async function handleVerifyCode() {
-    const msg = document.getElementById('regMsg2');
-    msg.className = 'auth-msg';
-    const code = document.getElementById('regCode').value.trim();
-
-    if (!code || code.length !== 6) {
-        msg.className = 'auth-msg error';
-        msg.textContent = '请输入6位验证码';
-        return;
-    }
-
-    msg.textContent = '验证中...';
-    const result = await verifyEmailCode(regEmailTemp, code);
-    if (result.ok) {
-        msg.className = 'auth-msg success';
-        msg.textContent = '注册成功！请切换到「登录」标签登录。';
-        document.getElementById('regForm').reset();
-        setTimeout(() => { resetRegStep(); switchTab('login'); }, 1500);
-    } else {
-        msg.className = 'auth-msg error';
-        msg.textContent = result.error || '验证失败';
-    }
-}
-
-// ===== 密码重置流程 =====
-
-var resetEmailTemp = '';
-var resetCooldownTimer = null;
-
-function showResetForm() {
-    document.querySelectorAll('.auth-tab').forEach(function(t){ t.classList.remove('active'); });
-    document.querySelectorAll('.auth-form').forEach(function(f){ f.classList.remove('active'); });
-    document.getElementById('resetForm').classList.add('active');
-    document.getElementById('resetStep1').style.display = 'block';
-    document.getElementById('resetStep2').style.display = 'none';
-    document.getElementById('resetMsg').textContent = '';
-    document.getElementById('resetMsg2').textContent = '';
-    document.getElementById('resetEmail').value = '';
-    document.getElementById('resetCode').value = '';
-    document.getElementById('resetNewPwd').value = '';
-    document.getElementById('resetNewPwd2').value = '';
-    resetEmailTemp = '';
-    if (resetCooldownTimer) { clearInterval(resetCooldownTimer); resetCooldownTimer = null; }
-    var btn = document.getElementById('resetSendCodeBtn');
-    btn.disabled = false;
-    btn.textContent = '認証コード送信 / 发送验证码';
-}
-
-function showLoginForm() {
-    document.querySelectorAll('.auth-form').forEach(function(f){ f.classList.remove('active'); });
-    document.getElementById('loginForm').classList.add('active');
-    document.querySelectorAll('.auth-tab').forEach(function(t){ t.classList.remove('active'); });
-    document.querySelector('.auth-tab:first-child').classList.add('active');
-    document.getElementById('loginMsg').textContent = '';
-    document.getElementById('resetMsg').textContent = '';
-    document.getElementById('resetMsg2').textContent = '';
-    if (resetCooldownTimer) { clearInterval(resetCooldownTimer); resetCooldownTimer = null; }
-    var btn = document.getElementById('resetSendCodeBtn');
-    btn.disabled = false;
-    btn.textContent = '認証コード送信 / 发送验证码';
-}
-
-function resetBackToStep1() {
-    document.getElementById('resetStep1').style.display = 'block';
-    document.getElementById('resetStep2').style.display = 'none';
-    document.getElementById('resetMsg2').textContent = '';
-}
-
-async function handleResetSendCode() {
-    var msg = document.getElementById('resetMsg');
-    var btn = document.getElementById('resetSendCodeBtn');
-    msg.className = 'auth-msg';
-
-    var email = document.getElementById('resetEmail').value.trim();
-    if (!email) {
-        msg.className = 'auth-msg error';
-        msg.textContent = 'メールアドレスを入力してください / 请输入邮箱';
-        return;
-    }
-
-    msg.textContent = '⏳ 送信中...';
-    btn.disabled = true;
-
-    var result = await sendResetCode(email);
-
-    if (result.ok) {
-        msg.className = 'auth-msg success';
-        msg.textContent = result.message;
-        resetEmailTemp = email.trim().toLowerCase();
-        document.getElementById('resetEmailConfirm').value = resetEmailTemp;
-        document.getElementById('resetStep1').style.display = 'none';
-        document.getElementById('resetStep2').style.display = 'block';
-        document.getElementById('resetMsg2').textContent = '';
-        document.getElementById('resetCode').value = '';
-        document.getElementById('resetNewPwd').value = '';
-        document.getElementById('resetNewPwd2').value = '';
-        document.getElementById('resetCode').focus();
-
-        // 启动60秒倒计时
-        var seconds = 60;
-        btn.textContent = '再送信 (' + seconds + 's)';
-        resetCooldownTimer = setInterval(function(){
-            seconds--;
-            btn.textContent = '再送信 (' + seconds + 's)';
-            if (seconds <= 0) {
-                clearInterval(resetCooldownTimer);
-                resetCooldownTimer = null;
-                btn.textContent = '認証コード再送信 / 重新发送';
-                btn.disabled = false;
-            }
-        }, 1000);
-    } else {
-        msg.className = 'auth-msg error';
-        msg.textContent = result.error || '送信失敗 / 发送失败';
-        btn.disabled = false;
-    }
-}
-
-async function handleResetPassword() {
-    var msg = document.getElementById('resetMsg2');
-    var btn = document.getElementById('resetConfirmBtn');
-    msg.className = 'auth-msg';
-
-    var code = document.getElementById('resetCode').value.trim();
-    var newPwd = document.getElementById('resetNewPwd').value;
-    var newPwd2 = document.getElementById('resetNewPwd2').value;
-
-    if (!code || code.length !== 6) {
-        msg.className = 'auth-msg error';
-        msg.textContent = '認証コード6桁を入力してください / 请输入6位验证码';
-        return;
-    }
-
-    if (!newPwd || newPwd.length < 8) {
-        msg.className = 'auth-msg error';
-        msg.textContent = 'パスワードは8文字以上必要です / 密码至少需要8位';
-        return;
-    }
-
-    if (newPwd !== newPwd2) {
-        msg.className = 'auth-msg error';
-        msg.textContent = 'パスワードが一致しません / 两次输入的密码不一致';
-        return;
-    }
-
-    msg.textContent = '⏳ パスワード更新中...';
-    btn.disabled = true;
-
-    var result = await resetPassword(resetEmailTemp, code, newPwd);
-
-    if (result.ok) {
-        // 成功后保持按钮禁用，防止2秒倒计时内重复点击
-        msg.className = 'auth-msg success';
-        msg.textContent = result.message;
-        // 清空表单（密码和验证码不保留）
-        document.getElementById('resetEmail').value = '';
-        document.getElementById('resetCode').value = '';
-        document.getElementById('resetNewPwd').value = '';
-        document.getElementById('resetNewPwd2').value = '';
-        resetEmailTemp = '';
-        if (resetCooldownTimer) { clearInterval(resetCooldownTimer); resetCooldownTimer = null; }
-        setTimeout(function(){ showLoginForm(); }, 2000);
-    } else {
-        btn.disabled = false;
-        msg.className = 'auth-msg error';
-        msg.textContent = result.error || '変更失敗 / 修改失败';
-    }
-}
-
-function showMain() {
-    document.getElementById('authSection').style.display = 'none';
-    document.getElementById('mainSection').style.display = 'block';
-    document.getElementById('headerRight').style.display = 'flex';
-    const user = getUser();
-    if (user) {
-        document.getElementById('headerUser').textContent = '👤 ' + user.name + ' (' + user.email + ')';
-        // 管理者显示报告书，担当显示锁定
-        if (user.position === '管理者') {
-            document.getElementById('reportStrip').style.display = 'block';
-            document.getElementById('reportLock').style.display = 'none';
-        } else {
-            document.getElementById('reportStrip').style.display = 'none';
-            document.getElementById('reportLock').style.display = 'flex';
-        }
-    }
-}
-
-// ==================== Init ====================
-
-function toggleAccordion(id) {
-    document.getElementById(id).classList.toggle('collapsed');
-}
-
-// ===== 更新履历 =====
-const UPDATE_LOG = [
-    {
-        date: '2026/07/24',
-        requester: '张微',
-        type: 'add',
-        tool: 'Excel対比',
-        title: '背景色・文字色の比較を追加',
-        detail: '背景色と文字色の差異を個別に表示し、色の不一致を確認しやすくしました。',
-        summary: '背景色と文字色の差異を個別に表示可能に。目視で色の不一致を確認しやすく改善。',
-        note: '',
-    },
-    {
-        date: '2026/07/24',
-        requester: '杨蒙蒙',
-        type: 'fix',
-        tool: 'Amazon DSP 設定チェック',
-        title: 'PVA設定シートの読込不具合を修正',
-        detail: '備考欄をヘッダーと誤認し、LIを読み込めない問題を修正しました。',
-        summary: 'PVA設定シート内の備考欄が第二層ヘッダーと誤判定され、LIが0件になる不具合を修正。',
-        note: '',
-    },
-    {
-        date: '2026/07/24',
-        requester: '马林',
-        type: 'add',
-        tool: 'Amazon DSP 設定チェック',
-        title: 'Creative比較を追加',
-        detail: '設定シートのCreative名を基準に、ダウンロードデータのCR設定を確認できるようにしました。',
-        summary: 'Amazon DSP CR対比機能を追加。設定シートのCreative名を基準にダウンロードデータのCR設定を比較可能。',
-        note: '',
-    },
-    {
-        date: '2026/07/23',
-        requester: '冯翠梅',
-        type: 'improve',
-        tool: '地域表記変換チェック',
-        title: '都道府県未入力時の自動推定＋御殿場市表記修正',
-        detail: '都道府県が未入力の場合でも、市区町村名から一意に特定可能な都道府県を推定し、DV360用の地域表記を表示できるよう改善しました。また、静岡県御殿場市の英語表記を「Gotemba」に修正し、DV360確認済みデータとして正式登録しました。',
-        summary: '市区町村名のみから都道府県を推定するWARN_都道府県推定ロジックを追加。御殿場市の英語表記をGotembaに修正しCONFIRMEDマスタに登録。',
-        note: '',
-    },
-    {
-        date: '2026/07/22',
-        requester: 'BPO',
-        type: 'fix',
-        tool: 'DV360 設定チェック',
-        title: 'YouTube / TrueView 五階層比較を強化',
-        detail: 'YouTube / TrueView のCP・IO・LI・GP・CR解析、名称マッチング、要確認判定、SDF側のみの未匹配集計を強化しました。実データ10件で設定表xlsxとSDF.zipの解析・比較・集計を検証済みです。',
-        summary: 'YouTube / TrueView の五階層比較と未匹配集計を強化し、実データ10件で検証。',
-        note: '',
-    },
-    {
-        date: '2026/07/21',
-        requester: '徐丹彤',
-        type: 'add',
-        tool: '登录系统',
-        title: 'パスワードリセット機能を追加',
-        detail: '登録済みメールアドレスへの認証コード送信に対応し、利用者自身で新しいパスワードを設定できるようにしました。認証コードは10分間有効で、誤入力は最大5回までに制限されています。',
-        summary: '登録済みメールアドレスへ認証コードを送信し、利用者自身がパスワードを再設定可能に。認証コード10分有効、誤入力最大5回まで。',
-        note: '',
-    },
-    {
-        date: '2026/07/15',
-        requester: '董馨宁',
-        type: 'new',
-        tool: '地域表記変換チェック',
-        title: '東洋経済新報社モードを追加',
-        detail: '英語地域＋数値2列を日本語都道府県へ変換し、対象外を除外してExcel用3列データとしてコピーできる機能を追加。',
-        summary: '英語地域を日本語都道府県へ変換し、対象外を除外してExcel用3列データとしてコピー可能。',
-        note: '',
-    },
-    {
-        date: '2026/07/15',
-        requester: '董馨宁',
-        type: 'add',
-        tool: '文本处理工具',
-        title: '重複行チェックを追加',
-        detail: '貼り付けた内容から完全一致する行を同色で表示し、重複グループごとに快速定位できる機能を追加。',
-        summary: '完全一致行を同色表示し、重複グループごとに快速定位可能。',
-        note: '',
-    },
-    {
-        date: '2026/07/14',
-        requester: '杨蒙蒙',
-        type: 'add',
-        tool: 'Amazon DSP 設定チェック',
-        title: 'Amazon DSP FQ 英文表记识别追加',
-        detail: '追加 Frequency Cap 英文表记的识别规则，支持「5times/1day」等设定表格式与 Amazon DSP 下载数据中的「FrequencyCap1:[User, 5, 1, Days]」进行正确比对。同时补强全角斜线（／）、Day/Days、Hour/Hours、Minute/Minutes 等格式差异的标准化处理，避免实际含义一致时被误判为不一致或要确认。',
-        note: '',
-    },
-    {
-        date: '2026/07/14',
-        requester: '张宇驰',
-        type: 'add',
-        tool: '地域表記変換チェック',
-        title: '「変換結果をコピー」機能を追加',
-        detail: '変換結果列のみを表示順で一括コピーできるボタンを追加。コピー時に市区町村・都道府県の区分表記も保持され、空結果は自動スキップ。クリップボードAPI非対応環境向けのfallbackも実装済み。',
-        note: '',
-    },
-    {
-        date: '2026/07/14',
-        requester: '張羽凡',
-        type: 'improve',
-        tool: '地域表記変換チェック',
-        title: 'DV360正式資料に基づく地域認証マスタ更新',
-        detail: '西武鉄道DV360設定シートより116件の正式な地域表記をCONFIRMEDマスタに追加。東京23区区部のCity表記、埼玉県羽生市のCity表記、町村（伊奈町・宮代町・三芳町・松伏町・杉戸町・愛川町・清川村）および千葉県鎌ヶ谷市など未登録地域を新規登録。対象116件すべてが緑色OK_市区町村判定。',
-        note: '',
-    },
-    {
-        date: '2026/07/10',
-        requester: '於洋',
-        type: 'fix',
-        tool: 'Excel対比',
-        title: '修正 Excel 内部范围异常导致行数识别不足',
-        detail: '修正部分系统导出 Excel 因内部 dimension / !ref 范围异常，导致实际 800 多行数据仅识别为 29 行的问题。新增真实单元格范围扫描逻辑，不再单纯依赖 !ref；通过扫描实际存在的单元格地址重新计算有效行列范围。已确认 Job-List 样本可正确识别 802 / 803 行并参与完整对比。',
-        note: '',
-    },
-    {
-        date: '2026/07/10',
-        requester: '杨蒙蒙',
-        type: 'fix',
-        tool: '上传组件',
-        title: '修复上传区域重复提示窗口',
-        detail: '修复 Excel対比 与 Amazon DSP設定チェック 上传区域事件重复绑定问题。上传设定表或下载数据时，选错文件后点击删除/重新选择，有时会连续弹出多次提示窗口；现统一上传区域事件初始化逻辑，通过 cloneNode 清除旧事件后重新绑定，避免 addEventListener 重复叠加，同时避免 onclick 与 addEventListener 混用。已确认错误提示仅弹出 1 次，删除后重新上传正常。',
-        note: '',
-    },
-    {
-        date: '2026/07/09',
-        requester: '马林',
-        type: 'improve',
-        tool: '登录系统',
-        title: '登录状态 8小时有效',
-        detail: '登录状态改为 8 小时有效，超过时间后需重新登录，提升工具使用安全性。',
-        note: '',
-    },
-    {
-        date: '2026/07/09',
-        requester: '张微',
-        type: 'fix',
-        tool: 'Amazon DSP 設定チェック',
-        title: 'Amazon DSP 設定チェック 修复',
-        detail: '修复新追加 LI 被误判为寄存LI的问题；后台有但设定表没有的 LI 改为默认显示「要確認」；恢复一致绿色 / 不一致红色 / 要确认黄色的显示规则；修复 FQ 与 Audience 名称格式差异导致的误判。',
-        note: '',
-    },
-    {
-        date: '2026/07/08',
-        requester: '张雨婷',
-        type: 'fix',
-        tool: 'Excel清洗',
-        title: '入稿文本首行前存在空行，且混有零宽空格',
-        detail: 'cleanSiTrail 追加删除文本开头空行逻辑，并保持正文换行和段落空行不变。' +
-                 '验证通过文件：Suntory_EX_Facebok入稿書_260626(测试用).xlsx 的 Facebook_入稿書!AA6。',
-        note: '',
-    },
-    {
-        date: '2026/07/07',
-        requester: '张黎',
-        type: 'improve',
-        tool: '文本对比',
-        title: '包含关系比对：纯包含关系不再标异常颜色',
-        detail: '「包含关系比对」已优化：当 A/B 文本存在纯包含关系时，不再把被包含之外的部分标成异常颜色。',
-        note: '仅调整显示高亮逻辑，统计、行背景、其他 tab 不变。',
-    },
-    {
-        date: '2026/07/03',
-        requester: '苗青',
-        type: 'add',
-        tool: 'Excel 対比',
-        title: '新增 .xlsb 格式支持 + 浮点精度优化',
-        detail: 'Excel 对比工具现在支持 .xlsb（Excel Binary Workbook）格式的上传和对比。同时优化了数值比较逻辑，之前因为 Excel 公式计算产生的微小浮点误差（如 1744.31 vs 1744.3100000000002）会被误标为差异，现在会自动四舍五入到小数点后 2 位再比较，只有真正差 0.01 以上的才会被标出来。',
-        note: '',
-    },
-    {
-        date: '2026/07/03',
-        requester: '张微',
-        type: 'improve',
-        tool: 'Amazon DSP 設定チェック',
-        title: '表格行高可以调整了',
-        detail: '上传表格和下载数据进行对比后，在结果显示区的「列の表示切替」下方出现了「📏 行高調整」的滑块和输入框。拖动滑块就能让表格行变大或变小，方便查看内容多的单元格。如果某个格子文字被截断了，双击格子就能展开看全部内容，再双击收回。',
-        note: '点「リセット」不会重置行高设置，刷新页面也会保持你上次调好的高度。',
-    },
-    {
-        date: '2026/07/09',
-        requester: '张梦田',
-        type: 'add',
-        tool: 'Amazon DSP 設定チェック',
-        title: 'PVA PG案件の非設定項目を対象外処理',
-        detail: 'PVA Programmatic Guaranteed 案件中，管理画面不设定的项目不再作为错误比较对象。\n本次对以下字段追加対象外处理：\n- Location targeting 1 of 2\n- Pacing profile\n- Base supply bid*\n- Maximum average CPM\n\n显示：対象外 / PGのため比較対象外\n\n注意：Line item budget 保持原逻辑；W:AD 灰色区域字段未新增比较；非 PG / 非 PVA 不受影响。',
-        note: '',
-    },
-    {
-        date: '2026/07/09',
-        requester: '张梦田',
-        type: 'add',
-        tool: '文本处理 tools_text.html',
-        title: '对比工具追加「地域リスト比較」模式',
-        detail: '日方地域リスト（北海道/宮城/茨城/…）与系统侧表記（東京都/神奈川県/…）因表記ゆれ無法良好匹配的问题。\n' +
-                 '在「包含关系比对」中追加「地域リスト比較（/・改行区切り）」选项。\n' +
-                 '支持 / ／ 换行 逗号 顿号 空白 Tab 拆分；\n' +
-                 '追加地域名归一化：東京都→東京、大阪府→大阪、京都府→京都、北海道県→北海道、各県→去除県；\n' +
-                 '使用 Map 计数处理重复项；\n' +
-                 '结果显示 A/B 原文匹配关系，统计一致/仅A/仅B。\n' +
-                 '不影响逐行比对、升序比对、符号检查、既有包含关系默认逻辑。\n' +
-                 '使用方法：打开对比工具 → 使用包含关系比对 → 勾选「地域リスト比較（/・改行区切り）」→ 将 A/B 地域列表分别粘贴到两侧 → 执行比较 → 查看结果。',
-        note: 'commit: 37c829a。仅提交 tools_text.html，未混入其他文件。',
-    },
-    {
-        date: '2026/07/09',
-        requester: '張羽凡',
-        type: 'new',
-        tool: '地域表記変換チェック region_check.html',
-        title: '新增独立模块「地域表記変換チェック」',
-        detail: '日方 DV360 設定依頼中的地域記載有时全写在一列、有时分 A/B/C 列。' +
-                 '以前 Google Sheets 只能做到都道府県级别转换，现在希望根据日方给出的粒度尽量转换到对应管理画面用地域表記。\n' +
-                 '新增独立模块 region_check.html，index.html 增加「🗾 地域表記変換チェック」入口。\n' +
-                 '第一版仅支持「DV360設定依頼」媒体；不读取 DV360 设定表、不写回文件、不接入 dv360_check.html。\n' +
-                 '判定设计：\n' +
-                 '- CONFIRMED master（27件、DV360确认数据）命中 → OK_市区町村 / OK_都道府県\n' +
-                 '- CANDIDATE master（861件、AI/公开数据生成、全47都道府県+814市区町村）命中 → WARN_候補未確認\n' +
-                 '- 市区町村未命中 → WARN_市区町村未登録（都道府県级 fallback）\n' +
-                 '- 候补多个或无都道府県无法唯一判断 → WARN_候補複数\n' +
-                 '- 完全无法识别 → NG_未識別\n' +
-                 '安全边界：CANDIDATE 绝不标 OK；変換結果显示「Maebashi, Gunma, Japan（市区町村）」完整后缀；' +
-                 '需 DV360 管理画面确认后才能从 CANDIDATE 升级为 CONFIRMED。',
-        note: '当前状态：本地已提交（5148dc0），push 安全分类器暂不可用。',
-    },
+// ==================== Complete UPDATE_LOG ====================
+var UPDATE_LOG=[
+  {date:'2026/07/25',requester:'马林',type:'new',tool:'Excel文件轻量化',title:'新增「Excel文件轻量化」工具',title_ja:'「Excelファイル軽量化」ツールを追加',detail:'自动识别并清理大型Excel中真实数据结束后的无效公式尾部，并支持指定Sheet或全部Sheet公式值化，改善文件打开和校正确认速度。',detail_ja:'大容量Excelの実データ終了後に残る不要な数式末尾を検出・整理し、指定Sheetまたは全Sheetの数式値化に対応しました。',summary:'自动检测并清理无效公式尾部，支持公式值化，大幅改善大型文件打开速度。',summary_ja:'不要な数式末尾を自動検出・清理し、数式値化にも対応。大容量ファイルの打开速度を大幅改善。',note:''},
+  {date:'2026/07/25',requester:'付春鸽',type:'add',tool:'Excel 対比',title:'Excel对比新增大文件高速模式',title_ja:'Excel比較に大容量ファイル高速モードを追加',detail:'针对约200MB等大型Excel，支持仅选择必要Sheet进行稀疏对比，避免完整表格解析和渲染造成页面卡死。',detail_ja:'約200MBなどの大容量Excelについて、必要なSheetのみを選択して軽量比較できる高速モードを追加しました。',summary:'大型Excel支持选择必要Sheet进行稀疏对比，避免页面卡死。',summary_ja:'大容量Excelで必要なSheetのみを軽量比較し、ページ固まりを回避。',note:''},
+  {date:'2026/07/24',requester:'张微',type:'add',tool:'Excel対比',title:'背景色・文字色の比較を追加',detail:'背景色と文字色の差異を個別に表示し、色の不一致を確認しやすくしました。',summary:'背景色と文字色の差異を個別に表示可能に。目視で色の不一致を確認しやすく改善。',note:''},
+  {date:'2026/07/24',requester:'杨蒙蒙',type:'fix',tool:'Amazon DSP 設定チェック',title:'PVA設定シートの読込不具合を修正',detail:'備考欄をヘッダーと誤認し、LIを読み込めない問題を修正しました。',summary:'PVA設定シート内の備考欄が第二層ヘッダーと誤判定され、LIが0件になる不具合を修正。',note:''},
+  {date:'2026/07/24',requester:'马林',type:'add',tool:'Amazon DSP 設定チェック',title:'Creative比較を追加',detail:'設定シートのCreative名を基準に、ダウンロードデータのCR設定を確認できるようにしました。',summary:'Amazon DSP CR対比機能を追加。設定シートのCreative名を基準にダウンロードデータのCR設定を比較可能。',note:''},
+  {date:'2026/07/23',requester:'冯翠梅',type:'improve',tool:'地域表記変換チェック',title:'都道府県未入力時の自動推定＋御殿場市表記修正',detail:'都道府県が未入力の場合でも、市区町村名から一意に特定可能な都道府県を推定し、DV360用の地域表記を表示できるよう改善しました。また、静岡県御殿場市の英語表記を「Gotemba」に修正し、DV360確認済みデータとして正式登録しました。',summary:'市区町村名のみから都道府県を推定するWARN_都道府県推定ロジックを追加。御殿場市の英語表記をGotembaに修正しCONFIRMEDマスタに登録。',note:''},
+  {date:'2026/07/22',requester:'BPO',type:'fix',tool:'DV360 設定チェック',title:'YouTube / TrueView 五階層比較を強化',detail:'YouTube / TrueView のCP・IO・LI・GP・CR解析、名称マッチング、要確認判定、SDF側のみの未匹配集計を強化しました。実データ10件で設定表xlsxとSDF.zipの解析・比較・集計を検証済みです。',summary:'YouTube / TrueView の五階層比較と未匹配集計を強化し、実データ10件で検証。',note:''},
+  {date:'2026/07/21',requester:'徐丹彤',type:'add',tool:'登录系统',title:'パスワードリセット機能を追加',detail:'登録済みメールアドレスへの認証コード送信に対応し、利用者自身で新しいパスワードを設定できるようにしました。認証コードは10分間有効で、誤入力は最大5回までに制限されています。',summary:'登録済みメールアドレスへ認証コードを送信し、利用者自身がパスワードを再設定可能に。認証コード10分有効、誤入力最大5回まで。',note:''},
+  {date:'2026/07/15',requester:'董馨宁',type:'new',tool:'地域表記変換チェック',title:'東洋経済新報社モードを追加',detail:'英語地域＋数値2列を日本語都道府県へ変換し、対象外を除外してExcel用3列データとしてコピーできる機能を追加。',summary:'英語地域を日本語都道府県へ変換し、対象外を除外してExcel用3列データとしてコピー可能。',note:''},
+  {date:'2026/07/15',requester:'董馨宁',type:'add',tool:'文本处理工具',title:'重複行チェックを追加',detail:'貼り付けた内容から完全一致する行を同色で表示し、重複グループごとに快速定位できる機能を追加。',summary:'完全一致行を同色表示し、重複グループごとに快速定位可能。',note:''},
+  {date:'2026/07/14',requester:'杨蒙蒙',type:'add',tool:'Amazon DSP 設定チェック',title:'Amazon DSP FQ 英文表记识别追加',detail:'追加 Frequency Cap 英文表记的识别规则，支持「5times/1day」等设定表格式与 Amazon DSP 下载数据中的「FrequencyCap1:[User, 5, 1, Days]」进行正确比对。',note:''},
+  {date:'2026/07/14',requester:'张宇驰',type:'add',tool:'地域表記変換チェック',title:'「変換結果をコピー」機能を追加',detail:'変換結果列のみを表示順で一括コピーできるボタンを追加。',note:''},
+  {date:'2026/07/14',requester:'張羽凡',type:'improve',tool:'地域表記変換チェック',title:'DV360正式資料に基づく地域認証マスタ更新',detail:'西武鉄道DV360設定シートより116件の正式な地域表記をCONFIRMEDマスタに追加。',note:''},
+  {date:'2026/07/10',requester:'於洋',type:'fix',tool:'Excel対比',title:'修正 Excel 内部范围异常导致行数识别不足',detail:'修正部分系统导出 Excel 因内部 dimension / !ref 范围异常，导致实际 800 多行数据仅识别为 29 行的问题。',note:''},
+  {date:'2026/07/10',requester:'杨蒙蒙',type:'fix',tool:'上传组件',title:'修复上传区域重复提示窗口',detail:'修复 Excel対比 与 Amazon DSP設定チェック 上传区域事件重复绑定问题。',note:''},
+  {date:'2026/07/09',requester:'马林',type:'improve',tool:'登录系统',title:'登录状态 8小时有效',detail:'登录状态改为 8 小时有效，超过时间后需重新登录，提升工具使用安全性。',note:''},
+  {date:'2026/07/09',requester:'张微',type:'fix',tool:'Amazon DSP 設定チェック',title:'Amazon DSP 設定チェック 修复',detail:'修复新追加 LI 被误判为寄生LI的问题；后台有但设定表没有的 LI 改为默认显示「要確認」。',note:''},
+  {date:'2026/07/09',requester:'张梦田',type:'add',tool:'Amazon DSP 設定チェック',title:'PVA PG案件の非設定項目を対象外処理',detail:'PVA Programmatic Guaranteed 案件中，管理画面不设定的项目不再作为错误比较对象。',note:''},
+  {date:'2026/07/09',requester:'张梦田',type:'add',tool:'文本处理 tools_text.html',title:'对比工具追加「地域リスト比較」模式',detail:'在「包含关系比对」中追加「地域リスト比較（/・改行区切り）」选项。',note:''},
+  {date:'2026/07/09',requester:'張羽凡',type:'new',tool:'地域表記変換チェック',title:'新增独立模块「地域表記変換チェック」',detail:'新增独立模块 region_check.html，支持DV360設定依頼中的地域記載変換。',note:''},
+  {date:'2026/07/08',requester:'张雨婷',type:'fix',tool:'Excel清洗',title:'入稿文本首行前存在空行，且混有零宽空格',detail:'cleanSiTrail 追加删除文本开头空行逻辑。',note:''},
+  {date:'2026/07/07',requester:'张黎',type:'improve',tool:'文本对比',title:'包含关系比对：纯包含关系不再标异常颜色',detail:'「包含关系比对」已优化：当 A/B 文本存在纯包含关系时，不再把被包含之外的部分标成异常颜色。',note:'仅调整显示高亮逻辑，统计、行背景、其他 tab 不变。'},
+  {date:'2026/07/03',requester:'苗青',type:'add',tool:'Excel 対比',title:'新增 .xlsb 格式支持 + 浮点精度优化',detail:'Excel 对比工具现在支持 .xlsb 格式的上传和对比。同时优化了数值比较逻辑。',note:''},
+  {date:'2026/07/03',requester:'张微',type:'improve',tool:'Amazon DSP 設定チェック',title:'表格行高可以调整了',detail:'上传表格和下载数据进行对比后，在结果显示区出现「📏 行高調整」的滑块和输入框。',note:'点「リセット」不会重置行高设置，刷新页面也会保持你上次调好的高度。'}
 ];
 
-const MAX_GROUP = 3;
-
-// 统一排序函数：返回按日期降序排列的副本（不修改原数组）
-function getSortedUpdateLog() {
-    return [...UPDATE_LOG].sort((a, b) => b.date.localeCompare(a.date));
+// ==================== Auth UI Logic ====================
+function switchTab(tab){
+  document.querySelectorAll('.auth-tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.auth-form').forEach(function(f){f.classList.remove('active');});
+  if(tab==='login'){document.querySelector('.auth-tab:first-child').classList.add('active');document.getElementById('loginForm').classList.add('active');}
+  else{document.querySelector('.auth-tab:last-child').classList.add('active');document.getElementById('regForm').classList.add('active');}
+  document.getElementById('loginMsg').textContent='';document.getElementById('regMsg').textContent='';
+  if(typeof resetCooldownTimer!=='undefined'&&resetCooldownTimer){clearInterval(resetCooldownTimer);resetCooldownTimer=null;}
+}
+async function handleLogin(e){
+  e.preventDefault();var btn=document.getElementById('loginBtn'),msg=document.getElementById('loginMsg');
+  msg.className='auth-msg';msg.textContent='⏳ 正在验证...';btn.disabled=true;btn.textContent='验证中...';
+  var result=await loginUser(document.getElementById('loginEmail').value.trim(),document.getElementById('loginPwd').value);
+  btn.disabled=false;btn.textContent='登 录';
+  if(result.ok){msg.className='auth-msg success';msg.textContent='登录成功！';showMain();}
+  else{msg.className='auth-msg error';msg.textContent=result.error||'登录失败';}
+}
+var regEmailTemp='';
+function resetRegStep(){document.getElementById('regStep1').style.display='block';document.getElementById('regStep2').style.display='none';document.getElementById('regMsg').textContent='';document.getElementById('regMsg2').textContent='';}
+async function handleSendCode(){
+  var msg=document.getElementById('regMsg');msg.className='auth-msg';
+  var name=document.getElementById('regName').value.trim(),email=document.getElementById('regEmail').value.trim(),dept=document.getElementById('regDept').value,pwd=document.getElementById('regPwd').value;
+  if(!name||!email||!pwd){msg.className='auth-msg error';msg.textContent='请填写所有必填项';return;}
+  var allowed=['@hakuhodody-one.co.jp','@dac.co.jp','@adpro-inc.co.jp','@huihai-info.com'];
+  if(!allowed.some(function(d){return email.toLowerCase().endsWith(d);})){msg.className='auth-msg error';msg.textContent='仅限公司邮箱注册';return;}
+  msg.textContent='⏳ 正在发送验证码...';
+  var result=await sendVerifyCode(email,name,pwd,dept);
+  if(result.ok){msg.className='auth-msg success';msg.textContent=result.message;regEmailTemp=email;document.getElementById('regStep1').style.display='none';document.getElementById('regStep2').style.display='block';document.getElementById('regMsg2').textContent='';document.getElementById('regCode').value='';document.getElementById('regCode').focus();}
+  else{msg.className='auth-msg error';msg.textContent=result.error||'发送失败';}
+}
+async function handleVerifyCode(){
+  var msg=document.getElementById('regMsg2');msg.className='auth-msg';var code=document.getElementById('regCode').value.trim();
+  if(!code||code.length!==6){msg.className='auth-msg error';msg.textContent='请输入6位验证码';return;}
+  msg.textContent='验证中...';
+  var result=await verifyEmailCode(regEmailTemp,code);
+  if(result.ok){msg.className='auth-msg success';msg.textContent='注册成功！请切换到「登录」标签登录。';document.getElementById('regForm').reset();setTimeout(function(){resetRegStep();switchTab('login');},1500);}
+  else{msg.className='auth-msg error';msg.textContent=result.error||'验证失败';}
+}
+var resetEmailTemp='',resetCooldownTimer=null;
+function showResetForm(){
+  document.querySelectorAll('.auth-tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.auth-form').forEach(function(f){f.classList.remove('active');});
+  document.getElementById('resetForm').classList.add('active');document.getElementById('resetStep1').style.display='block';document.getElementById('resetStep2').style.display='none';
+  document.getElementById('resetMsg').textContent='';document.getElementById('resetMsg2').textContent='';
+  document.getElementById('resetEmail').value='';document.getElementById('resetCode').value='';document.getElementById('resetNewPwd').value='';document.getElementById('resetNewPwd2').value='';
+  resetEmailTemp='';if(resetCooldownTimer){clearInterval(resetCooldownTimer);resetCooldownTimer=null;}
+  var btn=document.getElementById('resetSendCodeBtn');btn.disabled=false;btn.textContent='認証コード送信 / 发送验证码';
+}
+function showLoginForm(){
+  document.querySelectorAll('.auth-form').forEach(function(f){f.classList.remove('active');});
+  document.getElementById('loginForm').classList.add('active');
+  document.querySelectorAll('.auth-tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelector('.auth-tab:first-child').classList.add('active');
+  document.getElementById('loginMsg').textContent='';document.getElementById('resetMsg').textContent='';document.getElementById('resetMsg2').textContent='';
+  if(resetCooldownTimer){clearInterval(resetCooldownTimer);resetCooldownTimer=null;}
+  var btn=document.getElementById('resetSendCodeBtn');btn.disabled=false;btn.textContent='認証コード送信 / 发送验证码';
+}
+function resetBackToStep1(){document.getElementById('resetStep1').style.display='block';document.getElementById('resetStep2').style.display='none';document.getElementById('resetMsg2').textContent='';}
+async function handleResetSendCode(){
+  var msg=document.getElementById('resetMsg'),btn=document.getElementById('resetSendCodeBtn');msg.className='auth-msg';
+  var email=document.getElementById('resetEmail').value.trim();
+  if(!email){msg.className='auth-msg error';msg.textContent='メールアドレスを入力してください / 请输入邮箱';return;}
+  msg.textContent='⏳ 送信中...';btn.disabled=true;
+  var result=await sendResetCode(email);
+  if(result.ok){msg.className='auth-msg success';msg.textContent=result.message;resetEmailTemp=email.trim().toLowerCase();document.getElementById('resetEmailConfirm').value=resetEmailTemp;document.getElementById('resetStep1').style.display='none';document.getElementById('resetStep2').style.display='block';document.getElementById('resetMsg2').textContent='';document.getElementById('resetCode').value='';document.getElementById('resetNewPwd').value='';document.getElementById('resetNewPwd2').value='';document.getElementById('resetCode').focus();
+    var seconds=60;btn.textContent='再送信 ('+seconds+'s)';resetCooldownTimer=setInterval(function(){seconds--;btn.textContent='再送信 ('+seconds+'s)';if(seconds<=0){clearInterval(resetCooldownTimer);resetCooldownTimer=null;btn.textContent='認証コード再送信 / 重新发送';btn.disabled=false;}},1000);
+  }else{msg.className='auth-msg error';msg.textContent=result.error||'送信失敗 / 发送失败';btn.disabled=false;}
+}
+async function handleResetPassword(){
+  var msg=document.getElementById('resetMsg2'),btn=document.getElementById('resetConfirmBtn');msg.className='auth-msg';
+  var code=document.getElementById('resetCode').value.trim(),newPwd=document.getElementById('resetNewPwd').value,newPwd2=document.getElementById('resetNewPwd2').value;
+  if(!code||code.length!==6){msg.className='auth-msg error';msg.textContent='認証コード6桁を入力してください / 请输入6位验证码';return;}
+  if(!newPwd||newPwd.length<8){msg.className='auth-msg error';msg.textContent='パスワードは8文字以上必要です / 密码至少需要8位';return;}
+  if(newPwd!==newPwd2){msg.className='auth-msg error';msg.textContent='パスワードが一致しません / 两次输入的密码不一致';return;}
+  msg.textContent='⏳ パスワード更新中...';btn.disabled=true;
+  var result=await resetPassword(resetEmailTemp,code,newPwd);
+  if(result.ok){msg.className='auth-msg success';msg.textContent=result.message;document.getElementById('resetEmail').value='';document.getElementById('resetCode').value='';document.getElementById('resetNewPwd').value='';document.getElementById('resetNewPwd2').value='';resetEmailTemp='';if(resetCooldownTimer){clearInterval(resetCooldownTimer);resetCooldownTimer=null;}setTimeout(function(){showLoginForm();},2000);}
+  else{btn.disabled=false;msg.className='auth-msg error';msg.textContent=result.error||'変更失敗 / 修改失败';}
 }
 
-function getTypeLabel(type) {
-    var m={'new':'🆕 新機能','add':'➕ 機能追加','improve':'🔧 改善','fix':'🐛 修正'};
-    return m[type]||'🔧 改善';
-}
-function getTypeClass(type) {
-    var m={'new':'new','add':'add','improve':'improve','fix':'fix'};
-    return m[type]||'improve';
-}
-
-function renderSidebarUpdates() {
-    const list = document.getElementById('updateCardList');
-    if (!list) return;
-    const sorted = getSortedUpdateLog();
-    var groups={'new':{icon:'🆕',label:'新機能',cls:'new',items:[]},'add':{icon:'➕',label:'機能追加',cls:'add',items:[]},'fix':{icon:'🔧',label:'改善・修正',cls:'fix',items:[]}};
-    for(var i=0;i<sorted.length;i++){
-        var item=sorted[i];
-        if(item.type==='new'&&groups.new.items.length<MAX_GROUP)groups.new.items.push(item);
-        else if(item.type==='add'&&groups.add.items.length<MAX_GROUP)groups.add.items.push(item);
-        else if((item.type==='improve'||item.type==='fix')&&groups.fix.items.length<MAX_GROUP)groups.fix.items.push(item);
-    }
-    var html='';
-    var keys=['new','add','fix'];
-    var clsMap={'new':'ug-header-new','add':'ug-header-add','fix':'ug-header-fix'};
-    var iconMap={'fix':'🐛 ','improve':'🔧 '};
-    var sortedRef=getSortedUpdateLog();
-    for(var k=0;k<keys.length;k++){
-        var key=keys[k],g=groups[key];
-        if(g.items.length===0)continue;
-        html+='<div class="update-group"><div class="update-group-header '+clsMap[key]+'">'+g.icon+' '+g.label+'</div>';
-        for(var j=0;j<g.items.length;j++){
-            var item=g.items[j];
-            var idx=sortedRef.indexOf(item);
-            var subIcon=iconMap[item.type]||'';
-            html+='<div class="update-item" onclick="openUpdateModal('+idx+')">';
-            html+='<div class="update-item-meta"><span class="update-item-date">'+item.date+'</span> <span class="update-item-req">'+subIcon+item.requester+'</span></div>';
-            html+='<div class="update-item-title">['+item.tool+'] '+item.title+'</div>';
-            if(item.summary)html+='<div class="update-item-desc">'+item.summary+'</div>';
-            html+='</div>';
-        }
-        html+='</div>';
-    }
-    list.innerHTML=html;
+// ==================== Main Display ====================
+var currentUser=null;
+function showMain(){
+  document.getElementById('authSection').style.display='none';
+  document.getElementById('mainSection').style.display='block';
+  document.getElementById('headerRight').style.display='flex';
+  document.getElementById('footerBar').style.display='block';
+  currentUser=getUser();
+  if(currentUser){document.getElementById('headerUser').textContent='👤 '+currentUser.name+' ('+currentUser.email+')';}
+  renderGroups();renderRecent();renderDrawer();initSearch();
+  document.getElementById('updateCount').textContent=UPDATE_LOG.length;
 }
 
-function openUpdateModal(focusIndex) {
-    const overlay = document.getElementById('updateModal');
-    if (!overlay) return;
-    const body = overlay.querySelector('.modal-body');
-    const sorted = getSortedUpdateLog();
-    body.innerHTML = sorted.map((item, i) => `
-        <div class="modal-entry" ${i === focusIndex ? 'id="modal-focus-entry"' : ''}>
-            <div class="modal-entry-meta">
-                ${item.date}
-                <span class="modal-entry-requester">${item.requester}</span>
-                <span class="upd-type-side upd-type-side-${getTypeClass(item.type)}">${getTypeLabel(item.type)}</span>
-                <span style="color:#999;margin-left:6px;">${item.tool}</span>
-            </div>
-            <div class="modal-entry-title">${item.title}</div>
-            <div class="modal-entry-detail">${item.detail}</div>
-            ${item.note ? `<div class="modal-entry-note">⚠️ ${item.note}</div>` : ''}
-        </div>
-    `).join('');
-    overlay.classList.add('show');
-    document.body.style.overflow = 'hidden';
-    setTimeout(() => {
-        const el = document.getElementById('modal-focus-entry');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100);
+// ==================== Card Rendering ====================
+function cardHTML(tool){
+  var lang=isJa();
+  // 权限检查：定例会报告书仅管理者可见
+  if(tool.perm&&(!currentUser||currentUser.position!==tool.perm)){
+    return '<div class="card card-disabled" style="border-left-color:#1a252f;"><div class="card-icon" style="background:#1a252f18;">🔒</div><span class="card-name">管理者専用</span><span class="card-desc">定例会報告書は管理者のみ閲覧可能</span><div class="card-footer"><span class="card-badge badge-dev">限定</span></div></div>';
+  }
+  var name=lang&&tool.name_ja?tool.name_ja:tool.name;
+  var desc=lang&&tool.desc_ja?tool.desc_ja:tool.desc;
+  var cls='card'+(tool.disabled?' card-disabled':'');
+  var g=GROUPS.find(function(x){return x.id===tool.group;});
+  var border=g?'border-left-color:'+g.color+';':'';
+  var badgeHtml='';
+  if(tool.badge&&BADGE_MAP[tool.badge]){var b=BADGE_MAP[tool.badge];badgeHtml='<span class="card-badge '+b.cls+'">'+(lang?b.ja:b.zh)+'</span>';}
+  var tag=tool.disabled?'div':'a';
+  var hrefAttr=tool.disabled?'':' href="'+tool.href+'" target="_blank" onclick="recordRecent(\''+encodeURIComponent(tool.name)+'\')"';
+  var html='<'+tag+' class="'+cls+'" style="'+border+'"'+hrefAttr+' data-name="'+tool.name+'" data-name-ja="'+(tool.name_ja||'')+'" data-desc="'+(tool.desc||'')+'" data-desc-ja="'+(tool.desc_ja||'')+'" data-group="'+tool.group+'">';
+  html+='<div class="card-icon" style="background:'+(g?g.color:'#eee')+'18;">'+tool.icon+'</div>';
+  html+='<span class="card-name">'+name+'</span>';
+  if(desc)html+='<span class="card-desc">'+desc+'</span>';
+  html+='<div class="card-footer">'+badgeHtml+'<span class="card-arrow">→</span></div>';
+  html+='</'+tag+'>';
+  return html;
+}
+function renderGroups(){
+  var container=document.getElementById('groupsContainer');var html='';
+  GROUPS.forEach(function(g){
+    var tools=TOOLS.filter(function(t){return t.group===g.id;});
+    var collapsed=g.expanded?'':' collapsed';
+    html+='<div class="section'+collapsed+'" id="sec-'+g.id+'">';
+    html+='<div class="section-header" onclick="toggleSection(\'sec-'+g.id+'\')">';
+    html+='<span class="section-dot" style="background:'+g.color+';"></span>';
+    html+='<span class="section-label" style="background:'+g.color+';">'+g.label+'</span>';
+    html+='<span class="section-title">'+pt(g.labelKey)+'</span>';
+    html+='<span class="section-count">'+tools.length+'</span>';
+    html+='<span class="section-arrow">▼</span></div>';
+    html+='<div class="section-grid">';
+    tools.forEach(function(t){html+=cardHTML(t);});
+    html+='</div></div>';
+  });
+  container.innerHTML=html;
+}
+function toggleSection(id){document.getElementById(id).classList.toggle('collapsed');}
+
+// ==================== Recent ====================
+function getRecent(){try{return JSON.parse(localStorage.getItem('qc_recent_tools')||'[]');}catch(e){return[];}}
+function recordRecent(name){var list=getRecent().filter(function(x){return x!==name;});list.unshift(name);if(list.length>8)list=list.slice(0,8);localStorage.setItem('qc_recent_tools',JSON.stringify(list));}
+function renderRecent(){
+  var grid=document.getElementById('recentGrid');var recent=getRecent().slice(0,4);var tools=[];
+  if(recent.length>0){recent.forEach(function(name){var t=TOOLS.find(function(x){return x.name===name&&!x.disabled;});if(t)tools.push(t);});}
+  if(tools.length===0){['Excel文件轻量化','Excel対比','Amazon DSP 設定チェック','地域表記変換チェック'].forEach(function(n){var t=TOOLS.find(function(x){return x.name===n;});if(t)tools.push(t);});}
+  grid.innerHTML=tools.map(function(t){return cardHTML(t);}).join('');
 }
 
-function closeUpdateModal() {
-    const overlay = document.getElementById('updateModal');
-    if (overlay) {
-        overlay.classList.remove('show');
-        document.body.style.overflow = '';
-    }
+// ==================== Search ====================
+function initSearch(){
+  var input=document.getElementById('searchInput'),tagsEl=document.getElementById('searchTags');
+  tagsEl.innerHTML=SEARCH_TAGS.map(function(t){return '<span class="search-tag" onclick="quickSearch(\''+t+'\')">'+t+'</span>';}).join('');
+  input.addEventListener('input',function(){doSearch(this.value);});
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();input.focus();input.select();}
+    if(e.key==='Escape'){input.value='';doSearch('');input.blur();closeDrawer();closeUpdateModal();}
+  });
+}
+function quickSearch(term){var input=document.getElementById('searchInput');input.value=term;doSearch(term);}
+function doSearch(q){
+  q=q.trim().toLowerCase();
+  var countEl=document.getElementById('searchCount'),emptyEl=document.getElementById('searchEmpty');
+  var cards=document.querySelectorAll('#groupsContainer .card');var visible=0;
+  cards.forEach(function(card){
+    if(!q){card.style.display='';visible++;return;}
+    var hay=[card.getAttribute('data-name'),card.getAttribute('data-name-ja'),card.getAttribute('data-desc'),card.getAttribute('data-desc-ja'),card.getAttribute('data-group')].join(' ').toLowerCase();
+    var match=hay.indexOf(q)>=0;card.style.display=match?'':'none';if(match)visible++;
+  });
+  document.querySelectorAll('#groupsContainer .section').forEach(function(sec){
+    var vis=sec.querySelectorAll('.card:not([style*="display: none"])');
+    sec.style.display=(q&&vis.length===0)?'none':'';
+  });
+  document.getElementById('recentSection').style.display=q?'none':'';
+  if(q){countEl.style.display='block';countEl.textContent=pt('searchCount').replace('{n}',visible);emptyEl.style.display=visible===0?'block':'none';}
+  else{countEl.style.display='none';emptyEl.style.display='none';}
 }
 
-// 点击遮罩关闭弹窗
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('modal-overlay')) closeUpdateModal();
+// ==================== Drawer ====================
+function openDrawer(){document.getElementById('drawerOverlay').classList.add('open');document.getElementById('drawer').classList.add('open');document.body.style.overflow='hidden';}
+function closeDrawer(){document.getElementById('drawerOverlay').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.style.overflow='';}
+function renderDrawer(){
+  var body=document.getElementById('drawerBody'),lang=isJa();
+  var sorted=UPDATE_LOG.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  var groups={new:{icon:'🆕',label:lang?'新機能':'新功能',cls:'dg-new',items:[]},add:{icon:'➕',label:lang?'機能追加':'功能追加',cls:'dg-add',items:[]},fix:{icon:'🔧',label:lang?'改善・修正':'改善/修复',cls:'dg-fix',items:[]}};
+  sorted.forEach(function(item){if(item.type==='new')groups.new.items.push(item);else if(item.type==='add')groups.add.items.push(item);else groups.fix.items.push(item);});
+  var html='';
+  ['new','add','fix'].forEach(function(k){
+    var g=groups[k];if(!g.items.length)return;
+    html+='<div class="drawer-group"><div class="drawer-group-header '+g.cls+'">'+g.icon+' '+g.label+'</div>';
+    g.items.forEach(function(item){
+      var idx=sorted.indexOf(item);
+      var title=(lang&&item.title_ja)?item.title_ja:item.title;
+      var summary=(lang&&item.summary_ja)?item.summary_ja:(item.summary||'');
+      html+='<div class="drawer-item" onclick="openUpdateModal('+idx+')"><div class="drawer-item-meta"><span>'+item.date+'</span><span class="drawer-item-req">'+item.requester+'</span><span style="color:#94a3b8;">'+item.tool+'</span></div>';
+      html+='<div class="drawer-item-title">'+title+'</div>';
+      if(summary)html+='<div class="drawer-item-desc">'+summary+'</div></div>';
+    });
+    html+='</div>';
+  });
+  body.innerHTML=html;
+}
+
+// ==================== Update Detail Modal ====================
+function getTypeLabel(type){var m={'new':'🆕 新機能','add':'➕ 機能追加','improve':'🔧 改善','fix':'🐛 修正'};return m[type]||'🔧 改善';}
+function getTypeClass(type){var m={'new':'new','add':'add','improve':'improve','fix':'fix'};return m[type]||'improve';}
+function openUpdateModal(focusIndex){
+  var overlay=document.getElementById('updateModal'),body=document.getElementById('modalBody');
+  var sorted=UPDATE_LOG.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  var lang=isJa();
+  body.innerHTML=sorted.map(function(item,i){
+    var title=(lang&&item.title_ja)?item.title_ja:item.title;
+    var detail=(lang&&item.detail_ja)?item.detail_ja:item.detail;
+    return '<div class="modal-entry" '+(i===focusIndex?'id="modal-focus-entry"':'')+'><div class="modal-entry-meta">'+item.date+'<span class="modal-entry-requester">'+item.requester+'</span><span class="upd-type-side upd-type-side-'+getTypeClass(item.type)+'">'+getTypeLabel(item.type)+'</span><span style="color:#94a3b8;margin-left:6px;">'+item.tool+'</span></div><div class="modal-entry-title">'+title+'</div><div class="modal-entry-detail">'+detail+'</div>'+(item.note?'<div class="modal-entry-note">⚠️ '+item.note+'</div>':'')+'</div>';
+  }).join('');
+  overlay.classList.add('show');document.body.style.overflow='hidden';
+  setTimeout(function(){var el=document.getElementById('modal-focus-entry');if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},100);
+}
+function closeUpdateModal(){document.getElementById('updateModal').classList.remove('show');if(!document.getElementById('drawer').classList.contains('open'))document.body.style.overflow='';}
+
+// ==================== Init ====================
+document.addEventListener('DOMContentLoaded',function(){
+  var user=getUser();
+  if(user){showMain();}
+  applyPortalI18n();
 });
-
-// Esc 键关闭弹窗
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeUpdateModal();
-});
-
-// 页面加载时渲染
-document.addEventListener('DOMContentLoaded', function() {
-    renderSidebarUpdates();
-});
-
-(function init() {
-    const user = getUser();
-    if (user) {
-        // 已有有效 session，直接显示工具
-        showMain();
-    }
-})();
 </script>
 </body>
 </html>

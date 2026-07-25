@@ -4,7 +4,7 @@
 // ============================================================
 
 // ⚠️ 部署GAS后，把下面的URL替换为实际的Web App URL
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxzt6UmeFpkloLSlMVzyeBD0x63gK_ddqlGYcW8f_OKgM1-Sk1QIGBIAssrt_tO9HRD/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwqjscrWxUh9x8H57nJAMtCgzelBqYZOL_4DnmT0ZywPIG6UXWrXe7F27IlkFxKYwAD/exec';
 
 // ==================== 认证检查 ====================
 
