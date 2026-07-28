@@ -505,6 +505,8 @@ body {
   background: #f8fafc; border: 1px solid var(--border);
   border-radius: 6px; padding: 3px 9px;
 }
+.chip.type { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+.chip.period { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
 
 /* ==========================================
    FOOTER
@@ -1116,14 +1118,13 @@ body {
     <div class="sec-hd"><div class="sec-divider"></div><h2>工作计划</h2><p>2026年7月下旬—8月 · 品质防错与自动化稳定化推进方向</p></div>
 
     <div class="plan-grid">
-      <div class="plan-card top-priority-card"><div class="plan-hd"><div class="plan-icon">①</div><div><div class="plan-tag top-priority">PRIORITY 01 · 最优先</div><div class="plan-title">合计表转各中心表格BUG修复跟进</div></div></div><p class="plan-desc">优先确认当前BUG的复现条件、影响中心及错误范围，在不影响既有数据和其他中心逻辑的前提下完成修复与验证。</p><div class="plan-chips"><span class="chip">🐞 BUG修复</span><span class="chip">📊 中心表格</span><span class="chip">✅ 回归验证</span></div></div>
-      <div class="plan-card accent-t"><div class="plan-hd"><div class="plan-icon a">②</div><div><div class="plan-tag a">PRIORITY 02 · 大项目</div><div class="plan-title">冯翠梅：DV360设定比对工具开发</div></div></div><p class="plan-desc">继续完善CP、IO、LI、GP、CR五层规则，补充地域ID Master及Include／Exclude判断，并扩大YouTube／TrueView实际案件验证。</p><div class="plan-chips"><span class="chip">5层解析</span><span class="chip">地域规则</span><span class="chip">品质防错</span></div></div>
-      <div class="plan-card warn-t"><div class="plan-hd"><div class="plan-icon w">③</div><div><div class="plan-tag w">PRIORITY 03 · 小修改</div><div class="plan-title">张宇驰：CR对比规则修正</div></div></div><p class="plan-desc">修正广告名中全角“Ｘ”与半角“x”的统一判断，并调整NO字段提取逻辑，避免将示例记载内容误识别为正式数据。</p><div class="plan-chips"><span class="chip">文字标准化</span><span class="chip">NO提取</span><span class="chip">误判防止</span></div></div>
-      <div class="plan-card purple-t"><div class="plan-hd"><div class="plan-icon p">④</div><div><div class="plan-tag p">PRIORITY 04 · 需求对应</div><div class="plan-title">董馨宁：大塚製薬起票诉求</div></div></div><p class="plan-desc">确认现行业务手顺、输入资料、输出结果和高频错误点，拆解可自动化范围后确定开发方式及验收条件。</p><div class="plan-chips"><span class="chip">需求确认</span><span class="chip">流程拆解</span><span class="chip">范围定义</span></div></div>
-      <div class="plan-card purple-t"><div class="plan-hd"><div class="plan-icon p">⑤</div><div><div class="plan-tag p">PRIORITY 05 · 等待确认</div><div class="plan-title">董馨宁：纯广工具诉求</div></div></div><p class="plan-desc">等待具体需求范围和对应方式确认。需求明确前仅保留任务记录，不提前扩大开发范围。</p><div class="plan-chips"><span class="chip">等待需求</span><span class="chip">边界确认</span><span class="chip">暂不开发</span></div></div>
-      <div class="plan-card"><div class="plan-hd"><div class="plan-icon">⑥</div><div><div class="plan-tag">PRIORITY 06 · 长期项目</div><div class="plan-title">TL业务全流程自动化</div></div></div><p class="plan-desc">继续推进完整业务流程自动化。广告主ID切换已完成阶段性技术验证，但暂不作为独立成果汇报；后续以全流程闭环和实际稳定运行为成果判断标准。</p><div class="plan-chips"><span class="chip">全流程</span><span class="chip">安全优先</span><span class="chip">阶段推进</span></div></div>
-      <div class="plan-card warn-t"><div class="plan-hd"><div class="plan-icon w">⑦</div><div><div class="plan-tag w">PRIORITY 07 · 需求确认</div><div class="plan-title">丛琦：AP财务业务_収支管理用</div></div></div><p class="plan-desc">重新确认収支管理用数据的来源、处理规则、输出格式及人工确认点，在需求和验收标准明确后推进自动读取与汇总。</p><div class="plan-chips"><span class="chip">财务数据</span><span class="chip">需求确认</span><span class="chip">自动汇总</span></div></div>
-      <div class="plan-card green-t"><div class="plan-hd"><div class="plan-icon g">⑧</div><div><div class="plan-tag g">PRIORITY 08 · 等待申请</div><div class="plan-title">5课顾麒麒：专门工具开发</div></div></div><p class="plan-desc">等待下一步正式诉求申请。收到业务流程、输入输出和目标效果后，再评估优先级及开发范围。</p><div class="plan-chips"><span class="chip">等待申请</span><span class="chip">5课专用</span><span class="chip">后续评估</span></div></div>
+      <div class="plan-card top-priority-card"><div class="plan-hd"><div class="plan-icon">①</div><div><div class="plan-tag top-priority">PRIORITY 01 · 最優先</div><div class="plan-title">冯翠梅：DV360設定比較ツール開発</div></div></div><div class="plan-chips"><span class="chip type">大型プロジェクト</span><span class="chip period">予定対応期間：2週間</span></div></div>
+      <div class="plan-card purple-t"><div class="plan-hd"><div class="plan-icon p">②</div><div><div class="plan-tag p">PRIORITY 02 · 要件対応</div><div class="plan-title">董馨宁：大塚製薬 起票要件</div></div></div><div class="plan-chips"><span class="chip type">要件対応</span><span class="chip period">予定対応期間：3日</span></div></div>
+      <div class="plan-card warn-t"><div class="plan-hd"><div class="plan-icon w">③</div><div><div class="plan-tag w">PRIORITY 03 · 軽微修正</div><div class="plan-title">张宇驰：CR比較ルール修正</div></div></div><div class="plan-chips"><span class="chip type">軽微修正</span><span class="chip period">予定対応期間：2時間</span></div></div>
+      <div class="plan-card"><div class="plan-hd"><div class="plan-icon">④</div><div><div class="plan-tag">PRIORITY 04 · 要件確認</div><div class="plan-title">丛琦：AP財務業務＿収支管理用</div></div></div><div class="plan-chips"><span class="chip type">要件確認</span><span class="chip period">予定対応期間：1週間</span></div></div>
+      <div class="plan-card green-t"><div class="plan-hd"><div class="plan-icon g">⑤</div><div><div class="plan-tag g">PRIORITY 05 · 長期プロジェクト</div><div class="plan-title">TL業務 全工程自動化</div></div></div><div class="plan-chips"><span class="chip type">長期プロジェクト</span><span class="chip period">予定対応期間：2か月</span></div></div>
+      <div class="plan-card"><div class="plan-hd"><div class="plan-icon">⑥</div><div><div class="plan-tag">PRIORITY 06 · 確認待ち</div><div class="plan-title">董馨宁：純広ツール要件</div></div></div><div class="plan-chips"><span class="chip type">確認待ち</span><span class="chip period">予定対応期間：確認後に見積もり</span></div></div>
+      <div class="plan-card"><div class="plan-hd"><div class="plan-icon">⑦</div><div><div class="plan-tag">PRIORITY 07 · 申請待ち</div><div class="plan-title">5課 顾麒麒：専用ツール開発</div></div></div><div class="plan-chips"><span class="chip type">申請待ち</span><span class="chip period">予定対応期間：申請後に見積もり</span></div></div>
     </div>
   </div>
   <div class="footer">長春恵海業務報告 · 馬 林 · 技术杠杆驱动降本增效</div>
