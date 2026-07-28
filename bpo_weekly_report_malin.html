@@ -478,6 +478,24 @@ body {
 .plan-tag.a { color: #0284c7; }
 .plan-tag.w { color: #d97706; }
 .plan-tag.p { color: #6d28d9; }
+.plan-tag.top-priority {
+  display: inline-block;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1.5px solid #fecaca;
+  border-radius: 6px;
+  padding: 3px 14px;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.plan-card.top-priority-card {
+  border-top-color: #dc2626;
+  border-left: 4px solid #dc2626;
+  background: linear-gradient(135deg, #fffbfb 0%, var(--card) 40%);
+}
 .plan-title { font-size: 16px; font-weight: 800; color: var(--text); }
 .plan-desc { font-size: 13px; color: var(--sub); line-height: 1.78; margin-bottom: 12px; }
 .plan-chips { display: flex; gap: 7px; flex-wrap: wrap; }
@@ -1098,7 +1116,7 @@ body {
     <div class="sec-hd"><div class="sec-divider"></div><h2>工作计划</h2><p>2026年7月下旬—8月 · 品质防错与自动化稳定化推进方向</p></div>
 
     <div class="plan-grid">
-      <div class="plan-card"><div class="plan-hd"><div class="plan-icon">①</div><div><div class="plan-tag">PRIORITY 01 · 最优先</div><div class="plan-title">合计表转各中心表格BUG修复跟进</div></div></div><p class="plan-desc">优先确认当前BUG的复现条件、影响中心及错误范围，在不影响既有数据和其他中心逻辑的前提下完成修复与验证。</p><div class="plan-chips"><span class="chip">🐞 BUG修复</span><span class="chip">📊 中心表格</span><span class="chip">✅ 回归验证</span></div></div>
+      <div class="plan-card top-priority-card"><div class="plan-hd"><div class="plan-icon">①</div><div><div class="plan-tag top-priority">PRIORITY 01 · 最优先</div><div class="plan-title">合计表转各中心表格BUG修复跟进</div></div></div><p class="plan-desc">优先确认当前BUG的复现条件、影响中心及错误范围，在不影响既有数据和其他中心逻辑的前提下完成修复与验证。</p><div class="plan-chips"><span class="chip">🐞 BUG修复</span><span class="chip">📊 中心表格</span><span class="chip">✅ 回归验证</span></div></div>
       <div class="plan-card accent-t"><div class="plan-hd"><div class="plan-icon a">②</div><div><div class="plan-tag a">PRIORITY 02 · 大项目</div><div class="plan-title">冯翠梅：DV360设定比对工具开发</div></div></div><p class="plan-desc">继续完善CP、IO、LI、GP、CR五层规则，补充地域ID Master及Include／Exclude判断，并扩大YouTube／TrueView实际案件验证。</p><div class="plan-chips"><span class="chip">5层解析</span><span class="chip">地域规则</span><span class="chip">品质防错</span></div></div>
       <div class="plan-card warn-t"><div class="plan-hd"><div class="plan-icon w">③</div><div><div class="plan-tag w">PRIORITY 03 · 小修改</div><div class="plan-title">张宇驰：CR对比规则修正</div></div></div><p class="plan-desc">修正广告名中全角“Ｘ”与半角“x”的统一判断，并调整NO字段提取逻辑，避免将示例记载内容误识别为正式数据。</p><div class="plan-chips"><span class="chip">文字标准化</span><span class="chip">NO提取</span><span class="chip">误判防止</span></div></div>
       <div class="plan-card purple-t"><div class="plan-hd"><div class="plan-icon p">④</div><div><div class="plan-tag p">PRIORITY 04 · 需求对应</div><div class="plan-title">董馨宁：大塚製薬起票诉求</div></div></div><p class="plan-desc">确认现行业务手顺、输入资料、输出结果和高频错误点，拆解可自动化范围后确定开发方式及验收条件。</p><div class="plan-chips"><span class="chip">需求确认</span><span class="chip">流程拆解</span><span class="chip">范围定义</span></div></div>
