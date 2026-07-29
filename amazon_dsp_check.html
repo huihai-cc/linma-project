@@ -4665,11 +4665,32 @@ function renderScResult(){
         'Location excluding 2 of 2',
         'Location group ID targeting excluding'
     ]);
+
+    // ダウンロード値が意味のある内容かどうか（空文字・プレースホルダーは無効）
+    function hasMeaningfulDownloadValue(v){
+        const value = String(v ?? '').normalize('NFKC').trim();
+        if(!value) return false;
+        const PLACEHOLDERS = new Set([
+            '-', '－', '—', '–', '―', '‐', 'ー',
+            'null', 'none', 'nan', 'n/a'
+        ]);
+        return !PLACEHOLDERS.has(value.toLowerCase());
+    }
+
+    // Location excluding列で「null結果かつ意味のある値がある」場合のみ黄色表示
+    function _isNullWithMeaningfulValue(colKey, dVal){
+        if(!dVal) return false;
+        if(LOCATION_EXCLUDING_KEYS.has(colKey)){
+            return hasMeaningfulDownloadValue(dVal);
+        }
+        return true;
+    }
+
     function shouldAutoShowColumn(colKey){
         if(!LOCATION_EXCLUDING_KEYS.has(colKey)) return false;
         return items.some(item => {
             const col = item.colResults?.find(c => c.key === colKey);
-            return !!String(col?.dVal || '').trim();
+            return hasMeaningfulDownloadValue(col?.dVal);
         });
     }
     function _getLocationExcludingNote(item, colKey, dVal){
@@ -4681,7 +4702,7 @@ function renderScResult(){
         };
         const existingNote = item[noteMap[colKey] || ''] || '';
         if(existingNote) return existingNote;
-        if(LOCATION_EXCLUDING_KEYS.has(colKey) && dVal)
+        if(LOCATION_EXCLUDING_KEYS.has(colKey) && hasMeaningfulDownloadValue(dVal))
             return '設定表では確認できない項目です。\n後台に除外地域が設定されています。メール指示と一致するか確認してください。';
         return '';
     }
@@ -5093,11 +5114,11 @@ const visibleCols = activeCols.filter(col=>{
                     const skipReason=cr?cr.skipReason||'':'';
                     const bothEmpty=!dVal&&!sVal;
                     const effectiveResult=bothEmpty?true:result;
-                    const bg=skipReason?'#eaf2f8':result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
-                    const border=skipReason?'1px solid #5dade2':result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
-                    const color=skipReason?'#2c3e50':result===false?'#922b21':(result===null&&dVal)?'#856404':'#333';
+                    const bg=skipReason?'#eaf2f8':result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&_isNullWithMeaningfulValue(col.key,dVal))?'#fef9e7':'white';
+                    const border=skipReason?'1px solid #5dade2':result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&_isNullWithMeaningfulValue(col.key,dVal))?'1px solid #f9ca24':'1px solid #e8e8e8';
+                    const color=skipReason?'#2c3e50':result===false?'#922b21':(result===null&&_isNullWithMeaningfulValue(col.key,dVal))?'#856404':'#333';
                     const skipLabel=skipReason?`<span style="font-size:0.68rem;color:#2c3e50;margin-left:4px;background:#d4e6f1;padding:1px 6px;border-radius:3px;">対象外 / ${skipReason}</span>`:'';
-                    const hideStyle=col.autoHide?'display:none;':'';
+                    const hideStyle=colHideStyle(col);
                     html+=`<td data-col-key="${col.key}"
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
                                vertical-align:middle;height:${SC_ROW_HEIGHT}px;overflow:hidden;
@@ -5123,18 +5144,18 @@ const visibleCols = activeCols.filter(col=>{
                     const skipReason=cr?cr.skipReason||'':'';
                     const bothEmpty=!dVal&&!sVal;
                     const effectiveResult=bothEmpty?true:result;
-                    const bg=skipReason?'#eaf2f8':result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&dVal)?'#fef9e7':'white';
-                    const border=skipReason?'1px solid #5dade2':result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&dVal)?'1px solid #f9ca24':'1px solid #e8e8e8';
+                    const bg=skipReason?'#eaf2f8':result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&_isNullWithMeaningfulValue(col.key,dVal))?'#fef9e7':'white';
+                    const border=skipReason?'1px solid #5dade2':result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&_isNullWithMeaningfulValue(col.key,dVal))?'1px solid #f9ca24':'1px solid #e8e8e8';
                     const skipLabel=skipReason?`<span style="font-size:0.68rem;color:#2c3e50;margin-left:4px;background:#d4e6f1;padding:1px 6px;border-radius:3px;">対象外 / ${skipReason}</span>`:'';
-                    const confirmLabel=!skipReason&&result===null&&dVal?'<span style="font-size:0.68rem;color:#856404;margin-left:4px;">要確認</span>':'';
-                    const hideStyle=col.autoHide?'display:none;':'';
+                    const confirmLabel=!skipReason&&result===null&&_isNullWithMeaningfulValue(col.key,dVal)?'<span style="font-size:0.68rem;color:#856404;margin-left:4px;">要確認</span>':'';
+                    const hideStyle=colHideStyle(col);
                     html+=`<td data-col-key="${col.key}"
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
                                vertical-align:middle;height:${SC_ROW_HEIGHT}px;overflow:hidden;
                                white-space:nowrap;text-overflow:ellipsis;text-align:left !important;${hideStyle}"
                         title="${esc([dVal, _getLocationExcludingNote(item,col.key,dVal)].filter(Boolean).join('\n'))}"
                         ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'${SC_ROW_HEIGHT}px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
-                        <span style="font-size:0.73rem;text-align:left;display:block;${skipReason?'color:#2c3e50':effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':'color:#856404'};">
+                        <span style="font-size:0.73rem;text-align:left;display:block;${skipReason?'color:#2c3e50':effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':(LOCATION_EXCLUDING_KEYS.has(col.key)&&!_isNullWithMeaningfulValue(col.key,dVal))?'color:#333':'color:#856404'};">
                             ${dVal||'<span style="color:#ccc;">—</span>'}
                         </span>
                         ${skipLabel || confirmLabel}
@@ -5147,7 +5168,7 @@ const visibleCols = activeCols.filter(col=>{
         ? '__keyword_diff__'
         : col.key === 'Audience names'
         ? '__audience_diff__'
-        : LOCATION_EXCLUDING_KEYS.has(col.key) && dVal
+        : LOCATION_EXCLUDING_KEYS.has(col.key) && hasMeaningfulDownloadValue(dVal)
         ? '__location_excl_note__'
         : null;
     const note = noteKey === '__location_excl_note__'
@@ -5205,7 +5226,7 @@ const visibleCols = activeCols.filter(col=>{
                 let dVal=di.dRow[col.key]||'';
                 if(!dVal){for(const a of aliases){if(di.dRow[a]){dVal=di.dRow[a];break;}}}
                 dVal=String(dVal).trim();
-                const hideStyle=col.autoHide?'display:none;':'';
+                const hideStyle=colHideStyle(col);
                 html+=`<td data-col-key="${col.key}"
                            style="padding:4px 8px;border:1px solid #f5c46b;
                                   background:#fff9e6;vertical-align:middle;
