@@ -4659,15 +4659,15 @@ function renderScResult(){
     const sys=SC_SYSTEMS[system]||{};
     const today=new Date(); today.setHours(0,0,0,0);
 
-    // 動的自動表示：ダウンロードデータに値がある除外地域列はデフォルト表示
+    // 動的自動表示：除外地域列＋全列の内容ベースデフォルト表示
     const LOCATION_EXCLUDING_KEYS = new Set([
         'Location excluding 1 of 2',
         'Location excluding 2 of 2',
         'Location group ID targeting excluding'
     ]);
 
-    // ダウンロード値が意味のある内容かどうか（空文字・プレースホルダーは無効）
-    function hasMeaningfulDownloadValue(v){
+    // セル値が意味のある内容かどうか（空文字・プレースホルダーは無効／sVal/dVal共通）
+    function hasMeaningfulCellValue(v){
         const value = String(v ?? '').normalize('NFKC').trim();
         if(!value) return false;
         const PLACEHOLDERS = new Set([
@@ -4681,18 +4681,51 @@ function renderScResult(){
     function _isNullWithMeaningfulValue(colKey, dVal){
         if(!dVal) return false;
         if(LOCATION_EXCLUDING_KEYS.has(colKey)){
-            return hasMeaningfulDownloadValue(dVal);
+            return hasMeaningfulCellValue(dVal);
         }
         return true;
     }
 
-    function shouldAutoShowColumn(colKey){
-        if(!LOCATION_EXCLUDING_KEYS.has(colKey)) return false;
+    // 列に関連するアイテムレベルの差異注記・業務備考
+    const COL_NOTE_MAP = {
+        'Audience names': '__audience_diff__',
+        'Location targeting 1 of 2': '__location_diff__',
+        'Targeting by Keywords': '__keyword_diff__',
+        'Brand suitability content exclusion categories': '__brand_content_note__',
+        'Brand suitability inventory tier': '__brand_tier_note__',
+        'Daypart period': '__daypart_diff__',
+    };
+    function _colHasNote(item, colKey){
+        if(COL_NOTE_MAP[colKey] && item[COL_NOTE_MAP[colKey]]) return true;
+        if(LOCATION_EXCLUDING_KEYS.has(colKey)){
+            const cr = item.colResults?.find(c => c.key === colKey);
+            if(cr && hasMeaningfulCellValue(cr.dVal)) return true;
+        }
+        return false;
+    }
+
+    // 整列に意味のある内容があるか（sVal/dVal/差異/備考）
+    function columnHasMeaningfulContent(colKey){
         return items.some(item => {
-            const col = item.colResults?.find(c => c.key === colKey);
-            return hasMeaningfulDownloadValue(col?.dVal);
+            const c = item.colResults?.find(x => x.key === colKey);
+            if(!c) return false;
+            return hasMeaningfulCellValue(c.sVal)
+                || hasMeaningfulCellValue(c.dVal)
+                || c.result === false
+                || _colHasNote(item, colKey);
         });
     }
+
+    function shouldAutoShowColumn(colKey){
+        return LOCATION_EXCLUDING_KEYS.has(colKey) && columnHasMeaningfulContent(colKey);
+    }
+
+    // 列の初期表示判定（全経路の単一入口）
+    function isColumnInitiallyVisible(col){
+        if(!col.autoHide) return columnHasMeaningfulContent(col.key);
+        return shouldAutoShowColumn(col.key);
+    }
+
     function _getLocationExcludingNote(item, colKey, dVal){
         const noteMap = {
             'Brand suitability content exclusion categories': '__brand_content_note__',
@@ -4702,7 +4735,7 @@ function renderScResult(){
         };
         const existingNote = item[noteMap[colKey] || ''] || '';
         if(existingNote) return existingNote;
-        if(LOCATION_EXCLUDING_KEYS.has(colKey) && hasMeaningfulDownloadValue(dVal))
+        if(LOCATION_EXCLUDING_KEYS.has(colKey) && hasMeaningfulCellValue(dVal))
             return '設定表では確認できない項目です。\n後台に除外地域が設定されています。メール指示と一致するか確認してください。';
         return '';
     }
@@ -4809,7 +4842,7 @@ const visibleCols = activeCols.filter(col=>{
         if(LI_NAME_SKIP.has(col.key)) return false;
         return true;
     });
-    function colHideStyle(col){ return (col.autoHide && !shouldAutoShowColumn(col.key))?'display:none;':''; }
+    function colHideStyle(col){ return isColumnInitiallyVisible(col)?'':'display:none;'; }
 
     document.getElementById('sc-filter-btns').style.display='flex';
     document.getElementById('sc-filter-btns').style.alignItems='center';
@@ -4898,7 +4931,7 @@ const visibleCols = activeCols.filter(col=>{
         <div id="sc-col-panel-body"
              style="padding:6px 16px 10px;display:flex;align-items:flex-start;
                     gap:6px;flex-wrap:wrap;border-top:1px dashed #dce3ea;">
-            ${activeCols.filter(c=>c.autoHide&&!ALWAYS_HIDDEN.has(c.key)&&!LI_NAME_SKIP.has(c.key)).map(col=>`
+            ${activeCols.filter(c=>!ALWAYS_HIDDEN.has(c.key)&&!LI_NAME_SKIP.has(c.key)).map(col=>`
             <label style="display:flex;align-items:center;gap:4px;background:white;
                            border:1px solid #ccc;border-radius:4px;padding:3px 8px;
                            cursor:pointer;font-size:0.76rem;color:#555;user-select:none;"
@@ -4906,7 +4939,7 @@ const visibleCols = activeCols.filter(col=>{
                    onmouseout="this.style.borderColor='#ccc'">
                 <input type="checkbox" data-col-key="${col.key}"
                        style="accent-color:#3498db;cursor:pointer;"
-                       ${shouldAutoShowColumn(col.key)?'checked':''}
+                       ${isColumnInitiallyVisible(col)?'checked':''}
                        onchange="scToggleCol(this)">
                 ${col.ja}
             </label>`).join('')}
@@ -5168,7 +5201,7 @@ const visibleCols = activeCols.filter(col=>{
         ? '__keyword_diff__'
         : col.key === 'Audience names'
         ? '__audience_diff__'
-        : LOCATION_EXCLUDING_KEYS.has(col.key) && hasMeaningfulDownloadValue(dVal)
+        : LOCATION_EXCLUDING_KEYS.has(col.key) && hasMeaningfulCellValue(dVal)
         ? '__location_excl_note__'
         : null;
     const note = noteKey === '__location_excl_note__'
