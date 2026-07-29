@@ -2390,9 +2390,17 @@ function normalizeCreativeName(v){
         .trim();
 }
 
+// CR名専用の比較用正規化：全角Ｘ/ｘと乗算記号×を半角小文字xに統一する。
+// Amazonは全角X/乗算記号を許容せず半角小文字xになるため、マッチング時だけ等価扱いする。
+// 半角ASCII Xの大文字小文字は既存の厳密規則を維持し、名全体の小文字化は行わない。
+function normalizeCreativeNameForCompare(v){
+    return normalizeCreativeName(v)
+        .replace(/[Ｘｘ×]/g, 'x');
+}
+
 function _creativeKey(liName, creativeName){
     const li = normalizeCreativeName(liName);
-    const cr = normalizeCreativeName(creativeName);
+    const cr = normalizeCreativeNameForCompare(creativeName);
     return `${li.length}:${li}|${cr.length}:${cr}`;
 }
 
@@ -2591,6 +2599,14 @@ function _creativeSettingHeaderInfo(rows){
     return { ...best, missing, complete:missing.length===0 };
 }
 
+// 入稿物管理表のB列(NO列)がテンプレート例示行（例／例：…）かどうかを判定する。
+// NFKC正規化＋trim後に「例」で始まり、直後がコロン(全角/半角)または終端の場合のみ例示行とする。
+// 「例外」「比例」「事例1」などは誤って除外しない。ダウンロードデータには適用しない。
+function _isCreativeExampleRow(v){
+    const value = String(v ?? '').normalize('NFKC').trim();
+    return /^例(?:[:：]|$)/.test(value);
+}
+
 function readCreativeSettingDataMulti(wbsS,caseMode){
     const rows = [], files = [], diagnostics = [];
     const unrelated = /説明|注意|サンプル|sample|template|テンプレート|選択項目/i;
@@ -2642,6 +2658,7 @@ function readCreativeSettingDataMulti(wbsS,caseMode){
         let count = 0;
         for(let r=rowIdx+1; r<target.sheetRows.length; r++){
             const row = target.sheetRows[r];
+            if(_isCreativeExampleRow(row[1])) continue;
             const liName = normalizeCreativeName(row[cols.liName]);
             if(!liName) continue;
             const settingStatus = cols.settingStatus!==undefined
@@ -4642,6 +4659,33 @@ function renderScResult(){
     const sys=SC_SYSTEMS[system]||{};
     const today=new Date(); today.setHours(0,0,0,0);
 
+    // 動的自動表示：ダウンロードデータに値がある除外地域列はデフォルト表示
+    const LOCATION_EXCLUDING_KEYS = new Set([
+        'Location excluding 1 of 2',
+        'Location excluding 2 of 2',
+        'Location group ID targeting excluding'
+    ]);
+    function shouldAutoShowColumn(colKey){
+        if(!LOCATION_EXCLUDING_KEYS.has(colKey)) return false;
+        return items.some(item => {
+            const col = item.colResults?.find(c => c.key === colKey);
+            return !!String(col?.dVal || '').trim();
+        });
+    }
+    function _getLocationExcludingNote(item, colKey, dVal){
+        const noteMap = {
+            'Brand suitability content exclusion categories': '__brand_content_note__',
+            'Brand suitability inventory tier': '__brand_tier_note__',
+            'Targeting by Keywords': '__keyword_diff__',
+            'Audience names': '__audience_diff__'
+        };
+        const existingNote = item[noteMap[colKey] || ''] || '';
+        if(existingNote) return existingNote;
+        if(LOCATION_EXCLUDING_KEYS.has(colKey) && dVal)
+            return '設定表では確認できない項目です。\n後台に除外地域が設定されています。メール指示と一致するか確認してください。';
+        return '';
+    }
+
     // ===== IO名別グルーピング情報 =====
     const ioNames=[...new Set(items.map(i=>i.__IO_NAME__||'').filter(n=>n))];
 
@@ -4744,7 +4788,7 @@ const visibleCols = activeCols.filter(col=>{
         if(LI_NAME_SKIP.has(col.key)) return false;
         return true;
     });
-    function colHideStyle(col){ return col.autoHide?'display:none;':''; }
+    function colHideStyle(col){ return (col.autoHide && !shouldAutoShowColumn(col.key))?'display:none;':''; }
 
     document.getElementById('sc-filter-btns').style.display='flex';
     document.getElementById('sc-filter-btns').style.alignItems='center';
@@ -4841,6 +4885,7 @@ const visibleCols = activeCols.filter(col=>{
                    onmouseout="this.style.borderColor='#ccc'">
                 <input type="checkbox" data-col-key="${col.key}"
                        style="accent-color:#3498db;cursor:pointer;"
+                       ${shouldAutoShowColumn(col.key)?'checked':''}
                        onchange="scToggleCol(this)">
                 ${col.ja}
             </label>`).join('')}
@@ -5087,10 +5132,7 @@ const visibleCols = activeCols.filter(col=>{
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
                                vertical-align:middle;height:${SC_ROW_HEIGHT}px;overflow:hidden;
                                white-space:nowrap;text-overflow:ellipsis;text-align:left !important;${hideStyle}"
-                        title="${esc([dVal, item[col.key==='Brand suitability content exclusion categories'?'__brand_content_note__':
-col.key==='Brand suitability inventory tier'?'__brand_tier_note__':
-col.key==='Targeting by Keywords'?'__keyword_diff__':
-col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n'))}"
+                        title="${esc([dVal, _getLocationExcludingNote(item,col.key,dVal)].filter(Boolean).join('\n'))}"
                         ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'${SC_ROW_HEIGHT}px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
                         <span style="font-size:0.73rem;text-align:left;display:block;${skipReason?'color:#2c3e50':effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':'color:#856404'};">
                             ${dVal||'<span style="color:#ccc;">—</span>'}
@@ -5105,8 +5147,12 @@ col.key==='Audience names'?'__audience_diff__':'']||''].filter(Boolean).join('\n
         ? '__keyword_diff__'
         : col.key === 'Audience names'
         ? '__audience_diff__'
+        : LOCATION_EXCLUDING_KEYS.has(col.key) && dVal
+        ? '__location_excl_note__'
         : null;
-    const note = noteKey ? (item[noteKey]||'') : '';
+    const note = noteKey === '__location_excl_note__'
+        ? '設定表では確認できない項目です。\n後台に除外地域が設定されています。メール指示と一致するか確認してください。'
+        : noteKey ? (item[noteKey]||'') : '';
     if(!note) return '';
     const noteColor = note.startsWith('❌') ? '#e74c3c'
                     : note.startsWith('⚠️') ? '#856404'
