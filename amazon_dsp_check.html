@@ -785,7 +785,8 @@ function parseAudienceS(v){
     const notItems=[], notParts=raw.split(/\band\s+not\b/i);
     const mainPart=notParts[0].trim();
     for(let i=1;i<notParts.length;i++){
-        const np=notParts[i].replace(/\([^)]+\)/g,'').trim();
+        // ★ 末尾の数字IDのみ除去（_normalizeAudienceName と同ルール）
+        const np=notParts[i].replace(/\s*[\(\[]\d{5,}[\)\]]\s*$/g,'').trim();
         for(const item of np.split(/[\n;；,，]/)){
             const it=_normalizeAudienceName(item.trim().replace(/^(or|and)\s+/i, ''));
             if(it && !['AND','NOT','OR',''].includes(it.toUpperCase())) notItems.push(it);
@@ -1207,6 +1208,115 @@ function readAllSegmentSheets(wb) {
         segMap[sheetName] = data;
     }
     return segMap;
+}
+
+// ===== 曜日時間帯指定シート解析（PVA専用） =====
+function readDaypartSheet(wb){
+    // シート名に「曜日時間帯指定」または「時間帯指定」を含むものを探す
+    const sheetName = wb.SheetNames.find(n =>
+        n.includes('曜日時間帯指定') || n.includes('時間帯指定')
+    );
+    if(!sheetName) return '';
+
+    const ws = wb.Sheets[sheetName];
+    if(!ws || !ws['!ref']) return '';
+
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+    if(rows.length < 5) return '';
+
+    // 曜日略称 → 英語正式名
+    var DAY_ABBR_MAP = {
+        'mon':'Monday','tue':'Tuesday','wed':'Wednesday',
+        'thu':'Thursday','fri':'Friday','sat':'Saturday','sun':'Sunday'
+    };
+
+    // 時刻→チェック用文字列 変換（checkFn の timeToCode と逆方向）
+    function hourToTimeStr(h, isEnd){
+        if(h === 0 || h === 24) return isEnd ? '12 AM' : '12 AM';
+        if(h === 12) return '12 PM';
+        if(h > 12) return (h - 12) + ' PM';
+        return h + ' AM';
+    }
+
+    // 時間帯ヘッダー行を探す（"AM0:00" 等を含む行）
+    var timeHeaderRow = -1;
+    for(var i = 0; i < rows.length; i++){
+        var rowStr = (rows[i] || []).join(' ');
+        if(rowStr.indexOf('AM0:00') !== -1 || rowStr.indexOf('AM0：00') !== -1){
+            timeHeaderRow = i;
+            break;
+        }
+    }
+    if(timeHeaderRow === -1) return '';
+
+    var timeHeaders = rows[timeHeaderRow];
+    var dayStartRow = timeHeaderRow + 1;
+
+    var resultLines = [];
+
+    for(var i = dayStartRow; i < rows.length; i++){
+        var row = rows[i] || [];
+        var dayAbbr = String(row[0] || '').trim().toLowerCase();
+        var dayName = DAY_ABBR_MAP[dayAbbr];
+        if(!dayName) continue;
+
+        // 連続する ○ ブロックを検出
+        var blocks = [];
+        var blockStart = -1;
+        for(var j = 1; j < row.length && j < timeHeaders.length; j++){
+            var mark = String(row[j] || '').trim();
+            if(mark === '○' || mark === '◯' || mark === 'O' || mark === 'o'){
+                // ○ / ◯ マーク
+                if(blockStart === -1) blockStart = j;
+            } else {
+                if(blockStart !== -1){
+                    blocks.push({start: blockStart, end: j - 1});
+                    blockStart = -1;
+                }
+            }
+        }
+        if(blockStart !== -1){
+            blocks.push({start: blockStart, end: Math.min(row.length, timeHeaders.length) - 1});
+        }
+
+        if(blocks.length === 0) continue;
+
+        // ブロック → 時間帯文字列 に変換
+        var timeRanges = [];
+        for(var b = 0; b < blocks.length; b++){
+            var block = blocks[b];
+            var startHeader = String(timeHeaders[block.start] || '');
+            var endHeader   = String(timeHeaders[block.end] || '');
+
+            // "AM0:00～AM0:59" → 開始時=0, "AM5:00～AM5:59" → 終了時=5+1=6
+            var startMatch = startHeader.match(/(AM|PM)\s*(\d{1,2})\s*:\s*(\d{2})/i);
+            var endMatch   = endHeader.match(/(AM|PM)\s*(\d{1,2})\s*:\s*(\d{2})/i);
+            if(!startMatch || !endMatch) continue;
+
+            var startHour = parseInt(startMatch[2], 10);
+            var startPeriod = startMatch[1].toUpperCase();
+            if(startPeriod === 'PM' && startHour !== 12) startHour += 12;
+            if(startPeriod === 'AM' && startHour === 12) startHour = 0;
+
+            var endHour = parseInt(endMatch[2], 10);
+            var endPeriod = endMatch[1].toUpperCase();
+            if(endPeriod === 'PM' && endHour !== 12) endHour += 12;
+            if(endPeriod === 'AM' && endHour === 12) endHour = 0;
+            // 終了時刻 = ブロック最終スロットの「終わり」（次の時間の開始）
+            endHour += 1;
+
+            var startStr = hourToTimeStr(startHour, false);
+            var endStr   = hourToTimeStr(endHour, true);
+
+            timeRanges.push(startStr + ' - ' + endStr);
+        }
+
+        if(timeRanges.length > 0){
+            resultLines.push(dayName + ': ' + timeRanges.join(', '));
+        }
+    }
+
+    return resultLines.join('\n');
 }
 
 /**
@@ -1655,6 +1765,7 @@ function _isSecondHeaderRow(row, keywords) {
 function readSettingTableVideo(wb, system){
     const areaSheetData = readAreaSheet(wb);  // ★ エリアシート読み込み
     const allSegmentSheets = readAllSegmentSheets(wb);  // ★ 全セグメントシート読み込み
+    const daypartSheetData = readDaypartSheet(wb);  // ★ 曜日時間帯指定シート読み込み
     const isPVA = system === 'amazon_pva';
     const SKIP_KW = ['入稿物','ブラックリスト','選択','ASIN','Deal',
                      'セグメント','Instructions','Reference'];
@@ -1746,6 +1857,7 @@ function readSettingTableVideo(wb, system){
             deal_name:    ['Deal名'],
             twitch:       ['Twitch'],
             timezone:     ['タイムゾーン','Time zone'],
+            daypart:      ['配信時間帯','Daypart','曜日時間帯指定'],
             // OTT専用
             ssp:          ['SSP','Supply sources'],
             region:       ['ユーザーの地域','Region'],
@@ -1833,7 +1945,19 @@ function readSettingTableVideo(wb, system){
                 device_type:   g(colIdx.device),
                 viewability_pct: '',
                 viewability_excl:'',
-                daypart:       '',
+                daypart:       (function(){
+                    var colVal = g(colIdx.daypart);
+                    if(!colVal) return '';
+                    // 「曜日時間帯指定」シート参照 → 解析済データを使用
+                    if((colVal.includes('曜日時間帯指定') || colVal.includes('時間帯指定'))
+                       && daypartSheetData){
+                        if(colVal.includes('指定なし') || colVal.toUpperCase().includes('ALL'))
+                            return '';
+                        return daypartSheetData;
+                    }
+                    // 直接指定 or 「指定なし」以外
+                    return colVal;
+                })(),
                 domain_bl:     '',
                 mobile_app:    '',
             });
@@ -2242,6 +2366,108 @@ const DL_COLUMNS_VIDEO = [
     return result.matched === null ? null : result.matched;
   }
 },
+    // ★ PVA: Daypart targeting timezone（タイムゾーン）比較
+    { key:'Daypart targeting timezone', ja:'デイパート時間帯',
+      checkFn:(s,v)=>{
+        const timezone = (s.timezone || '').trim();
+        const daypart  = (s.daypart  || '').trim();
+        // 設定表のタイムゾーン列があれば直接比較
+        if(timezone){
+            const tzL = timezone.toLowerCase();
+            const vL  = (v||'').toLowerCase();
+            if(tzL.includes("viewer") && vL.includes("viewer")) return true;
+            if(tzL === vL) return true;
+            return false;
+        }
+        // 設定表に daypart 設定があれば、ダウンロード側 timezone に viewer が含まれるか確認
+        if(daypart) return (v||'').toLowerCase().includes("viewer's time zone")||(v||'').toLowerCase().includes('viewer');
+        return null;
+      }
+    },
+    // ★ PVA: Daypart period（曜日時間帯指定）比較
+    { key:'Daypart period', ja:'デイパート期間',
+  checkFn:(s,v)=>{
+    const daypart = (s.daypart||'').trim();
+    if(!daypart) return null; // 設定表空 → チェック対象外
+
+    // ===== 設定表 → 5桁コード変換 =====
+    const DAY_MAP = {
+        'sunday':0,'monday':1,'tuesday':2,'wednesday':3,
+        'thursday':4,'friday':5,'saturday':6
+    };
+
+    function timeToCode(t, isEnd){
+        const s = t.trim().toUpperCase();
+        if(s === '12 AM'){
+            return isEnd ? '24' : '00';
+        }
+        if(s === '12 PM') return '12';
+        const m = s.match(/^(\d{1,2})\s*(AM|PM)$/i);
+        if(!m) return null;
+        let h = parseInt(m[1]);
+        const period = m[2].toUpperCase();
+        if(period === 'PM' && h !== 12) h += 12;
+        if(period === 'AM' && h === 12) h = 0;
+        return String(h).padStart(2,'0');
+    }
+
+    function settingToCodes(text){
+        const codes = new Set();
+        const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+        for(const line of lines){
+            const dayMatch = line.match(/^(\w+)\s*:/i);
+            if(!dayMatch) continue;
+            const dayName = dayMatch[1].toLowerCase();
+            const dayCode = DAY_MAP[dayName];
+            if(dayCode === undefined) continue;
+
+            const timePart = line.substring(line.indexOf(':')+1).trim();
+            const segments = timePart.split(',').map(s=>s.trim()).filter(s=>s);
+            for(const seg of segments){
+                const timeMatch = seg.match(/^(.+?)\s*-\s*(.+)$/);
+                if(!timeMatch) continue;
+                const startCode = timeToCode(timeMatch[1], false);
+                const endCode   = timeToCode(timeMatch[2], true);
+                if(startCode === null || endCode === null) continue;
+                codes.add(`${startCode}${endCode}${dayCode}`);
+            }
+        }
+        return codes;
+    }
+
+    // ===== 下载データをパース =====
+    function downloadToCodes(text){
+        const codes = new Set();
+        text.split(';').map(s=>s.trim()).filter(s=>s).forEach(c=>{
+            if(c.length === 5) codes.add(c);
+        });
+        return codes;
+    }
+
+    const sCodes = settingToCodes(daypart);
+    const dCodes = downloadToCodes(v||'');
+
+    if(sCodes.size === 0) return null;
+    if(dCodes.size === 0) return false; // ❌ 設定表あるのに下载空
+
+    const onlyS = [...sCodes].filter(c => !dCodes.has(c));
+    const onlyD = [...dCodes].filter(c => !sCodes.has(c));
+
+    if(onlyS.length === 0 && onlyD.length === 0){
+        return true;  // ✅ 完全一致
+    }
+
+    if(onlyS.length > 0){
+        s.__daypart_diff__ = `設定表にあるが後台未設定：${onlyS.join('; ')}`;
+    }
+    if(onlyD.length > 0){
+        s.__daypart_diff__ = (s.__daypart_diff__||'') +
+            `\n後台にあるが設定表に記載なし：${onlyD.join('; ')}`;
+    }
+
+    return false; // ❌ 不一致
+  }
+},
     { key:'Automated optimization',    ja:'自動最適化',
       checkFn:(s,v) => {
         const sa = normAutoOpt(s.auto_opt);
@@ -2388,6 +2614,8 @@ function matchAndCompareVideo(settingData, downloadMap, system){
                 'Pacing profile':          sRow.pacing,
                 'Base supply bid*':        sRow.base_cpm,
                 'Maximum average CPM':     sRow.max_cpm,
+                'Daypart targeting timezone': sRow.timezone || sRow.daypart,
+                'Daypart period':        sRow.daypart,
             };
             return map[key] !== undefined ? String(map[key] || '') : '';
         }
@@ -2425,6 +2653,7 @@ function matchAndCompareVideo(settingData, downloadMap, system){
     __location_excl_diff__: sRow.__location_excl_diff__ || '',
     __brand_content_note__: sRow.__brand_content_note__ || '',
     __brand_tier_note__:    sRow.__brand_tier_note__     || '',
+    __daypart_diff__:       sRow.__daypart_diff__        || '',
 });
     }
     return results;
@@ -5360,6 +5589,8 @@ const visibleCols = activeCols.filter(col=>{
         ? '__keyword_diff__'
         : col.key === 'Audience names'
         ? '__audience_diff__'
+        : col.key === 'Daypart period'
+        ? '__daypart_diff__'
         : LOCATION_EXCLUDING_KEYS.has(col.key) && hasMeaningfulCellValue(dVal)
         ? '__location_excl_note__'
         : null;
