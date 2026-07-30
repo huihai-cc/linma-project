@@ -72,6 +72,7 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
 .section-arrow{margin-left:auto;font-size:.65rem;color:var(--text2);transition:transform .2s;}
 .section.collapsed .section-arrow{transform:rotate(-90deg);}
 .section.collapsed .section-grid{display:none;}
+.section.collapsed .ka1-subgroups{display:none;}
 
 /* ===== Card Grid ===== */
 .section-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:4px 0 8px;}
@@ -79,6 +80,17 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
 @media(max-width:1024px){.section-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:768px){.section-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:390px){.section-grid{grid-template-columns:1fr;}}
+
+/* ===== 1課 Subgroups ===== */
+.ka1-subgroups{display:flex;flex-direction:column;gap:16px;padding:4px 0 8px;}
+.tool-subgroup{min-width:0;--subgroup-color:var(--ka1);--subgroup-tint:rgba(36,120,172,.08);--subgroup-text:#245a7a;}
+.tool-subgroup-title{
+  display:flex;align-items:center;gap:8px;margin-bottom:9px;padding:7px 10px;
+  border-left:3px solid var(--subgroup-color);border-radius:0 7px 7px 0;
+  background:var(--subgroup-tint);color:var(--subgroup-text);font-size:.75rem;font-weight:700;
+}
+.tool-subgroup-title::after{content:"";height:1px;background:var(--subgroup-color);opacity:.2;flex:1;}
+.tool-subgroup .section-grid{padding:0;}
 
 /* ===== Recent Grid ===== */
 .recent-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:4px 0 8px;}
@@ -330,17 +342,23 @@ var TOOLS=[
   {group:'common',icon:'🪶',name:'Excel文件轻量化',name_ja:'Excelファイル軽量化',desc:'清理无效公式尾部，可选公式值化，提升大型文件打开速度',desc_ja:'不要な数式末尾を整理、数式値化対応、大容量ファイルの速度改善',href:'excel_formula_cleaner.html',badge:'new'},
   {group:'common',icon:'📊',name:'Excel対比',name_ja:'Excel比較',desc:'2ファイルの差分チェック',desc_ja:'2ファイルの差分チェック',href:'excel_compare.html',badge:'update'},
   {group:'common',icon:'🖼️',name:'图片对比',name_ja:'画像比較',desc:'画像の並べて比較',desc_ja:'画像の並べて比較',href:'image_compare.html',badge:'local'},
-  {group:'ka1',icon:'📋',name:'Amazon DSP 設定チェック',name_ja:'Amazon DSP 設定チェック',desc:'Display / PVA / OTT 対応',desc_ja:'Display / PVA / OTT 対応',href:'amazon_dsp_check.html',badge:''},
-  {group:'ka1',icon:'📈',name:'DV360 設定チェック',name_ja:'DV360 設定チェック',desc:'Display / Youtube / OTT 対応※準備中',desc_ja:'Display / Youtube / OTT 対応※準備中',href:'',disabled:true,badge:'dev'},
-  {group:'ka1',icon:'🗾',name:'地域表記変換チェック',name_ja:'地域表記変換チェック',desc:'日方地域記載の変換、東洋経済新報社向け英語地域→日本語変換',desc_ja:'日方地域記載の変換、東洋経済新報社向け英語地域→日本語変換',href:'region_check.html',badge:''},
-  {group:'ka1',icon:'📤',name:'読売専用 アップロード',name_ja:'読売専用 アップロード',desc:'読売新聞向け入稿ツール',desc_ja:'読売新聞向け入稿ツール',href:'upload.html',badge:''},
-  {group:'ka1',icon:'📋',name:'読売ルール管理',name_ja:'読売ルール管理',desc:'広告ルールの閲覧・編集・追加',desc_ja:'広告ルールの閲覧・編集・追加',href:'yomiko_kanri.html',badge:''},
+  {group:'ka1',subgroup:'settings',icon:'📋',name:'Amazon DSP 設定チェック',name_ja:'Amazon DSP 設定チェック',desc:'Display / PVA / OTT 対応',desc_ja:'Display / PVA / OTT 対応',href:'amazon_dsp_check.html',badge:''},
+  {group:'ka1',subgroup:'settings',icon:'📈',name:'DV360 設定チェック',name_ja:'DV360 設定チェック',desc:'Display / Youtube / OTT 対応※準備中',desc_ja:'Display / Youtube / OTT 対応※準備中',href:'',disabled:true,badge:'dev'},
+  {group:'ka1',subgroup:'manuscript',icon:'📤',name:'読売専用 アップロード',name_ja:'読売専用 アップロード',desc:'読売新聞向け入稿ツール',desc_ja:'読売新聞向け入稿ツール',href:'upload.html',badge:''},
+  {group:'ka1',subgroup:'manuscript',icon:'📋',name:'読売ルール管理',name_ja:'読売ルール管理',desc:'広告ルールの閲覧・編集・追加',desc_ja:'広告ルールの閲覧・編集・追加',href:'yomiko_kanri.html',badge:''},
+  {group:'ka1',subgroup:'manuscript',icon:'🧾',name:'原稿配列ジェネレーター',name_ja:'原稿配列ジェネレーター',desc:'単列リストを整組・項目ごとの並びへ変換',desc_ja:'単列リストを整組・項目ごとの並びへ変換',href:'manuscript_array_generator.html',badge:'new'},
+  {group:'ka1',subgroup:'shared',icon:'🗾',name:'地域表記変換チェック',name_ja:'地域表記変換チェック',desc:'日方地域記載の変換、東洋経済新報社向け英語地域→日本語変換',desc_ja:'日方地域記載の変換、東洋経済新報社向け英語地域→日本語変換',href:'region_check.html',badge:''},
   {group:'ka2',icon:'🎯',name:'ターゲット推薦ツール',name_ja:'ターゲット推薦ツール',desc:'SEM見積向けターゲティング推薦',desc_ja:'SEM見積向けターゲティング推薦',href:'ターゲット推薦ツール 2.html',badge:''},
   {group:'ka3',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
   {group:'ka4',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
   {group:'ka5',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
   {group:'ka6',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
   {group:'report',icon:'📋',name:'BPO定例会 報告書',name_ja:'BPO定例会 報告書',desc:'年度目标・効率指標・核心成果・工作计划',desc_ja:'年度目標・効率指標・核心成果・業務計画',href:'bpo_weekly_report_malin.html',badge:'',perm:'管理者'}
+];
+var KA1_SUBGROUPS=[
+  {id:'settings',label:'設定チェック',color:'#2f7fb8',tint:'#eaf4fb',textColor:'#245b82'},
+  {id:'manuscript',label:'原稿作成・入稿',color:'#d9822b',tint:'#fff4e8',textColor:'#945417'},
+  {id:'shared',label:'課内共通',color:'#3c9267',tint:'#ebf7ef',textColor:'#286b48'}
 ];
 var GROUPS=[
   {id:'common',color:'var(--common)',labelKey:'commonTools',label:'共通',expanded:true},
@@ -357,6 +375,9 @@ var SEARCH_TAGS=['Excel','Amazon','DV360','地域','文本','图片'];
 
 // ==================== Complete UPDATE_LOG ====================
 var UPDATE_LOG=[
+  {date:'2026/07/30',requester:'董馨宁',type:'new',tool:'原稿配列ジェネレーター',title:'「原稿配列ジェネレーター」を追加',title_ja:'「原稿配列ジェネレーター」を追加',detail:'単列リストを「整組繰り返し」「項目ごと繰り返し」の並びへ変換し、結果のコピーとExcelダウンロードに対応。あわせて1課ツールを「設定チェック／原稿作成・入稿／課内共通」の3グループに整理しました。',detail_ja:'単列リストを「整組繰り返し」「項目ごと繰り返し」の並びへ変換し、結果のコピーとExcelダウンロードに対応。あわせて1課ツールを「設定チェック／原稿作成・入稿／課内共通」の3グループに整理しました。',summary:'単列リストを指定回数の並びへ変換する新ツールを追加。1課ツールも3グループに整理。',summary_ja:'単列リストを指定回数の並びへ変換する新ツールを追加。1課ツールも3グループに整理。',note:''},
+  {date:'2026/07/30',requester:'马林',type:'improve',tool:'Amazon DSP 設定チェック',title:'CR比較の日付異常表示と列幅調整に対応',title_ja:'CR比較の日付異常表示と列幅調整に対応',detail:'ダウンロードデータが無い場合でも、設定表内の他CRと異なる配信日付を赤色背景で表示し、確認漏れを防止。またCR結果表の列幅をドラッグで手動調整できるようにしました。',detail_ja:'ダウンロードデータが無い場合でも、設定表内の他CRと異なる配信日付を赤色背景で表示し、確認漏れを防止。またCR結果表の列幅をドラッグで手動調整できるようにしました。',summary:'設定表内の異常日付を赤色表示し、CR結果表の列幅をドラッグ調整可能に。',summary_ja:'設定表内の異常日付を赤色表示し、CR結果表の列幅をドラッグ調整可能に。',note:''},
+  {date:'2026/07/30',requester:'张微',type:'fix',tool:'Amazon DSP 設定チェック',title:'PVAオーディエンス（セグメントシート）の読込・比較を修正',title_ja:'PVAオーディエンス（セグメントシート）の読込・比較を修正',detail:'シート名指定でキーワードが取得できない場合にデフォルト名「セグメントシート」を検索するよう修正し、Audienceの抽出とInclude/Exclude判定の比較精度を改善しました。',detail_ja:'シート名指定でキーワードが取得できない場合にデフォルト名「セグメントシート」を検索するよう修正し、Audienceの抽出とInclude/Exclude判定の比較精度を改善しました。',summary:'セグメントシートのAudience抽出とInclude/Exclude比較を修正。',summary_ja:'セグメントシートのAudience抽出とInclude/Exclude比較を修正。',note:''},
   {date:'2026/07/29',requester:'张微',type:'add',tool:'Amazon DSP 設定チェック',title:'除外地域の動的表示対応',title_ja:'除外地域の動的表示対応',detail:'ダウンロードデータに除外地域（Location excluding 1 of 2／2 of 2／Location group ID targeting excluding）が存在する場合、対象列を自動表示し、「要確認」としてメール指示との確認を促すよう修正。全件空の列は引き続きデフォルト非表示。一致/不一致カウントに影響なし。',detail_ja:'ダウンロードデータに除外地域（Location excluding 1 of 2／2 of 2／Location group ID targeting excluding）が存在する場合、対象列を自動表示し、「要確認」としてメール指示との確認を促すよう修正。全件空の列は引き続きデフォルト非表示。一致/不一致カウントに影響なし。',summary:'除外地域の動的表示対応',summary_ja:'ダウンロードデータに除外地域が存在する場合、対象列を自動表示し、「要確認」としてメール指示との確認を促すよう修正。',note:''},
   {date:'2026/07/29',requester:'张宇驰',type:'fix',tool:'Amazon DSP 設定チェック',title:'CR名照合ルール修正＋サンプル行除外',title_ja:'CR名照合ルール修正＋サンプル行除外',detail:'CR名の「Ｘ・ｘ・×」を半角小文字「x」と同等に扱う照合ルールを追加。入稿物管理表のNO列に「例」と記載されたサンプル行をチェック対象外に修正。',detail_ja:'CR名の「Ｘ・ｘ・×」を半角小文字「x」と同等に扱う照合ルールを追加。入稿物管理表のNO列に「例」と記載されたサンプル行をチェック対象外に修正。',summary:'CR名照合ルール修正＋サンプル行除外',summary_ja:'CR名の「Ｘ・ｘ・×」を半角小文字「x」と同等に扱う照合ルールを追加し、入稿物管理表のサンプル行をチェック対象外に修正。',note:''},
   {date:'2026/07/25',requester:'马林',type:'new',tool:'Excel文件轻量化',title:'新增「Excel文件轻量化」工具',title_ja:'「Excelファイル軽量化」ツールを追加',detail:'自动识别并清理大型Excel中真实数据结束后的无效公式尾部，并支持指定Sheet或全部Sheet公式值化，改善文件打开和校正确认速度。',detail_ja:'大容量Excelの実データ終了後に残る不要な数式末尾を検出・整理し、指定Sheetまたは全Sheetの数式値化に対応しました。',summary:'自动检测并清理无效公式尾部，支持公式值化，大幅改善大型文件打开速度。',summary_ja:'不要な数式末尾を自動検出・清理し、数式値化にも対応。大容量ファイルの打开速度を大幅改善。',note:''},
@@ -479,6 +500,10 @@ function showMain(){
 }
 
 // ==================== Card Rendering ====================
+function getKa1Subgroup(tool){
+  if(tool.group!=='ka1')return null;
+  return KA1_SUBGROUPS.find(function(subgroup){return subgroup.id===tool.subgroup;})||null;
+}
 function cardHTML(tool){
   var lang=isJa();
   // 权限检查：定例会报告书仅管理者可见
@@ -489,17 +514,32 @@ function cardHTML(tool){
   var desc=lang&&tool.desc_ja?tool.desc_ja:tool.desc;
   var cls='card'+(tool.disabled?' card-disabled':'');
   var g=GROUPS.find(function(x){return x.id===tool.group;});
-  var border=g?'border-left-color:'+g.color+';':'';
+  var subgroup=getKa1Subgroup(tool);
+  var accent=subgroup?subgroup.color:(g?g.color:'#eee');
+  var border='border-left-color:'+accent+';';
   var badgeHtml='';
   if(tool.badge&&BADGE_MAP[tool.badge]){var b=BADGE_MAP[tool.badge];badgeHtml='<span class="card-badge '+b.cls+'">'+(lang?b.ja:b.zh)+'</span>';}
   var tag=tool.disabled?'div':'a';
   var hrefAttr=tool.disabled?'':' href="'+tool.href+'" target="_blank" onclick="recordRecent(\''+encodeURIComponent(tool.name)+'\')"';
   var html='<'+tag+' class="'+cls+'" style="'+border+'"'+hrefAttr+' data-name="'+tool.name+'" data-name-ja="'+(tool.name_ja||'')+'" data-desc="'+(tool.desc||'')+'" data-desc-ja="'+(tool.desc_ja||'')+'" data-group="'+tool.group+'">';
-  html+='<div class="card-icon" style="background:'+(g?g.color:'#eee')+'18;">'+tool.icon+'</div>';
+  html+='<div class="card-icon" style="background:'+accent+'18;">'+tool.icon+'</div>';
   html+='<span class="card-name">'+name+'</span>';
   if(desc)html+='<span class="card-desc">'+desc+'</span>';
   html+='<div class="card-footer">'+badgeHtml+'<span class="card-arrow">→</span></div>';
   html+='</'+tag+'>';
+  return html;
+}
+function renderKa1Tools(tools){
+  var html='<div class="ka1-subgroups">';
+  KA1_SUBGROUPS.forEach(function(subgroup){
+    var subgroupTools=tools.filter(function(tool){return tool.subgroup===subgroup.id;});
+    html+='<section class="tool-subgroup" data-subgroup="'+subgroup.id+'" style="--subgroup-color:'+subgroup.color+';--subgroup-tint:'+subgroup.tint+';--subgroup-text:'+subgroup.textColor+';">';
+    html+='<h3 class="tool-subgroup-title">'+subgroup.label+'</h3>';
+    html+='<div class="section-grid">';
+    subgroupTools.forEach(function(tool){html+=cardHTML(tool);});
+    html+='</div></section>';
+  });
+  html+='</div>';
   return html;
 }
 function renderGroups(){
@@ -514,9 +554,14 @@ function renderGroups(){
     html+='<span class="section-title">'+pt(g.labelKey)+'</span>';
     html+='<span class="section-count">'+tools.length+'</span>';
     html+='<span class="section-arrow">▼</span></div>';
-    html+='<div class="section-grid">';
-    tools.forEach(function(t){html+=cardHTML(t);});
-    html+='</div></div>';
+    if(g.id==='ka1'){
+      html+=renderKa1Tools(tools);
+    }else{
+      html+='<div class="section-grid">';
+      tools.forEach(function(t){html+=cardHTML(t);});
+      html+='</div>';
+    }
+    html+='</div>';
   });
   container.innerHTML=html;
 }
@@ -551,6 +596,11 @@ function doSearch(q){
     if(!q){card.style.display='';visible++;return;}
     var hay=[card.getAttribute('data-name'),card.getAttribute('data-name-ja'),card.getAttribute('data-desc'),card.getAttribute('data-desc-ja'),card.getAttribute('data-group')].join(' ').toLowerCase();
     var match=hay.indexOf(q)>=0;card.style.display=match?'':'none';if(match)visible++;
+  });
+  document.querySelectorAll('.tool-subgroup').forEach(function(subgroup){
+    var subgroupCards=subgroup.querySelectorAll('.card');
+    var hasVisibleCard=Array.prototype.some.call(subgroupCards,function(card){return card.style.display!=='none';});
+    subgroup.style.display=(q&&!hasVisibleCard)?'none':'';
   });
   document.querySelectorAll('#groupsContainer .section').forEach(function(sec){
     var vis=sec.querySelectorAll('.card:not([style*="display: none"])');

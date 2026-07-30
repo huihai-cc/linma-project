@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>原稿配列ジェネレーター</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#f5f5f5;
+  --surface:#ffffff;
+  --header:#2c3e50;
+  --nav:#34495e;
+  --primary:#c0392b;
+  --primary-hover:#a93226;
+  --secondary:#7f8c8d;
+  --secondary-hover:#6c7a7b;
+  --text:#2c3e50;
+  --muted:#6b7280;
+  --border:#d9dee3;
+  --focus:#2980b9;
+  --success:#1e8449;
+  --danger:#c0392b;
+}
+body{
+  min-height:100vh;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Segoe UI','Noto Sans SC','Noto Sans JP',sans-serif;
+  line-height:1.5;
+}
+.top-shell{
+  position:sticky;
+  top:0;
+  z-index:100;
+  width:100%;
+  background:var(--nav);
+  border-bottom:1px solid var(--border);
+}
+.qc-userbar{
+  background:#1a252f;
+  color:#fff;
+  padding:6px 16px;
+  font-size:.78rem;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+header{
+  background:var(--header);
+  color:#fff;
+  padding:14px 20px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+header h1{font-size:1.2rem;letter-spacing:.04em;}
+.badge{
+  flex:0 0 auto;
+  background:#27ae60;
+  border-radius:12px;
+  padding:3px 12px;
+  font-size:.75rem;
+}
+.back-nav{
+  background:var(--nav);
+  padding:8px 20px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.back-btn{
+  background:#2980b9;
+  color:#fff;
+  border:none;
+  border-radius:4px;
+  padding:5px 14px;
+  font-size:.82rem;
+  cursor:pointer;
+  text-decoration:none;
+  display:inline-block;
+}
+.back-btn:hover{background:#1a6fa8;}
+.back-note{color:#bdc3c7;font-size:.82rem;}
+.page-wrap{max-width:1200px;margin:0 auto;padding:22px 20px 40px;}
+.intro{margin-bottom:16px;color:#4b5563;font-size:.9rem;}
+.mode-panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:14px 16px;
+  margin-bottom:14px;
+}
+.mode-label{
+  display:block;
+  margin-bottom:8px;
+  color:#4b5563;
+  font-size:.78rem;
+  font-weight:700;
+}
+.mode-tabs{display:flex;gap:8px;flex-wrap:wrap;}
+.mode-tab{
+  border:1px solid #bdc3c7;
+  background:#fff;
+  color:#4b5563;
+  border-radius:5px;
+  padding:8px 16px;
+  font-size:.86rem;
+  font-weight:700;
+  cursor:pointer;
+  transition:background .15s,border-color .15s,color .15s;
+}
+.mode-tab:hover{border-color:var(--focus);color:var(--focus);}
+.mode-tab.active{background:var(--focus);border-color:var(--focus);color:#fff;}
+.workspace{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:14px;
+}
+.panel{
+  min-width:0;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  overflow:hidden;
+}
+.panel-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 14px;
+  background:#f8f9fa;
+  border-bottom:1px solid var(--border);
+}
+.panel-header label{font-size:.86rem;font-weight:700;}
+.count{color:var(--muted);font-size:.76rem;white-space:nowrap;}
+.panel-body{padding:14px;}
+textarea,
+input[type="number"]{
+  width:100%;
+  min-width:0;
+  border:1px solid #cfd6dc;
+  border-radius:5px;
+  background:#fff;
+  color:#20262e;
+  font:inherit;
+  outline:none;
+  transition:border-color .15s,box-shadow .15s;
+}
+textarea{
+  min-height:360px;
+  padding:11px 12px;
+  resize:vertical;
+  line-height:1.55;
+  white-space:pre;
+  overflow:auto;
+}
+textarea:focus,
+input[type="number"]:focus{
+  border-color:var(--focus);
+  box-shadow:0 0 0 3px rgba(41,128,185,.14);
+}
+#resultText{background:#fafafa;}
+.repeat-field{margin-top:13px;max-width:240px;}
+.repeat-field label{
+  display:block;
+  margin-bottom:6px;
+  color:#4b5563;
+  font-size:.8rem;
+  font-weight:700;
+}
+input[type="number"]{height:40px;padding:7px 10px;}
+.field-note{margin-top:5px;color:var(--muted);font-size:.7rem;}
+.actions{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  flex-wrap:wrap;
+  margin-top:15px;
+}
+button.action{
+  border:none;
+  border-radius:4px;
+  padding:9px 18px;
+  font-size:.86rem;
+  font-weight:700;
+  cursor:pointer;
+  transition:background .15s,opacity .15s;
+}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover:not(:disabled){background:var(--primary-hover);}
+.btn-secondary{background:var(--secondary);color:#fff;}
+.btn-secondary:hover:not(:disabled){background:var(--secondary-hover);}
+button.action:disabled{opacity:.45;cursor:not-allowed;}
+.message{
+  min-height:22px;
+  margin-top:10px;
+  font-size:.8rem;
+  font-weight:600;
+}
+.message.error{color:var(--danger);}
+.message.success{color:var(--success);}
+@media(max-width:860px){
+  .workspace{grid-template-columns:1fr;}
+  textarea{min-height:280px;}
+}
+@media(max-width:480px){
+  header{padding-left:12px;padding-right:12px;align-items:flex-start;flex-wrap:wrap;gap:8px;}
+  header h1{font-size:1.02rem;}
+  .badge{font-size:.66rem;padding:3px 9px;}
+  .back-nav{padding-left:12px;padding-right:12px;}
+  .page-wrap{padding:16px 12px 30px;}
+  .mode-tabs{display:grid;grid-template-columns:1fr;}
+  .mode-tab{width:100%;}
+  .panel-header{align-items:flex-start;flex-direction:column;gap:3px;}
+  .repeat-field{max-width:none;}
+  .actions{display:grid;grid-template-columns:1fr;}
+  button.action{width:100%;}
+}
+</style>
+</head>
+<body>
+<script src="qc-auth.js"></script>
+
+<div class="top-shell">
+<div class="qc-userbar" id="qcUserBar">
+  <span id="qcUserInfo"></span>
+</div>
+
+<header>
+  <h1>🧾 原稿配列ジェネレーター</h1>
+  <span class="badge">🔒 完全ローカル処理</span>
+</header>
+
+<div class="back-nav">
+  <a href="index.html" class="back-btn">← 返回导航页</a>
+  <span class="back-note">単列の原稿リストを必要な順序へ並べ替えます</span>
+</div>
+</div>
+
+<main class="page-wrap">
+  <p class="intro">対象リストを貼り付け、必要な並びに変換できます。</p>
+
+  <section class="mode-panel" aria-labelledby="modeLabel">
+    <span class="mode-label" id="modeLabel">変換モード</span>
+    <div class="mode-tabs" role="tablist" aria-label="変換モード">
+      <button type="button" class="mode-tab active" id="modeGroup" role="tab" aria-selected="true">
+        整組繰り返し
+      </button>
+      <button type="button" class="mode-tab" id="modeItem" role="tab" aria-selected="false">
+        項目ごと繰り返し
+      </button>
+    </div>
+  </section>
+
+  <div class="workspace">
+    <section class="panel" aria-labelledby="sourceLabel">
+      <div class="panel-header">
+        <label id="sourceLabel" for="sourceList">対象リスト（1行に1件）</label>
+        <span class="count">入力 <strong id="inputCount">0 件</strong></span>
+      </div>
+      <div class="panel-body">
+        <textarea id="sourceList" spellcheck="false" placeholder="例：&#10;a&#10;b&#10;c&#10;d"></textarea>
+        <div class="repeat-field">
+          <label for="repeatCount">繰り返し回数</label>
+          <input type="number" id="repeatCount" value="1" min="1" step="1" inputmode="numeric">
+          <p class="field-note">1以上の整数を入力してください（最大出力 100,000行）</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="resultLabel">
+      <div class="panel-header">
+        <label id="resultLabel" for="resultText">変換結果</label>
+        <span class="count">出力 <strong id="outputCount">0 行</strong></span>
+      </div>
+      <div class="panel-body">
+        <textarea id="resultText" readonly aria-live="polite" placeholder="変換結果がここに表示されます"></textarea>
+      </div>
+    </section>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="action btn-primary" id="copyButton" disabled>📋 結果をコピー</button>
+    <button type="button" class="action btn-primary" id="downloadButton" disabled>📥 Excelダウンロード</button>
+    <button type="button" class="action btn-secondary" id="clearButton">クリア</button>
+  </div>
+  <div class="message" id="message" role="status" aria-live="polite"></div>
+</main>
+
+<script src="xlsx.full.min.js"></script>
+<script src="manuscript_array_logic.js"></script>
+<script src="manuscript_array_page.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  var user = guardPage();
+  if (!user) {
+    document.body.innerHTML =
+      '<div style="text-align:center;margin-top:120px;">' +
+      '<h2 style="color:#c0392b;">ログインしてください</h2></div>';
+    return;
+  }
+  document.getElementById('qcUserInfo').textContent =
+    '👤 ' + (user.name || '?') + ' (' + (user.email || '?') + ')';
+
+  var Logic = window.ManuscriptArrayLogic;
+  var Page = window.ManuscriptArrayPage;
+  var elements = {
+    source: document.getElementById('sourceList'),
+    repeat: document.getElementById('repeatCount'),
+    result: document.getElementById('resultText'),
+    inputCount: document.getElementById('inputCount'),
+    outputCount: document.getElementById('outputCount'),
+    message: document.getElementById('message'),
+    groupButton: document.getElementById('modeGroup'),
+    itemButton: document.getElementById('modeItem'),
+    copyButton: document.getElementById('copyButton'),
+    downloadButton: document.getElementById('downloadButton')
+  };
+
+  function fallbackCopy(text) {
+    return new Promise(function(resolve, reject) {
+      var textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        if (!document.execCommand('copy')) {
+          throw new Error('copy command failed');
+        }
+        resolve();
+      } catch (error) {
+        reject(error);
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    });
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(function() {
+        return fallbackCopy(text);
+      });
+    }
+    return fallbackCopy(text);
+  }
+
+  function downloadLines(lines) {
+    if (!window.XLSX) {
+      throw new Error('SheetJS is not available.');
+    }
+    var workbook = Logic.createWorkbook(window.XLSX, lines);
+    XLSX.writeFile(workbook, Logic.createFilename(new Date()));
+  }
+
+  var controller = Page.createPageController(elements, {
+    logic: Logic,
+    copyText: copyText,
+    downloadLines: downloadLines
+  });
+
+  elements.source.addEventListener('input', controller.update);
+  elements.repeat.addEventListener('input', controller.update);
+  elements.groupButton.addEventListener('click', function() {
+    controller.setMode('group');
+  });
+  elements.itemButton.addEventListener('click', function() {
+    controller.setMode('item');
+  });
+  elements.copyButton.addEventListener('click', controller.copy);
+  elements.downloadButton.addEventListener('click', controller.download);
+  document.getElementById('clearButton').addEventListener('click', controller.clearAll);
+})();
+</script>
+</body>
+</html>

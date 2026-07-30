@@ -73,6 +73,24 @@ header h1 { font-size:1.2rem; letter-spacing:1px; }
     color:#1a5276;
 }
 .sc-progress.show { display:block; }
+
+/* CR 結果表列幅調整（リサイズハンドル） */
+.sc-cr-resize-table th {
+    position: relative;
+    min-width: 60px;
+}
+.sc-cr-resizer {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    z-index: 10;
+}
+.sc-cr-resizer:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
 </style>
 <script>
 // エスケープ関数
@@ -333,6 +351,7 @@ document.addEventListener('DOMContentLoaded', function(){
     });
     initScMultiDrop('setting');
     initScMultiDrop('download');
+    initCRColumnResize();
 });
 
 // ===== 複数ファイルドロップ初期化 =====
@@ -1243,6 +1262,21 @@ function _findSegmentForLI(audienceVal, segMap, liName) {
     let keyword = m ? m[1].trim() : '';
 
     // ★ キーワードが取れない場合（「セグメントシート」で指定 など）
+    //    まずデフォルト名「セグメントシート」を持つ Sheet を探す
+    if (!keyword) {
+        const defaultMatches = Object.entries(segMap).filter(([sheetName]) =>
+            _normalizeSheetName(sheetName) === 'セグメントシート'
+        );
+        if (defaultMatches.length === 1) {
+            return defaultMatches[0][1];
+        }
+        // 複数デフォルト名がある場合は曖昧マーカー
+        if (defaultMatches.length > 1) {
+            return { groups: [], groupOps: [], __directRef__: true, __ambiguous__: true };
+        }
+    }
+
+    // ★ キーワードが取れない場合（「セグメントシート」で指定 など）
     //    LI名からキーワードを推測（例：PVA_demo_CTV_30s → CTV）
     if(!keyword && liName){
         // LI名の _ 区切りパーツから、セグメントシート名に含まれるものを探す
@@ -1341,8 +1375,29 @@ function _readSegmentSheetDynamic(rows) {
         if (matchedSegCol >= 0) {
             usedSegCols.add(tp.col);
             usedSegCols.add(matchedSegCol);
-            pairs.push({ typeCol: tp.col, segCol: matchedSegCol, headerRow });
+            // type列とseg列が同じ列の場合は「縦置き」形式：タイプ値はヘッダー行の隣接セルにある
+            let isVertical = false;
+            let fixedType = null;
+            if (matchedSegCol === tp.col) {
+                isVertical = true;
+                const rowHdr = rows[tp.row] || [];
+                // 右隣、なければ左隣からタイプ値を取得
+                let typeVal = rowHdr[tp.col + 1];
+                if (typeVal === undefined || String(typeVal).trim() === '') {
+                    typeVal = tp.col > 0 ? rowHdr[tp.col - 1] : undefined;
+                }
+                fixedType = _getSegmentTypeFromValue(typeVal) || 'Include';
+            }
+            pairs.push({ typeCol: tp.col, segCol: matchedSegCol, headerRow, isVertical, fixedType });
         }
+    }
+
+    // ヘルパー：値から Include/Exclude を判定（セグメントタイプ用）
+    function _getSegmentTypeFromValue(val) {
+        const s = String(val || '').trim().toLowerCase();
+        if (s.includes('exclude') || s === '除外') return 'Exclude';
+        if (s.includes('include') || s === '含む') return 'Include';
+        return null;
     }
 
     if (pairs.length === 0) return result;
@@ -1408,12 +1463,15 @@ function _readSegmentSheetDynamic(rows) {
     // ── Step 5: 各ペアのデータ抽出 ──
     for (const p of pairs) {
         const segments = [];
-        // 最初のデータ行の type 値を元にグループの type を確定
-        let groupType = 'Include';
-        const firstRow = rows[dataStart];
-        if (firstRow) {
-            const ft = String(firstRow[p.typeCol] || '').trim().toLowerCase();
-            if (ft.includes('exclude') || ft === '除外') groupType = 'Exclude';
+        // グループの type を確定
+        // 縦置き形式はヘッダー行の接セルから固定値を取得；横置きはデータ行の type 列から取得
+        let groupType = p.fixedType || 'Include';
+        if (!p.isVertical) {
+            const firstRow = rows[dataStart];
+            if (firstRow) {
+                const ft = String(firstRow[p.typeCol] || '').trim().toLowerCase();
+                if (ft.includes('exclude') || ft === '除外') groupType = 'Exclude';
+            }
         }
 
         for (let i = dataStart; i < rows.length; i++) {
@@ -1426,11 +1484,13 @@ function _readSegmentSheetDynamic(rows) {
                  'グループ1','グループ2','グループ3','および(and)','または(or)'].includes(segVal)) continue;
             // コメント行
             if (segVal.startsWith('※')) continue;
-            // type列に値がある場合のみ Include/Exclude 以外を排除
+            // 横置き形式：type列に値がある場合のみ Include/Exclude 以外を排除
             // （空の場合は旧コード互換でデータ行として扱う）
-            const rowType = String(r[p.typeCol] || '').trim().toLowerCase();
-            if (rowType && rowType !== 'include' && rowType !== 'exclude' && rowType !== '含む' && rowType !== '除外') {
-                continue;
+            if (!p.isVertical) {
+                const rowType = String(r[p.typeCol] || '').trim().toLowerCase();
+                if (rowType && rowType !== 'include' && rowType !== 'exclude' && rowType !== '含む' && rowType !== '除外') {
+                    continue;
+                }
             }
             segments.push(segVal);
         }
@@ -2963,6 +3023,56 @@ function compareCreativeData(settingData,downloadData,liSettingRows,caseMode){
         });
     });
 
+    // ===== DL未発見CRの設定表内日時異常検出 =====
+    // 同一LI内でDL未発見のCRが3件以上あり、かつ4フィールドのいずれかで
+    // 多数値（N-1件）と異なる値が1件だけ存在する場合、そのセルを赤くする。
+    (function detectSettingDateAnomalies(){
+        const fieldKeys = ['startDate','startTime','endDate','endTime'];
+        const groups = new Map();
+        items.forEach((item, idx) => {
+            if (item.matchStatus !== 'setting_only') return;
+            if (!item.liName) return;
+            if (!groups.has(item.liName)) groups.set(item.liName, []);
+            groups.get(item.liName).push({ item, idx });
+        });
+
+        groups.forEach(list => {
+            if (list.length < 3) return;
+            fieldKeys.forEach(field => {
+                // 空・エラー値を除外して比較対象を決定
+                const entries = list.map(({ item }) => {
+                    const raw = String(item.fields?.[field]?.expected || '').trim();
+                    return { item, raw };
+                }).filter(e => e.raw);
+                if (entries.length < 3) return;
+
+                // 値の出現回数を集計
+                const counts = new Map();
+                entries.forEach(e => {
+                    counts.set(e.raw, (counts.get(e.raw) || 0) + 1);
+                });
+                if (counts.size !== 2) return;
+
+                // 多数値が N-1 件、少数値が 1 件のケースのみ
+                const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+                const [majorVal, majorCount] = sorted[0];
+                const [minorVal, minorCount] = sorted[1];
+                if (minorCount !== 1 || majorCount !== entries.length - 1) return;
+
+                // 少数側のCRに異常フラグを付与
+                entries.filter(e => e.raw === minorVal).forEach(e => {
+                    if (!e.item.__dateAnomaly) e.item.__dateAnomaly = {};
+                    e.item.__dateAnomaly[field] = {
+                        reason: '設定表内の他CRと異なる日付です',
+                        note: 'DL未発見のため、設定表内比較による要確認',
+                        expected: e.raw,
+                        majority: majorVal
+                    };
+                });
+            });
+        });
+    })();
+
     return {
         caseMode,
         settingCount:settingRows.length,
@@ -3030,14 +3140,24 @@ function renderCreativeResultSection(creative){
             : crStatus.status==='error'?'#fff3cd':'#fafafa';
         const fieldCells=Object.keys(fieldLabels).map(key=>{
             const f=item.fields?.[key]||{};
+            const anomaly=item.__dateAnomaly?.[key];
             const icon=f.status==='match'?'✅':f.status==='mismatch'?'❌':f.status==='error'?'⚠️':'—';
-            const bg=f.status==='match'?'#f0fff5':f.status==='mismatch'?'#fff1f0':f.status==='error'?'#fff3cd':'#fafafa';
-            return `<td style="border:1px solid #ddd;padding:7px;vertical-align:top;background:${bg};min-width:145px;">
+            let bg=f.status==='match'?'#f0fff5':f.status==='mismatch'?'#fff1f0':f.status==='error'?'#fff3cd':'#fafafa';
+            let border='1px solid #ddd';
+            let anomalyHtml='';
+            if (anomaly) {
+                bg='#ffebee'; // 設定表内異常を示す赤系背景
+                border='2px solid #c0392b';
+                anomalyHtml=`<div style="font-size:0.65rem;color:#c0392b;margin-top:4px;white-space:normal;font-weight:bold;">⚠️ ${esc(anomaly.reason)}</div>
+                <div style="font-size:0.64rem;color:#922b21;margin-top:2px;white-space:normal;">${esc(anomaly.note)}</div>`;
+            }
+            return `<td style="border:${border};padding:7px;vertical-align:top;background:${bg};min-width:145px;">
                 <div style="font-weight:bold;font-size:0.72rem;">${icon} ${fieldLabels[key]}</div>
                 <div style="font-size:0.7rem;margin-top:4px;"><span style="color:#777;">設定：</span>${esc(f.expected||'—')}</div>
                 <div style="font-size:0.7rem;"><span style="color:#777;">DL：</span>${esc(f.actual||'—')}</div>
                 ${f.source?`<div style="font-size:0.65rem;color:#2874a6;margin-top:3px;">来源：${esc(f.source)}</div>`:''}
                 ${f.error?`<div style="font-size:0.65rem;color:#922b21;margin-top:3px;white-space:normal;">${esc(f.error)}</div>`:''}
+                ${anomalyHtml}
             </td>`;
         }).join('');
         return `<tr>
@@ -3080,24 +3200,63 @@ function renderCreativeResultSection(creative){
             ${creative.errorCount>0
                 ? `<span style="font-size:0.73rem;color:#922b21;">解析エラー：${creative.errorCount}件</span>`:''}
         </div>
+        <div style="margin-top:8px;padding:8px 10px;border-radius:5px;background:#f8f9fa;font-size:0.7rem;color:#555;">
+            <span style="font-weight:bold;">凡例：</span>
+            <span style="display:inline-block;margin-right:12px;padding:1px 6px;border-radius:3px;background:#fff3cd;color:#856404;border:1px solid #856404;">DL未発見</span>
+            <span style="display:inline-block;margin-right:12px;padding:1px 6px;border-radius:3px;background:#ffebee;color:#c0392b;border:1px solid #c0392b;">DL未発見＋設定表内他CRと値が異なる（要確認）</span>
+            <span style="display:inline-block;padding:1px 6px;border-radius:3px;background:#d5f5e3;color:#1e8449;border:1px solid #1e8449;">正式DL対比で一致</span>
+        </div>
         ${diagnostics}
         <div style="overflow:auto;margin-top:12px;max-height:620px;">
-            <table style="border-collapse:collapse;width:max-content;min-width:100%;font-size:0.75rem;">
+            <table class="sc-cr-resize-table" style="border-collapse:collapse;width:max-content;min-width:100%;font-size:0.75rem;">
                 <thead><tr style="background:#34495e;color:white;">
-                    <th style="padding:7px;border:1px solid #566573;">LI名</th>
-                    <th style="padding:7px;border:1px solid #566573;">CR名</th>
-                    <th style="padding:7px;border:1px solid #566573;">ステータス</th>
-                    <th style="padding:7px;border:1px solid #566573;">CR状態</th>
-                    <th style="padding:7px;border:1px solid #566573;">配信開始日</th>
-                    <th style="padding:7px;border:1px solid #566573;">配信開始時間</th>
-                    <th style="padding:7px;border:1px solid #566573;">配信停止日</th>
-                    <th style="padding:7px;border:1px solid #566573;">配信停止時間</th>
-                    <th style="padding:7px;border:1px solid #566573;">総合判定・来源</th>
+                    <th style="padding:7px;border:1px solid #566573;">LI名<div class="sc-cr-resizer"></div></th>
+                    <th style="padding:7px;border:1px solid #566573;">CR名<div class="sc-cr-resizer"></div></th>
+                    <th style="padding:7px;border:1px solid #566573;">ステータス<div class="sc-cr-resizer"></div></th>
+                    <th style="padding:7px;border:1px solid #566573;">CR状態<div class="sc-cr-resizer"></div></th>
+                    <th style="padding:7px;border:1px solid #566573;">配信開始日<div class="sc-cr-resizer"></div></th>
+                    <th style="padding:7px;border:1px solid #566573;">配信開始時間<div class="sc-cr-resizer"></div></th>
+                    <th style="padding:7px;border:1px solid #566573;">配信停止日<div class="sc-cr-resizer"></div></th>
+                    <th style="padding:7px;border:1px solid #566573;">配信停止時間<div class="sc-cr-resizer"></div></th>
+                    <th style="padding:7px;border:1px solid #566573;">総合判定・来源<div class="sc-cr-resizer"></div></th>
                 </tr></thead>
                 <tbody>${rows||`<tr><td colspan="9" style="padding:16px;text-align:center;color:#777;">CRデータがありません</td></tr>`}</tbody>
             </table>
         </div>
     </section>`;
+}
+
+// ===== CR 結果表列幅調整 =====
+function initCRColumnResize(){
+    if(initCRColumnResize._inited) return;
+    initCRColumnResize._inited = true;
+
+    document.addEventListener('mousedown', function(e){
+        const resizer = e.target.closest('.sc-cr-resizer');
+        if(!resizer) return;
+        const th = resizer.closest('th');
+        const table = th && th.closest('table');
+        if(!table || !table.classList.contains('sc-cr-resize-table')) return;
+
+        e.preventDefault();
+        const startX = e.pageX;
+        const startWidth = th.offsetWidth;
+        const MIN_WIDTH = 60;
+
+        function onMouseMove(ev){
+            const newWidth = Math.max(MIN_WIDTH, startWidth + ev.pageX - startX);
+            th.style.width = newWidth + 'px';
+            th.style.minWidth = newWidth + 'px';
+        }
+
+        function onMouseUp(){
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
 }
 
 // ===== checkAmazon（複数ファイル対応版） =====
