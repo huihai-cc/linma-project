@@ -156,14 +156,14 @@ const LibLoader = {
   <select id="sc-system-select">
     <option value="">-- 子类型を選択してください --</option>
     <option value="amazon_dsp">Amazon DSP（Display）</option>
-    <option value="amazon_pva">Amazon DSP（PVA）</option>
+    <option value="amazon_pva" selected>Amazon DSP（PVA）</option>
     <option value="amazon_ott">Amazon OTT</option>
   </select>
   <span id="sc-system-badge"></span>
   <label for="sc-case-mode-select">🧭 案件区分：</label>
   <select id="sc-case-mode-select">
     <option value="">-- 案件区分を選択してください --</option>
-    <option value="initial">初期案件</option>
+    <option value="initial" selected>初期案件</option>
     <option value="creative_addition">CR追加案件</option>
   </select>
   <span id="sc-case-mode-error"
@@ -269,8 +269,8 @@ const COL_ITEM_W_DEFAULT  = 120;
 let SC_COL_NO_W  = SC_COL_NO_W_DEFAULT;
 let SC_COL_LI_W  = SC_COL_LI_W_DEFAULT;
 let SC_ROW_HEIGHT = 50;   // 行高（默认50px，用户可调整）
-let scSystem = '';
-let scCaseMode = '';
+let scSystem = 'amazon_pva';   // 默认：Amazon DSP（PVA）
+let scCaseMode = 'initial';    // 默认：初期案件
 
 // ===== sessionStorage 读写函数 =====
 function scSaveRowHeight(val){
@@ -318,6 +318,21 @@ const SC_CASE_MODES = {
     creative_addition: 'CR追加案件',
 };
 
+// ===== システムBadge・アップロード域の表示同期 =====
+function applyScSystemUI(){
+    const badge = document.getElementById('sc-system-badge');
+    if(scSystem && SC_SYSTEMS[scSystem]){
+        const sys = SC_SYSTEMS[scSystem];
+        badge.textContent = sys.label;
+        badge.style.background = sys.badge_bg;
+        badge.style.display = 'inline-block';
+        document.getElementById('sc-upload-area').style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+        document.getElementById('sc-upload-area').style.display = 'none';
+    }
+}
+
 // ===== 初期化 =====
 document.addEventListener('DOMContentLoaded', function(){
     // 从 sessionStorage 恢复行高
@@ -328,20 +343,15 @@ document.addEventListener('DOMContentLoaded', function(){
         SC_COL_NO_W = savedWidths.no;
         SC_COL_LI_W = savedWidths.li;
     }
-    
+
+    // 默认选择（amazon_pva / initial）に合わせて初期表示を同期
+    document.getElementById('sc-system-select').value = scSystem;
+    document.getElementById('sc-case-mode-select').value = scCaseMode;
+    applyScSystemUI();
+
     document.getElementById('sc-system-select').addEventListener('change', function(){
         scSystem = this.value;
-        if(scSystem && SC_SYSTEMS[scSystem]){
-            const sys = SC_SYSTEMS[scSystem];
-            const badge = document.getElementById('sc-system-badge');
-            badge.textContent = sys.label;
-            badge.style.background = sys.badge_bg;
-            badge.style.display = 'inline-block';
-            document.getElementById('sc-upload-area').style.display = 'block';
-        } else {
-            document.getElementById('sc-system-badge').style.display = 'none';
-            document.getElementById('sc-upload-area').style.display = 'none';
-        }
+        applyScSystemUI();
     });
     document.getElementById('sc-case-mode-select').addEventListener('change', function(){
         scCaseMode = this.value;
@@ -814,6 +824,44 @@ function _segmentNameFuzzyEquals(a, b){
     if(!ta || !tb) return false;
     return ta === tb;
 }
+// ===== セグメント名の統一等価判定（双向比較で双方共通に使う） =====
+// 設定表側とダウンロード側のどちらに適用しても同じ結果になるよう、
+// 既存の _normalizeAudienceName（Demo/Demographic 前缀、末尾数字ID除去）と
+// _segmentNameFuzzyEquals（AudienceOne/Audience One、Intimate Merger 等の表記揺れ）を
+// 両側対称に組み合わせる。
+function _segmentNamesEquivalent(settingName, downloadName){
+    const normS = _normalizeAudienceName(settingName  || '').toLowerCase();
+    const normD = _normalizeAudienceName(downloadName || '').toLowerCase();
+    if(!normS || !normD) return false;
+    if(normS === normD) return true;
+    // 階層区切り > の最終部分（"Demographic > Age > X" → "X"）も比較に使う
+    const lastS = normS.includes('>') ? normS.split('>').pop().trim() : '';
+    const lastD = normD.includes('>') ? normD.split('>').pop().trim() : '';
+    if(lastS && lastS.length >= 8 && (normD.includes(lastS) || lastS.includes(normD))) return true;
+    if(lastD && lastD.length >= 8 && (normS.includes(lastD) || lastD.includes(normS))) return true;
+    // 部分一致（語境界のある前/后缀のみ・長さの差が小さい時のみ）
+    // ※ 汎化名 vs 細分名（例: "興味関心 - 金融 - 保険" と
+    //    "興味関心 - 金融 - 保険 - 住宅保険・火災保険"）を誤マッチさせない
+    // ※ "AMC 過去1年来店ユーザー_2507-2606" vs "過去1年来店ユーザー_2507-2606" のような
+    //    接頭語のみの差異は許容する
+    const shortLen = Math.min(normS.length, normD.length);
+    if(shortLen >= 8){
+        const longer  = normS.length >= normD.length ? normS : normD;
+        const shorter = normS.length >= normD.length ? normD : normS;
+        if(longer.length - shorter.length <= 10){
+            const atBoundary = (i) =>
+                i === 0 ||
+                i + shorter.length >= longer.length ||
+                /[\s\-:>\/・,()（）]/.test(longer[i - 1]) ||
+                /[\s\-:>\/・,()（）]/.test(longer[i + shorter.length]);
+            const pos = longer.indexOf(shorter);
+            if(pos >= 0 && atBoundary(pos)) return true;
+        }
+    }
+    // token fuzzy 比較（表記揺れ吸収）
+    if(_segmentNameFuzzyEquals(settingName, downloadName)) return true;
+    return false;
+}
 
 function parseAudienceS(v){
     if(!v) return { groups:[], notItems:[], raw:'' };
@@ -1028,10 +1076,31 @@ function compareAudience(sP, dP){
 /// ===== 修改 readAreaSheet：读取时自动转换日英地名 =====
 function _readAreaSheetFromRows(rows){
     const result = { targeted: [], excluded: [] };
-    for(let i = 3; i < rows.length; i++){
-        const bVal = String(rows[i][0] || '').trim();  // A列→含む/除外
-        const cVal = String(rows[i][1] || '').trim();  // B列→エリア名
+    // 表頭行（"含む/除外" セル）から列位置とデータ開始行を動的に特定
+    // ※ 実テンプレートでは「含む/除外」が B列 にあり、A/B列 版と B/C列 版の両方が存在する
+    let typeCol = -1, areaCol = -1, startRow = 0;
+    for(let i = 0; i < Math.min(8, rows.length); i++){
+        const r = rows[i] || [];
+        for(let c = 0; c < Math.min(10, r.length); c++){
+            if(String(r[c] || '').trim() === '含む/除外'){
+                typeCol = c;
+                areaCol = c + 1;
+                startRow = i + 1;
+                break;
+            }
+        }
+        if(typeCol >= 0) break;
+    }
+    // 表頭行が見つからない場合は旧互換（A/B列・データ開始3行目）
+    if(typeCol < 0){ typeCol = 0; areaCol = 1; startRow = 3; }
+
+    for(let i = startRow; i < rows.length; i++){
+        const r = rows[i] || [];
+        const bVal = String(r[typeCol] || '').trim();  // 含む/除外
+        const cVal = String(r[areaCol] || '').trim();  // エリア名
         if(!cVal) continue;
+        // 表頭残り等のゴミ文字は除外
+        if(cVal.includes('エリア名') || cVal.includes('郵便番号')) continue;
 
         // ★ 日語→英語変換
         const enName = convertAreaNameToEn(cVal);
@@ -1065,17 +1134,17 @@ function readAreaSheet(wb){
 function findAreaSheetForLI(allSheets, liName, rawLocation){
     const empty = { targeted: [], excluded: [] };
     if(!allSheets || allSheets.length === 0){
-        return { data: empty, name: '', debug: 'エリアシートなし' };
+        return { data: null, name: '', debug: 'エリアシートなし', ambiguous: true };
     }
 
-    // 位置情報がエリアシート参照でなければ、既存互換：先頭シートを保持
+    // 位置情報がエリアシート参照でなければ、既存互換：先頭シートを保持（比較には使わない）
     const isAreaRef = rawLocation && (rawLocation.includes('別紙') || rawLocation.includes('エリアシート'));
     if(!isAreaRef){
-        return { data: allSheets[0].data, name: allSheets[0].name, debug: allSheets[0].name + ' (非参照)' };
+        return { data: allSheets[0].data, name: allSheets[0].name, debug: allSheets[0].name + ' (非参照)', ambiguous: false };
     }
 
     if(allSheets.length === 1){
-        return { data: allSheets[0].data, name: allSheets[0].name, debug: allSheets[0].name };
+        return { data: allSheets[0].data, name: allSheets[0].name, debug: allSheets[0].name, ambiguous: false };
     }
 
     const ln = (liName || '').trim();
@@ -1096,16 +1165,17 @@ function findAreaSheetForLI(allSheets, liName, rawLocation){
     }
 
     if(matches.length === 1){
-        return { data: matches[0].data, name: matches[0].name, debug: matches[0].name };
+        return { data: matches[0].data, name: matches[0].name, debug: matches[0].name, ambiguous: false };
     }
 
     if(matches.length > 1){
-        console.warn('[AreaSheet] LI=' + liName + ' 複数候補あり：' + matches.map(s => s.name).join(', '));
-        return { data: matches[0].data, name: matches[0].name, debug: matches[0].name + ' (曖昧)' };
+        // 複数候補あり：静かに先頭を使うと誤判定するため、data:null で判定不可とする
+        console.warn('[AreaSheet] LI=' + liName + ' 対応エリアシートが複数候補あり：' + matches.map(s => s.name).join(', ') + ' → 判定不可');
+        return { data: null, name: '', debug: '対応エリアシートが複数候補あり（' + matches.map(s => s.name).join('、') + '）', ambiguous: true };
     }
 
-    console.warn('[AreaSheet] LI=' + liName + ' 対応エリアシート未発見。先頭シートを使用：' + allSheets[0].name);
-    return { data: allSheets[0].data, name: allSheets[0].name, debug: allSheets[0].name + ' (fallback)' };
+    console.warn('[AreaSheet] LI=' + liName + ' 対応エリアシート未発見 → 判定不可');
+    return { data: null, name: '', debug: '対応エリアシート未発見', ambiguous: true };
 }
 
 // ===== 日本都道府県 日英対照表 =====
@@ -1258,6 +1328,43 @@ function convertAreaNameToEn(name) {
     }
     // 変換できなかった場合はそのまま返す（英語で書かれている可能性）
     return trimmed;
+}
+
+// ===== 地域名の統一的比較キー生成（含む／除外 共通） =====
+// 入力例:
+//   熊本県 → "kumamoto"
+//   Kumamoto Prefecture → "kumamoto"
+//   PREFECTURE:Kumamoto, JP → "kumamoto"
+//   CITY:Osaka, JP → "osaka"
+//   Kumamoto → "kumamoto"
+function normalizeAreaForCompare(raw){
+    let s = String(raw || '').trim();
+    if(!s) return '';
+    // 型プレフィックス除去（"PREFECTURE:..." / "CITY:..." 等）＋ ", JP" 除去
+    const colonIdx = s.indexOf(':');
+    if(colonIdx !== -1){
+        s = s.substring(colonIdx + 1).split(',')[0].trim();
+    } else {
+        s = s.replace(/,\s*JP\s*$/i, '');
+    }
+    // 日語→英語変換（"熊本県" → "Kumamoto Prefecture"）
+    s = convertAreaNameToEn(s);
+    // " Prefecture" 除去（"Kumamoto Prefecture" → "Kumamoto"）
+    s = s.replace(/\s*prefecture\s*$/i, '');
+    return s.trim().toLowerCase();
+}
+
+// ===== エリアシート参照の地域双向比較（含む／除外 共通） =====
+// sNames: エリアシート側の地域名（表示用・en変換済み）
+// dlRaw:  ダウンロード側の生の地域文字列（";"区切り、例: "PREFECTURE:Kumamoto, JP"）
+// 戻り値: { missing: エリアシートにあるがDLにない（表示名）, extra: DLにあるがエリアシートにない（DL原文）, matched }
+function _compareAreasBidirectional(sNames, dlRaw){
+    const sNorms = sNames.map(normalizeAreaForCompare).filter(Boolean);
+    const dlRawList = dlRaw ? String(dlRaw).split(';').map(x => x.trim()).filter(Boolean) : [];
+    const dlNorms = dlRawList.map(normalizeAreaForCompare).filter(Boolean);
+    const missing = sNames.filter((a, i) => sNorms[i] && !dlNorms.includes(sNorms[i]));
+    const extra = dlRawList.filter((d, i) => dlNorms[i] && !sNorms.includes(dlNorms[i]));
+    return { missing, extra, matched: missing.length === 0 && extra.length === 0 };
 }
 
 // ===== セグメントシート読み込み（PVA用）=====
@@ -1558,11 +1665,29 @@ function _findSegmentForLI(audienceVal, segMap, liName) {
 function _readSegmentSheetDynamic(rows) {
     const result = { groups: [], groupOps: [] };
     const MAX_SCAN = Math.min(15, rows.length);
-    const MAX_COL = 20;
+    // 実テンプレートは1グループ5列（typeCol=1,6,11,16,21…）のため、5グループ目まで
+    // スキャンできるよう 20→25 に拡大
+    const MAX_COL = 25;
+
+    // ── ヘルパー：ラベル正規化 ──
+    // 全角・半角空白・改行・ノーブレークスペースを除去して比較する
+    const _normLabel = s => String(s).replace(/[\s　 ]+/g, '').trim();
+    // 「セグメント名」系表頭か（セグメント名＋他の文字が連結していてもOK）
+    const _isSegHeader = v => _normLabel(v).startsWith('セグメント名');
+    // 表頭セル「セグメント名XXX」のうち、XXX部分（Audience名）を取り出す
+    // ※ Audience名の内部スペース（例: "LS - Beauty Fans"）は保持する
+    const _segHeaderResidue = v => {
+        const s = String(v);
+        if (!_isSegHeader(s)) return '';
+        const idx = s.indexOf('セグメント名');
+        return s.slice(idx + 'セグメント名'.length).trim();
+    };
+    // グループラベル（グループ1〜5）か
+    const _isGroupLabel = v => /^グループ[1-5]$/.test(_normLabel(v));
 
     // ── Step 1: 全セルスキャンで「含む/除外」と「セグメント名」の位置を収集 ──
     // typePositions: [{row, col}]  (含む/除外のセル)
-    // segPositions:  [{row, col}]  (セグメント名のセル)
+    // segPositions:  [{row, col, residue}]  (セグメント名系表頭のセル)
     const typePos = [];
     const segPos  = [];
     for (let i = 0; i < MAX_SCAN; i++) {
@@ -1570,10 +1695,22 @@ function _readSegmentSheetDynamic(rows) {
         for (let c = 0; c < Math.min(MAX_COL, r.length); c++) {
             const v = String(r[c] || '').trim();
             if (!v) continue;
-            if (v === '含む/除外') typePos.push({ row: i, col: c });
-            if (v === 'セグメント名') segPos.push({ row: i, col: c });
+            if (_normLabel(v) === '含む/除外') typePos.push({ row: i, col: c });
+            if (_isSegHeader(v)) segPos.push({ row: i, col: c, residue: _segHeaderResidue(v) });
         }
     }
+
+    // 表頭かどうかの確定：純粋な「セグメント名」は無条件で表頭。
+    // 「セグメント名＋Audience名」が連結したセル（表頭の編集残り）は、
+    //   ・同行に別のセグメント名系セル または「含む/除外」セルがある
+    //   ・同列に純粋な「セグメント名」表頭がある
+    // のいずれかを満たす場合のみ表頭とみなし、そうでない場合は普通のAudience名として扱う
+    const headerSegPos = segPos.filter(sp => {
+        if (!sp.residue) return true;
+        if (segPos.some(o => o.row === sp.row && o !== sp)) return true;
+        if (typePos.some(tp => tp.row === sp.row)) return true;
+        return segPos.some(o => o.col === sp.col && o !== sp && !o.residue);
+    });
 
     // 含む/除外が見つからなければ空を返す（解析不能）
     if (typePos.length === 0) return result;
@@ -1581,30 +1718,38 @@ function _readSegmentSheetDynamic(rows) {
     // ── Step 2: 列ペア構築 ──
     // 各 typePos に対して、隣接する（同一行の右隣/左隣、または同列別行）セグメント名列を探す
     const usedSegCols = new Set();
-    const pairs = []; // [{typeCol, segCol, headerRow, type}]
+    const pairs = []; // [{typeCol, segCol, headerRow, type, segHeaderResidue}]
 
     for (const tp of typePos) {
         if (usedSegCols.has(tp.col)) continue; // 既に別のペアで使われている可能性
 
         let matchedSegCol = -1;
         let headerRow = tp.row;
+        let segHeaderResidue = '';
 
         // ① 同一行の右隣にセグメント名があるか
-        if (segPos.some(sp => sp.row === tp.row && sp.col === tp.col + 1)) {
+        const rightNeighbor = headerSegPos.find(sp => sp.row === tp.row && sp.col === tp.col + 1);
+        if (rightNeighbor) {
             matchedSegCol = tp.col + 1;
+            segHeaderResidue = rightNeighbor.residue || '';
         }
         // ② 同一行の左隣にセグメント名があるか（標準形式の一部）
-        else if (tp.col > 0 && segPos.some(sp => sp.row === tp.row && sp.col === tp.col - 1)) {
-            matchedSegCol = tp.col - 1;
+        else if (tp.col > 0) {
+            const leftNeighbor = headerSegPos.find(sp => sp.row === tp.row && sp.col === tp.col - 1);
+            if (leftNeighbor) {
+                matchedSegCol = tp.col - 1;
+                segHeaderResidue = leftNeighbor.residue || '';
+            }
         }
         // ③ 同列で別行のセグメント名（標準形式：type=行2, seg=行4-5）
-        else {
-            const sameColSeg = segPos.filter(sp => sp.col === tp.col);
+        if (matchedSegCol < 0) {
+            const sameColSeg = headerSegPos.filter(sp => sp.col === tp.col);
             if (sameColSeg.length > 0) {
                 // 最も近い後方行を採用
                 const nearest = sameColSeg.sort((a, b) => Math.abs(a.row - tp.row) - Math.abs(b.row - tp.row))[0];
                 matchedSegCol = nearest.col;
                 headerRow = Math.max(headerRow, nearest.row);
+                segHeaderResidue = nearest.residue || '';
             }
         }
 
@@ -1624,7 +1769,7 @@ function _readSegmentSheetDynamic(rows) {
                 }
                 fixedType = _getSegmentTypeFromValue(typeVal) || 'Include';
             }
-            pairs.push({ typeCol: tp.col, segCol: matchedSegCol, headerRow, isVertical, fixedType });
+            pairs.push({ typeCol: tp.col, segCol: matchedSegCol, headerRow, isVertical, fixedType, segHeaderResidue });
         }
     }
 
@@ -1652,9 +1797,11 @@ function _readSegmentSheetDynamic(rows) {
             const v = String(r[c] || '').trim();
             if (v) cellTexts.push(v);
         }
+        // ラベル行判定（「セグメント名」は完全一致のみ。データ行の
+        // 「セグメント名…」で始まるAudience名をラベルと誤認しない）
         const isLabelRow = cellTexts.some(t =>
-            ['グループ内演算子','グループ間演算子','グループ1','グループ2','グループ3',
-             '含む/除外','セグメント名'].includes(t)
+            ['セグメント名','グループ内演算子','グループ間演算子','含む/除外'].includes(t) ||
+            _isGroupLabel(t)
         );
         if (isLabelRow) continue;
 
@@ -1671,9 +1818,12 @@ function _readSegmentSheetDynamic(rows) {
 
         // どのtypeColにも値がないがsegmentColに値がある場合もデータ行とみなす
         // （Excludeグループでtype列が空の場合がある）
+        // ※ 「セグメント名」は完全一致のみラベル扱い。頭が「セグメント名…」のデータ値は
+        //    表頭と誤認せずデータとして扱う（縦置き形式でセグメント名列=データ列のため）
         for (const p of pairs) {
             const sv = String(r[p.segCol] || '').trim();
-            if (sv && !['セグメント名','グループ内演算子','含む/除外','グループ間演算子'].includes(sv) && !sv.startsWith('※')) {
+            if (sv && !['セグメント名','グループ内演算子','含む/除外','グループ間演算子'].includes(sv)
+                && !_isGroupLabel(sv) && !sv.startsWith('※')) {
                 hasData = true;
                 break;
             }
@@ -1699,6 +1849,11 @@ function _readSegmentSheetDynamic(rows) {
     // ── Step 5: 各ペアのデータ抽出 ──
     for (const p of pairs) {
         const segments = [];
+        // 表頭セルに「セグメント名＋Audience名」が連結していた場合、
+        // その残り（例: 「セグメント名LS - Beauty Fans」→「LS - Beauty Fans」）を
+        // 最初のデータとして保持する（表頭異常でデータを失わないため）
+        if (p.segHeaderResidue) segments.push(p.segHeaderResidue);
+
         // グループの type を確定
         // 縦置き形式はヘッダー行の接セルから固定値を取得；横置きはデータ行の type 列から取得
         let groupType = p.fixedType || 'Include';
@@ -1715,9 +1870,16 @@ function _readSegmentSheetDynamic(rows) {
             const segVal = String(r[p.segCol] || '').trim();
             if (!segVal) continue;
 
-            // ラベル類をスキップ
+            // 表頭の連結分（segHeaderResidue）と同一の値は既に保持済みのため重複させない
+            // （例: 表頭「セグメント名LS - Beauty Fans」とデータ行1行目の「LS - Beauty Fans」）
+            if (p.segHeaderResidue && segVal === p.segHeaderResidue) continue;
+
+            // ラベル類をスキップ（グループ1〜5は動的判定）
+            // ※ 「セグメント名」は完全一致のみスキップ。「セグメント名＋他の文字」は
+            //    表頭の連結データとして抽出済みのため、データ行では普通のAudience名として扱う
             if (['セグメント名','グループ内演算子','含む/除外','グループ間演算子',
-                 'グループ1','グループ2','グループ3','および(and)','または(or)'].includes(segVal)) continue;
+                 'および(and)','または(or)'].includes(segVal)
+                || _isGroupLabel(segVal)) continue;
             // コメント行
             if (segVal.startsWith('※')) continue;
             // 横置き形式：type列に値がある場合のみ Include/Exclude 以外を排除
@@ -2065,6 +2227,8 @@ function readSettingTableVideo(wb, system){
                 region:        g(colIdx.region),
                 __AREA_SHEET__: areaForLi.data,  // ★ LIごとに対応エリアシートを選択
                 __AREA_SHEET_NAME__: areaForLi.name,
+                __AREA_SHEET_DEBUG__: areaForLi.debug,
+                __AREA_SHEET_AMBIGUOUS__: !!areaForLi.ambiguous,
                 __SEGMENT_SHEET__: segForLi,  // ★ LIごとに対応セグメントシートを取得
                 __SEGMENT_SHEET_NAME__: segForLi.__sheetName__ || '',
                 // Display互換
@@ -2310,38 +2474,37 @@ const DL_COLUMNS_VIDEO = [
 
     // ===== エリアシート参照モード =====
     if(locL.includes('別紙') || locL.includes('エリアシート')){
+        // エリアシートが特定できない場合は判定不可（静かに一致させない）
+        if(s.__AREA_SHEET_AMBIGUOUS__ || !s.__AREA_SHEET__){
+            s.__location_diff__ = `⚠️ 対応エリアシートを特定できません（${s.__AREA_SHEET_DEBUG__ || 'エリアシートなし'}）`;
+            console.warn('[Location] LI=' + s.__LI_NAME__ + ' エリアシート特定不可 result=null reason=' + (s.__AREA_SHEET_DEBUG__||''));
+            return null;
+        }
         const area = s.__AREA_SHEET__;
-        if(!area || area.targeted.length === 0) return null;
-        if(!v || !v.trim()){
-            s.__location_diff__ = `エリアシートに含む地域が指定されていますが後台が空です：${area.targeted.join(', ')}`;
-            console.warn('[Location] LI=' + s.__LI_NAME__ + ' sheet=' + (s.__AREA_SHEET_NAME__||'') + ' setting=' + area.targeted.join(';') + ' download=(空) result=false');
+        console.warn('[AreaSheet] LI=' + s.__LI_NAME__ + ' sheet=' + (s.__AREA_SHEET_NAME__||'') + ' targeted=' + area.targeted.length + ' excluded=' + area.excluded.length);
+
+        // 含む地域がエリアシートに無い場合
+        if(area.targeted.length === 0){
+            const dlAreas = v ? v.split(';').map(x => x.trim()).filter(Boolean) : [];
+            if(dlAreas.length === 0) return null;   // 両方なし → 非設定項目（チェック対象外）
+            // DL側に含む地域がある → 不一致（DL多出）を明示
+            s.__location_diff__ = `【配信地域：ダウンロードにあるがエリアシートにない】\n  → ${dlAreas.join('\n  → ')}`;
             return false;
         }
 
-        // ★ 後台の地域名を正規化（"Prefecture:Osaka, JP" → "osaka"）
-        const normLocName = (raw) => {
-            const s = raw.trim();
-            const colonIdx = s.indexOf(':');
-            let name = colonIdx !== -1
-                ? s.substring(colonIdx + 1).split(',')[0].trim()
-                : s;
-            // ★ " Prefecture" / " prefecture" を除去して正規化
-            return name.replace(/\s*prefecture\s*$/i, '').trim().toLowerCase();
-        };
-
-        const dLocNames = v.split(';').map(normLocName).filter(Boolean);
-
-        // ★ 設定表側も同様に " Prefecture" を除去して正規化
-        const normSettingName = (name) =>
-            name.replace(/\s*prefecture\s*$/i, '').trim().toLowerCase();
-
-        const missing = area.targeted.filter(a =>
-            !dLocNames.includes(normSettingName(a))
-        );
-        const locResult = missing.length === 0;
-        console.warn('[Location] LI=' + s.__LI_NAME__ + ' sheet=' + (s.__AREA_SHEET_NAME__||'') + ' setting=' + area.targeted.join(';') + ' download=' + (v||'(空)') + ' result=' + locResult + (missing.length ? ' missing=' + missing.join(',') : ''));
-        if(missing.length > 0){
-            s.__location_diff__ = `後台に含まれていない地域：${missing.join(', ')}`;
+        // 双向比較（A: エリアシートにあるがDLにない / B: DLにあるがエリアシートにない）
+        const cmp = _compareAreasBidirectional(area.targeted, v);
+        const locResult = cmp.matched;
+        console.warn('[Location] LI=' + s.__LI_NAME__ + ' sheet=' + (s.__AREA_SHEET_NAME__||'') + ' setting=' + area.targeted.join(';') + ' download=' + (v||'(空)') + ' result=' + locResult + (cmp.missing.length ? ' missing=' + cmp.missing.join(',') : '') + (cmp.extra.length ? ' extra=' + cmp.extra.join(',') : ''));
+        if(!cmp.matched){
+            const diffs = [];
+            if(cmp.missing.length > 0){
+                diffs.push(`【配信地域：エリアシートにあるがダウンロードにない】\n  → ${cmp.missing.join('\n  → ')}`);
+            }
+            if(cmp.extra.length > 0){
+                diffs.push(`【配信地域：ダウンロードにあるがエリアシートにない】\n  → ${cmp.extra.join('\n  → ')}`);
+            }
+            s.__location_diff__ = diffs.join('\n\n');
             return false;
         }
         return true;
@@ -2358,33 +2521,37 @@ const DL_COLUMNS_VIDEO = [
     const loc = (s.location || s.region || '').trim();
     const locL = loc.toLowerCase();
     if(!(locL.includes('別紙') || locL.includes('エリアシート'))) return null;
+
+    // エリアシートが特定できない場合は判定不可（静かに一致させない）
+    if(s.__AREA_SHEET_AMBIGUOUS__ || !s.__AREA_SHEET__){
+        s.__location_excl_diff__ = `⚠️ 対応エリアシートを特定できません（${s.__AREA_SHEET_DEBUG__ || 'エリアシートなし'}）`;
+        console.warn('[LocationExcl] LI=' + s.__LI_NAME__ + ' エリアシート特定不可 result=null reason=' + (s.__AREA_SHEET_DEBUG__||''));
+        return null;
+    }
     const area = s.__AREA_SHEET__;
-    if(!area || area.excluded.length === 0) return null;
-    if(!v || !v.trim()){
-        s.__location_excl_diff__ = `エリアシートに除外地域が指定されていますが後台が空です：${area.excluded.join(', ')}`;
+
+    // 除外地域がエリアシートに無い場合
+    if(area.excluded.length === 0){
+        const dlAreas = v ? v.split(';').map(x => x.trim()).filter(Boolean) : [];
+        if(dlAreas.length === 0) return null;   // 両方なし → 非設定項目（チェック対象外）
+        // DL側に除外地域がある → 不一致（DL多出）を明示
+        s.__location_excl_diff__ = `【除外地域：ダウンロードにあるがエリアシートにない】\n  → ${dlAreas.join('\n  → ')}`;
         return false;
     }
 
-    // ★ 同じ正規化ロジック
-    const normLocName2 = (raw) => {
-        const s = raw.trim();
-        const colonIdx = s.indexOf(':');
-        let name = colonIdx !== -1
-            ? s.substring(colonIdx + 1).split(',')[0].trim()
-            : s;
-        return name.replace(/\s*prefecture\s*$/i, '').trim().toLowerCase();
-    };
-
-    const dLocNames2 = v.split(';').map(normLocName2).filter(Boolean);
-
-    const normSettingName2 = (name) =>
-        name.replace(/\s*prefecture\s*$/i, '').trim().toLowerCase();
-
-    const missing = area.excluded.filter(a =>
-        !dLocNames2.includes(normSettingName2(a))
-    );
-    if(missing.length > 0){
-        s.__location_excl_diff__ = `後台に除外されていない地域：${missing.join(', ')}`;
+    // 双向比較（A: エリアシートにあるがDLにない / B: DLにあるがエリアシートにない）
+    const cmp = _compareAreasBidirectional(area.excluded, v);
+    const locResult = cmp.matched;
+    console.warn('[LocationExcl] LI=' + s.__LI_NAME__ + ' sheet=' + (s.__AREA_SHEET_NAME__||'') + ' setting=' + area.excluded.join(';') + ' download=' + (v||'(空)') + ' result=' + locResult + (cmp.missing.length ? ' missing=' + cmp.missing.join(',') : '') + (cmp.extra.length ? ' extra=' + cmp.extra.join(',') : ''));
+    if(!cmp.matched){
+        const diffs = [];
+        if(cmp.missing.length > 0){
+            diffs.push(`【除外地域：エリアシートにあるがダウンロードにない】\n  → ${cmp.missing.join('\n  → ')}`);
+        }
+        if(cmp.extra.length > 0){
+            diffs.push(`【除外地域：ダウンロードにあるがエリアシートにない】\n  → ${cmp.extra.join('\n  → ')}`);
+        }
+        s.__location_excl_diff__ = diffs.join('\n\n');
         return false;
     }
     return true;
@@ -2437,58 +2604,117 @@ const DL_COLUMNS_VIDEO = [
             return audienceResult;
         }
 
-        // 後台のAudience names列からIDを除去して名前リストを作成
-        const rawNames = (v || '').split(';').map(item => {
-            return item.replace(/\(\d+\)/g, '').trim();
-        }).filter(Boolean);
+        // ── 後台（ダウンロード）側の解析 ──
+        // ① 'Audience names' 列から ID → 名称 のマッピングを構築
+        //    （例: "Demo - AudienceOne: Age 18-19 (426773123); ..."）
+        //    norm: 比較用に正規化した名前 / raw: 表示用の元の名前
+        const idToName = {};
+        if(v){
+            for(const item of v.split(/[;；\n]/)){
+                const it = item.trim();
+                if(!it) continue;
+                const m = it.match(/^(.+?)\s*\((\d{5,})\)\s*$/);
+                if(m){
+                    const rawName = m[1].trim();
+                    idToName[m[2].trim()] = {
+                        norm: _normalizeAudienceName(rawName),
+                        raw: rawName,
+                    };
+                }
+            }
+        }
 
-        // 後台のAudiences - include列からグループ構造を解析
+        // ② 'Audiences - include' 列の括弧構造から Include/Exclude を ID 単位で分離
+        //    (...): Include グループ、[NOT ...] / [...]: Exclude グループ
         const arVal = dlRow ? (dlRow['Audiences - include'] || '') : '';
 
         // グループ数カウント（Includeグループ = ()の数, Excludeグループ = []の数）
-        const dIncludeGroups = (arVal.match(/\([^)]+\)/g) || []);
-        const dExcludeGroups = (arVal.match(/\[[^\]]+\]/g) || []);
+        const dIncludeGroupMatches = (arVal.match(/\([^)]+\)/g) || []);
+        const dExcludeGroupMatches = (arVal.match(/\[[^\]]+\]/g) || []);
 
+        const dIncludeIds = new Set();
+        const dExcludeIds = new Set();
+        for(const gm of dIncludeGroupMatches){
+            for(const id of gm.slice(1, -1).split(/[;；\s]+/).filter(s => s.trim())){
+                dIncludeIds.add(id.trim());
+            }
+        }
+        for(const gm of dExcludeGroupMatches){
+            const inner = gm.slice(1, -1).replace(/^NOT\s+/i, '').trim();
+            for(const id of inner.split(/[;；\s]+/).filter(s => s.trim())){
+                dExcludeIds.add(id.trim());
+            }
+        }
+
+        // ③ ID→名称で解決し、正規化後（Set）に重複を除去する
+        //    重複除去は norm で行い、表示は raw を保持する
+        const dIncludeByName = new Map();
+        const dExcludeByName = new Map();
+        for(const id of dIncludeIds){
+            const info = idToName[id];
+            if(!info) continue;
+            if(!dIncludeByName.has(info.norm)) dIncludeByName.set(info.norm, info.raw);
+        }
+        for(const id of dExcludeIds){
+            const info = idToName[id];
+            if(!info) continue;
+            if(!dExcludeByName.has(info.norm)) dExcludeByName.set(info.norm, info.raw);
+        }
+        const dIncludeNames = [...dIncludeByName.keys()];   // 比較用（正規化済み・重複なし）
+        const dExcludeNames = [...dExcludeByName.keys()];   // 比較用（正規化済み・重複なし）
+        const dIncludeRaw   = [...dIncludeByName.values()]; // 表示用（元の名前）
+        const dExcludeRaw   = [...dExcludeByName.values()]; // 表示用（元の名前）
+
+        // ── 設定表側の解析 ──
         const sIncludeGroups = seg.groups.filter(g => g.type === 'Include');
         const sExcludeGroups = seg.groups.filter(g => g.type === 'Exclude');
+        // 同一名称の重複は除去（完全一致のみ。fuzzy では除去しない）
+        const sAllIncludeNames = [...new Set(sIncludeGroups.flatMap(g => g.segments))];
+        const sAllExcludeNames = [...new Set(sExcludeGroups.flatMap(g => g.segments))];
 
-        // グループ数比較
-        if(sIncludeGroups.length !== dIncludeGroups.length){
-            s.__audience_diff__ =
-                `Includeグループ数不一致：設定表${sIncludeGroups.length}グループ / 後台${dIncludeGroups.length}グループ`;
-            console.warn('[Audience] LI=' + s.__LI_NAME__ + ' sheet=' + (s.__SEGMENT_SHEET_NAME__||'') + ' result=false reason=' + s.__audience_diff__);
-            return false;
+        // ── 双向比較（設定表 = ダウンロード）──
+        // A. 設定表にあるがダウンロードにない Segment
+        // B. ダウンロードにあるが設定表にない Segment
+        // 双方とも _segmentNamesEquivalent で比較し、A・B どちらか一方でも
+        // 非空なら不一致（設定表 ⊂ ダウンロード でも「一致」としない）
+        const missingInDInclude = sAllIncludeNames.filter(sn =>
+            !dIncludeNames.some(dn => _segmentNamesEquivalent(sn, dn))
+        );
+        const extraInDInclude = dIncludeNames.filter(dn =>
+            !sAllIncludeNames.some(sn => _segmentNamesEquivalent(sn, dn))
+        ).map(norm => ({ norm, raw: dIncludeByName.get(norm) }));
+        const missingInDExclude = sAllExcludeNames.filter(sn =>
+            !dExcludeNames.some(dn => _segmentNamesEquivalent(sn, dn))
+        );
+        const extraInDExclude = dExcludeNames.filter(dn =>
+            !sAllExcludeNames.some(sn => _segmentNamesEquivalent(sn, dn))
+        ).map(norm => ({ norm, raw: dExcludeByName.get(norm) }));
+
+        // ── 差異の集約 ──
+        // グループ数は「参考」として記録するが、不一致の最終判断は名称の双向比較で行う
+        const diffs = [];
+        if(sIncludeGroups.length !== dIncludeGroupMatches.length){
+            diffs.push(`【参考】Includeグループ数が異なります（設定表: ${sIncludeGroups.length} / 後台: ${dIncludeGroupMatches.length}）`);
         }
-        if(sExcludeGroups.length !== dExcludeGroups.length){
-            s.__audience_diff__ =
-                `Excludeグループ数不一致：設定表${sExcludeGroups.length}グループ / 後台${dExcludeGroups.length}グループ`;
-            console.warn('[Audience] LI=' + s.__LI_NAME__ + ' sheet=' + (s.__SEGMENT_SHEET_NAME__||'') + ' result=false reason=' + s.__audience_diff__);
-            return false;
+        if(sExcludeGroups.length !== dExcludeGroupMatches.length){
+            diffs.push(`【参考】Excludeグループ数が異なります（設定表: ${sExcludeGroups.length} / 後台: ${dExcludeGroupMatches.length}）`);
+        }
+        if(missingInDInclude.length > 0){
+            diffs.push(`【Include：設定表にあるがダウンロードにない】\n  → ${missingInDInclude.join('\n  → ')}`);
+        }
+        if(extraInDInclude.length > 0){
+            diffs.push(`【Include：ダウンロードにあるが設定表にない】\n  → ${extraInDInclude.map(x => x.raw).join('\n  → ')}`);
+        }
+        if(missingInDExclude.length > 0){
+            diffs.push(`【Exclude：設定表にあるがダウンロードにない】\n  → ${missingInDExclude.join('\n  → ')}`);
+        }
+        if(extraInDExclude.length > 0){
+            diffs.push(`【Exclude：ダウンロードにあるが設定表にない】\n  → ${extraInDExclude.map(x => x.raw).join('\n  → ')}`);
         }
 
-        // 全セグメント名が後台に存在するか確認（順不同）
-        // ★ 両側を _normalizeAudienceName で正規化してから比較
-        //    （設定表: "Demographic > Age > AudienceOne: Age 20-21"
-        //      後台:   "Demo - AudienceOne: Age 20-21" → 正規化で "AudienceOne: Age 20-21"）
-        const allSettingSegs = seg.groups.flatMap(g => g.segments);
-        const normalizedDNames = rawNames.map(d => ({
-            orig: d,
-            norm: _normalizeAudienceName(d).toLowerCase(),
-        }));
-        const missing = allSettingSegs.filter(segName => {
-            const normS = _normalizeAudienceName(segName).toLowerCase();
-            // 階層区切り > の最終部分も比較用に抽出（"Demographic > Age > X" → "X"）
-            const lastPart = normS.includes('>') ? normS.split('>').pop().trim() : '';
-            return !normalizedDNames.some(({orig: origD, norm: normD}) =>
-                normD.includes(normS) || normS.includes(normD) ||
-                (lastPart && (normD.includes(lastPart) || lastPart.includes(normD))) ||
-                _segmentNameFuzzyEquals(segName, origD)
-            );
-        });
-
-        if(missing.length > 0){
-            s.__audience_diff__ = `後台に見つからないセグメント：\n${missing.join('\n')}`;
-            console.warn('[Audience] LI=' + s.__LI_NAME__ + ' sheet=' + (s.__SEGMENT_SHEET_NAME__||'') + ' result=false reason=後台に見つからないセグメント');
+        if(diffs.length > 0){
+            s.__audience_diff__ = diffs.join('\n\n');
+            console.warn('[Audience] LI=' + s.__LI_NAME__ + ' sheet=' + (s.__SEGMENT_SHEET_NAME__||'') + ' result=false reason=' + s.__audience_diff__.replace(/\n/g, ' / '));
             return false;
         }
 
@@ -2513,24 +2739,46 @@ const DL_COLUMNS_VIDEO = [
   }
 },
     // ★ PVA: Daypart targeting timezone（タイムゾーン）比較
+    // ・Daypart指定なし ＋ 設定表時区が Account系/空白 ＋ DL空 → 一致
+    // ・Daypart指定あり → 従来の viewer 比較
     { key:'Daypart targeting timezone', ja:'デイパート時間帯',
       checkFn:(s,v)=>{
-        const timezone = (s.timezone || '').trim();
-        const daypart  = (s.daypart  || '').trim();
-        let result = null;
-        // 設定表のタイムゾーン列があれば直接比較
-        if(timezone){
-            const tzL = timezone.toLowerCase();
-            const vL  = (v||'').toLowerCase();
-            if(tzL.includes("viewer") && vL.includes("viewer")) result = true;
-            else if(tzL === vL) result = true;
-            else result = false;
-        } else if(daypart) {
-            // 設定表に daypart 設定があれば、ダウンロード側 timezone に viewer が含まれるか確認
-            result = (v||'').toLowerCase().includes("viewer's time zone")||(v||'').toLowerCase().includes('viewer');
+        const timezone = String(s.timezone || '').trim();
+        // 「指定なし（ALL）」等のテンプレート値は Daypart 指定なし扱い
+        const daypartRaw = String(s.daypart || '').trim();
+        const daypart = hasMeaningfulSettingValue('daypart', daypartRaw) ? daypartRaw : '';
+        const dv = String(v || '').trim();
+
+        const tzNorm = timezone.normalize('NFKC').replace(/[\s’']/g, '').toLowerCase();
+        const isAccountTimezone = !tzNorm ||
+            tzNorm === 'accountstimezone' ||
+            tzNorm === 'accounttimezone';
+
+        // ── Daypart 指定なし ──
+        if(!daypart){
+            if(isAccountTimezone && !dv) return true;   // 設定表 Account系/空 ＋ DL空 → 一致
+            if(isAccountTimezone && dv){
+                s.__daypart_timezone_note__ =
+                    `時間帯指定はありませんが、ダウンロードに「${dv}」が設定されています。`;
+                return null;
+            }
+            if(timezone && !dv){
+                s.__daypart_timezone_note__ =
+                    `設定表のタイムゾーンは「${timezone}」ですが、ダウンロードは空白です。`;
+                return null;
+            }
         }
-        console.warn('[Daypart timezone] LI=' + s.__LI_NAME__ + ' setting=' + (timezone||daypart||'(空)') + ' download=' + (v||'(空)') + ' result=' + result);
-        return result;
+
+        // ── Daypart 指定あり（従来比較を維持） ──
+        if(daypart){
+            const tzL = timezone.toLowerCase();
+            const dvL = dv.toLowerCase();
+            if(tzL.includes('viewer') && dvL.includes('viewer')) return true;
+            if(timezone && timezone === dv) return true;
+            return false;   // 不一致（DL空を含む）
+        }
+
+        return null;
       }
     },
     // ★ PVA: Daypart period（曜日時間帯指定）比較
@@ -2622,6 +2870,20 @@ const DL_COLUMNS_VIDEO = [
     return daypartResult;
   }
 },
+    // ★ PVA: Frequency Caps（設定表 Frequency 列）比較
+    // ダウンロード側の正式列名は「Frequency Caps」
+    { key:'Frequency Caps', ja:'Frequency',
+      checkFn:(s,v) => {
+        const sf = normFrequency(s.frequency);
+        const df = normFrequency(v);
+        // 解析不可（null）は「要確認」：不一致とも一致とも判定しない
+        if(sf === null || df === null) return null;
+        if(!sf && !df) return null;
+        if(sf && !df) return false;
+        if(!sf && df) return false;
+        return sf === df;
+      }
+    },
     { key:'Automated optimization',    ja:'自動最適化',
       checkFn:(s,v) => {
         const sa = normAutoOpt(s.auto_opt);
@@ -2686,6 +2948,49 @@ const DL_COLUMNS_VIDEO = [
         const dv = (v || '').trim().toLowerCase();
         if(!dv || dv === 'random') return true;  // 空またはRandomは✅
         return null;  // それ以外は要確認
+      }
+    },
+    // ★ Video ad format（deprecated列）：設定表 video_format と対応
+    { key:'Video ad format', ja:'Video広告フォーマット',
+      checkFn:(s,v) => {
+        const sf = normVideoFormat(s.video_format);
+        const df = normVideoFormat(v);
+        if(!sf && !df) return null;
+        if(sf && !df) return null;   // 設定あり・DLなし（deprecated列のため）→ 要確認
+        if(!sf && df) return null;   // DLのみ → 要確認
+        return sf === df;
+      }
+    },
+    // ★ Target Categories using only contextual signals?（設定表に該当項目なし・既定値 Yes）
+    { key:'Target Categories using only contextual signals?', ja:'コンテキストシグナルのみ使用',
+      checkFn:(s,v) => {
+        const dv = String(v || '').trim();
+        if(!dv) return null;                       // 空 → チェック対象外
+        if(dv.toLowerCase() === 'yes') return true; // 既定値 → 一致
+        // 既定値から逸脱 → 要確認（赤の不一致にはしない）
+        s.__contextual_signal_note__ = `デフォルト値は「Yes」ですが、ダウンロードは「${dv}」です。設定内容を確認してください。`;
+        return null;
+      }
+    },
+    // ★ Domain Targeting - (READ ONLY)：PVAは設定表に該当項目なし
+    //   後台既定値が No（domain targeting未設定）の想定
+    { key:'Domain Targeting - (READ ONLY)', ja:'ドメインターゲティング',
+      checkFn:(s,v) => {
+        const dv = String(v || '').trim().toUpperCase();
+        if(!dv) return null;
+        if(dv === 'NO') return true;   // 既定値（未設定）と一致
+        return null;                   // Yes 等 → 要確認
+      }
+    },
+    // ★ Mobile app targeting - include or exclude（設定表に該当項目なし・既定値 Exclude）
+    { key:'Mobile app targeting - include or exclude', ja:'モバイルアプリターゲティング',
+      checkFn:(s,v) => {
+        const dv = String(v || '').trim();
+        if(!dv) return null;                            // 空 → チェック対象外
+        if(dv.toLowerCase() === 'exclude') return true; // 既定値 → 一致
+        // 既定値から逸脱 → 要確認（赤の不一致にはしない）
+        s.__mobile_app_targeting_note__ = `デフォルト値は「Exclude」ですが、ダウンロードは「${dv}」です。設定内容を確認してください。`;
+        return null;
       }
     },
     { key:'Upload failure',            ja:'アップロードエラー',  checkFn:null, autoHide:true },
@@ -2756,7 +3061,30 @@ function matchAndCompareVideo(settingData, downloadMap, system){
                 'Deal selection':          sRow.deal_id,
                 'Targeting - Content':     sRow.content,
                 'Location targeting by':   sRow.location_sig || sRow.location,
-                'Location targeting 1 of 2': sRow.location || sRow.region,
+                'Location targeting 1 of 2': (() => {
+                    const loc = sRow.location || sRow.region || '';
+                    const isAreaRef = loc.includes('別紙') || loc.includes('エリアシート');
+                    if(!isAreaRef) return loc;
+                    const area = sRow.__AREA_SHEET__;
+                    if(!area || sRow.__AREA_SHEET_AMBIGUOUS__){
+                        return `エリアシート参照（${sRow.__AREA_SHEET_DEBUG__ || '特定不可'}）`;
+                    }
+                    return area.targeted.length > 0
+                        ? `エリアシート（含む）：${area.targeted.join('、')}`
+                        : '';   // 含む指定なし → 非設定項目として空表示
+                })(),
+                'Location excluding 1 of 2': (() => {
+                    const loc = sRow.location || sRow.region || '';
+                    const isAreaRef = loc.includes('別紙') || loc.includes('エリアシート');
+                    if(!isAreaRef) return '';
+                    const area = sRow.__AREA_SHEET__;
+                    if(!area || sRow.__AREA_SHEET_AMBIGUOUS__){
+                        return `エリアシート参照（${sRow.__AREA_SHEET_DEBUG__ || '特定不可'}）`;
+                    }
+                    return area.excluded.length > 0
+                        ? `エリアシート（除外）：${area.excluded.join('、')}`
+                        : '';
+                })(),
                 'Audiences - include':     sRow.audience,
                 'Reach similar audiences': sRow.audience ? '（AudienceありのためNO）' : '',
                 'Audience names': (sRow.audience || '').includes('セグメントシート')
@@ -2770,11 +3098,18 @@ function matchAndCompareVideo(settingData, downloadMap, system){
                 'Maximum average CPM':     sRow.max_cpm,
                 'Daypart targeting timezone': sRow.timezone || sRow.daypart,
                 'Daypart period':        sRow.daypart,
+                'Frequency Caps':        sRow.frequency,
+                'Video ad format':       sRow.video_format,
             };
             return map[key] !== undefined ? String(map[key] || '') : '';
         }
 
         const PG_SKIP_KEYS = ['Location targeting 1 of 2', 'Pacing profile', 'Base supply bid*', 'Maximum average CPM'];
+        // ★ 双向フィールドカバレッジ監査（設定表側＋ダウンロード側）
+        const coverageWarningsForLI = auditVideoFieldCoverage(sRow, dRow || {});
+        if(coverageWarningsForLI.length > 0){
+            console.warn('[Coverage] LI=' + sRow.__LI_NAME__ + ' 未カバー項目=' + coverageWarningsForLI.length + '件 ' + coverageWarningsForLI.map(w => w.side + ':' + w.field).join(', '));
+        }
         const colResults = DL_COLUMNS_VIDEO.map(col => {
     const dVal = dGet(col.key);
     const sVal = sGetForCol(col.key);
@@ -2785,7 +3120,13 @@ function matchAndCompareVideo(settingData, downloadMap, system){
     }
     return { key:col.key, ja:col.ja, sVal, dVal, result,
         skipReason: sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key)
-            ? sRow.__pg_skip__ : '' };
+            ? sRow.__pg_skip__ : '',
+        // ★ 字段状態の明示（match/mismatch/review/skip）
+        status: (sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key))
+            ? 'skip'
+            : result === true ? 'match'
+            : result === false ? 'mismatch'
+            : 'review' };
 });
 
         results.push({
@@ -2808,6 +3149,21 @@ function matchAndCompareVideo(settingData, downloadMap, system){
     __brand_content_note__: sRow.__brand_content_note__ || '',
     __brand_tier_note__:    sRow.__brand_tier_note__     || '',
     __daypart_diff__:       sRow.__daypart_diff__        || '',
+    __contextual_signal_note__:   sRow.__contextual_signal_note__   || '',
+    __mobile_app_targeting_note__: sRow.__mobile_app_targeting_note__ || '',
+    __daypart_timezone_note__:    sRow.__daypart_timezone_note__    || '',
+    // ★ エリアシート参照情報（除外地域セルの説明文表示に使用）
+    __AREA_SHEET_INFO__: {
+        isRef:        (sRow.location || sRow.region || '').includes('別紙') || (sRow.location || sRow.region || '').includes('エリアシート'),
+        name:         sRow.__AREA_SHEET_NAME__ || '',
+        debug:        sRow.__AREA_SHEET_DEBUG__ || '',
+        ambiguous:    !!sRow.__AREA_SHEET_AMBIGUOUS__,
+        targeted:     (sRow.__AREA_SHEET__ && sRow.__AREA_SHEET__.targeted) || [],
+        excluded:     (sRow.__AREA_SHEET__ && sRow.__AREA_SHEET__.excluded) || [],
+    },
+    // ★ 双向フィールドカバレッジ監査結果（未登録の有値フィールド）
+    coverageWarnings: coverageWarningsForLI,
+    needsReview: coverageWarningsForLI.length > 0,
 });
     }
     return results;
@@ -4981,7 +5337,187 @@ const DL_COL_ALIASES = {
     'Line type*':          ['Line type'],
     'Order ID*':           ['Order ID'],
     'Advertiser ID*':      ['Advertiser ID'],
+    'Frequency Caps':      ['Frequency'],
+    // ★ Deal selection の名称表示列・関連列（正式比較は Deal selection が優先）
+    'Deal selection':      ['Deal Selection', 'Deal Selection names'],
 };
+
+// ===== Video ad format 正規化 =====
+// 設定表: "In-stream only" / ダウンロード: "In-stream only" 等
+function normVideoFormat(v){
+    const s = String(v || '').normalize('NFKC').trim();
+    if(!s) return '';
+    const EMPTY = new Set(['any','no targeting','-','—','‐']);
+    if(EMPTY.has(s.toLowerCase())) return '';
+    return s.toLowerCase();
+}
+
+// ===== 設定表側の監査対象フィールド（明示的リスト） =====
+// readSettingTableVideo() が解析する業務フィールドのうち、PVA/OTT で意味を持つものだけを監査する。
+// ※ device_type / product_big / ssp_owned 等の Display互換コピーや __XXX__ 中間フィールドは
+//    ここに含めない（同一値の二重誤報を防ぐ）
+const VIDEO_SETTING_AUDIT_FIELDS = [
+    'media', 'device', 'mobile_env',
+    'start_day', 'start_time', 'end_day', 'end_time',
+    'frequency', 'audience', 'location', 'location_sig', 'content',
+    'video_init', 'video_format', 'video_size', 'video_comp',
+    'deal_type', 'deal_id', 'deal_name',
+    'timezone', 'daypart', 'budget', 'budget_cap', 'pacing', 'base_cpm', 'max_cpm',
+];
+
+// ===== 設定表側フィールド登録表（カバレッジ監査用） =====
+// readSettingTableVideo() が解析する業務フィールド → 比較列（DL_COLUMNS_VIDEO）の対応表。
+// ここに載っているフィールドは値があっても「正常に比較されている」とみなす。
+// ※ dlKey が DL_COLUMNS_VIDEO に無い場合（未登録）は監査で uncovered になる。
+const VIDEO_SETTING_FIELD_REGISTRY = {
+    media:       { dlKey: 'Line type*',              label: 'メディア' },
+    device:      { dlKey: 'Device type',             label: 'Device' },
+    mobile_env:  { dlKey: 'Mobile environment',      label: 'Mobile environment' },
+    start_day:   { dlKey: 'Line start date',         label: '開始日' },
+    start_time:  { dlKey: 'Line start date',         label: '開始時刻' },
+    end_day:     { dlKey: 'Line end date',           label: '終了日' },
+    end_time:    { dlKey: 'Line end date',           label: '終了時刻' },
+    auto_opt:    { dlKey: 'Automated optimization',  label: '自動最適化' },
+    budget:      { dlKey: 'Line item budget',        label: '予算' },
+    budget_cap:  { dlKey: 'Budget cap',              label: '日予算' },
+    pacing:      { dlKey: 'Pacing profile',          label: '配信ペース' },
+    fee_3p:      { dlKey: '3P fees',                 label: '3Pフィー' },
+    frequency:   { dlKey: 'Frequency Caps',          label: 'Frequency' },
+    base_cpm:    { dlKey: 'Base supply bid*',        label: 'ベースCPM' },
+    max_cpm:     { dlKey: 'Maximum average CPM',     label: '上限CPM' },
+    product_small:{ dlKey: 'Product categories*',    label: '商材カテゴリ' },
+    audience:    { dlKey: 'Audience names',          label: 'オーディエンス' },
+    location:    { dlKey: 'Location targeting 1 of 2', label: '配信地域' },
+    location_sig:{ dlKey: 'Location targeting by',   label: '位置情報シグナル' },
+    content:     { dlKey: 'Targeting - Content',     label: 'コンテンツ' },
+    timezone:    { dlKey: 'Daypart targeting timezone', label: 'タイムゾーン' },
+    daypart:     { dlKey: 'Daypart period',          label: '曜日時間帯指定' },
+    ssp:         { dlKey: 'Supply source',           label: 'SSP' },
+    region:      { dlKey: 'Location targeting 1 of 2', label: 'ユーザーの地域' },
+    deal_type:   { dlKey: 'Deal selection',          label: 'Deal Type' },
+    deal_id:     { dlKey: 'Deal selection',          label: 'DealID' },
+    deal_name:   { dlKey: 'Deal selection',          label: 'Deal名' },
+    // ビデオ系：video_format のみ正式列（Video ad format）と対応。
+    // video_init / video_size / video_comp は監査対象だが正式比較列が無いため、
+    // 実値が出た場合は「未登録」として報告する（テンプレート既定値は監査で除外済み）
+    video_format:{ dlKey: 'Video ad format',         label: 'Video広告フォーマット' },
+};
+
+// ===== 設定表側の明示的無視リスト（業務上確認済みのもののみ） =====
+const VIDEO_SETTING_FIELD_IGNORE_RULES = {
+    __LI_NAME__:   '内部識別（LI名はマッチキー・表示済み）',
+    __IO_NAME__:   '内部識別（IO名・表示済み）',
+    __SHEET__:     '内部識別（出典シート名）',
+    __SYSTEM__:    '内部識別（システム種別）',
+    __FILE_S__:    '内部識別（出典ファイル）',
+    __AREA_SHEET__:        '地域展開の中間データ（Location列で消費）',
+    __AREA_SHEET_NAME__:   '地域展開の中間データ（デバッグ用）',
+    __AREA_SHEET_DEBUG__:  '地域展開の中間データ（デバッグ用）',
+    __AREA_SHEET_AMBIGUOUS__: '地域展開の中間データ（デバッグ用）',
+    __AREA_SHEET_INFO__:   '地域展開の中間データ（表示用）',
+    __SEGMENT_SHEET__:     'Audience展開の中間データ（Audience namesで消費）',
+    __SEGMENT_SHEET_NAME__: 'Audience展開の中間データ（デバッグ用）',
+    __pg_skip__:   'PG判定の中間フラグ',
+    __location_diff__:       '差異メッセージ（表示用）',
+    __location_excl_diff__:  '差異メッセージ（表示用）',
+    __audience_diff__:       '差異メッセージ（表示用）',
+    __daypart_diff__:        '差異メッセージ（表示用）',
+    __brand_content_note__:  '差異メッセージ（表示用）',
+    __brand_tier_note__:     '差異メッセージ（表示用）',
+    __keyword_diff__:        '差異メッセージ（表示用）',
+};
+
+// ===== ダウンロード側の明示的無視リスト（業務上確認済みのもののみ） =====
+const VIDEO_DOWNLOAD_FIELD_IGNORE_RULES = {
+    'Line ID':              'Amazon内部ID（マッチキーではない）',
+    'Advertiser ID*':       '識別用ID',
+    'Advertiser name':      '識別用ID',
+    'Order ID*':            '識別用ID',
+    'Order name - (READ ONLY)': 'IOマッチ補助（Order名は表示済み）',
+    'External ID':          '業務上使用しない（運用側で使わない）',
+    'Tactic Tag - (READ ONLY)': '読み取り専用の参考列',
+    'Video Ad Content Type*':   'PVAでは固定値（Streaming TV）',
+};
+
+// ===== 設定表側の「有効な値」判定（テンプレート残り値を誤報しない） =====
+function hasMeaningfulSettingValue(field, value){
+    // ※ NFKC 済みの値で判定（全角（）→半角() 等を正規化）
+    const s = String(value ?? '').normalize('NFKC').trim();
+    if(!s) return false;
+    const EMPTY = new Set(['-','—','‐','null','none','nan','n/a','無し','なし','未設定','設定なし','指定なし(all)','▼選択','選択なし','対象外','twitchなし','チェック無し','チェックなし','any','no targeting','allow all (greatest reach)']);
+    if(EMPTY.has(s.toLowerCase())) return false;
+    // テンプレート残り値
+    if(/^●[^/／]*[\/／]●/.test(s)) return false;      // ●回/●日間
+    if(/^#N\/A$/i.test(s)) return false;              // 数式エラー
+    if(/^例\)/.test(s)) return false;                 // テンプレート例示
+    if(/^※/.test(s)) return false;                   // 注記
+    return true;
+}
+
+// ===== ダウンロード側の「有効な値」判定 =====
+function hasMeaningfulDownloadValue(field, value){
+    const s = String(value ?? '').normalize('NFKC').trim();
+    if(!s) return false;
+    const EMPTY = new Set(['-','—','‐','null','none','nan','n/a','#n/a','any','no targeting','allow all (greatest reach)','both','evenly','random']);
+    if(EMPTY.has(s.toLowerCase())) return false;
+    if(/^#N\/A$/i.test(s)) return false;
+    if(/^●[^/／]*[\/／]●/.test(s)) return false;
+    // テンプレートの指示文（Format rules 系シートの残り等）
+    if(/^(follow instructions|don't\s*$|use numbers)/i.test(s)) return false;
+    return true;
+}
+
+// ===== 双向フィールドカバレッジ監査 =====
+// 設定表側：解析済みフィールドが DL_COLUMNS_VIDEO に未登録 → uncovered
+// ダウンロード側：値のある列が DL_COLUMNS_VIDEO に未登録 → uncovered
+// 戻り値: [{ side:'setting'|'download', field, label, value, reason }]
+function auditVideoFieldCoverage(sRow, dlRow){
+    const warnings = [];
+    const dlKeys = new Set(DL_COLUMNS_VIDEO.map(c => c.key));
+
+    // ── 設定表側 ──
+    // ★ 明示的な監査対象フィールドのみ走査する（sRow 全体は走査しない）
+    //   device_type 等の互換コピーや __XXX__ 中間フィールドによる二重誤報を防ぐ
+    for(const field of VIDEO_SETTING_AUDIT_FIELDS){
+        const value = sRow ? sRow[field] : undefined;
+        if(value === undefined || value === null) continue;
+        if(!hasMeaningfulSettingValue(field, value)) continue;
+        if(VIDEO_SETTING_FIELD_IGNORE_RULES[field]) continue;
+        const reg = VIDEO_SETTING_FIELD_REGISTRY[field];
+        if(reg && dlKeys.has(reg.dlKey)) continue;            // 正常に比較されている
+        warnings.push({
+            side: 'setting',
+            field,
+            label: reg ? reg.label : field,
+            value: String(value),
+            reason: reg
+                ? `設定表側の項目「${reg.label}」が比較列（${reg.dlKey}）に未登録`
+                : '設定表に値がありますが、比較項目として登録されていません',
+        });
+    }
+
+    // ── ダウンロード側 ──
+    for(const [field, value] of Object.entries(dlRow || {})){
+        if(field.startsWith('__')) continue;                  // 内部フィールド（__FILE_D__ 等）
+        if(!hasMeaningfulDownloadValue(field, value)) continue;
+        if(VIDEO_DOWNLOAD_FIELD_IGNORE_RULES[field]) continue;
+        if(dlKeys.has(field)) continue;
+        // エイリアス（DL_COL_ALIASES）経由で登録済みか
+        let aliased = false;
+        for(const [k, aliases] of Object.entries(DL_COL_ALIASES)){
+            if(dlKeys.has(k) && aliases.includes(field)){ aliased = true; break; }
+        }
+        if(aliased) continue;
+        warnings.push({
+            side: 'download',
+            field,
+            label: field,
+            value: String(value),
+            reason: 'ダウンロードデータに値がありますが、比較ルールが未登録です',
+        });
+    }
+    return warnings;
+}
 
 function _getSettingValForCol(key, sRow){
     const map={
@@ -5273,12 +5809,39 @@ function renderScResult(){
             'Brand suitability content exclusion categories': '__brand_content_note__',
             'Brand suitability inventory tier': '__brand_tier_note__',
             'Targeting by Keywords': '__keyword_diff__',
-            'Audience names': '__audience_diff__'
+            'Audience names': '__audience_diff__',
+            'Location targeting 1 of 2': '__location_diff__',
+            'Target Categories using only contextual signals?': '__contextual_signal_note__',
+            'Mobile app targeting - include or exclude': '__mobile_app_targeting_note__',
+            'Daypart targeting timezone': '__daypart_timezone_note__'
         };
         const existingNote = item[noteMap[colKey] || ''] || '';
         if(existingNote) return existingNote;
-        if(LOCATION_EXCLUDING_KEYS.has(colKey) && hasMeaningfulCellValue(dVal))
-            return '設定表では確認できない項目です。\n後台に除外地域が設定されています。メール指示と一致するか確認してください。';
+        if(LOCATION_EXCLUDING_KEYS.has(colKey)){
+            const areaInfo = item.__AREA_SHEET_INFO__;
+            if(areaInfo && areaInfo.isRef){
+                if(areaInfo.ambiguous){
+                    return '⚠️ 対応エリアシートを特定できません。\n' + (areaInfo.debug || '');
+                }
+                const excl = areaInfo.excluded || [];
+                if(excl.length > 0){
+                    // エリアシートから除外地域を確認できているため、明示的な判定を表示
+                    const cr = item.colResults?.find(c => c.key === colKey);
+                    const judge = cr && cr.result === true ? '一致'
+                                : cr && cr.result === false ? '不一致'
+                                : '要確認';
+                    return `設定：エリアシート（除外）${excl.join('、')}\nDL：${dVal || '（空）'}\n判定：${judge}`;
+                }
+                // エリアシート参照だが除外指定なし、DL側に除外地域がある場合
+                if(hasMeaningfulCellValue(dVal)){
+                    return 'エリアシートに除外地域の指定はありませんが、後台に除外地域が設定されています。\nメール指示と一致するか確認してください。';
+                }
+                return '';
+            }
+            // エリアシート非参照：従来どおり人工確認を促す
+            if(hasMeaningfulCellValue(dVal))
+                return '設定表では確認できない項目です。\n後台に除外地域が設定されています。メール指示と一致するか確認してください。';
+        }
         return '';
     }
 
@@ -5373,6 +5936,13 @@ function renderScResult(){
     items.forEach(item=>{
         if(item.colResults) item.colResults.forEach(c=>{ if(c.result===false) mismatchCount++; });
     });
+    // ★ 未カバー項目数（双向フィールドカバレッジ監査）
+    const uncoveredCount=items.reduce((s,it)=>s+(it.coverageWarnings?it.coverageWarnings.length:0),0);
+    // ★ 要確認項目数（result=null かつ DL側に意味のある値がある列）
+    const reviewCount=items.reduce((s,it)=>{
+        if(!it.colResults) return s;
+        return s + it.colResults.filter(c => c.result === null && !c.skipReason && hasMeaningfulCellValue(c.dVal)).length;
+    },0);
 
     // 列定義
     const ALWAYS_HIDDEN=new Set(['Line ID','Advertiser ID*','Advertiser name','Order ID*','Order name - (READ ONLY)']);
@@ -5412,6 +5982,8 @@ const visibleCols = activeCols.filter(col=>{
         <span style="background:#27ae60;border-radius:10px;padding:2px 10px;font-size:0.8rem;">後台マッチ：${foundCount}件</span>
         <span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.8rem;">未発見：${notFoundCount}件</span>
         <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">不一致：${mismatchCount}項目</span>
+        <span style="background:#f39c12;border-radius:10px;padding:2px 10px;font-size:0.8rem;">要確認：${reviewCount}項目</span>
+        <span style="background:#8e44ad;border-radius:10px;padding:2px 10px;font-size:0.8rem;">未登録：${uncoveredCount}項目</span>
         ${downloadOnlyItems.length>0?`
         <span style="background:#f39c12;color:white;border-radius:10px;padding:2px 10px;font-size:0.8rem;">
             ⚠️ 後台のみLI（設定表未記載・要確認）:${downloadOnlyItems.length}件
@@ -5458,6 +6030,7 @@ const visibleCols = activeCols.filter(col=>{
         <span><span style="display:inline-block;width:12px;height:12px;background:#fef9e7;border:1px solid #f39c12;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>☞ 要確認</span>
         <span><span style="display:inline-block;width:12px;height:12px;background:#f0f0f0;border:1px solid #bbb;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>— 空/対象外</span>
         <span><span style="display:inline-block;width:12px;height:12px;background:#eaf2f8;border:1px solid #5dade2;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>🔵 対象外（PG）</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:#fdf3e7;border:1px solid #e67e22;border-radius:2px;vertical-align:middle;margin-right:3px;"></span>⚠️ 未登録項目</span>
         <span style="color:#999;margin-left:8px;">※ 上段＝設定表 / 下段＝ダウンロード</span>
     </div>`;
 
@@ -5625,7 +6198,8 @@ const visibleCols = activeCols.filter(col=>{
             rowNo++;
             const idx=globalIdx;
             const hasMismatch=item.colResults&&item.colResults.some(c=>c.result===false);
-            const rowStatus=!item.found?'notfound':(hasMismatch)?'mismatch':'match';
+            // ★ 未カバー項目があるLIは「要確認」として match にはしない
+            const rowStatus=!item.found?'notfound':(hasMismatch||item.needsReview)?'mismatch':'match';
             const badges=[];
             if(!item.found) badges.push(`<span style="background:#95a5a6;color:white;border-radius:3px;padding:1px 6px;font-size:0.68rem;">後台未発見</span>`);
 
@@ -5745,11 +6319,19 @@ const visibleCols = activeCols.filter(col=>{
         ? '__audience_diff__'
         : col.key === 'Daypart period'
         ? '__daypart_diff__'
+        : col.key === 'Location targeting 1 of 2'
+        ? '__location_diff__'
+        : col.key === 'Target Categories using only contextual signals?'
+        ? '__contextual_signal_note__'
+        : col.key === 'Mobile app targeting - include or exclude'
+        ? '__mobile_app_targeting_note__'
+        : col.key === 'Daypart targeting timezone'
+        ? '__daypart_timezone_note__'
         : LOCATION_EXCLUDING_KEYS.has(col.key) && hasMeaningfulCellValue(dVal)
         ? '__location_excl_note__'
         : null;
     const note = noteKey === '__location_excl_note__'
-        ? '設定表では確認できない項目です。\n後台に除外地域が設定されています。メール指示と一致するか確認してください。'
+        ? _getLocationExcludingNote(item, col.key, dVal)
         : noteKey ? (item[noteKey]||'') : '';
     if(!note) return '';
     const noteColor = note.startsWith('❌') ? '#e74c3c'
@@ -5762,6 +6344,21 @@ const visibleCols = activeCols.filter(col=>{
                     </td>`;
                 });
                 html+=`</tr>`;
+            }
+            // ★ 未カバー項目（双向フィールドカバレッジ監査の結果表示）
+            if(item.coverageWarnings && item.coverageWarnings.length > 0){
+                const cwHtml = item.coverageWarnings.map(w =>
+                    `<div style="margin-top:1px;">${w.side === 'setting' ? '📋 設定表' : '📥 ダウンロード'}：<b>${esc(w.label)}</b>（値：${esc(w.value)}）<br>
+                     <span style="color:#7b5e00;">　→ ${esc(w.reason)}</span></div>`
+                ).join('');
+                html+=`<tr class="sc-li-row" data-li-idx="${idx}" data-io="${esc(ioName)}" data-status="${rowStatus}"
+                    style="background:#fdf3e7;border-bottom:1px solid #e8d5b5;">
+                    <td colspan="${visibleCols.length+2}"
+                        style="padding:5px 16px;border-top:2px solid #e67e22;background:#fdf3e7;">
+                        <span style="font-size:0.72rem;font-weight:bold;color:#c05000;">⚠️ 未登録項目（${item.coverageWarnings.length}）</span>
+                        <div style="font-size:0.7rem;color:#7b5e00;margin-top:2px;white-space:pre-wrap;word-break:break-all;">${cwHtml}</div>
+                    </td>
+                </tr>`;
             }
         });
     });
@@ -5959,6 +6556,12 @@ function scToggleKisson(){
 function resetSettingCheck(){
     scFilesS=[]; scFilesD=[]; scWbsS=[]; scWbsD=[];
     scResults=null; scCurrentFilter='all'; _scKissonVisible=false;
+    // 選択をデフォルト（Amazon DSP（PVA）／初期案件）に戻す
+    scSystem = 'amazon_pva';
+    scCaseMode = 'initial';
+    document.getElementById('sc-system-select').value = scSystem;
+    document.getElementById('sc-case-mode-select').value = scCaseMode;
+    applyScSystemUI();
     // 不重置行高/列宽，保持用户设定
     const slider = document.getElementById('sc-row-height-slider');
     const input  = document.getElementById('sc-row-height-input');
