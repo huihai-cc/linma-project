@@ -81,8 +81,8 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
     <div class="xl-drop-area" id="xlclean-drop">
         <div class="drop-icon">🧹</div>
         <div class="drop-text">拖入需要清洗的 Excel 文件</div>
-        <div class="drop-sub">支持 .xlsx / .xls　文件完全本地处理不上传</div>
-        <input type="file" id="xlclean-input" accept=".xlsx,.xls,.xlsm" style="display:none">
+        <div class="drop-sub">支持 .xlsx / .xlsm　文件完全本地处理，不上传</div>
+        <input type="file" id="xlclean-input" accept=".xlsx,.xlsm" style="display:none">
     </div>
 </div>
 
@@ -159,14 +159,14 @@ function initXlCleanDrop() {
 }
 
 function handleXlCleanFile(file) {
-    if(!file.name.match(/\.(xlsx|xls)$/i)) { alert('请上传 Excel 文件（.xlsx 或 .xls）'); return; }
+    if(!file.name.match(/\.(xlsx|xlsm)$/i)) { alert('请上传 Excel 文件（.xlsx 或 .xlsm）'); return; }
     xlcleanFile = file;
     const drop = document.getElementById('xlclean-drop');
     drop.innerHTML = `
         <div class="drop-icon">✅</div>
         <div class="drop-text">${file.name}</div>
         <div class="drop-sub">文件大小：${(file.size/1024/1024).toFixed(2)} MB　点击重新选择</div>
-        <input type="file" id="xlclean-input" accept=".xlsx,.xls" style="display:none">
+        <input type="file" id="xlclean-input" accept=".xlsx,.xlsm" style="display:none">
     `;
     document.getElementById('xlclean-input').addEventListener('change', e => {
         if(e.target.files[0]) handleXlCleanFile(e.target.files[0]);
@@ -344,6 +344,7 @@ async function runXlClean() {
             try {
                 const zip = await JSZip.loadAsync(e.target.result);
                 let totalCleaned = 0;
+                const hasVbaProject = !!zip.files['xl/vbaProject.bin'];
                 if(zip.files['xl/sharedStrings.xml']) {
                     let xml = await zip.files['xl/sharedStrings.xml'].async('string');
                     xml = cleanSiLevel(xml, opts, (n) => totalCleaned += n);
@@ -357,12 +358,20 @@ async function runXlClean() {
                     }
                 }
                 const outBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
-                const outName = xlcleanFile.name.replace(/\.(xlsx|xls)$/i, '_cleaned.xlsx');
+                const extMatch = xlcleanFile.name.match(/\.(xlsx|xlsm)$/i);
+                const originalExt = extMatch ? extMatch[0].toLowerCase() : '.xlsx';
+                const outName = xlcleanFile.name.replace(/\.(xlsx|xlsm)$/i, `_cleaned${originalExt}`);
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(outBlob);
                 a.download = outName;
                 a.click();
-                progress.innerHTML = `✅ 清洗完成！共清洗 <b>${totalCleaned}</b> 处，文件已自动下载：<b>${outName}</b><br><span style="font-size:0.8rem;color:#27ae60;">✅ 所有格式（颜色/边框/合并单元格）完全保留</span>`;
+                const macroMessage = hasVbaProject
+                    ? '<br><span style="font-size:0.8rem;color:#8e44ad;">✅ 已保留 VBA 宏文件</span>'
+                    : '';
+                progress.innerHTML =
+                    `✅ 清洗完成！共清洗 <b>${totalCleaned}</b> 处，文件已自动下载：<b>${outName}</b>` +
+                    `<br><span style="font-size:0.8rem;color:#27ae60;">✅ 工作簿原有格式及内容已保留</span>` +
+                    macroMessage;
                 sendLog('Excel清洗', totalCleaned, 1, outName);
             } catch(err) {
                 progress.textContent = '❌ 清洗失败：' + err.message;
@@ -455,8 +464,8 @@ function resetXlClean() {
     drop.innerHTML = `
         <div class="drop-icon">🧹</div>
         <div class="drop-text">拖入需要清洗的 Excel 文件</div>
-        <div class="drop-sub">支持 .xlsx / .xls　文件完全本地处理不上传</div>
-        <input type="file" id="xlclean-input" accept=".xlsx,.xls" style="display:none">
+        <div class="drop-sub">支持 .xlsx / .xlsm　文件完全本地处理，不上传</div>
+        <input type="file" id="xlclean-input" accept=".xlsx,.xlsm" style="display:none">
     `;
     initXlCleanDrop();
     document.getElementById('xlclean-controls').style.display = 'none';
