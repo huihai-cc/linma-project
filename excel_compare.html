@@ -1271,8 +1271,22 @@ function compareSheet(name){
     const wsA=xlcompWbA.Sheets[name];
     const wsB=xlcompWbB.Sheets[name];
     const needColors = xlcompCmpBg || xlcompCmpFont;
-    const resA=sheetTo2D(wsA, XLCOMP_MAX_ROWS, XLCOMP_MAX_COLS, xlcompWbA, needColors, name);
-    const resB=sheetTo2D(wsB, XLCOMP_MAX_ROWS, XLCOMP_MAX_COLS, xlcompWbB, needColors, name);
+
+    // 统一绝对行/列范围：取 A/B 实际范围的最小起点与最大终点，
+    // 使两个二维数组的相同下标对应同一 Excel 绝对行号/列号，防止起始行不同导致错位
+    const rangeA=xlcompGetActualRange(wsA);
+    const rangeB=xlcompGetActualRange(wsB);
+    const unifiedRange=(!rangeA||!rangeB)
+        ? (rangeA||rangeB)
+        : {
+            s:{ r:Math.min(rangeA.s.r,rangeB.s.r), c:Math.min(rangeA.s.c,rangeB.s.c) },
+            e:{ r:Math.max(rangeA.e.r,rangeB.e.r), c:Math.max(rangeA.e.c,rangeB.e.c) }
+          };
+    const startRow=unifiedRange?unifiedRange.s.r:0;
+    const startCol=unifiedRange?unifiedRange.s.c:0;
+
+    const resA=sheetTo2D(wsA, XLCOMP_MAX_ROWS, XLCOMP_MAX_COLS, xlcompWbA, needColors, name, unifiedRange);
+    const resB=sheetTo2D(wsB, XLCOMP_MAX_ROWS, XLCOMP_MAX_COLS, xlcompWbB, needColors, name, unifiedRange);
     const arrA=resA.data, arrB=resB.data;
     const colorsA=resA.colors, colorsB=resB.colors;
     const rawRowsA=resA.rawRows, rawRowsB=resB.rawRows;
@@ -1281,13 +1295,17 @@ function compareSheet(name){
     const truncateMsg=truncated
         ?`⚠️ 数据量过大（A:${rawRowsA.toLocaleString()}行 / B:${rawRowsB.toLocaleString()}行），仅对比前 ${XLCOMP_MAX_ROWS.toLocaleString()} 行`:'';
 
+    // 有效内容行数：仅统计含至少一个非空值（非 null/非空字符串）的行，
+    // 空字符串/空公式结果/残留样式行不计入（与"共X行"展示一致）
+    const countContentRows=(arr)=>arr.filter(row=>row.some(v=>v!==null&&String(v).trim()!=='')).length;
+
     const maxRows=Math.max(arrA.length, arrB.length);
     const maxCols=Math.max(
         arrA.reduce((m,r)=>Math.max(m,r.length),0),
         arrB.reduce((m,r)=>Math.max(m,r.length),0)
     );
     const colHeaders=[];
-    for(let c=0;c<maxCols;c++) colHeaders.push(XLSX.utils.encode_col(c));
+    for(let c=0;c<maxCols;c++) colHeaders.push(XLSX.utils.encode_col(startCol+c));
 
     const rows=[];
     let diffCount=0, addCount=0, delCount=0;
@@ -1298,16 +1316,21 @@ function compareSheet(name){
         const colorRowA=colorsA?colorsA[r]||[]:[];
         const colorRowB=colorsB?colorsB[r]||[]:[];
         const cells=[];
-        let rowHasDiff=false;
+        let rowHasDiff=false, rowBgDiff=false, rowFontDiff=false;
 
         for(let c=0;c<maxCols;c++){
-            const vA=r<arrA.length?(rowA[c]!==undefined?rowA[c]:''):null;
-            const vB=r<arrB.length?(rowB[c]!==undefined?rowB[c]:''):null;
+            const vA=r<arrA.length?(rowA[c]!==undefined?rowA[c]:null):null;
+            const vB=r<arrB.length?(rowB[c]!==undefined?rowB[c]:null):null;
             let status='eq';
 
-            // 内容比較
-            if(vA===null&&vB!==null) status='add';
-            else if(vA!==null&&vB===null) status='del';
+            // 内容比較 — 以"有效内容"为准：null（该侧无此单元格）、空字符串、
+            // 空公式结果、残留样式均视为无内容；无内容 vs 无内容 → 相同，
+            // 避免两侧实际范围不同（残留样式/空行错位）造成误判 add/del
+            const hasValA=vA!==null&&String(vA).trim()!=='';
+            const hasValB=vB!==null&&String(vB).trim()!=='';
+            if(!hasValA&&!hasValB) status='eq';
+            else if(hasValA&&!hasValB) status='del';
+            else if(!hasValA&&hasValB) status='add';
             else if(typeof vA === 'number' && typeof vB === 'number' && isFinite(vA) && isFinite(vB)){
                 if(Math.round(vA * 100) !== Math.round(vB * 100)) status = 'mod';
             } else if(String(vA)!==String(vB)) status='mod';
@@ -1332,8 +1355,8 @@ function compareSheet(name){
             // 差異タイプを合成
             const diffTypes=[];
             if(status!=='eq') diffTypes.push(status==='mod'?'内容差异':status==='add'?'新増':'削除');
-            if(bgDiff){ diffTypes.push('背景色差异'); bgDiffCount++; }
-            if(fontDiff){ diffTypes.push('字体色差异'); fontDiffCount++; }
+            if(bgDiff){ diffTypes.push('背景色差异'); bgDiffCount++; rowBgDiff=true; }
+            if(fontDiff){ diffTypes.push('字体色差异'); fontDiffCount++; rowFontDiff=true; }
 
             if(diffTypes.length>0) rowHasDiff=true;
             const combinedStatus = diffTypes.length===0 ? 'eq' : diffTypes.join('／');
@@ -1350,29 +1373,45 @@ function compareSheet(name){
             });
         }
 
+        // 行状态判定（基于统一绝对行号对齐）：
+        // - 同一行号两侧都无有效内容（空字符串/空公式结果/残留样式/行外）→ 不统计为增删，
+        //   仅保留颜色差异判定
+        // - 仅一侧有有效内容 → 该行真实存在业务数据差异 → add/del
+        // - 两侧都有有效内容且不同 → mod
         let rowStatus='eq';
-        if(r>=arrA.length){ rowStatus='add'; addCount++; }
-        else if(r>=arrB.length){ rowStatus='del'; delCount++; }
-        else if(rowHasDiff){ rowStatus='mod'; diffCount++; }
+        const hasContentA=cells.some(cell=>String(cell.vA).trim()!=='');
+        const hasContentB=cells.some(cell=>String(cell.vB).trim()!=='');
+        if(!hasContentA&&!hasContentB){
+            if(rowBgDiff||rowFontDiff){ rowStatus='mod'; diffCount++; }
+        } else if(rowHasDiff){
+            // A 侧有内容、B 侧缺失 → B 删除了该行；反之 → B 新增了该行
+            if(!hasContentB){ rowStatus='del'; delCount++; }
+            else if(!hasContentA){ rowStatus='add'; addCount++; }
+            else { rowStatus='mod'; diffCount++; }
+        }
 
-        rows.push({ rowNo:r+1, cells, status:rowStatus });
+        // rowNo = 统一绝对起始行 + 数组下标 → 真实 Excel 行号
+        rows.push({ rowNo:startRow+r+1, cells, status:rowStatus });
     }
 
     return { status:'both', rows, colHeaders, diffCount, addCount, delCount,
              bgDiffCount, fontDiffCount,
-             totalA:rawRowsA, totalB:rawRowsB, truncated, truncateMsg,
+             totalA:countContentRows(arrA), totalB:countContentRows(arrB), truncated, truncateMsg,
              cmpBg:xlcompCmpBg, cmpFont:xlcompCmpFont };
 }
 
-function sheetTo2D(ws, maxRows, maxCols, wb, needColors, sheetName){
+function sheetTo2D(ws, maxRows, maxCols, wb, needColors, sheetName, unifiedRange){
     // needColors: bool — 色情報を抽出するか
     // sheetName: シート名（色抽出時のスタイルマップ参照用）
+    // unifiedRange: A/B 共用的统一绝对行/列范围（起点=两文件实际范围的最小值，
+    //               终点=两文件实际范围的最大值）→ 数组下标与绝对 Excel 行号一一对应
     const range=xlcompGetActualRange(ws);
-    if(!range) return { data:[], rawRows:0, rawCols:0, colors:[] };
-    const rawRows=range.e.r-range.s.r+1;
-    const rawCols=range.e.c-range.s.c+1;
-    const limitR=maxRows?Math.min(range.e.r, range.s.r+maxRows-1):range.e.r;
-    const limitC=maxCols?Math.min(range.e.c, range.s.c+maxCols-1):range.e.c;
+    const rawRows=range?range.e.r-range.s.r+1:0;
+    const rawCols=range?range.e.c-range.s.c+1:0;
+    if(!range||!unifiedRange) return { data:[], rawRows, rawCols, colors:needColors?[]:null };
+
+    const limitR=maxRows?Math.min(unifiedRange.e.r, unifiedRange.s.r+maxRows-1):unifiedRange.e.r;
+    const limitC=maxCols?Math.min(unifiedRange.e.c, unifiedRange.s.c+maxCols-1):unifiedRange.e.c;
 
     // 結合セルのスタイル参照先マップを作成
     const mergeStyleMap = new Map(); // key: addr, value: master-addr
@@ -1392,10 +1431,17 @@ function sheetTo2D(ws, maxRows, maxCols, wb, needColors, sheetName){
 
     const result=[];
     const colorResult = needColors ? [] : null;
-    for(let r=range.s.r;r<=limitR;r++){
+    for(let r=unifiedRange.s.r;r<=limitR;r++){
         const row=[];
         const colorRow = needColors ? [] : null;
-        for(let c=range.s.c;c<=limitC;c++){
+        for(let c=unifiedRange.s.c;c<=limitC;c++){
+            // 本文件实际范围之外 → null（该侧无此单元格），
+            // 与"范围内但值为空('')"（空字符串/空公式结果/残留样式）区分开
+            if(r<range.s.r||r>range.e.r||c<range.s.c||c>range.e.c){
+                row.push(null);
+                if(needColors) colorRow.push({fill:'NONE',font:'AUTO'});
+                continue;
+            }
             const addr=XLSX.utils.encode_cell({r,c});
             let cell=ws[addr];
 
@@ -1418,7 +1464,8 @@ function sheetTo2D(ws, maxRows, maxCols, wb, needColors, sheetName){
         result.push(row);
         if(needColors) colorResult.push(colorRow);
     }
-    return { data:result, rawRows, rawCols, colors:colorResult };
+    return { data:result, rawRows, rawCols, colors:colorResult,
+             startRow:unifiedRange.s.r, startCol:unifiedRange.s.c };
 }
 
 // ===== 結果レンダリング =====
