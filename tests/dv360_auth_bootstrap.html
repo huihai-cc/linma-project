@@ -1,0 +1,11 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>DV360 local browser test bootstrap</title>
+<script>
+  const expiry = Date.now() + 60 * 60 * 1000;
+  localStorage.setItem('qc_session', JSON.stringify({
+    token: btoa('local-browser-test|' + expiry),
+    user: { name: 'Local Browser Test', email: 'local@test.invalid' }
+  }));
+  location.replace('../dv360_check.html');
+</script>

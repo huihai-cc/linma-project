@@ -1,0 +1,4 @@
+audience_id,audience_type,ja_name,ja_path,en_name,mapping_status,source,evidence_case,confirmed_by,confirmed_at,updated_at
+93040,AFFINITY,美容、健康,アフィニティ カテゴリ/美容、健康,Beauty & Wellness,confirmed,manual-confirmed,010 MEMEME,manual,2026-08-09,2026-08-09
+80546,IN_MARKET,美容、パーソナルケア,購買意向の強いオーディエンス/美容、パーソナルケア,Beauty & Personal Care,confirmed,manual-confirmed,010 MEMEME,manual,2026-08-09,2026-08-09
+80285,IN_MARKET,美容、コスメ,購買意向の強いオーディエンス/教育/大学、短期大学/美容、コスメ,Cosmetology Education & Training,confirmed,manual-confirmed,010 MEMEME,manual,2026-08-09,2026-08-09
