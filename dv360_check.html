@@ -4502,6 +4502,11 @@ function parseSdfData(csvFiles){
     const bs=parseBudgetSegments((io.fields&&io.fields.budgetSegments)||'');
     li.resolvedIo={id:io.id||'',name:io.name||'',startDate:bs.startDate||'',endDate:bs.endDate||''};
   }
+  // IO の配信時間は UI 上では子 LI の Daypart に設定される。
+  // IO Id を最優先にし、ID を持たないレコードだけ IO 名で補完する。
+  for(const io of ioList){
+    io.resolvedLiDaypart=resolveIoLiDaypart(io,liList);
+  }
   return {cpList,ioList,liList,gpList,crList,schema};
 }
 
@@ -4878,6 +4883,59 @@ function parseDaypartTargeting(v){
   };
 }
 
+function daypartTimeFromParsed(parsed,isEnd){
+  if(!parsed||!parsed.known) return '';
+  if(parsed.isDefault) return isEnd?'23:59':'00:00';
+  const source=isEnd?parsed.endDisplay:parsed.startDisplay;
+  const match=String(source||'').match(/\b(\d{1,2}:\d{2})\b/);
+  return match?normalizeSimpleTime(match[1],isEnd).value:'';
+}
+
+function resolveIoLiDaypart(io,liList){
+  const ioId=String((io&&io.id)||'').trim();
+  const ioName=normStr((io&&io.name)||'');
+  const all=Array.isArray(liList)?liList:[];
+  let children=[];
+  if(ioId){
+    children=all.filter(li=>String(li.ioId||'').trim()===ioId);
+    // Id が未出力の LI だけを名称フォールバック対象にする。別 IO の LI は混在させない。
+    if(!children.length&&ioName){
+      children=all.filter(li=>!String(li.ioId||'').trim()&&normStr(li.ioName||'')===ioName);
+    }
+  }else if(ioName){
+    children=all.filter(li=>normStr(li.ioName||'')===ioName);
+  }
+  if(!children.length){
+    return {status:'none',startTime:'',endTime:'',timeZone:'',liNames:[]};
+  }
+  const entries=children.map(li=>{
+    const fields=li.fields||{};
+    const raw=String(fields.daypartTargeting||'').trim();
+    const timeZone=String(fields.daypartTimeZone||'').trim();
+    const parsed=parseDaypartTargeting(raw);
+    const signature=parsed.known
+      ?`${parsed.isDefault?'default':parsed.key}|${normStr(timeZone)}`
+      :`invalid:${raw}|${normStr(timeZone)}`;
+    return {liName:li.name||'',raw,timeZone,parsed,signature};
+  });
+  const liNames=entries.map(entry=>entry.liName).filter(Boolean);
+  if(new Set(entries.map(entry=>entry.signature)).size!==1){
+    return {status:'conflict',startTime:'',endTime:'',timeZone:'',liNames};
+  }
+  const entry=entries[0];
+  if(!entry.parsed.known){
+    return {status:'none',startTime:'',endTime:'',timeZone:entry.timeZone,liNames};
+  }
+  return {
+    status:'resolved',
+    daypartTargeting:entry.raw,
+    startTime:daypartTimeFromParsed(entry.parsed,false),
+    endTime:daypartTimeFromParsed(entry.parsed,true),
+    timeZone:entry.timeZone,
+    liNames,
+  };
+}
+
 // OTT IO 開始/終了時刻を Daypart Targeting から抽出
 // SDF 未設定の場合は業務ルール上「全天（00:00-23:59）」として扱う
 function extractOttIoDaypartTimes(rawDaypart){
@@ -5075,11 +5133,49 @@ function normalizeSimpleTime(v,isEnd){
   const raw=String(v||'').trim();
   if(!raw||/^(なし|無し|指定なし)$/i.test(raw)) return {known:true,value:isEnd?'23:59':'00:00'};
   const match=raw.match(/\b(\d{1,2}:\d{2})\b/);
-  return match?{known:true,value:match[1].padStart(5,'0')}:{known:false,value:raw};
+  if(!match) return {known:false,value:raw};
+  const value=match[1].padStart(5,'0');
+  return {known:true,value:isEnd&&value==='24:00'?'23:59':value};
 }
 
-function compareIoTime(settingValue,budgetTime,daypartValue,isEnd){
+function isPeriodLongerThanSevenDays(startDate,endDate){
+  const start=normDate(startDate),end=normDate(endDate);
+  const toUtc=value=>{
+    const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return match?Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])):NaN;
+  };
+  const startUtc=toUtc(start),endUtc=toUtc(end);
+  // 両端を含む掲載日数が 8 日以上（例 8/17〜8/24）なら長期扱い。
+  return Number.isFinite(startUtc)&&Number.isFinite(endUtc)&&endUtc>=startUtc&&
+    (endUtc-startUtc)/86400000>=7;
+}
+
+function compareIoTime(settingValue,budgetTime,daypartValue,isEnd,options={}){
   const s=normalizeSimpleTime(settingValue,isEnd),daypart=parseDaypartTargeting(daypartValue);
+  const resolved=options.resolvedLiDaypart;
+  if(resolved){
+    if(resolved.status==='conflict'){
+      const detail='同一IO配下のLIでDaypartが一致していません';
+      return {sVal:s.value,dVal:resolved.liNames&&resolved.liNames.length?resolved.liNames.join(' / '):'(LI Daypart不一致)',result:'warning',detail,mpDetail:detail};
+    }
+    if(resolved.status!=='resolved'){
+      const detail='同一IO配下のLI Daypartを取得できませんでした';
+      return {sVal:s.value,dVal:'(LI Daypartなし)',result:'warning',detail,mpDetail:detail};
+    }
+    const dValue=normalizeSimpleTime(isEnd?resolved.endTime:resolved.startTime,isEnd).value;
+    const dVal=resolved.timeZone?`${dValue} (${resolved.timeZone})`:dValue;
+    if(isEnd&&isPeriodLongerThanSevenDays(options.startDate,options.endDate)){
+      if(dValue!=='23:59'){
+        const detail='掲載期間が7日を超えるため、終了時間は23:59である必要があります。';
+        return {sVal:s.value,dVal,result:'mismatch',detail,mpDetail:detail};
+      }
+      if(s.known&&s.value==='23:59') return {sVal:s.value,dVal,result:'ok',detail:'',mpDetail:''};
+      const detail='掲載期間が7日を超えるため、設定表の終了時間指定は無効です。ダウンロードの23:59は正しい設定です。';
+      const result='warning';
+      return {sVal:s.value,dVal,result,detail,mpDetail:detail};
+    }
+    return {sVal:s.value,dVal,result:s.known?compareField(s.value,dValue):'warning'};
+  }
   let dValue=budgetTime|| (daypart.isDefault?(isEnd?'23:59':'00:00'):(isEnd?daypart.endDisplay:daypart.startDisplay));
   if(!daypart.known) dValue=daypart.raw;
   let result='warning';
@@ -5539,6 +5635,18 @@ function canonicalGeoName(value){
   return normalizeGeoLookupName(simplified);
 }
 
+// 設定表には「Japan熊本県」のように国名と地域名が連結されるケースがある。
+// まず元の文字列で Master を引き、未解決のときだけ先頭の国名を一度除去して完全一致を試す。
+// 部分一致・曖昧一致は行わない。
+function normalizeSettingGeoToken(value){
+  const raw=String(value||'').trim();
+  if(!raw||resolveGeoCanonicalId(raw)) return raw;
+  const withoutCountry=raw.replace(/^(?:Japan|日本)\s*/i,'').trim();
+  return withoutCountry&&withoutCountry!==raw&&resolveGeoCanonicalId(withoutCountry)
+    ?withoutCountry
+    :raw;
+}
+
 function parseSettingGeography(value,referenceInfo){
   const raw=String(value||'').trim();
   if(referenceInfo&&referenceInfo.status==='resolved'){
@@ -5567,7 +5675,7 @@ function parseSettingGeography(value,referenceInfo){
     chunk=chunk.replace(/(?:配信|include|除外|exclude)\s*[：:]?/ig,'')
       .replace(/[（(]?(?:国名|対象|指定)[）)]?/g,'').trim();
     if(!chunk) continue;
-    (mode==='exclude'?exclude:include).push(chunk);
+    (mode==='exclude'?exclude:include).push(normalizeSettingGeoToken(chunk));
   }
   if(!include.length&&!exclude.length) unknown.push(raw);
   if(!include.length&&exclude.length) include.push('Japan');
@@ -5828,6 +5936,27 @@ function getHouseholdIncomeExpectedTokens(value){
     .filter(token=>token!=='unknown');
 }
 
+function getAgeExpectedTokens(raw,compact){
+  const buckets=[['18-24',18,24],['25-34',25,34],['35-44',35,44],['45-54',45,54],['55-64',55,64],['65+',65,200]];
+  const selectRange=(min,max)=>buckets.filter(([,lo,hi])=>hi>=min&&lo<=max).map(([label])=>label);
+  // 25〜54 等の閉区間は従来どおり両端を比較する。
+  const closed=compact.match(/(\d{1,3})歳?\s*[~〜～]\s*(\d{1,3})歳?/);
+  if(closed) return selectRange(Number(closed[1]),Number(closed[2]));
+  // 18歳〜 / 18歳以上 / 18〜 / 18以上 は上限なし。
+  const lowerOpen=compact.match(/(\d{1,3})歳?(?:[~〜～]|以上)/);
+  if(lowerOpen) return selectRange(Number(lowerOpen[1]),200);
+  // 〜34歳 / 34歳以下 は下限から指定年齢まで。
+  const upperOpen=compact.match(/[~〜～]\s*(\d{1,3})歳?|(?:(\d{1,3})歳?以下)/);
+  if(upperOpen) return selectRange(18,Number(upperOpen[1]||upperOpen[2]));
+  if(compact.includes('全年齢')||compact.includes('すべて')||/(?:^|[/／])all(?:$|[/／])/.test(compact)){
+    return buckets.map(([label])=>label);
+  }
+  const explicit=buckets.filter(([label])=>compact.includes(label)).map(([label])=>label);
+  if(explicit.length) return explicit;
+  const nums=[...raw.matchAll(/(\d{1,3})/g)].map(match=>Number(match[1]));
+  return nums.length?selectRange(nums[0],nums[1]||nums[0]):[];
+}
+
 function getDemographicExpectedTokens(settingValue,fieldType){
   const parentalSetting=fieldType==='parentalStatus'?normalizeParentalSettingValue(settingValue):null;
   const raw=String(parentalSetting?parentalSetting.effective:settingValue||'').normalize('NFKC');
@@ -5839,20 +5968,7 @@ function getDemographicExpectedTokens(settingValue,fieldType){
     if(all||compact.includes('male')||compact.includes('男性')) expected.push('male');
     if(all||compact.includes('female')||compact.includes('女性')) expected.push('female');
   }else if(fieldType==='age'){
-    const buckets=[['18-24',18,24],['25-34',25,34],['35-44',35,44],['45-54',45,54],['55-64',55,64],['65+',65,200]];
-    const all=compact.includes('全年齢')||/(?:^|[/／])all(?:$|[/／])/.test(compact);
-    if(all) expected=buckets.map(([label])=>label);
-    else{
-      const explicit=buckets.filter(([label])=>compact.includes(label)).map(([label])=>label);
-      if(explicit.length) expected=explicit;
-      else{
-        const nums=[...raw.matchAll(/(\d{1,3})/g)].map(match=>Number(match[1]));
-        if(nums.length){
-          const min=nums[0],max=nums[1]||nums[0]||200;
-          expected=buckets.filter(([,lo,hi])=>hi>=min&&lo<=max).map(([label])=>label);
-        }
-      }
-    }
+    expected=getAgeExpectedTokens(raw,compact);
   }else if(fieldType==='parentalStatus'){
     if(compact.includes('all')||compact.includes('すべて')) expected=['not a parent','parent'];
     else expected=parseUnknownTokens(raw).map(token=>canonicalDemographicToken(token,fieldType)).filter(token=>token!=='unknown');
@@ -6305,16 +6421,20 @@ function compareIO_Display(s,d){
     result:compareDisplayIoDate(sf.startDate,budgetSegments.startDate),sourceSdfFields:['Budget Segments'],
   });
   items.push({
-    label:'開始時間',...compareIoTime(sf.startTime,budgetSegments.startTime,df.daypartTargeting||'',false),
-    sourceSdfFields:['Budget Segments','Daypart Targeting','Daypart Targeting Time Zone'],
+    label:'開始時間',...compareIoTime(sf.startTime,budgetSegments.startTime,df.daypartTargeting||'',false,{
+      resolvedLiDaypart:d.resolvedLiDaypart,startDate:sf.startDate,endDate:sf.endDate,
+    }),
+    sourceSdfFields:['LineItems: Daypart Targeting','LineItems: Daypart Targeting Time Zone'],
   });
   items.push({
     label:'終了日',sVal:sf.endDate||'',dVal:budgetSegments.endDate||'(空)',
     result:compareDisplayIoDate(sf.endDate,budgetSegments.endDate),sourceSdfFields:['Budget Segments'],
   });
   items.push({
-    label:'終了時間',...compareIoTime(sf.endTime,budgetSegments.endTime,df.daypartTargeting||'',true),
-    sourceSdfFields:['Budget Segments','Daypart Targeting','Daypart Targeting Time Zone'],
+    label:'終了時間',...compareIoTime(sf.endTime,budgetSegments.endTime,df.daypartTargeting||'',true,{
+      resolvedLiDaypart:d.resolvedLiDaypart,startDate:sf.startDate,endDate:sf.endDate,
+    }),
+    sourceSdfFields:['LineItems: Daypart Targeting','LineItems: Daypart Targeting Time Zone'],
   });
   items.push({
     label:'ペース',sVal:sf.pacing||'',dVal:df.pacing||'(空)',
@@ -6497,16 +6617,20 @@ function compareIO_OTT(s,d){
     result:compareField(normDate(sf.startDate),normDate(budgetSegments.startDate)),
     sourceSdfFields:['Budget Segments'],
   });
+  const hasResolvedLiDaypart=Object.prototype.hasOwnProperty.call(d,'resolvedLiDaypart');
   const rawDaypart=getOttIoRawSdfValue(d,'Daypart Targeting');
-  const daypartTimes=extractOttIoDaypartTimes(rawDaypart);
-  const daypartTimeZone=getOttIoRawSdfValue(d,'Daypart Targeting Time Zone');
-  const daypartDisplay=(time)=>{
-    // SDF 未設定: 比較は「全天」扱いで行うが、表示は (空) とする
+  const legacyDaypartTimes=extractOttIoDaypartTimes(rawDaypart);
+  const legacyDaypartTimeZone=getOttIoRawSdfValue(d,'Daypart Targeting Time Zone');
+  const legacyDaypartDisplay=time=>{
     if(!String(rawDaypart||'').trim()||!time) return '(空)';
-    return daypartTimeZone ? `${time} (${daypartTimeZone})` : time;
+    return legacyDaypartTimeZone?`${time} (${legacyDaypartTimeZone})`:time;
   };
   const isAllDaySetting=normStr(sf.startTime)==='00:00'&&normStr(sf.endTime)==='23:59';
-  items.push({label:'開始時間',...compareOttIoBudgetTime(sf.startTime,daypartTimes.startTime,false,isAllDaySetting),dVal:daypartDisplay(daypartTimes.startTime),sourceSdfFields:['Daypart Targeting','Daypart Targeting Time Zone']});
+  const ioStartTime=hasResolvedLiDaypart
+    ?compareIoTime(sf.startTime,'','',false,{resolvedLiDaypart:d.resolvedLiDaypart,startDate:sf.startDate,endDate:sf.endDate})
+    :{...compareOttIoBudgetTime(sf.startTime,legacyDaypartTimes.startTime,false,isAllDaySetting),dVal:legacyDaypartDisplay(legacyDaypartTimes.startTime)};
+  items.push({label:'開始時間',...ioStartTime,
+    sourceSdfFields:hasResolvedLiDaypart?['LineItems: Daypart Targeting','LineItems: Daypart Targeting Time Zone']:['Daypart Targeting','Daypart Targeting Time Zone']});
   items.push({
     label:'終了日',
     sVal:fmtDateVal(sf.endDate)||sf.endDate||'',
@@ -6514,7 +6638,11 @@ function compareIO_OTT(s,d){
     result:compareField(normDate(sf.endDate),normDate(budgetSegments.endDate)),
     sourceSdfFields:['Budget Segments'],
   });
-  items.push({label:'終了時間',...compareOttIoBudgetTime(sf.endTime,daypartTimes.endTime,true,isAllDaySetting),dVal:daypartDisplay(daypartTimes.endTime),sourceSdfFields:['Daypart Targeting','Daypart Targeting Time Zone']});
+  const ioEndTime=hasResolvedLiDaypart
+    ?compareIoTime(sf.endTime,'','',true,{resolvedLiDaypart:d.resolvedLiDaypart,startDate:sf.startDate,endDate:sf.endDate})
+    :{...compareOttIoBudgetTime(sf.endTime,legacyDaypartTimes.endTime,true,isAllDaySetting),dVal:legacyDaypartDisplay(legacyDaypartTimes.endTime)};
+  items.push({label:'終了時間',...ioEndTime,
+    sourceSdfFields:hasResolvedLiDaypart?['LineItems: Daypart Targeting','LineItems: Daypart Targeting Time Zone']:['Daypart Targeting','Daypart Targeting Time Zone']});
 
   items.push({
     label:'ペース',sVal:sf.pacingType||'',dVal:df.pacingRate||'(空)',
@@ -6588,14 +6716,18 @@ function compareIO(s,d){
   }
   items.push({label:'開始日', sVal:fmtDateVal(sf.startDate)||sf.startDate||'', dVal:bs.startDate||'(空)', result:compareField(normDate(sf.startDate),bs.startDate?normDate(bs.startDate):'')});
   if(youtubeOnly){
-    const startTime=compareIoTime(sf.startTime,bs.startTime,df.daypartTargeting||'',false);
+    const startTime=compareIoTime(sf.startTime,bs.startTime,df.daypartTargeting||'',false,{
+      resolvedLiDaypart:d.resolvedLiDaypart,startDate:sf.startDate,endDate:sf.endDate,
+    });
     items.push({label:'開始時間',...startTime});
   } else {
     items.push({label:'開始時間',sVal:sf.startTime||'',dVal:bs.startTime||'(空)',result:compareField(sf.startTime,bs.startTime)});
   }
   items.push({label:'終了日', sVal:fmtDateVal(sf.endDate)||sf.endDate||'', dVal:bs.endDate||'(空)', result:compareField(normDate(sf.endDate),bs.endDate?normDate(bs.endDate):'')});
   if(youtubeOnly){
-    const endTime=compareIoTime(sf.endTime,bs.endTime,df.daypartTargeting||'',true);
+    const endTime=compareIoTime(sf.endTime,bs.endTime,df.daypartTargeting||'',true,{
+      resolvedLiDaypart:d.resolvedLiDaypart,startDate:sf.startDate,endDate:sf.endDate,
+    });
     items.push({label:'終了時間',...endTime});
   } else {
     items.push({label:'終了時間',sVal:sf.endTime||'',dVal:bs.endTime||'(空)',result:compareField(sf.endTime,bs.endTime)});
