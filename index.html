@@ -351,7 +351,7 @@ var TOOLS=[
   {group:'ka2',icon:'🎯',name:'ターゲット推薦ツール',name_ja:'ターゲット推薦ツール',desc:'SEM見積向けターゲティング推薦',desc_ja:'SEM見積向けターゲティング推薦',href:'ターゲット推薦ツール 2.html',badge:''},
   {group:'ka3',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
   {group:'ka4',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
-  {group:'ka5',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
+  {group:'ka5',icon:'🎯',name:'Meta Interest 辞書 QC',name_ja:'Meta Interest 辞書 QC',desc:'完全オフラインの興味・関心照合',desc_ja:'完全オフラインの興味・関心照合',href:'meta_interest_qc.html',badge:'new'},
   {group:'ka6',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
   {group:'report',icon:'📋',name:'BPO定例会 報告書',name_ja:'BPO定例会 報告書',desc:'年度目标・効率指標・核心成果・工作计划',desc_ja:'年度目標・効率指標・核心成果・業務計画',href:'bpo_weekly_report_malin.html',badge:'',perm:'管理者'}
 ];
@@ -375,6 +375,7 @@ var SEARCH_TAGS=['Excel','Amazon','DV360','地域','文本','图片'];
 
 // ==================== Complete UPDATE_LOG ====================
 var UPDATE_LOG=[
+  {date:'2026/08/13',requester:'苗青',type:'fix',tool:'Excel対比',title:'修复Excel对比数字格式及外部参照路径检查',title_ja:'Excel比較の数値書式・外部参照パス検査を修正',detail:'Excel对比新增数字格式／单位及外部参照路径检查。可识别底层数值相同但单位不同的情况（如 150456円 vs 150456imp），并解析 Excel externalLinks 真实路径，检测 XLOOKUP 等公式实际引用文件路径差异。同时修复公式视图被「隐藏相同行」按钮覆盖的问题。',detail_ja:'Excel比較に数値書式／単位および外部参照パスの検査を追加しました。同じ数値でも単位が異なる場合（150456円 vs 150456imp）を検出し、Excel externalLinks を解析して XLOOKUP 等の数式が実際に参照するファイルパスの差異を検出します。あわせて数式ビューが「同一行を隠す」ボタンで上書きされる問題を修正しました。',summary:'Excel对比新增数字格式／单位及外部参照路径检查，检测XLOOKUP等公式引用文件路径差异。',summary_ja:'Excel比較に数値書式・単位・外部参照パス検査を追加し、数式の参照ファイルパス差異を検出可能に。',note:''},
   {date:'2026/08/12',requester:'马林',type:'improve',tool:'DV360 設定チェック',title:'DV360设定校正上线',title_ja:'DV360設定校正をリリース',detail:'DV360設定チェックのDisplay・YouTube・OTT比較校正をリリースしました。',detail_ja:'DV360設定チェックのDisplay・YouTube・OTT比較校正をリリースしました。',summary:'DV360设定校正上线。',summary_ja:'DV360設定校正をリリース。',note:''},
   {date:'2026/08/06',requester:'苗青',type:'fix',tool:'Excel対比',title:'修复空白格式行导致误判删除一行的问题',title_ja:'空白書式行による「削除1行」誤判定を修正',detail:'修复 Excel 对比工具因残留样式、空公式或有效范围不同导致行号错位、误判"删除/新增行"的问题。现在统一按真实 Excel 行号对比，空白格式行不再计入差异，真实新增、删除仍正常识别。',detail_ja:'残留スタイル・空数式・有効範囲の違いによる行番号ズレと「削除/新規行」の誤判定を修正しました。実Excel行番号で統一比較し、空白書式行を差異として数えず、実際の追加・削除は正しく検出します。',summary:'修复空白格式行导致误判删除一行的问题，现已按真实 Excel 行号准确对比。',summary_ja:'空白書式行による「削除1行」誤判定を修正し、実Excel行番号で正確に比較できるようにしました。',note:''},
   {date:'2026/08/06',requester:'张微',type:'fix',tool:'Amazon DSP 設定チェック',title:'PVAオーディエンス解析・比較ロジック修正',title_ja:'PVAオーディエンス解析・比較ロジック修正',detail:'PVAセグメントシート支持动态识别最多5个Group，修复第3组表头与首个Audience文字连接时无法提取的问题。Audience改为设置表与下载数据双向比较，Include／Exclude分别判定；设置表删除Audience后，下载侧多出的Audience能正确提示，不再把子集误判为一致。',detail_ja:'PVAセグメントシートの複数Group解析を最大5Groupまで対応し、Include／Excludeのオーディエンスを設定表・ダウンロード間で双方向比較できるよう修正しました。',summary:'PVAセグメントシート最大5Group动态解析，Include／Exclude双向比较，删除Audience不再误判一致。',summary_ja:'PVAセグメントシートの複数Group解析を最大5Groupまで対応し、Include／Excludeのオーディエンスを設定表・ダウンロード間で双方向比較できるよう修正しました。',note:''},
