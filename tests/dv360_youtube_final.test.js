@@ -62,6 +62,7 @@ window.__dv360FinalTestApi = {
   compareIO: typeof compareIO === 'function' ? compareIO : undefined,
   compareLI: typeof compareLI === 'function' ? compareLI : undefined,
   compareGP: typeof compareGP === 'function' ? compareGP : undefined,
+  getSdfFieldDisplayLabel: typeof getSdfFieldDisplayLabel === 'function' ? getSdfFieldDisplayLabel : undefined,
   buildRawSdfStatusItem: typeof buildRawSdfStatusItem === 'function' ? buildRawSdfStatusItem : undefined,
   getCoreLevelColumns: typeof getCoreLevelColumns === 'function' ? getCoreLevelColumns : undefined,
   appendDynamicDownloadColumns: typeof appendDynamicDownloadColumns === 'function' ? appendDynamicDownloadColumns : undefined,
@@ -159,6 +160,117 @@ test('case select change event is bound inside the application closure', () => {
   select.value = 'crAdditional';
   select.__listeners.change[0]();
   assert.equal(api.getSelectedDv360CaseType(), 'crAdditional');
+});
+
+function makeYoutubeDownload(fields = {}) {
+  return {
+    name: 'YouTube test', id: 'youtube-test', rawFields: {}, rawFieldOrder: [],
+    statusInfo: { found: true, matchedKey: 'Status', rawValue: 'Paused', normalizedValue: 'Paused' },
+    fields: { status: 'Paused', ...fields },
+  };
+}
+
+function findYoutubeItem(items, label) {
+  const item = items.find(entry => entry.label === label);
+  assert.ok(item, `${label} comparison item should exist`);
+  return item;
+}
+
+test('YouTube IO compares automatic budget allocation with SDF Auto Budget Allocation', () => {
+  const { api } = loadDv360Api();
+  const items = api.compareIO({ fields: { optimize: '予算の割り当てを自動的に最適化する' } },
+    makeYoutubeDownload({ autoBudget: 'True', optimization: 'False' }));
+  assert.equal(findYoutubeItem(items, '最適化').result, 'ok');
+});
+
+test('YouTube IO flags automatic budget allocation when SDF Auto Budget Allocation is False', () => {
+  const { api } = loadDv360Api();
+  const items = api.compareIO({ fields: { optimize: '予算の割り当てを自動的に最適化する' } },
+    makeYoutubeDownload({ autoBudget: 'False', optimization: 'True' }));
+  assert.equal(findYoutubeItem(items, '最適化').result, 'mismatch');
+});
+
+test('YouTube IO treats no-objective setting as SDF No Objective', () => {
+  const { api } = loadDv360Api();
+  const items = api.compareIO({ fields: { goal: '広告掲載オーダー（目標なし）' } },
+    makeYoutubeDownload({ objective: 'No Objective' }));
+  assert.equal(findYoutubeItem(items, '目標').result, 'ok');
+});
+
+test('YouTube GP household-income includes Unknown only when requested', () => {
+  const { api } = loadDv360Api();
+  const downloadWithoutUnknown = makeYoutubeDownload({ demographicIncome: 'Top 10%; 11-20%; 21-30%; 31-40%; 41-50%; Lower 50%;' });
+  const downloadWithUnknown = makeYoutubeDownload({ demographicIncome: 'Top 10%; 11-20%; 21-30%; 31-40%; 41-50%; Lower 50%; Unknown;' });
+  assert.equal(findYoutubeItem(api.compareGP({ fields: { householdIncome: 'ALL / 不明なし' } }, downloadWithoutUnknown), '世帯年収').result, 'ok');
+  assert.equal(findYoutubeItem(api.compareGP({ fields: { householdIncome: 'ALL / 不明あり' } }, downloadWithUnknown), '世帯年収').result, 'ok');
+  assert.equal(findYoutubeItem(api.compareGP({ fields: { householdIncome: '不明あり / なし' } }, downloadWithoutUnknown), '世帯年収').result, 'ok');
+  assert.equal(findYoutubeItem(api.compareGP({ fields: { householdIncome: '不明あり / あり' } }, downloadWithUnknown), '世帯年収').result, 'ok');
+});
+
+test('YouTube LI age range uses the configured start and end ages', () => {
+  const { api } = loadDv360Api();
+  const item = findYoutubeItem(api.compareLI({ fields: { age: '18歳～ / 34歳', ageUnknown: '不明なし' } },
+    makeYoutubeDownload({ demographicAge: '18-24; 25-34;' })), '年齢');
+  assert.equal(item.result, 'ok');
+});
+
+test('YouTube LI daypart displays only normalized start and end times', () => {
+  const { api } = loadDv360Api();
+  const items = api.compareLI({ fields: { daypart: '火曜日 10:00~00:00', startDate: '2026/08/18', endDate: '2026/08/18' } },
+    makeYoutubeDownload({ daypartTargeting: '314096;' }));
+  const start = findYoutubeItem(items, '開始時間');
+  const end = findYoutubeItem(items, '終了時間');
+  assert.deepEqual({ s: start.sVal, d: start.dVal, result: start.result }, { s: '10:00', d: '10:00', result: 'ok' });
+  assert.deepEqual({ s: end.sVal, d: end.dVal, result: end.result }, { s: '23:59', d: '23:59', result: 'ok' });
+});
+
+test('YouTube LI date-qualified weekday daypart keeps its own 24:00 end time', () => {
+  const { api } = loadDv360Api();
+  const items = api.compareLI({ fields: { daypart: '8/18(火)のみ\n12:00～24:00', startDate: '2026/08/18', endDate: '2026/08/18' } },
+    makeYoutubeDownload({ daypartTargeting: '314896;' }));
+  const start = findYoutubeItem(items, '開始時間');
+  const end = findYoutubeItem(items, '終了時間');
+  assert.deepEqual({ s: start.sVal, d: start.dVal, result: start.result }, { s: '12:00', d: '12:00', result: 'ok' });
+  assert.deepEqual({ s: end.sVal, d: end.dVal, result: end.result }, { s: '23:59', d: '23:59', result: 'ok' });
+});
+
+test('known SDF fields display their confirmed Japanese title only', () => {
+  const { api } = loadDv360Api();
+  assert.equal(api.getSdfFieldDisplayLabel('Demographic Targeting Household Income'), '世帯年収');
+  assert.equal(api.getSdfFieldDisplayLabel('Auto Budget Allocation'), '予算自動配分');
+  assert.equal(api.getSdfFieldDisplayLabel('Insertion Order Optimization'), 'IO最適化');
+  assert.equal(api.getSdfFieldDisplayLabel('Unconfirmed Field'), 'Unconfirmed Field');
+});
+
+test('YouTube LI accepts 23:59 as the required end time for flights longer than seven days', () => {
+  const { api } = loadDv360Api();
+  const items = api.compareLI({ fields: { daypart: '火曜日 10:00~00:00', startDate: '広告掲載オーダーと同じ', endDate: '広告掲載オーダーと同じ' } },
+    { ...makeYoutubeDownload({ daypartTargeting: '314096;' }), resolvedIo: { startDate: '2026-08-18', endDate: '2026-09-18' } });
+  assert.equal(findYoutubeItem(items, '終了時間').result, 'ok');
+});
+
+test('YouTube LI rejects a non-23:59 end time for flights longer than seven days', () => {
+  const { api } = loadDv360Api();
+  const items = api.compareLI({ fields: { daypart: '火曜日 10:00~00:00', startDate: '広告掲載オーダーと同じ', endDate: '広告掲載オーダーと同じ' } },
+    { ...makeYoutubeDownload({ daypartTargeting: '314084;' }), resolvedIo: { startDate: '2026-08-18', endDate: '2026-09-18' } });
+  assert.equal(findYoutubeItem(items, '終了時間').result, 'mismatch');
+});
+
+test('YouTube CR compares the regular headline with SDF Headline', () => {
+  const { api } = loadDv360Api();
+  const item = findYoutubeItem(api.compareCR({ fields: { headline: '通常見出し' } },
+    makeYoutubeDownload({ headline: '通常見出し' })), '見出し');
+  assert.equal(item.result, 'ok');
+});
+
+test('YouTube CR companion banner requires a workbook-derived asset ID', () => {
+  const { api } = loadDv360Api();
+  const withMapping = findYoutubeItem(api.compareCR({ fields: { companionBanner: 'banner.jpg', companionBannerAssetId: '101' } },
+    makeYoutubeDownload({ companionBannerAssetIds: '101;' })), 'コンパニオンバナー');
+  assert.equal(withMapping.result, 'ok');
+  const withoutMapping = findYoutubeItem(api.compareCR({ fields: { companionBanner: 'banner.jpg' } },
+    makeYoutubeDownload({ companionBannerAssetIds: '101;' })), 'コンパニオンバナー');
+  assert.equal(withoutMapping.result, 'warning');
 });
 
 function makeCrSetting(displayUrl) {

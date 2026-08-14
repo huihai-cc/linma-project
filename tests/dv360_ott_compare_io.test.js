@@ -267,12 +267,12 @@ test('OTT core items consume raw optimization and Auto Budget fields once', () =
   assert.equal(allItems.filter(candidate => candidate.rawFieldName === 'Auto Budget Allocation').length, 0);
 });
 
-test('YouTube stays on its existing IO compare while Display uses its independent contract', () => {
+test('YouTube and Display expose their respective IO contracts', () => {
   api.setMediaType('youtube');
   const youtubeLabels = api.compareIO(baseSetting(), baseDownload()).map(candidate => candidate.label);
   assert.ok(youtubeLabels.includes('目標'));
   assert.ok(!youtubeLabels.includes('目標指標'));
-  assert.ok(!youtubeLabels.includes('最適化'));
+  assert.ok(youtubeLabels.includes('最適化'));
   assert.ok(!youtubeLabels.includes('予算の自動割り当て'));
 
   api.setMediaType('display');
@@ -283,7 +283,7 @@ test('YouTube stays on its existing IO compare while Display uses its independen
   assert.ok(displayLabels.includes('予算の自動割り当て'));
 });
 
-test('OTT and Display expose their own IO columns without changing YouTube columns', () => {
+test('YouTube, OTT and Display expose their respective IO columns', () => {
   api.setMediaType('youtube');
   const youtubeKeys = api.getCoreLevelColumns('IO', true).map(column => column.key);
   api.setMediaType('display');
@@ -295,7 +295,7 @@ test('OTT and Display expose their own IO columns without changing YouTube colum
     '開始日', '開始時間', '終了日', '終了時間', 'ペース', 'KPI', 'KPI値']) {
     assert.ok(ottKeys.includes(key), `OTT IO table contains ${key}`);
   }
-  assert.ok(!youtubeKeys.includes('最適化'), 'YouTube IO columns stay unchanged');
+  assert.ok(youtubeKeys.includes('最適化'), 'YouTube IO includes its SDF optimization column');
   assert.ok(displayKeys.includes('最適化'), 'Display IO has its independent optimization column');
   assert.ok(!youtubeKeys.includes('予算の自動割り当て'), 'YouTube has no OTT auto-budget column');
   assert.ok(displayKeys.includes('予算の自動割り当て'), 'Display IO has its independent auto-budget column');

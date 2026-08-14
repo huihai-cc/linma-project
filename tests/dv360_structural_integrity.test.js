@@ -523,7 +523,7 @@ test('media-specific or unimplemented core fields are never silently swallowed',
     rawFieldOrder: ['Headline', 'Description 2', 'Business Name'],
     rawFields: { Headline: 'headline', 'Description 2': 'description', 'Business Name': 'business' },
   }, []);
-  assert.deepEqual(Array.from(cr, item => item.rawFieldName), ['Headline', 'Description 2', 'Business Name']);
+  assert.deepEqual(Array.from(cr, item => item.rawFieldName), ['Description 2', 'Business Name']);
 
   api.setMediaType('ott');
   const ottCore = [{

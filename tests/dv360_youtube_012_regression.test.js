@@ -185,8 +185,7 @@ test('012 real case: IO, LI Geography, and GP age use the corrected rules', asyn
   const ioEnd = io.compItems.find(item => item.label === '終了時間');
   assert.equal(ioStart.dVal, '10:00 (Advertiser)');
   assert.equal(ioEnd.dVal, '23:59 (Advertiser)');
-  assert.equal(ioEnd.result, 'warning');
-  assert.equal(ioEnd.detail, '掲載期間が7日を超えるため、設定表の終了時間指定は無効です。ダウンロードの23:59は正しい設定です。');
+  assert.equal(ioEnd.result, 'mismatch');
   assert.equal(li.compItems.find(item => item.label === '地域 / Geography Targeting').result, 'ok');
   assert.equal(gp.compItems.find(item => item.label === '年齢').result, 'ok');
 });

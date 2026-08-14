@@ -149,7 +149,7 @@ test('CR Description 1: 不再读取コンパニオンバナー', () => {
 });
 
 // ============================================================
-// コンパニオンバナー（単独・SDF非対応）
+// コンパニオンバナー（Asset ID が設定表で追跡できる場合のみ SDF 照合）
 // ============================================================
 test('CR コンパニオンバナー: 空値 → ok', () => {
   const items = api.compareCR(makeCrSetting({ companionBanner: '' }), makeCrDownload({}), '');
@@ -169,16 +169,14 @@ test('CR コンパニオンバナー: 他値 → warning', () => {
   const item = findCompareItem(items, 'コンパニオンバナー');
   assert.equal(item.result, 'warning');
   assert.ok(item.mpDetail);
-  assert.match(item.mpDetail, /想定外の値/);
+  assert.match(item.mpDetail, /Asset ID/);
 });
 
-test('CR コンパニオンバナー: SDF非依存', () => {
-  // companionBanner should not depend on any SDF field
+test('CR コンパニオンバナー: SDF の Asset ID を表示', () => {
   const items = api.compareCR(makeCrSetting({ companionBanner: '推奨' }),
     makeCrDownload({ description1: '何か' }), '');
   const item = findCompareItem(items, 'コンパニオンバナー');
-  // result based on setting value only
-  assert.equal(item.dVal, '(SDF非対応)');
+  assert.equal(item.dVal, '(空欄)');
 });
 
 // ============================================================
@@ -279,11 +277,11 @@ test('CR 回帰: CTA/LP URL/Status不受影响', () => {
   assert.equal(findCompareItem(items, 'ステータス').result, 'ok');
 });
 
-test('CR 回帰: CR字段包含业务状态和固定原始 Status（10个）', () => {
+test('CR 回帰: CR字段包含业务状态和固定原始 Status（11个）', () => {
   const items = api.compareCR(makeCrSetting({}), makeCrDownload({}), 'Active');
   const labels = items.map(i => i.label);
-  assert.equal(labels.length, 10);
-  const expected = ['ステータス','📥 状态 Status','動画ID','表示URL','LP URL','CTA','長い見出し※','説明※','コンパニオンバナー','広告形式'];
+  assert.equal(labels.length, 11);
+  const expected = ['ステータス','📥 状态 Status','動画ID','表示URL','LP URL','CTA','見出し','長い見出し※','説明※','コンパニオンバナー','広告形式'];
   expected.forEach(e => assert.ok(labels.includes(e), `Missing label: ${e}`));
 });
 

@@ -476,39 +476,39 @@ test('GP MP 独立判定: 行ごとに独立して結果を返す', () => {
 });
 
 // ============================================================
-// 15. 双语标题（2026-08-03 追加）
+// 15. 已确认本地标题不再追加英文
 // ============================================================
-test('GP MP 双语标签: 排除关键词标题包含双语', () => {
+test('GP MP 标签: 排除关键词不追加英文', () => {
   const label = api.getSdfFieldDisplayLabel('Keyword Targeting - Exclude');
   assert.match(label, /排除关键词/);
-  assert.match(label, /Keyword Targeting - Exclude/);
+  assert.doesNotMatch(label, /Keyword Targeting - Exclude/);
 });
 
-test('GP MP 双语标签: 世帯年収标题包含双语', () => {
+test('GP MP 标签: 世帯年収只显示日文', () => {
   const label = api.getSdfFieldDisplayLabel('Demographic Targeting Household Income');
   assert.match(label, /世帯年収/);
-  assert.match(label, /Demographic Targeting Household Income/);
+  assert.equal(label, '世帯年収');
 });
 
-test('GP MP 双语标签: Audience Expansion Level 双语', () => {
+test('GP MP 标签: Audience Expansion Level不追加英文', () => {
   const label = api.getSdfFieldDisplayLabel('Audience Expansion Level');
   assert.match(label, /受众扩展等级/);
-  assert.match(label, /Audience Expansion Level/);
+  assert.doesNotMatch(label, /Audience Expansion Level/);
 });
 
-test('GP MP 双语标签: Audience Targeting Include 双语', () => {
+test('GP MP 标签: Audience Targeting Include不追加英文', () => {
   const label = api.getSdfFieldDisplayLabel('Audience Targeting - Include');
   assert.match(label, /包含受众/);
-  assert.match(label, /Audience Targeting - Include/);
+  assert.doesNotMatch(label, /Audience Targeting - Include/);
 });
 
-test('GP MP 双语标签: Audience Targeting Exclude 双语', () => {
+test('GP MP 标签: Audience Targeting Exclude不追加英文', () => {
   const label = api.getSdfFieldDisplayLabel('Audience Targeting - Exclude');
   assert.match(label, /排除受众/);
-  assert.match(label, /Audience Targeting - Exclude/);
+  assert.doesNotMatch(label, /Audience Targeting - Exclude/);
 });
 
-test('GP MP 双语标签: GP全字段スキャン - 全ラベルにローカル名と英名が含まれる', () => {
+test('GP MP 标签: GP全字段使用已确认的本地标题', () => {
   // GPで表示されうる全フィールドをチェック
   const gpFields = [
     'Keyword Targeting - Exclude', 'Category Targeting - Exclude',
@@ -531,15 +531,13 @@ test('GP MP 双语标签: GP全字段スキャン - 全ラベルにローカル�
   ];
   for (const field of gpFields) {
     const label = api.getSdfFieldDisplayLabel(field);
-    // 英語フィールド名を含んでいること
-    assert.match(label, new RegExp(field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-      `Field "${field}" label "${label}" should contain the English field name`);
-    // 純粋な英語だけではないこと（日本語または中国語を含む）
     const normalized = api.normalizeSdfFieldName(field);
     const displayLabel = api.sdfFieldDisplayLabels[normalized];
     if (displayLabel) {
       assert.ok(displayLabel.ja || displayLabel.zh,
         `Field "${field}" must have ja or zh label`);
+      assert.equal(label, String(displayLabel.ja || displayLabel.en || field).split(' / ')[0].trim(),
+        `Field "${field}" should not append English to its local label`);
     }
   }
 });

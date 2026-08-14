@@ -900,7 +900,7 @@ const CORE_CONSUMED_SDF_FIELDS = {
     'Keyword List Targeting - Exclude',
   ],
   IO: [
-    'Name','Status','Io Type','Io Subtype','Io Objective','Budget Segments','Pacing','Pacing Rate',
+    'Name','Status','Io Type','Io Subtype','Io Objective','Auto Budget Allocation','Budget Segments','Pacing','Pacing Rate',
     'Kpi Type','Kpi Value','TrueView Kpi Type','TrueView Kpi Value',
     'Frequency Enabled','Frequency Exposures','Frequency Period','Frequency Amount',
     'Daypart Targeting','Daypart Targeting Time Zone',
@@ -928,7 +928,7 @@ const CORE_CONSUMED_SDF_FIELDS = {
   ],
   CR: [
     'Name','Ad Group Name','Status','Video Id','Display URL','Landing Page URL','Call to Action',
-    'In-feed Video Headline','Description 1','Ad Type',
+    'Headline','In-feed Video Headline','Description 1','Ad Type','Companion Banner Asset IDs',
   ],
 };
 
@@ -1028,10 +1028,8 @@ function getSdfFieldDisplayLabel(fieldName){
   const label=SDF_FIELD_DISPLAY_LABELS[normalizeSdfFieldName(english)];
   if(!label) return english;
   const japanese=String(label.ja||'').trim();
-  const chinese=String(label.zh||'').trim();
   const fallback=String(label.en||english).trim()||english;
-  if(japanese&&/\p{Script=Han}/u.test(japanese)) return `${japanese} / ${fallback}`;
-  if(chinese) return `${chinese} / ${fallback}`;
+  if(japanese) return japanese.split(' / ')[0].trim()||fallback;
   return fallback;
 }
 
@@ -2596,8 +2594,9 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
                  timeSpec:14,startDate:15,startTime:16,endDate:17,endTime:18,
                  billing:19,bidCap:20,typeName:21,inventory:22,gvp:23,googleTv:24,videoFormat:25,
                  gender:32,genderUnknown:33,ageStart:34,ageEnd:35,ageUnknown:36,region:37,
-                 parentalStatus:39,householdIncomeStart:40,householdIncomeEnd:41,materialSheet:53,
+                 parentalStatus:39,householdIncomeStart:40,householdIncomeEnd:41,householdIncomeUnknown:-1,materialSheet:53,
                  audienceList:-1,audienceManual:-1};
+      const householdIncomeHeaders=[];
       hdr.forEach((h,i)=>{
         const hs=String(h||'');
         if(hs.includes('IO名'))                                   col.io=i;
@@ -2612,9 +2611,9 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
         if(hs.includes('ブランドリフト'))                         col.brandLift=i;
         if(hs.includes('時間指定'))                               col.timeSpec=i;
         if(hs.includes('開始日'))                               col.startDate=i;
-        if(hs.includes('開始')&&hs.includes('時間')&&!hs.includes('日')) col.startTime=i;
+        if(hs.includes('開始')&&hs.includes('時間')&&!hs.includes('日')&&!hs.includes('時間指定')) col.startTime=i;
         if(hs.includes('終了日'))                               col.endDate=i;
-        if(hs.includes('終了')&&hs.includes('時間')&&!hs.includes('日')) col.endTime=i;
+        if(hs.includes('終了')&&hs.includes('時間')&&!hs.includes('日')&&!hs.includes('時間指定')) col.endTime=i;
         if(hs.includes('課金'))                                   col.billing=i;
         if(hs.includes('入札'))                                   col.bidCap=i;
         if(hs.includes('タイプ')&&i>15)                           col.typeName=i;
@@ -2624,11 +2623,17 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
         if(hs.includes('配信FMT'))                                col.videoFormat=i;
         if(hs==='エリア'||hs==='地域')                            col.region=i;
         if(hs.includes('子供の有無'))                             col.parentalStatus=i;
-        if(hs.includes('世帯年収')){col.householdIncomeStart=i;col.householdIncomeEnd=i+1;}
+        if(hs.includes('世帯年収')) householdIncomeHeaders.push(i);
         if(hs.includes('使用する入稿物管理表'))                  col.materialSheet=i;
         if(hs.includes('オーディエンスリスト')&&hs.includes('手入力')) col.audienceManual=i;
         else if(hs.trim()==='オーディエンスリスト')              col.audienceList=i;
       });
+      if(householdIncomeHeaders.length){
+        // 「世帯年収」は 上限 / 下限 / 不明 の3列で構成される。最後の同名列を起点にしない。
+        col.householdIncomeStart=householdIncomeHeaders[0];
+        col.householdIncomeEnd=householdIncomeHeaders[0]+1;
+        col.householdIncomeUnknown=householdIncomeHeaders[1]??-1;
+      }
       const usedOpLiDetails=new Set();
       for(let i=hdrRow+1;i<rows.length;i++){
         const r=rows[i];
@@ -2666,7 +2671,10 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
         if(liList.find(l=>normStr(l.name)===normStr(primaryLIName)&&normStr(l.ioName)===normStr(primaryIOName))) continue;
         const opDetail=matchedOpDetail||findOpLiDetail(primaryLIName,primaryIOName)||{};
         const followsIo=isSameAsIo(opDetail.liPeriod);
-        const householdIncome=[text(r[col.householdIncomeStart]),text(r[col.householdIncomeEnd])]
+        const householdIncomeRange=[text(r[col.householdIncomeStart]),text(r[col.householdIncomeEnd])]
+          .filter(value=>value&&!isPlaceholder(value));
+        // 「ALL or 上位」の両列が未選択なら、年収範囲は制限なし（ALL）として扱う。
+        const householdIncome=[...(householdIncomeRange.length?householdIncomeRange:['ALL']),text(r[col.householdIncomeUnknown])]
           .filter(value=>value&&!isPlaceholder(value)).join(' / ');
 
         liList.push({
@@ -2717,6 +2725,23 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
   }
 
   // ── 入稿物管理表: 利用対象シートのみから GP / CR / 素材を抽出 ──
+  const companionAssetIdByFilename=new Map();
+  sheetNames.forEach(sheetName=>{
+    const rows=sheets[sheetName]||[];
+    rows.forEach((header,headerIndex)=>{
+      const assetIdColumn=header.findIndex(value=>/(?:asset\s*id|アセット\s*id|素材\s*id)/i.test(text(value)));
+      if(assetIdColumn<0) return;
+      for(let rowIndex=headerIndex+1;rowIndex<rows.length;rowIndex++){
+        const row=rows[rowIndex]||[];
+        const assetId=(text(row[assetIdColumn]).match(/\d{6,}/)||[])[0];
+        if(!assetId) continue;
+        row.forEach(value=>{
+          const filename=text(value);
+          if(/\.(?:jpe?g|png|gif|webp)$/i.test(filename)) companionAssetIdByFilename.set(normStr(filename),assetId);
+        });
+      }
+    });
+  });
   const requestedMaterialSheets=new Set(liList.map(li=>li.fields.materialSheet).filter(v=>!isPlaceholder(v)).map(normStr));
   const requestedVideoTypes=liList.map(li=>normVideoType(li.fields.videoType));
   const isRequestedMaterialSheet=name=>{
@@ -2822,6 +2847,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
           longHeadline:String(r[col.longHeadline]||'').trim(),
           description:String(r[col.description]||'').trim(),
           companionBanner:String(r[col.companion]||'').trim(),
+          companionBannerAssetId:companionAssetIdByFilename.get(normStr(String(r[col.companion]||'').trim()))||'',
           clickTracker:String(r[col.clickTracker]||'').trim(),
           material:String(r[col.videoUrl]||'').trim(),
         }
@@ -4480,6 +4506,7 @@ function parseSdfData(csvFiles){
           callToAction:obj['Call to Action']||'',headline:obj['Headline']||'',
           infeedVideoHeadline:obj['In-feed Video Headline']||'',
           description1:obj['Description 1']||'',description2:obj['Description 2']||'',businessName:obj['Business Name']||'',
+          companionBannerAssetIds:obj['Companion Banner Asset IDs']||'',
         }});
       }
     }
@@ -4961,7 +4988,7 @@ function parseSettingDaypart(v){
   }
   const dayIndex={月:0,火:1,水:2,木:3,金:4,土:5,日:6};
   const days=['月曜日','火曜日','水曜日','木曜日','金曜日','土曜日','日曜日'];
-  const regex=/([月火水木金土日])曜日[\s\S]{0,40}?(\d{1,2}:\d{2})\s*[~〜～-]\s*(\d{1,2}:\d{2})/g;
+  const regex=/([月火水木金土日])(?:曜日|\))[\s\S]{0,40}?(\d{1,2}:\d{2})\s*[~〜～-]\s*(\d{1,2}:\d{2})/g;
   const segments=[];
   let match;
   while((match=regex.exec(raw))){
@@ -4969,7 +4996,9 @@ function parseSettingDaypart(v){
       const [hour,minute]=time.split(':').map(Number);
       return hour===24?96:hour*4+Math.floor(minute/15);
     };
-    const start=toSlot(match[2]),end=toSlot(match[3]);
+    const start=toSlot(match[2]);
+    let end=toSlot(match[3]);
+    if(end===0) end=96; // 00:00 は当日末尾の 24:00 として扱う。
     if(start<end) segments.push({day:dayIndex[match[1]],start,end});
   }
   if(!segments.length) return {known:false,isDefault:false,key:'',startDisplay:raw,endDisplay:raw,raw};
@@ -5127,6 +5156,23 @@ function compareDaypart(settingValue,downloadValue){
   let result='warning';
   if(s.known&&d.known) result=s.key===d.key?'ok':'mismatch';
   return {s,d,result};
+}
+
+function compareYoutubeLiDaypartTime(settingValue,downloadValue,isEnd,options={}){
+  const setting=parseSettingDaypart(settingValue),download=parseDaypartTargeting(downloadValue);
+  const s=normalizeSimpleTime(isEnd?setting.endDisplay:setting.startDisplay,isEnd);
+  const d=normalizeSimpleTime(isEnd?download.endDisplay:download.startDisplay,isEnd);
+  if(!setting.known||!download.known||!s.known||!d.known){
+    return {sVal:s.value,dVal:d.value,result:'warning'};
+  }
+  if(isEnd&&isPeriodLongerThanSevenDays(options.startDate,options.endDate)){
+    if(d.value!=='23:59'){
+      const detail='掲載期間が7日を超えるため、終了時間は23:59である必要があります。';
+      return {sVal:s.value,dVal:d.value,result:'mismatch',detail,mpDetail:detail};
+    }
+    return {sVal:s.value,dVal:d.value,result:'ok'};
+  }
+  return {sVal:s.value,dVal:d.value,result:compareField(s.value,d.value)};
 }
 
 function normalizeSimpleTime(v,isEnd){
@@ -5427,6 +5473,7 @@ function normGoal(v){
 function normObjective(v){
   if(!v) return '';
   const s=normStr(v);
+  if(s==='noobjective'||s.includes('目標なし')) return 'noobjective';
   if((s.includes('brand')&&s.includes('awareness'))||s.includes('ブランドの知名度')||s.includes('認知度')) return 'brandawareness';
   if(s.includes('consideration')||s.includes('比較検討')||s.includes('関心')) return 'consideration';
   if(s.includes('conversion')||s.includes('コンバージョン')||s.includes('行動')) return 'conversion';
@@ -5940,7 +5987,7 @@ function getAgeExpectedTokens(raw,compact){
   const buckets=[['18-24',18,24],['25-34',25,34],['35-44',35,44],['45-54',45,54],['55-64',55,64],['65+',65,200]];
   const selectRange=(min,max)=>buckets.filter(([,lo,hi])=>hi>=min&&lo<=max).map(([label])=>label);
   // 25〜54 等の閉区間は従来どおり両端を比較する。
-  const closed=compact.match(/(\d{1,3})歳?\s*[~〜～]\s*(\d{1,3})歳?/);
+  const closed=compact.match(/(\d{1,3})歳?\s*[~〜～／/]+\s*(\d{1,3})歳?/);
   if(closed) return selectRange(Number(closed[1]),Number(closed[2]));
   // 18歳〜 / 18歳以上 / 18〜 / 18以上 は上限なし。
   const lowerOpen=compact.match(/(\d{1,3})歳?(?:[~〜～]|以上)/);
@@ -5961,7 +6008,7 @@ function getDemographicExpectedTokens(settingValue,fieldType){
   const parentalSetting=fieldType==='parentalStatus'?normalizeParentalSettingValue(settingValue):null;
   const raw=String(parentalSetting?parentalSetting.effective:settingValue||'').normalize('NFKC');
   const compact=raw.replace(/[\s　]+/g,'').toLowerCase();
-  const requirement=resolveUnknownRequirement(raw,fieldType);
+  let requirement=resolveUnknownRequirement(raw,fieldType);
   let expected=[];
   if(fieldType==='gender'){
     const all=compact.includes('すべて')||/(?:^|[/／])all(?:$|[/／])/.test(compact);
@@ -5973,7 +6020,11 @@ function getDemographicExpectedTokens(settingValue,fieldType){
     if(compact.includes('all')||compact.includes('すべて')) expected=['not a parent','parent'];
     else expected=parseUnknownTokens(raw).map(token=>canonicalDemographicToken(token,fieldType)).filter(token=>token!=='unknown');
   }else if(fieldType==='householdIncome'){
-    if(compact.includes('all')||compact.includes('すべて')){
+    const templateUnknown=compact.match(/不明あり[／/](あり|なし)$/);
+    if(templateUnknown){
+      expected=['top 10%','11-20%','21-30%','31-40%','41-50%','lower 50%'];
+      requirement=templateUnknown[1]==='あり'?'include':'exclude';
+    }else if(compact.includes('all')||compact.includes('すべて')){
       expected=['top 10%','11-20%','21-30%','31-40%','41-50%','lower 50%'];
     }else expected=getHouseholdIncomeExpectedTokens(raw);
   }
@@ -6707,6 +6758,20 @@ function compareIO(s,d){
   items.push({label:'IOタイプ', sVal:sf.ioType||'', dVal:(df.ioType||'')+(df.ioSubtype?' / '+df.ioSubtype:''), result:compareField(normIoType(sf.ioType),normIoType(df.ioType))});
   // 3. 目標
   items.push({label:'目標',sVal:sf.goal||'',dVal:df.objective||'',result:compareField(normObjective(sf.goal),normObjective(df.objective))});
+  if(youtubeOnly){
+    const optimizationRaw=String(sf.optimize||sf.optimization||'').trim();
+    const optimizationKey=normStr(optimizationRaw);
+    const settingOptimization=optimizationKey.includes('手動で管理')?'false':
+      optimizationKey.includes('自動的に最適化')?'true':
+      (optimizationKey==='true'||optimizationKey==='false'?optimizationKey:'');
+    const downloadOptimization=String(df.autoBudget||'').trim().toLowerCase();
+    items.push({
+      label:'最適化',sVal:optimizationRaw||'(設定表なし)',dVal:df.autoBudget||'(空欄)',
+      result:settingOptimization&&downloadOptimization
+        ?compareField(settingOptimization,downloadOptimization):'warning',
+      sourceSdfFields:['Auto Budget Allocation'],
+    });
+  }
   // 4-10. Budget Segments
   items.push({label:'予算', sVal:sf.budget||'', dVal:bs.budget||'(空)',
     result:youtubeOnly?compareMoney(sf.budget,bs.budget):compareField(normNum(sf.budget),normNum(bs.budget))});
@@ -8587,15 +8652,20 @@ function compareLI(s,d){
   const videoTypeResult=sVideoType==='bumper'&&dVideoType==='vrc_skippable'?'warning':compareField(sVideoType,dVideoType);
   const startDate=compareLiDate(sf.startDate,df.startDate);
   const endDate=compareLiDate(sf.endDate,df.endDate);
-  const daypart=compareDaypart(sf.daypart||'',df.daypartTargeting||'');
+  const liTimeOptions={
+    startDate:(d.resolvedIo&&d.resolvedIo.startDate)||sf.startDate,
+    endDate:(d.resolvedIo&&d.resolvedIo.endDate)||sf.endDate,
+  };
+  const startTime=compareYoutubeLiDaypartTime(sf.daypart||'',df.daypartTargeting||'',false,liTimeOptions);
+  const endTime=compareYoutubeLiDaypartTime(sf.daypart||'',df.daypartTargeting||'',true,liTimeOptions);
   const items=[
     buildCaseStatusItem('LI',d),
     buildRawSdfStatusItem('LI',d),
     {label:'動画タイプ',sVal:sf.videoType||'',dVal:(df.type||'')+(df.subtype?'/'+df.subtype:''),result:videoTypeResult},
     {label:'開始日',...startDate},
-    {label:'開始時間',sVal:daypart.s.startDisplay,dVal:daypart.d.startDisplay,result:daypart.result},
+    {label:'開始時間',...startTime},
     {label:'終了日',...endDate},
-    {label:'終了時間',sVal:daypart.s.endDisplay,dVal:daypart.d.endDisplay,result:daypart.result},
+    {label:'終了時間',...endTime},
   ];
 
   // 予算とPacing Amount（日予算）は別項目として表示・比較する。
@@ -8847,6 +8917,13 @@ function compareCR(s,d){
 
   items.push({label:'LP URL',sVal:sf.landingUrl||'',dVal:df.landingPageUrl||'',result:compareField(sf.landingUrl,df.landingPageUrl)});
   items.push({label:'CTA',sVal:sf.cta||'',dVal:df.callToAction||'',result:compareField(sf.cta,df.callToAction)});
+  const sHeadline=String(sf.headline||'').trim();
+  const dHeadline=String(df.headline||'').trim();
+  items.push({
+    label:'見出し',sVal:sHeadline||'—',dVal:dHeadline||'—',
+    result:!sHeadline&&!dHeadline?'ok':(!sHeadline||!dHeadline)?'mismatch':compareField(sHeadline,dHeadline),
+    sourceSdfFields:['Headline'],
+  });
 
   // 長い見出し※ → In-feed Video Headline（設定表の「長い見出し※」列とSDF In-feed Video Headline を比較）
   // 片側空→mismatch（compareFieldのwarningを上書き）
@@ -8864,17 +8941,23 @@ function compareCR(s,d){
     (!sDesc||!dDesc1)?'mismatch':compareField(sDesc,dDesc1);
   items.push({label:'説明※',sVal:sDesc||'—',dVal:dDesc1||'—',result:descResult});
 
-  // コンパニオンバナー — SDFに対応フィールドなし。空欄 or 推奨文案なら ok、それ以外は warning
+  // コンパニオンバナー — ファイル名は同一 workbook の Asset ID 列で追跡できる場合だけ SDF と照合する。
   const sCompanion=String(sf.companionBanner||'').trim();
   const companionDefault='チャンネル内の動画から自動生成された画像を使用する（推奨）';
   let companionResult='ok',companionDetail='';
+  const mappedAssetId=String(sf.companionBannerAssetId||'').trim();
+  const downloadAssetIds=String(df.companionBannerAssetIds||'').match(/\d+/g)||[];
   if(!sCompanion||sCompanion===companionDefault){
     companionResult='ok';
-  } else {
+  } else if(!mappedAssetId){
     companionResult='warning';
-    companionDetail='想定外の値: '+sCompanion;
+    companionDetail='設定表内にファイル名から Asset ID を追跡できる列がありません';
+  } else {
+    companionResult=downloadAssetIds.includes(mappedAssetId)?'ok':'mismatch';
+    companionDetail=companionResult==='ok'?'':`期待 Asset ID: ${mappedAssetId}`;
   }
-  items.push({label:'コンパニオンバナー',sVal:sCompanion||'(空欄)',dVal:'(SDF非対応)',result:companionResult,mpDetail:companionDetail});
+  items.push({label:'コンパニオンバナー',sVal:sCompanion||'(空欄)',dVal:df.companionBannerAssetIds||'(空欄)',result:companionResult,
+    mpDetail:companionDetail,sourceSdfFields:['Companion Banner Asset IDs']});
 
   // Ad Type デフォルト Responsive 判定
   const adTypeVal=String(df.adType||'').trim();
@@ -9402,7 +9485,7 @@ function getCoreLevelColumns(level,youtubeOnly){
             [{key:'最適化', label:'最適化'},
              {key:'目標指標', label:'目標指標'},
              {key:'予算の自動割り当て', label:'予算の自動\n割り当て'}]:
-            [{key:'目標', label:'目標'}]),
+            [{key:'目標', label:'目標'}, ...(youtubeOnly?[{key:'最適化', label:'最適化'}]:[])]),
           {key:'予算', label:'予算'},
           ...((youtubeOnly||mediaType==='ott')?[{key:'説明', label:'説明'}]:[]),
           {key:'開始日', label:'開始日'},
@@ -9550,6 +9633,7 @@ function getCoreLevelColumns(level,youtubeOnly){
       {key:'表示URL', label:'表示URL\nDisplay URL'},
       {key:'LP URL', label:'LP URL\nLanding Page URL'},
       {key:'CTA', label:'CTA\nCall to Action'},
+      {key:'見出し', label:'見出し\nHeadline'},
       {key:'長い見出し※', label:'長い見出し※\nIn-feed Video Headline'},
       {key:'説明※', label:'説明※\nDescription 1'},
       {key:'コンパニオンバナー', label:'コンパニオンバナー'},

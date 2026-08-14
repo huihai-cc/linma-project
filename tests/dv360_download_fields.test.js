@@ -123,9 +123,10 @@ window.__dv360TestApi = {
 const api = loadDv360Api();
 api.setMediaType('youtube');
 
-test('D1-D10 generated Geo Master is marked, deterministic, and stores official target metadata', () => {
+test('D1-D10 generated Geo Master is marked, deterministic, and stores official target metadata', t => {
   const htmlPath = path.join(__dirname, '..', 'dv360_check.html');
   const csvPath = 'D:\\業務用\\開発用\\テスト用アイル\\設定用\\DV360\\dv360_jp_geo_targets_2026-07-06.csv';
+  if (!fs.existsSync(csvPath)) return t.skip('DV360 Geo source CSV is unavailable on this machine');
   const html = fs.readFileSync(htmlPath, 'utf8');
   const csvHeader = fs.readFileSync(csvPath, 'utf8').split(/\r?\n/, 1)[0].replace(/^\uFEFF/, '').split(',');
   const expectedHeader = [
@@ -356,8 +357,8 @@ test('D32-D49 labels and CP/IO/LI defaults are centralized, hidden when standard
   const syntheticKey = api.normalizeSdfFieldName('Synthetic Katakana Field');
   api.sdfFieldDisplayLabels[syntheticKey] = { ja: 'テスト', zh: '测试字段', en: 'Synthetic Katakana Field' };
   try {
-    assert.equal(api.getSdfFieldDisplayLabel('Frequency Enabled'), '配信頻度有効 / Frequency Enabled');
-    assert.equal(api.getSdfFieldDisplayLabel('Synthetic Katakana Field'), '测试字段 / Synthetic Katakana Field');
+    assert.equal(api.getSdfFieldDisplayLabel('Frequency Enabled'), '配信頻度有効');
+    assert.equal(api.getSdfFieldDisplayLabel('Synthetic Katakana Field'), 'テスト');
     assert.equal(api.getSdfFieldDisplayLabel('Unconfirmed Field'), 'Unconfirmed Field');
   } finally {
     delete api.sdfFieldDisplayLabels[syntheticKey];
@@ -407,6 +408,10 @@ test('D32-D49 labels and CP/IO/LI defaults are centralized, hidden when standard
         rawFieldOrder: [rule.field], rawFields: { [rule.field]: changed },
       }, []);
       const matching = deviation.filter(item => item.rawFieldName === rule.field);
+      if (level === 'IO' && rule.field === 'Auto Budget Allocation') {
+        assert.deepEqual(JSON.parse(JSON.stringify(matching)), [], 'IO auto budget allocation is consumed by the YouTube core comparison');
+        continue;
+      }
       assert.deepEqual(JSON.parse(JSON.stringify(matching.map(item => item.result))), ['warning'], `${level} ${rule.field} should expose one warning`);
     }
   }
