@@ -154,9 +154,9 @@ const LibLoader = {
 <div class="system-select-bar">
   <label for="sc-system-select">📋 チェック対象：</label>
   <select id="sc-system-select">
-    <option value="">-- 子类型を選択してください --</option>
+    <option value="auto" selected>自動検出</option>
     <option value="amazon_dsp">Amazon DSP（Display）</option>
-    <option value="amazon_pva" selected>Amazon DSP（PVA）</option>
+    <option value="amazon_pva">Amazon DSP（PVA）</option>
     <option value="amazon_ott">Amazon OTT</option>
   </select>
   <span id="sc-system-badge"></span>
@@ -168,6 +168,8 @@ const LibLoader = {
   </select>
   <span id="sc-case-mode-error"
         style="display:none;color:#c0392b;font-size:0.78rem;font-weight:bold;"></span>
+  <span id="sc-auto-detect-info"
+        style="display:none;color:#2874a6;font-size:0.78rem;font-weight:bold;margin-left:10px;"></span>
 </div>
 
 <!-- アップロード＆結果エリア -->
@@ -269,8 +271,19 @@ const COL_ITEM_W_DEFAULT  = 120;
 let SC_COL_NO_W  = SC_COL_NO_W_DEFAULT;
 let SC_COL_LI_W  = SC_COL_LI_W_DEFAULT;
 let SC_ROW_HEIGHT = 50;   // 行高（默认50px，用户可调整）
-let scSystem = 'amazon_pva';   // 默认：Amazon DSP（PVA）
-let scCaseMode = 'initial';    // 默认：初期案件
+let scSystem = 'auto';          // ユーザー選択値（auto / amazon_dsp / amazon_pva / amazon_ott）
+let scDetectedSystem = '';      // 自動検出モードで判定された実際のシステム（auto選択時のみ使用）
+let scCaseMode = 'initial';     // 默认：初期案件
+let scSystemManual = false;     // ユーザーがチェック対象を手動変更したか（自動判定をスキップ）
+let scCaseModeManual = false;   // ユーザーが案件区分を手動変更したか（自動判定をスキップ）
+
+// 実際にチェックに使うシステムを返す
+//   auto + 判定成功 → scDetectedSystem / 手動指定 → scSystem / auto + 未判定 → ''
+function getEffectiveAmazonSystem(){
+    if(scSystem && scSystem !== 'auto' && SC_SYSTEMS[scSystem]) return scSystem;
+    if(scSystem === 'auto' && scDetectedSystem && SC_SYSTEMS[scDetectedSystem]) return scDetectedSystem;
+    return '';
+}
 
 // ===== sessionStorage 读写函数 =====
 function scSaveRowHeight(val){
@@ -321,16 +334,38 @@ const SC_CASE_MODES = {
 // ===== システムBadge・アップロード域の表示同期 =====
 function applyScSystemUI(){
     const badge = document.getElementById('sc-system-badge');
-    if(scSystem && SC_SYSTEMS[scSystem]){
-        const sys = SC_SYSTEMS[scSystem];
-        badge.textContent = sys.label;
-        badge.style.background = sys.badge_bg;
+    // バッジは実際に使うシステム（自動検出の場合は判定結果）を表示
+    const sys = getEffectiveAmazonSystem();
+    if(sys){
+        const sc = SC_SYSTEMS[sys];
+        badge.textContent = sc.label;
+        badge.style.background = sc.badge_bg;
         badge.style.display = 'inline-block';
-        document.getElementById('sc-upload-area').style.display = 'block';
     } else {
         badge.style.display = 'none';
-        document.getElementById('sc-upload-area').style.display = 'none';
     }
+    // アップロード域は「自動検出」モードでも表示（判定後にバッジで確定表示される）
+    document.getElementById('sc-upload-area').style.display = 'block';
+}
+
+// チェック対象の選択状態に応じて自動判定・手動選択の表示を更新する
+function refreshSystemSelectionUI(){
+    const info = document.getElementById('sc-auto-detect-info');
+    if(!info) return;
+    if(scSystem && scSystem !== 'auto'){
+        info.style.display = 'inline';
+        info.style.color = '#2874a6';
+        info.textContent = `手動選択：${SC_SYSTEMS[scSystem].label}`;
+        return;
+    }
+    if(scDetectedSystem){
+        info.style.display = 'inline';
+        info.style.color = '#2874a6';
+        info.textContent = `自動判定：${SC_SYSTEMS[scDetectedSystem].label}`;
+        return;
+    }
+    info.textContent = '';
+    info.style.display = 'none';
 }
 
 // ===== 初期化 =====
@@ -351,10 +386,19 @@ document.addEventListener('DOMContentLoaded', function(){
 
     document.getElementById('sc-system-select').addEventListener('change', function(){
         scSystem = this.value;
+        if(scSystem === 'auto'){
+            // 自動検出に戻す → 次回アップロード時に再判定する
+            scSystemManual = false;
+        } else {
+            // 手動選択 → 以後の自動判定は上書きしない
+            scSystemManual = true;
+        }
         applyScSystemUI();
+        refreshSystemSelectionUI();
     });
     document.getElementById('sc-case-mode-select').addEventListener('change', function(){
         scCaseMode = this.value;
+        scCaseModeManual = true; // 手動変更したため、以後の自動判定は上書きしない
         const error = document.getElementById('sc-case-mode-error');
         error.textContent = '';
         error.style.display = 'none';
@@ -496,7 +540,8 @@ function runSettingCheck(){
     modeError.textContent = '';
     modeError.style.display = 'none';
     if(!scFilesS.length || !scFilesD.length){ alert('設定表とダウンロードデータを両方アップロードしてください'); return; }
-    if(!scSystem){ alert('案件タイプを選択してください'); return; }
+    // 「自動検出」は有効な選択肢（読込後に実際のシステムを判定する）。無効値のみここで弾く
+    if(scSystem !== 'auto' && !SC_SYSTEMS[scSystem]){ alert('チェック対象を選択してください'); return; }
     const progress = document.getElementById('sc-progress');
     progress.textContent = '⏳ ファイルを読み込み中...';
     progress.classList.add('show');
@@ -513,7 +558,9 @@ function _runSettingCheck(){
         if(doneS === scFilesS.length && doneD === scFilesD.length){
             scWbsS = wbsS;
             scWbsD = wbsD;
-            _doSettingCheck();
+            // ★ チェック対象・案件区分の自動判定（手動変更時はスキップ）。
+            //    自動検出に失敗した場合は false を返し、チェックを開始しない
+            if(autoDetectAndApply()) _doSettingCheck();
         }
     }
 
@@ -540,10 +587,11 @@ function _doSettingCheck(){
     progress.textContent = '⏳ データ解析中...';
     setTimeout(()=>{
         try{
-            if(scSystem.startsWith('amazon')){
-                scResults = checkAmazon(scWbsS, scWbsD, scSystem, scCaseMode);
+            const sys = getEffectiveAmazonSystem();
+            if(sys){
+                scResults = checkAmazon(scWbsS, scWbsD, sys, scCaseMode);
             } else {
-                scResults = { error: 'このシステムは未対応です。' };
+                scResults = { error: 'チェック対象を選択してください。' };
             }
             document.getElementById('sc-progress').classList.remove('show');
             renderScResult();
@@ -791,8 +839,9 @@ function _normalizeAudienceName(name){
         .trim();
 }
 function audienceNameEquals(a,b){
-    const an = _normalizeAudienceName(a || '');
-    const bn = _normalizeAudienceName(b || '');
+    // 大小文字の違いは同一視する（設定表=90days / ダウンロード=90Days 等の表記揺れ対策）
+    const an = _normalizeAudienceName(a || '').toLowerCase();
+    const bn = _normalizeAudienceName(b || '').toLowerCase();
     if(an === bn) return true;
     const stripAmc = v => v.replace(/^AMC\s+/i, '').trim();
     return stripAmc(an) === stripAmc(bn) &&
@@ -3335,11 +3384,15 @@ function normalizeCreativeTime(v){
 function parseCreativeDownloadDateTime(v){
     const raw = _creativeDisplayValue(v);
     const s = String(v ?? '').normalize('NFKC').trim();
-    let m = s.match(/^(\d{2})-(\d{2})-(\d{4})-(\d{2})-(\d{2})$/);
+    // MM-DD-YYYY-HH-MM[-SS[.SSS]] 形式。
+    // 秒・ミリ秒は合法性のみ検証し、比較は「日付＋時:分」まで。
+    let m = s.match(/^(\d{2})-(\d{2})-(\d{4})-(\d{2})-(\d{2})(?:-(\d{2})(?:\.(\d{1,3}))?)?$/);
     if(m){
         const date = _creativeDateResult(v,+m[3],+m[1],+m[2]);
         const hh=+m[4], mm=+m[5];
-        if(!date.ok || hh>23 || mm>59){
+        const ss=m[6]!==undefined?+m[6]:0;
+        const ms=m[7]!==undefined?+m[7]:0;
+        if(!date.ok || hh>23 || mm>59 || ss>59 || ms>999){
             return { ok:false, date:'', time:'', raw, error:'ダウンロード日時を解析できません' };
         }
         return {
@@ -3362,6 +3415,35 @@ function parseCreativeDownloadDateTime(v){
         if(date.ok && time.ok) return { ok:true, date:date.value, time:time.value, raw };
     }
     return { ok:false, date:'', time:'', raw, error:`ダウンロード日時を解析できません：${raw||'空白'}` };
+}
+
+// ダウンロードCRの日時を解析する。
+// 空白の場合はAmazon規則に従い、対応するダウンロードLIの「Line start date」/「Line end date」を
+// 継承する（LIに準ずる）。継承できた場合は source='LIに準ずる' とし、エラーにしない。
+// 継承元LIが見つからない場合のみ、明確なエラーメッセージを返す。
+function resolveCreativeDownloadDateTime(v, dlLiRow, liDateColumn){
+    const raw = _creativeDisplayValue(v);
+    if(raw === ''){
+        if(!dlLiRow){
+            return {
+                ok:false, date:'', time:'', raw:'LIに準ずる', source:'LIに準ずる',
+                error:'CRの日時は空白（LIに準ずる）ですが、対応するダウンロードLIが見つかりません'
+            };
+        }
+        const parsed = parseCreativeDownloadDateTime(dlLiRow[liDateColumn]);
+        if(!parsed.ok){
+            return {
+                ...parsed, source:'LIに準ずる',
+                error:parsed.error ? `LIの日時を継承できません：${parsed.error}` : 'LIの日時を継承できません'
+            };
+        }
+        return {
+            ...parsed, source:'LIに準ずる',
+            raw:`LIに準ずる（${parsed.date} ${parsed.time}）`
+        };
+    }
+    const parsed = parseCreativeDownloadDateTime(v);
+    return { ...parsed, source:'' };
 }
 
 function _creativeSettingHeaderInfo(rows){
@@ -3621,7 +3703,7 @@ function _resolveCreativeExpected(rawValue,liRow,liField,type){
     return { ...parsed, source, raw:_creativeDisplayValue(resolvedRaw) };
 }
 
-function compareCreativeData(settingData,downloadData,liSettingRows,caseMode){
+function compareCreativeData(settingData,downloadData,liSettingRows,caseMode,liDownloadMap){
     const diagnostics=[
         ...(settingData?.diagnostics||[]),
         ...(downloadData?.diagnostics||[])
@@ -3633,6 +3715,12 @@ function compareCreativeData(settingData,downloadData,liSettingRows,caseMode){
     (liSettingRows||[]).forEach(row=>{
         const key=normalizeCreativeName(row.__LI_NAME__);
         if(key && !liMap.has(key)) liMap.set(key,row);
+    });
+    // ダウンロード側LI map：CR日時が空白のとき「LIに準ずる」継承解析に使用する
+    const dlLiMap=new Map();
+    Object.entries(liDownloadMap||{}).forEach(([name,row])=>{
+        const key=normalizeCreativeName(name);
+        if(key && !dlLiMap.has(key)) dlLiMap.set(key,row);
     });
 
     const downloadMap=new Map();
@@ -3651,6 +3739,12 @@ function compareCreativeData(settingData,downloadData,liSettingRows,caseMode){
         const dRow=selected ? selected.row : null;
         if(selected) usedDownload.add(selected.index);
         const liRow=liMap.get(normalizeCreativeName(sRow.liName))||null;
+        // ダウンロード側LI：CR日時空白時の「LIに準ずる」継承元（dRow→sRowの順で引く）
+        const dlLiRow=dRow
+            ? (dlLiMap.get(normalizeCreativeName(dRow.liName))
+               || dlLiMap.get(normalizeCreativeName(sRow.liName))
+               || null)
+            : null;
 
         const expected={
             startDate:_resolveCreativeExpected(sRow.startDate,liRow,'start_day','date'),
@@ -3658,15 +3752,15 @@ function compareCreativeData(settingData,downloadData,liSettingRows,caseMode){
             endDate:_resolveCreativeExpected(sRow.endDate,liRow,'end_day','date'),
             endTime:_resolveCreativeExpected(sRow.endTime,liRow,'end_time','time')
         };
-        const start=dRow ? parseCreativeDownloadDateTime(dRow.startDateTime)
-                         : {ok:false,date:'',time:'',raw:'',error:'ダウンロードデータ未一致'};
-        const end=dRow ? parseCreativeDownloadDateTime(dRow.endDateTime)
-                       : {ok:false,date:'',time:'',raw:'',error:'ダウンロードデータ未一致'};
+        const start=dRow ? resolveCreativeDownloadDateTime(dRow.startDateTime, dlLiRow, 'Line start date')
+                         : {ok:false,date:'',time:'',raw:'',source:'',error:'ダウンロードデータ未一致'};
+        const end=dRow ? resolveCreativeDownloadDateTime(dRow.endDateTime, dlLiRow, 'Line end date')
+                       : {ok:false,date:'',time:'',raw:'',source:'',error:'ダウンロードデータ未一致'};
         const actual={
-            startDate:{ok:start.ok,value:start.date||'',raw:start.raw||'',error:start.error||''},
-            startTime:{ok:start.ok,value:start.time||'',raw:start.raw||'',error:start.error||''},
-            endDate:{ok:end.ok,value:end.date||'',raw:end.raw||'',error:end.error||''},
-            endTime:{ok:end.ok,value:end.time||'',raw:end.raw||'',error:end.error||''}
+            startDate:{ok:start.ok,value:start.date||'',raw:start.raw||'',source:start.source||'',error:start.error||''},
+            startTime:{ok:start.ok,value:start.time||'',raw:start.raw||'',source:start.source||'',error:start.error||''},
+            endDate:{ok:end.ok,value:end.date||'',raw:end.raw||'',source:end.source||'',error:end.error||''},
+            endTime:{ok:end.ok,value:end.time||'',raw:end.raw||'',source:end.source||'',error:end.error||''}
         };
         const fields={};
         for(const field of ['startDate','startTime','endDate','endTime']){
@@ -3684,6 +3778,7 @@ function compareCreativeData(settingData,downloadData,liSettingRows,caseMode){
                 expected:exp.value||'',
                 actual:act.value||'',
                 source:exp.source,
+                downloadSource:act.source||'',
                 status,
                 settingRaw:exp.raw||'',
                 downloadRaw:act.raw||'',
@@ -3737,14 +3832,15 @@ function compareCreativeData(settingData,downloadData,liSettingRows,caseMode){
 
     if(caseMode==='initial') downloadRows.forEach((dRow,index)=>{
         if(usedDownload.has(index)) return;
-        const start=parseCreativeDownloadDateTime(dRow.startDateTime);
-        const end=parseCreativeDownloadDateTime(dRow.endDateTime);
+        const dlLiRow=dlLiMap.get(normalizeCreativeName(dRow.liName))||null;
+        const start=resolveCreativeDownloadDateTime(dRow.startDateTime, dlLiRow, 'Line start date');
+        const end=resolveCreativeDownloadDateTime(dRow.endDateTime, dlLiRow, 'Line end date');
         const parsedStatus=normalizeCreativeStatus(dRow.activeStatus);
         const fields={
-            startDate:{expected:'',actual:start.date||'',source:'',status:'not_compared',settingRaw:'',downloadRaw:start.raw||'',error:start.error||''},
-            startTime:{expected:'',actual:start.time||'',source:'',status:'not_compared',settingRaw:'',downloadRaw:start.raw||'',error:start.error||''},
-            endDate:{expected:'',actual:end.date||'',source:'',status:'not_compared',settingRaw:'',downloadRaw:end.raw||'',error:end.error||''},
-            endTime:{expected:'',actual:end.time||'',source:'',status:'not_compared',settingRaw:'',downloadRaw:end.raw||'',error:end.error||''},
+            startDate:{expected:'',actual:start.date||'',source:'',downloadSource:start.source||'',status:'not_compared',settingRaw:'',downloadRaw:start.raw||'',error:start.error||''},
+            startTime:{expected:'',actual:start.time||'',source:'',downloadSource:start.source||'',status:'not_compared',settingRaw:'',downloadRaw:start.raw||'',error:start.error||''},
+            endDate:{expected:'',actual:end.date||'',source:'',downloadSource:end.source||'',status:'not_compared',settingRaw:'',downloadRaw:end.raw||'',error:end.error||''},
+            endTime:{expected:'',actual:end.time||'',source:'',downloadSource:end.source||'',status:'not_compared',settingRaw:'',downloadRaw:end.raw||'',error:end.error||''},
             status:{expected:expectedStatus,actual:parsedStatus.value||'',source:'案件区分',status:'not_compared',
                 settingRaw:expectedStatus,downloadRaw:parsedStatus.raw||'',error:parsedStatus.error||''}
         };
@@ -3890,10 +3986,14 @@ function renderCreativeResultSection(creative){
                 anomalyHtml=`<div style="font-size:0.65rem;color:#c0392b;margin-top:4px;white-space:normal;font-weight:bold;">⚠️ ${esc(anomaly.reason)}</div>
                 <div style="font-size:0.64rem;color:#922b21;margin-top:2px;white-space:normal;">${esc(anomaly.note)}</div>`;
             }
+            // DL側が「LIに準ずる」継承の場合は継承元LIの実際値を併記する
+            const dlText=f.downloadSource==='LIに準ずる'
+                ? `LIに準ずる（${f.actual||'—'}）`
+                : (f.actual||'—');
             return `<td style="border:${border};padding:7px;vertical-align:top;background:${bg};min-width:145px;">
                 <div style="font-weight:bold;font-size:0.72rem;">${icon} ${fieldLabels[key]}</div>
                 <div style="font-size:0.7rem;margin-top:4px;"><span style="color:#777;">設定：</span>${esc(f.expected||'—')}</div>
-                <div style="font-size:0.7rem;"><span style="color:#777;">DL：</span>${esc(f.actual||'—')}</div>
+                <div style="font-size:0.7rem;"><span style="color:#777;">DL：</span>${esc(dlText)}</div>
                 ${f.source?`<div style="font-size:0.65rem;color:#2874a6;margin-top:3px;">来源：${esc(f.source)}</div>`:''}
                 ${f.error?`<div style="font-size:0.65rem;color:#922b21;margin-top:3px;white-space:normal;">${esc(f.error)}</div>`:''}
                 ${anomalyHtml}
@@ -3998,6 +4098,201 @@ function initCRColumnResize(){
     });
 }
 
+// ===== 自動判定（チェック対象・案件区分） =====
+const _detectJunk = /Follow instructions|Choose from|Don't delete|READ ONLY|informational|Use letters|Enter a number|Leave blank|Choose from dropdown/i;
+
+// ダウンロードデータからチェック対象（amazon_dsp / amazon_pva / amazon_ott）を自動判定する。
+// - DISPLAY LINE ITEMS に有効データ → amazon_dsp
+// - VIDEO LINE ITEMS に有効データ → PVA特徴のみなら amazon_pva、OTT特徴のみなら amazon_ott
+// - 複数種が混在する／特徴が判別できない場合は determined:false を返し、手動選択を促す
+function detectDownloadSystemAuto(wbsD){
+    const signals = { dsp:0, pva:0, ott:0 };
+    const found = { display:false, video:false };
+
+    wbsD.forEach(({ wb, fileName })=>{
+        for(const sname of wb.SheetNames){
+            const ws = wb.Sheets[sname];
+            if(!ws || !ws['!ref']) continue;
+            const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}).slice(0,40);
+            const nameU = sname.toUpperCase();
+            const isDisplaySheet = nameU.includes('DISPLAY LINE ITEMS');
+            const isVideoSheet   = nameU.includes('VIDEO LINE ITEMS');
+
+            // ヘッダー行検出（Line name を含む行）
+            let headerRow = -1;
+            for(let i=0; i<rows.length; i++){
+                const rs = rows[i].join(' ');
+                if(rs.includes('Line name') && (rs.includes('Line type') || rs.includes('Supply source'))){
+                    headerRow = i; break;
+                }
+            }
+            if(headerRow === -1){
+                // ヘッダー未検出でもシート名だけで判定できる場合
+                if(isDisplaySheet) { found.display = true; signals.dsp += 1; }
+                else if(isVideoSheet) { found.video = true; }
+                continue;
+            }
+
+            const headers = rows[headerRow];
+            const colOf = (kw) => headers.findIndex(h => String(h).toLowerCase().includes(kw));
+            const col = {
+                li:         colOf('line name'),
+                lineType:   colOf('line type'),
+                supply:     colOf('supply source'),
+                deal:       colOf('deal selection'),
+                contentType:colOf('video ad content type'),
+                order:      colOf('order name'),
+            };
+            if(col.li === -1) continue;
+
+            for(let i=headerRow+1; i<rows.length; i++){
+                const row = rows[i];
+                const liName = row[col.li] ? String(row[col.li]).trim() : '';
+                if(!liName || _detectJunk.test(liName)) continue;
+                const lineType = col.lineType!==-1 ? String(row[col.lineType]||'').trim().toLowerCase() : '';
+
+                if(isDisplaySheet || (lineType && lineType.includes('display'))){
+                    found.display = true; signals.dsp += 1;
+                    continue;
+                }
+                if(isVideoSheet || (lineType && lineType.includes('video'))){
+                    found.video = true;
+                    const supply = col.supply!==-1 ? String(row[col.supply]||'').trim() : '';
+                    const deal = col.deal!==-1 ? String(row[col.deal]||'').trim() : '';
+                    const contentType = col.contentType!==-1 ? String(row[col.contentType]||'').trim().toUpperCase() : '';
+                    const orderName = col.order!==-1 ? String(row[col.order]||'').trim().toLowerCase() : '';
+                    // PVA特徴：Prime Video ads系Deal / オーダー名にPVA / 外部SSPなしのSTREAMING_TV（Amazon自社在庫）
+                    if(deal.toLowerCase().includes('prime video ads')
+                       || orderName.includes('pva')
+                       || (contentType.includes('STREAMING_TV') && !supply)){
+                        signals.pva += 1;
+                    }
+                    // OTT特徴：SSP指定あり / オーダー名にOTT・Streaming TV・CTV
+                    if((supply && !_detectJunk.test(supply))
+                       || orderName.includes('ott')
+                       || orderName.includes('streaming tv')
+                       || orderName.includes('ctv')){
+                        signals.ott += 1;
+                    }
+                }
+            }
+        }
+    });
+
+    if(signals.dsp>0 && signals.pva===0 && signals.ott===0){
+        return { determined:true, system:'amazon_dsp', evidence:`DISPLAY LINE ITEMS ${signals.dsp}件` };
+    }
+    if(signals.dsp===0 && signals.pva>0 && signals.ott===0){
+        return { determined:true, system:'amazon_pva', evidence:`VIDEO LINE ITEMS（PVA ${signals.pva}件）` };
+    }
+    if(signals.dsp===0 && signals.pva===0 && signals.ott>0){
+        return { determined:true, system:'amazon_ott', evidence:`VIDEO LINE ITEMS（OTT ${signals.ott}件）` };
+    }
+    const detailParts = [];
+    if(signals.dsp>0) detailParts.push('Display');
+    if(signals.pva>0) detailParts.push('PVA');
+    if(signals.ott>0) detailParts.push('OTT');
+    if(!detailParts.length){
+        return { determined:false, detail:'認識できるデータが見つかりません' };
+    }
+    return { determined:false, detail:`${detailParts.join('・')}が混在しています` };
+}
+
+// 設定表の「入稿物管理表」から案件区分（creative_addition / initial）を自動判定する。
+// ステータス＝追加の有効CR行が1件でもあれば creative_addition、なければ initial。
+// 入稿物管理表が見つからない／表頭不足の場合は determined:false（推測しない）。
+function detectCaseModeAuto(wbsS){
+    const unrelated = /説明|注意|サンプル|sample|template|テンプレート|選択項目/i;
+    let foundUsable = false;
+    let additionCount = 0;
+
+    wbsS.forEach(({ wb, fileName })=>{
+        const candidates = wb.SheetNames
+            .map((sheetName,index)=>({ sheetName, index, ws: wb.Sheets[sheetName] }))
+            .filter(x=>x.ws && x.ws['!ref']
+                && normalizeCreativeName(x.sheetName).includes('入稿物管理表')
+                && !unrelated.test(x.sheetName));
+        candidates.forEach(x=>{
+            x.sheetRows = XLSX.utils.sheet_to_json(x.ws,{header:1,defval:'',raw:false});
+            const header = _creativeSettingHeaderInfo(x.sheetRows);
+            if(!header) return;
+            const { cols, rowIdx } = header;
+            if(cols.liName===undefined || cols.settingStatus===undefined) return;
+            if(cols.creativeAuto===undefined && cols.creativeChanged===undefined) return;
+            foundUsable = true;
+            for(let r=rowIdx+1; r<x.sheetRows.length; r++){
+                const row = x.sheetRows[r];
+                if(_isCreativeExampleRow(row[1])) continue;
+                const liName = normalizeCreativeName(row[cols.liName]);
+                if(!liName) continue;
+                const settingStatus = normalizeCreativeName(row[cols.settingStatus]);
+                const autoName = cols.creativeAuto!==undefined ? normalizeCreativeName(row[cols.creativeAuto]) : '';
+                const changedName = cols.creativeChanged!==undefined ? normalizeCreativeName(row[cols.creativeChanged]) : '';
+                if(!(changedName || autoName)) continue;
+                if(settingStatus==='追加') additionCount++;
+            }
+        });
+    });
+
+    if(additionCount>0){
+        return { determined:true, caseMode:'creative_addition', evidence:`ステータス＝追加のCR ${additionCount}件` };
+    }
+    if(foundUsable){
+        return { determined:true, caseMode:'initial', evidence:'ステータス＝追加のCRなし' };
+    }
+    return { determined:false, detail:'入稿物管理表が見つからない、または表頭不足です' };
+}
+
+// ファイル読み込み完了後（checkAmazon実行前）に自動判定を適用する。
+// ユーザーが手動変更した項目は上書きしない。判定できない場合は明確なメッセージを表示する。
+// 戻り値: チェックを開始してよいか（チェック対象が確定した場合 true）
+function autoDetectAndApply(){
+    const infoEl = document.getElementById('sc-auto-detect-info');
+    if(!infoEl) return false;
+    const msgs = [];
+    let sysOk = true;
+
+    // チェック対象：自動検出モードのときのみ判定値を更新する。
+    // 選択肢（scSystem）は「自動検出」のまま変更せず、判定結果は scDetectedSystem に保持する
+    if(!scSystemManual){
+        const sysRes = detectDownloadSystemAuto(scWbsD);
+        if(sysRes.determined){
+            scDetectedSystem = sysRes.system;
+            msgs.push(SC_SYSTEMS[scDetectedSystem].label);
+        } else {
+            scDetectedSystem = '';
+            sysOk = false;
+            msgs.push(`自動判定できません（${sysRes.detail}）。チェック対象を選択してください。`);
+        }
+    }
+    if(sysOk && !scCaseModeManual){
+        const caseRes = detectCaseModeAuto(scWbsS);
+        if(caseRes.determined){
+            scCaseMode = caseRes.caseMode;
+            const caseSel = document.getElementById('sc-case-mode-select');
+            if(caseSel) caseSel.value = scCaseMode;
+            msgs.push(SC_CASE_MODES[scCaseMode]);
+        } else {
+            msgs.push(`案件区分：自動判定不可（${caseRes.detail}）`);
+        }
+    }
+
+    applyScSystemUI();
+    if(!msgs.length){
+        infoEl.style.display = 'none';
+        return true;
+    }
+    infoEl.style.display = 'inline';
+    if(sysOk){
+        infoEl.style.color = '#2874a6';
+        infoEl.textContent = `自動判定：${msgs.join('／')}`;
+    } else {
+        infoEl.style.color = '#c0392b';
+        infoEl.textContent = `⚠️ ${msgs.join('／')}`;
+    }
+    return sysOk;
+}
+
 // ===== checkAmazon（複数ファイル対応版） =====
 function checkAmazon(wbsS, wbsD, system, caseMode){
     if(!Object.prototype.hasOwnProperty.call(SC_CASE_MODES, caseMode)){
@@ -4017,16 +4312,15 @@ function checkAmazon(wbsS, wbsD, system, caseMode){
     });
 
     const liSkipped = caseMode==='creative_addition';
-    // CR追加案件ではLI設定値だけを参照し、LIダウンロード読取・比較は実行しない
-    const downloadData = liSkipped
-        ? {liMap:{},files:[],ioDownloadMap:{}}
-        : (system === 'amazon_pva' || system === 'amazon_ott')
-            ? readDownloadDataVideoMulti(wbsD)
-            : readDownloadDataDSPMulti(wbsD);
+    // CR追加案件ではLI設定値の比較は実行しないが、ダウンロードCRの日時が空白の場合に
+    // 「LIに準ずる」継承解析を行うため、LIダウンロードデータは必ず読み込む
+    const downloadData = (system === 'amazon_pva' || system === 'amazon_ott')
+        ? readDownloadDataVideoMulti(wbsD)
+        : readDownloadDataDSPMulti(wbsD);
     const creativeSettingData = readCreativeSettingDataMulti(wbsS,caseMode);
     const creativeDownloadData = readCreativeDownloadDataMulti(wbsD);
     const creative = compareCreativeData(
-        creativeSettingData, creativeDownloadData, allSettingData, caseMode
+        creativeSettingData, creativeDownloadData, allSettingData, caseMode, downloadData.liMap
     );
     const liItems = liSkipped ? [] :
         (system === 'amazon_pva' || system === 'amazon_ott')
@@ -6556,11 +6850,16 @@ function scToggleKisson(){
 function resetSettingCheck(){
     scFilesS=[]; scFilesD=[]; scWbsS=[]; scWbsD=[];
     scResults=null; scCurrentFilter='all'; _scKissonVisible=false;
-    // 選択をデフォルト（Amazon DSP（PVA）／初期案件）に戻す
-    scSystem = 'amazon_pva';
+    // 選択をデフォルト（自動検出／初期案件）に戻す
+    scSystem = 'auto';
+    scDetectedSystem = '';     // 次回アップロード時に再自動判定する
     scCaseMode = 'initial';
+    scSystemManual = false;    // 次回アップロード時に再自動判定できるよう手動フラグも解除
+    scCaseModeManual = false;
     document.getElementById('sc-system-select').value = scSystem;
     document.getElementById('sc-case-mode-select').value = scCaseMode;
+    const autoInfo = document.getElementById('sc-auto-detect-info');
+    if(autoInfo){ autoInfo.textContent=''; autoInfo.style.display='none'; }
     applyScSystemUI();
     // 不重置行高/列宽，保持用户设定
     const slider = document.getElementById('sc-row-height-slider');

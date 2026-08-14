@@ -35,6 +35,7 @@ function loadAmazonApi() {
 'window.__amazonTestApi = {\n' +
 '  _readSegmentSheetDynamic: typeof _readSegmentSheetDynamic === "function" ? _readSegmentSheetDynamic : undefined,\n' +
 '  getScSystem: function(){ return scSystem; },\n' +
+'  getScDetectedSystem: function(){ return scDetectedSystem; },\n' +
 '  getScCaseMode: function(){ return scCaseMode; },\n' +
 '  applyScSystemUI: typeof applyScSystemUI === "function" ? applyScSystemUI : undefined,\n' +
 '  resetSettingCheck: typeof resetSettingCheck === "function" ? resetSettingCheck : undefined,\n' +
@@ -264,18 +265,20 @@ test('Case 9: Audience名が「セグメント名」で始まる場合もデー�
 // ═══════════════════════════════════════════
 // デフォルト選択（タスク2）
 // ═══════════════════════════════════════════
-test('Default: scSystem=amazon_pva / scCaseMode=initial で初期化される', () => {
-  assert.equal(api.getScSystem(), 'amazon_pva');
+test('Default: scSystem=auto（自動検出） / scCaseMode=initial で初期化される', () => {
+  assert.equal(api.getScSystem(), 'auto');
+  assert.equal(api.getScDetectedSystem(), '');
   assert.equal(api.getScCaseMode(), 'initial');
 });
 
-test('Default: applyScSystemUI が存在し PVA 表示に同期できる', () => {
+test('Default: applyScSystemUI が存在し自動検出状態に同期できる', () => {
   assert.equal(typeof api.applyScSystemUI, 'function');
-  assert.equal(api.getScSystem(), 'amazon_pva');
+  assert.equal(api.getScSystem(), 'auto');
 });
 
-test('Default: resetSettingCheck 後もデフォルト選択に戻る', () => {
+test('Default: resetSettingCheck 後もデフォルト選択（自動検出）に戻る', () => {
   api.resetSettingCheck();
-  assert.equal(api.getScSystem(), 'amazon_pva');
+  assert.equal(api.getScSystem(), 'auto');
+  assert.equal(api.getScDetectedSystem(), '');
   assert.equal(api.getScCaseMode(), 'initial');
 });
