@@ -193,9 +193,17 @@ test('CR日時空白＋LI存在：96件すべて「LIに準ずる」継承でマ
 
 // ── 2. CR日時空白＋ダウンロードLI欠落 → 明確な解析エラー ──
 test('CR日時空白＋LI欠落：明確な解析エラー', () => {
+  // 設定表LIシートに LI_GHOST が存在するが、ダウンロードのDISPLAY LINE ITEMSに無いケース。
+  // （2026-08-18 より入稿物管理表は「今回設定表LIに紐づくCRのみ」読み込むため、
+  //   LI_GHOST を設定表LIシートにも登録しておく必要がある）
   const wbsS = wrap(
     makeSettingCrSheet([['LI_GHOST', 'CR_001', '', '2026/8/20', '0:00', '2026/9/30', '23:59', '']]),
-    makeDspSettingSheet(),
+    makeWb({
+      '設定シート': [
+        ['ラインアイテム名', 'Type', 'Start day', 'Start time', 'End day', 'End time', 'Device', 'Active/Inactive'],
+        ['LI_GHOST', 'Display', '2026-08-20', '00:00', '2026-09-30', '23:59', 'All', 'ACTIVE'],
+      ],
+    }),
   );
   // CRはあるがDISPLAY LINE ITEMSにLI_GHOSTが無い
   const wbsD = wrap(makeDspDownload([makeCrRow('LI_GHOST', 'CR_001', '', '', 'ACTIVE')], 'ACTIVE'));
@@ -366,14 +374,39 @@ test('自動判定：DisplayとVideoの混在は判定不可（上書きしな�
 });
 
 // ── 7. 自動判定：案件区分 ──
-test('自動判定：ステータス＝追加のCRがある → creative_addition', () => {
+test('自動判定：ステータス＝追加のCRがある → creative_addition（今回DLと一致する場合のみ）', () => {
   const wbsS = wrap(makeSettingCrSheet([
     ['LI_1', 'CR_001', '', '2026/8/20', '0:00', '2026/9/30', '23:59', '追加'],
     ['LI_1', 'CR_002', '', '2026/8/20', '0:00', '2026/9/30', '23:59', ''],
   ]));
-  const r = api.detectCaseModeAuto(wbsS);
+  // 今回DL（CREATIVE ASSOCIATIONS）に CR_001 が実在する → CR追加案件の証拠になる
+  const wbsD = wrap(makeWb({
+    'CREATIVE ASSOCIATIONS': [
+      ['Line name', 'Creative name', 'Start date', 'End date', 'Active/Inactive'],
+      ['LI_1', 'CR_001', '', '', 'INACTIVE'],
+    ],
+  }));
+  const r = api.detectCaseModeAuto(wbsS, wbsD);
   assert.equal(r.determined, true);
   assert.equal(r.caseMode, 'creative_addition');
+  assert.ok(r.evidence.includes('1件'), r.evidence);
+});
+
+test('自動判定：設定表に「追加」履歴があっても今回DL未一致なら初期案件のまま（自動確定しない）', () => {
+  const wbsS = wrap(makeSettingCrSheet([
+    ['LI_1', 'CR_OLD', '', '2026/8/20', '0:00', '2026/9/30', '23:59', '追加'],
+  ]));
+  // 今回DLに CR_OLD は存在しない（過去の追加履歴のみ）
+  const wbsD = wrap(makeWb({
+    'CREATIVE ASSOCIATIONS': [
+      ['Line name', 'Creative name', 'Start date', 'End date', 'Active/Inactive'],
+      ['LI_1', 'CR_OTHER', '', '', 'INACTIVE'],
+    ],
+  }));
+  const r = api.detectCaseModeAuto(wbsS, wbsD);
+  assert.equal(r.determined, true);
+  assert.equal(r.caseMode, 'initial', 'DL未一致の追加履歴だけではCR追加案件にしない');
+  assert.ok(r.reference.includes('追加'), r.reference);
 });
 
 test('自動判定：ステータス＝追加が無い → initial', () => {
@@ -405,6 +438,7 @@ test('自動判定：ステータス表頭が無い → 推測しない', () => 
 
 // ── 7b. autoDetectAndApply：自動検出モード維持・手動上書きしない・失敗時は開始しない ──
 test('autoDetectAndApply：選択肢は「自動検出」のまま、判定値で「自動判定：Amazon DSP（Display）」表示', () => {
+  api.resetSettingCheck();   // 案件区分ドロップダウンを初期状態（初期案件）に戻す
   api.setScSystem('auto');
   api.setManualFlags(false, false);
   const sysSel = document.getElementById('sc-system-select');
@@ -428,7 +462,10 @@ test('autoDetectAndApply：選択肢は「自動検出」のまま、判定値�
   assert.equal(api.getScCaseMode(), 'initial');
   const info = document.getElementById('sc-auto-detect-info');
   assert.ok(info, '自動判定情報要素が存在');
-  assert.equal(info.textContent, '自動判定：Amazon DSP（Display）／初期案件');
+  assert.ok(info.textContent.startsWith('自動判定：Amazon DSP（Display）'), info.textContent);
+  // 案件区分は自動で切り替えない（安全デフォルト＝初期案件）。検出結果は参考提示のみ。
+  assert.ok(info.textContent.includes('参考：ステータス＝追加のCRなし'), info.textContent);
+  assert.equal(document.getElementById('sc-case-mode-select').value, 'initial', 'ドロップダウンは初期案件のまま');
 });
 
 test('autoDetectAndApply：手動変更済みの項目は上書きしない', () => {
