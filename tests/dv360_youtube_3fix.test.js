@@ -289,7 +289,8 @@ test('Empty-6: 全 LI が双方空の列 → 列頭ごと非表示（予算/性�
   assert.ok(!keys.includes('性別'), '性別 非表示');
   assert.ok(!keys.includes('世帯年収'), '世帯年収 非表示');
   assert.ok(keys.includes('ステータス'), 'ステータス 表示（alwaysDisplay）');
-  assert.ok(keys.includes('raw_sdf__status'), 'raw_sdf__status 表示（alwaysDisplay）');
+  // 2026-08-18: 原始 Status は案件区分ステータスに統合され重複列を出さない
+  assert.ok(!keys.includes('raw_sdf__status'), 'raw_sdf__status 非表示（案件区分ステータスに統合）');
 });
 
 test('Empty-7: 1 つでも有効な S または D がある LI が居れば列頭は表示', async () => {

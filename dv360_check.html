@@ -5525,6 +5525,15 @@ function splitGeoValues(value){
   return String(value||'').split(/[;；\n\r、|]+/).map(v=>v.trim()).filter(Boolean);
 }
 
+// 2026-08-18: 「エリア指定あり / 地域指定有」等は地域名ではなく
+// 「地域指定あり」という状態ラベル。include / exclude に入れず比較対象から除外する。
+// 完全一致で判定するため、「エリア」「地域」を含む実地域名（大阪府 等）や
+// 「エリアシート参照 / 地域シート参照 / 別シート参照」を誤判定しない。
+function isGeographyStatusLabel(value){
+  const normalized=String(value||'').normalize('NFKC').replace(/[\s　]+/g,'');
+  return /^(?:エリア指定|地域指定|配信地域指定)(?:あり|有)$/.test(normalized);
+}
+
 const GEOGRAPHY_REFERENCE_SCAN_MAX_ROWS=80;
 const GEOGRAPHY_REFERENCE_SCAN_MAX_COLS=30;
 
@@ -5554,7 +5563,8 @@ function geoNamesFromReferenceCell(value){
   const parts=raw.split(/[;；\n\r、|]+/).map(part=>part.trim()).filter(Boolean);
   for(let part of parts){
     part=part.replace(/^(?:配信地域?|対象地域?|除外地域?|include|exclude)\s*[：:]?/i,'').trim();
-    if(!part||/^(?:除外なし|なし|対象エリア|エリア|地域|地域名|都道府県|市区町村|国|code|区分)$/i.test(part)) continue;
+    // 2026-08-18: 参考シートのセルでも地域指定状態ラベルは地域名として扱わない
+    if(!part||isGeographyStatusLabel(part)||/^(?:除外なし|なし|対象エリア|エリア|地域|地域名|都道府県|市区町村|国|code|区分)$/i.test(part)) continue;
     const codeMatch=part.match(/^[（(]?(\d+)[）)]?$/);
     if(codeMatch){codes.push(codeMatch[1]);continue;}
     part=part.replace(/[（(]\s*(?:code\s*[：:]?\s*)?\d+\s*[）)]/ig,'').trim();
@@ -5721,6 +5731,10 @@ function parseSettingGeography(value,referenceInfo){
     if(/(?:除外|exclude)\s*[：:]/i.test(chunk)) mode='exclude';
     const inlineExclude=/[（(]?除外[）)]?/i.test(chunk);
     if(inlineExclude) mode='exclude';
+    // 2026-08-18: 地域指定状態ラベル（エリア指定あり 等）は地域名ではない。
+    // 後段の replace で「指定」が削られ「エリアあり」に化けて include に混入していたため、
+    // 清洗前に完全一致で除外する。
+    if(isGeographyStatusLabel(chunk)) continue;
     chunk=chunk.replace(/(?:配信|include|除外|exclude)\s*[：:]?/ig,'')
       .replace(/[（(]?(?:国名|対象|指定)[）)]?/g,'').trim();
     if(!chunk) continue;
@@ -6211,6 +6225,10 @@ function buildCaseStatusItem(level,downloadRecord){
   };
 }
 
+// 2026-08-18: YouTube LI / GP / CR では「案件区分ステータス」（buildCaseStatusItem）が
+// SDF Status を正式判定しており、本関数の重複表示（状態 Status）は生成しない。
+// 関数自体は残す（OTT LI の compareOttLiStatus 併記と legacy compareCR_OTT が使用）。
+// SDF Status の parser / getDownloadStatusInfo は全層の Status 判定で引き続き必要。
 function buildRawSdfStatusItem(level,downloadRecord){
   const statusInfo=getDownloadStatusInfo(downloadRecord);
   const dVal=!statusInfo.found?'Status 未取得':statusInfo.normalizedValue===''?'(空欄)':String(statusInfo.rawValue);
@@ -8630,8 +8648,8 @@ function compareLI(s,d){
     const sVideoType=normVideoType(sf.videoType),dVideoType=normVideoType((df.type||'')+'/'+(df.subtype||''));
     const videoTypeResult=sVideoType==='bumper'&&dVideoType==='vrc_skippable'?'warning':compareField(sVideoType,dVideoType);
     const items=[
+      // 2026-08-18: 状態 Status（raw_sdf__status）は buildCaseStatusItem に統合し重複表示しない
       buildCaseStatusItem('LI',d),
-      buildRawSdfStatusItem('LI',d),
       {label:'動画タイプ',sVal:sf.videoType||'',dVal:(df.type||'')+(df.subtype?'/'+df.subtype:''),result:videoTypeResult},
       {label:'開始日',sVal:sf.startDate||'',dVal:df.startDate||'',result:/same as insertion order/i.test(df.startDate||'')?'warning':compareField(fmtDateVal(sf.startDate),df.startDate)},
       {label:'終了日',sVal:sf.endDate||'',dVal:df.endDate||'',result:/same as insertion order/i.test(df.endDate||'')?'warning':compareField(fmtDateVal(sf.endDate),df.endDate)},
@@ -8674,8 +8692,8 @@ function compareLI(s,d){
   const startTime=compareYoutubeLiDaypartTime(sf.daypart||'',df.daypartTargeting||'',false,liTimeOptions);
   const endTime=compareYoutubeLiDaypartTime(sf.daypart||'',df.daypartTargeting||'',true,liTimeOptions);
   const items=[
+    // 2026-08-18: 状態 Status（raw_sdf__status）は buildCaseStatusItem に統合し重複表示しない
     buildCaseStatusItem('LI',d),
-    buildRawSdfStatusItem('LI',d),
     {label:'動画タイプ',sVal:sf.videoType||'',dVal:(df.type||'')+(df.subtype?'/'+df.subtype:''),result:videoTypeResult},
     {label:'開始日',...startDate},
     {label:'開始時間',...startTime},
@@ -8753,8 +8771,8 @@ function compareGP(s,d,settingAudience){
   const items=[];
   const raw=d.rawFields||{};
   const RP=GP_MP_UNIFIED_RULES;
+  // 2026-08-18: 状態 Status（raw_sdf__status）は buildCaseStatusItem に統合し重複表示しない
   items.push(buildCaseStatusItem('GP',d));
-  items.push(buildRawSdfStatusItem('GP',d));
   if(mediaType==='youtube'){
     const actualVideoAdFormat=String(df.videoAdFormat||raw['Video Ad Format']||'').trim();
     const responsive=actualVideoAdFormat.toLowerCase()==='responsive';
@@ -8920,8 +8938,8 @@ function compareCR(s,d){
   if(mediaType!=='youtube') return [];
   const sf=s?s.fields||{}:{}, df=d.fields||{};
   const items=[];
+  // 2026-08-18: 状態 Status（raw_sdf__status）は buildCaseStatusItem に統合し重複表示しない
   items.push(buildCaseStatusItem('CR',d));
-  items.push(buildRawSdfStatusItem('CR',d));
   const sVid=extractYoutubeVideoId(sf.videoUrl),dVid=extractYoutubeVideoId(df.videoId);
   items.push({label:'動画ID',sVal:sf.videoUrl?(sVid+' (元URL)'):'',dVal:df.videoId||'',result:compareField(sVid,dVid)});
 
@@ -9513,8 +9531,9 @@ function getCoreLevelColumns(level,youtubeOnly){
       }
       break;
     case 'GP': coreColumns=[
+      // 2026-08-18: 状態 Status は buildCaseStatusItem（案件区分ステータス）に統合。
+      // 同一 SDF Status の重複列（raw_sdf__status）は表示しない。
       {key:'ステータス', label:'案件区分\nステータス'},
-      {key:'raw_sdf__status', label:'📥 状态\nStatus'},
       {key:'動画フォーマット', label:'動画フォーマット'},
       {key:'入札単価', label:'入札単価'},
       {key:'性別', label:'性別'},
@@ -9539,9 +9558,10 @@ function getCoreLevelColumns(level,youtubeOnly){
     ]; break;
     case 'LI':
       if(youtubeOnly){
+        // 2026-08-18: 状態 Status は buildCaseStatusItem（案件区分ステータス）に統合。
+        // 同一 SDF Status の重複列（raw_sdf__status）は表示しない（OTT のみ従来どおり）。
         coreColumns=[
           {key:'ステータス', label:'案件区分\nステータス'},
-          {key:'raw_sdf__status', label:'📥 状态\nStatus'},
           {key:'動画タイプ', label:'動画タイプ'},
           {key:'開始日', label:'開始日'},
           {key:'開始時間', label:'開始時間'},
@@ -9641,8 +9661,9 @@ function getCoreLevelColumns(level,youtubeOnly){
       }
       break;
     case 'CR': coreColumns=[
+      // 2026-08-18: 状態 Status は buildCaseStatusItem（案件区分ステータス）に統合。
+      // 同一 SDF Status の重複列（raw_sdf__status）は表示しない。
       {key:'ステータス', label:'案件区分\nステータス'},
-      {key:'raw_sdf__status', label:'📥 状态\nStatus'},
       {key:'動画ID', label:'動画ID'},
       {key:'表示URL', label:'表示URL'},
       {key:'LP URL', label:'LP URL\nLanding Page URL'},

@@ -604,17 +604,16 @@ test('SDF-only records reuse core columns and add only genuinely unmapped dynami
   const columns = api.appendDynamicDownloadColumns('CR', [
     { key: '動画ID', label: '動画ID' },
     { key: 'ステータス', label: 'ステータス' },
-    { key: 'raw_sdf__status', label: '📥 状态 Status' },
   ], [{ compItems: node.compItems }]);
   assert.deepEqual(
     JSON.parse(JSON.stringify(columns.map(column => column.label))),
-    ['動画ID', 'ステータス', '📥 状态 Status', 'Custom Field'],
+    ['動画ID', 'ステータス', 'Custom Field'],
   );
   const statusItem = node.compItems.find(item => item.label === 'ステータス');
   assert.equal(statusItem.dVal, 'Active');
   assert.equal(statusItem.result, 'ok');
-  const rawStatusItem = node.compItems.find(item => item.key === 'raw_sdf__status');
-  assert.equal(rawStatusItem.dVal, 'Active');
+  // 2026-08-18: 原始 Status（raw_sdf__status）は案件区分ステータスに統合され重複表示しない
+  assert.equal(node.compItems.some(item => item.key === 'raw_sdf__status'), false);
 });
 
 test('download-only items do not increase mismatch statistics', () => {
@@ -667,13 +666,13 @@ test('Status: 初期案件の CP～CR 規則を現在案件区分から統一取
   assert.equal(api.compareStatus('Active', 'Paused'), 'mismatch');
 });
 
-test('Status(LI): 业务状态と固定原始 Status を案件区分規則で判定する', () => {
+test('Status(LI): 业务状态を案件区分規則で判定し、原始 Status は重複表示しない（2026-08-18）', () => {
   const download = actual => ({ fields: { status: actual }, rawFields: { Status: actual }, rawFieldOrder: ['Status'] });
   api.setSelectedDv360CaseType('initial');
   assert.equal(findCompareItem(api.compareLI({ fields: {} }, download('Paused')), 'ステータス').result, 'ok');
   assert.equal(findCompareItem(api.compareLI({ fields: {} }, download('Active')), 'ステータス').result, 'mismatch');
-  const rawStatus = api.compareLI({ fields: {} }, download('Active')).find(item => item.key === 'raw_sdf__status');
-  assert.equal(rawStatus.dVal, 'Active');
+  // 原始 Status（raw_sdf__status）は案件区分ステータスに統合され生成しない
+  assert.equal(api.compareLI({ fields: {} }, download('Active')).some(item => item.key === 'raw_sdf__status'), false);
   api.setSelectedDv360CaseType('crAdditional');
   const skipped = findCompareItem(api.compareLI({ fields: {} }, download('Active')), 'ステータス');
   assert.equal(skipped.result, 'ok');

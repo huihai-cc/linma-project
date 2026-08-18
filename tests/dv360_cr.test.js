@@ -277,12 +277,14 @@ test('CR 回帰: CTA/LP URL/Status不受影响', () => {
   assert.equal(findCompareItem(items, 'ステータス').result, 'ok');
 });
 
-test('CR 回帰: CR字段包含业务状态和固定原始 Status（11个）', () => {
+test('CR 回帰: CR字段包含业务状态（10个）※原始 Status は案件区分ステータスに統合（2026-08-18）', () => {
   const items = api.compareCR(makeCrSetting({}), makeCrDownload({}), 'Active');
   const labels = items.map(i => i.label);
-  assert.equal(labels.length, 11);
-  const expected = ['ステータス','📥 状态 Status','動画ID','表示URL','LP URL','CTA','見出し','長い見出し※','説明※','コンパニオンバナー','広告形式'];
+  assert.equal(labels.length, 10);
+  const expected = ['ステータス','動画ID','表示URL','LP URL','CTA','見出し','長い見出し※','説明※','コンパニオンバナー','広告形式'];
   expected.forEach(e => assert.ok(labels.includes(e), `Missing label: ${e}`));
+  // 重複表示しない：状態 Status はもう現れない
+  assert.equal(items.some(item => item.key === 'raw_sdf__status'), false);
 });
 
 test('CR 回帰: 列key与item label匹配', () => {

@@ -454,21 +454,22 @@ test('SDF-only でも案件状态判定を download-only に上書きしない',
   assert.equal(item.source, 'case-status');
 });
 
-test('LI/GP/CR は业务状态、固定 📥 Status、主字段の順に並ぶ', () => {
+test('LI/GP/CR は业务状态（案件区分ステータス）のみで重複 Status 列を持たない（2026-08-18）', () => {
   const { api } = loadDv360Api();
   const expectedPrefixes = {
-    LI: ['ステータス', 'raw_sdf__status', '動画タイプ'],
-    GP: ['ステータス', 'raw_sdf__status', '動画フォーマット'],
-    CR: ['ステータス', 'raw_sdf__status', '動画ID', '表示URL'],
+    LI: ['ステータス', '動画タイプ'],
+    GP: ['ステータス', '動画フォーマット'],
+    CR: ['ステータス', '動画ID', '表示URL'],
   };
   for (const [level, expected] of Object.entries(expectedPrefixes)) {
     const keys = Array.from(api.getCoreLevelColumns(level, true), column => column.key);
     assert.deepEqual(keys.slice(0, expected.length), expected, level);
-    assert.equal(keys.filter(key => key === 'raw_sdf__status').length, 1, level);
+    // 原始 Status（raw_sdf__status）は案件区分ステータスに統合され重複列を出さない
+    assert.equal(keys.filter(key => key === 'raw_sdf__status').length, 0, level);
   }
 });
 
-test('LI/GP/CR compare は业务状态の直後に原始 Status を一度だけ保持する', () => {
+test('LI/GP/CR compare は業務状態（案件区分ステータス）のみを保持し原始 Status を重複生成しない（2026-08-18）', () => {
   const { api } = loadDv360Api();
   api.setSelectedDv360CaseType('initial');
   const download = makeStatusDownload('  Paused  ');
@@ -478,18 +479,20 @@ test('LI/GP/CR compare は业务状态の直後に原始 Status を一度だけ�
     CR: api.compareCR({ fields: {} }, download),
   };
   for (const [level, items] of Object.entries(comparisons)) {
+    // 先頭は案件区分ステータス（正式判定）。原始 Status（raw_sdf__status）列は生成しない
     assert.equal(items[0].label, 'ステータス', level);
-    assert.equal(items[1].key, 'raw_sdf__status', level);
-    assert.equal(items[1].label, '📥 状态 Status', level);
-    assert.equal(items[1].dVal, '  Paused  ', level);
-    assert.equal(items.filter(item => item.key === 'raw_sdf__status').length, 1, level);
+    assert.equal(items[0].source, 'case-status', level);
+    assert.equal(items[0].dVal, 'Paused', level);
+    assert.equal(items.filter(item => item.key === 'raw_sdf__status').length, 0, level);
   }
 });
 
-test('动态 download-only 字段追加后 Status 不会在表尾重复', () => {
+test('动态 download-only 字段追加后 Status 不会重复（2026-08-18）', () => {
   const { api } = loadDv360Api();
   for (const level of ['LI', 'GP', 'CR']) {
     const core = api.getCoreLevelColumns(level, true);
+    // 2026-08-18: 静的列定義には raw_sdf__status は存在しない（案件区分ステータスに統合）
+    assert.equal(Array.from(core, column => column.key).includes('raw_sdf__status'), false, level);
     const columns = api.appendDynamicDownloadColumns(level, core, [{
       compItems: [
         { isAutoAdded: true, key: 'raw_sdf__status', label: '状态 / Status' },
@@ -497,19 +500,23 @@ test('动态 download-only 字段追加后 Status 不会在表尾重复', () => 
       ],
     }]);
     const keys = Array.from(columns, column => column.key);
+    // 注入された isAutoAdded の raw_sdf__status は一度だけ追加される（重複しない）
     assert.equal(keys.filter(key => key === 'raw_sdf__status').length, 1, level);
     assert.equal(keys.at(-1), 'raw_sdf__custom_field', level);
   }
 });
 
-test('SDF-only の LI/GP/CR でも固定原始 Status の来源と値を保持する', () => {
+test('SDF-only の LI/GP/CR でも案件区分ステータスの来源と値を保持する（2026-08-18）', () => {
   const { api } = loadDv360Api();
   for (const level of ['LI', 'GP', 'CR']) {
-    const item = api.buildSdfOnlyCoreItems(level, makeStatusDownload('Active'))
-      .find(entry => entry.key === 'raw_sdf__status');
-    assert.equal(item.source, 'raw-sdf-status', level);
+    const items = api.buildSdfOnlyCoreItems(level, makeStatusDownload('Active'));
+    const item = items.find(entry => entry.label === 'ステータス');
+    assert.equal(item.source, 'case-status', level);
     assert.equal(item.dVal, 'Active', level);
-    assert.equal(item.result, 'ok', level);
+    // 原始 Status（raw_sdf__status）は案件区分ステータスに統合され生成しない
+    assert.equal(items.some(entry => entry.key === 'raw_sdf__status'), false, level);
+    // LI は期待 Draft/Paused に対し SDF Active → mismatch。GP/CR は Active が期待値 → ok
+    assert.equal(item.result, level === 'LI' ? 'mismatch' : 'ok', level);
   }
 });
 
