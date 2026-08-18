@@ -339,9 +339,11 @@ test('Age keeps ▼選択 as an unspecified Unknown rule', () => {
 
 test('Parental ALL and Household ALL(不明有) include Unknown with full field-specific sets', () => {
   const api = loadDv360Api();
+  // 2026-08-18: parentalStatus の ALL は Unknown を必須にしない（核心集合は Not a parent + Parent）。
+  // SDF に Unknown が残っていても ok。ダウンロード側の余計 Unknown は不一致にしない。
   const parental = api.compareDemographicTargeting('ALL', 'Not a parent; Parent; Unknown;', 'parentalStatus', 'warning');
   assert.equal(parental.result, 'ok');
-  assert.deepEqual(Array.from(parental.normalizedSetting), ['not a parent', 'parent', 'unknown']);
+  assert.deepEqual(Array.from(parental.normalizedSetting), ['not a parent', 'parent']);
   const income = api.compareDemographicTargeting(
     'ALL(不明有)',
     'Top 10%; 11-20%; 21-30%; 31-40%; 41-50%; Lower 50%; Unknown;',
@@ -514,18 +516,20 @@ test('Parental default: 選択 and 未選択 are interpreted as ALL', () => {
 
 test('Parental default ALL matches Not a parent, Parent, and Unknown', () => {
   const api = loadDv360Api();
+  // 2026-08-18: ▼選択（ALL）では Unknown は必須でなく、ダウンロード側に残っていても ok。
   const compared = api.compareDemographicTargeting('▼選択', 'Not a parent; Parent; Unknown;', 'parentalStatus', 'warning');
   assert.equal(compared.result, 'ok');
-  assert.deepEqual(Array.from(compared.normalizedSetting), ['not a parent', 'parent', 'unknown']);
+  assert.deepEqual(Array.from(compared.normalizedSetting), ['not a parent', 'parent']);
   assert.match(compared.sVal, /▼選択/);
   assert.match(compared.sVal, /ALL/);
 });
 
-test('Parental default ALL reports a missing Unknown', () => {
+test('Parental default ALL does not require Unknown (2026-08-18 新ルール)', () => {
   const api = loadDv360Api();
+  // 旧ルールでは Unknown 不足 → warning だったが、新ルールでは ok になる。
   const compared = api.compareDemographicTargeting('▼選択', 'Not a parent; Parent;', 'parentalStatus', 'warning');
-  assert.equal(compared.result, 'warning');
-  assert.match(compared.detail, /不足：Unknown/);
+  assert.equal(compared.result, 'ok');
+  assert.equal(compared.detail, '');
 });
 
 test('Parental default ALL reports a missing Parent', () => {

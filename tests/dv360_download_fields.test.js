@@ -417,7 +417,7 @@ test('D32-D49 labels and CP/IO/LI defaults are centralized, hidden when standard
   }
 });
 
-test('D50-D64 LI geography is core-consumed while Category validation remains dynamic', () => {
+test('D50-D64 LI geography is core-consumed while legacy Category Exclusions is informational only', () => {
   const standardCategory = [
     'Embedded Videos', 'Live Streaming', 'Mature Games', 'Not Yet Determined Health Sources',
     'Not Yet Determined News Sources', 'Politics', 'Recent News', 'Religion',
@@ -429,25 +429,27 @@ test('D50-D64 LI geography is core-consumed while Category validation remains dy
   }, []);
   const byField = field => standardItems.filter(item => item.rawFieldName === field);
   assert.equal(byField('Geography Targeting - Include').length, 0);
-  assert.equal(byField('TrueView Category Exclusions Targeting').length, 1);
-  assert.equal(byField('TrueView Category Exclusions Targeting')[0].result, 'ok');
+  // 2026-08-18: 旧カテゴリ除外は LI の検証項目ではなくなった。
+  // 残留値は legacy 情報（download-only）としてのみ表示され、warning / mismatch を生まない。
+  const legacy = byField('TrueView Category Exclusions Targeting');
+  assert.equal(legacy.length, 1);
+  assert.equal(legacy[0].result, 'download-only');
+  assert.equal(legacy[0].isAutoAdded, true);
 
+  // 空欄は何も表示しない（不報錯・不 warning）
   const missingItems = api.appendDownloadOnlyItems('LI', { rawFieldOrder: [], rawFields: {} }, []);
   assert.deepEqual(
     JSON.parse(JSON.stringify(missingItems.map(item => [item.rawFieldName, item.result]))),
-    [
-      ['TrueView Category Exclusions Targeting', 'warning'],
-    ],
+    [],
   );
   const category = field => api.appendDownloadOnlyItems('LI', {
     rawFieldOrder: ['TrueView Category Exclusions Targeting'],
     rawFields: { 'TrueView Category Exclusions Targeting': field },
   }, []).find(item => item.rawFieldName === 'TrueView Category Exclusions Targeting');
-  assert.equal(category('').result, 'warning');
-  assert.equal(category(standardCategory.replace('Politics;', 'Different Politics;')).result, 'warning');
-  assert.equal(category(standardCategory.replace('Politics; Recent News;', 'Recent News; Politics;')).result, 'warning');
-  assert.equal(api.calcOwnStatus([{ result: category('').result }]), 'warning');
-  assert.equal(category('').result === 'mismatch', false);
+  assert.equal(category(''), undefined);
+  assert.equal(category(standardCategory.replace('Politics;', 'Different Politics;')).result, 'download-only');
+  assert.equal(category(standardCategory.replace('Politics; Recent News;', 'Recent News; Politics;')).result, 'download-only');
+  assert.equal(api.calcOwnStatus([{ result: 'download-only' }]), 'ok');
 });
 
 test('record Name is consumed by the fixed name column while a truly unknown field remains dynamic', () => {

@@ -866,7 +866,7 @@ body {
       <span class="nav-num">4</span> 工作计划
     </button>
     <button class="nav-btn" onclick="showPage('p5',this)">
-      <span class="nav-num">5</span> 课长周定例
+      <span class="nav-num">5</span> 月AI定例报告
     </button>
   </div>
 </div>
@@ -1051,8 +1051,8 @@ body {
     <div class="ach-nav">
       <button class="ach-nav-btn active" onclick="showAch('a1',this)"><span class="ach-dot"></span> 2026年5月</button>
       <button class="ach-nav-btn" onclick="showAch('a2',this)"><span class="ach-dot"></span> 2026年6月</button>
-      <button class="ach-nav-btn" onclick="showAch('a3',this)"><span class="ach-dot"></span> 2026年7月上半月</button>
-      <button class="ach-nav-btn" onclick="showAch('a4',this)"><span class="ach-dot"></span> 2026年7月下半月</button>
+      <button class="ach-nav-btn" onclick="showAch('a3',this)"><span class="ach-dot"></span> 2026年7月</button>
+      <button class="ach-nav-btn" onclick="showAch('a4',this)"><span class="ach-dot"></span> 2026年8月上半月</button>
     </div>
 
     <div id="a1" class="ach-page active">
@@ -1108,146 +1108,252 @@ body {
 
     <div id="a3" class="ach-page">
       <div class="ach-header">
-        <div class="kicker purple">2026.07.01—07.15</div>
+        <div class="kicker purple">2026.07 · MONTHLY</div>
         <div class="sec-divider"></div>
-        <h2>QC门户管理升级与现场工具稳定性改善</h2>
-        <p>7月上半月重点：登录认证、日志统计、地域工具、Excel清洗及多项现场问题修复</p>
+        <h2>2026年7月核心成果</h2>
+        <p>将7月上下半月成果合并归档，聚焦自动化落地、品质防错与现场效率改善。</p>
       </div>
-      <div class="ach-main gap20">
-        <div class="ach-left"><div class="dark-grid"></div>
-          <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge blue">已上线</span><span class="status-date">2026.07上半月</span></div>
-          <p class="ach-desc" style="position:relative;z-index:1;">将惠海QC门户从单纯工具入口升级为具备<strong class="purple">个人登录、权限控制、Token过期处理、使用日志及Summary统计</strong>能力的管理平台，并统一工具名称日语显示和15分钟去重口径。</p>
-          <p class="ach-desc" style="position:relative;z-index:1;">同时完成地域表记转换独立模块、地域列表比对增强、Excel不可见字符清洗、包含关系误报修复、PVA PG案件误报修复，以及读卖业务和现场宏问题的原因排查。</p>
-          <div class="flow-row" style="position:relative;z-index:1;"><div class="flow-node purple-n">个人认证</div><div class="flow-arr">→</div><div class="flow-node purple-n">工具使用</div><div class="flow-arr">→</div><div class="flow-node purple-n">日志采集</div><div class="flow-arr">→</div><div class="flow-node purple-n">Summary统计</div></div>
+      <div class="month-modules">
+
+      <details class="month-module" open>
+        <summary>
+          <span class="module-no">01</span>
+          <span class="module-copy"><strong>2课 Outlook 邮件自动转记</strong><small>175项测试通过 · 远程部署 · 无人值守运行</small></span>
+          <span class="module-toggle">展开详情</span>
+        </summary>
+        <div class="module-body">
+          <div class="ach-main gap20">
+            <div class="ach-left"><div class="dark-grid"></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">阶段完成</span><span class="status-date">2026.07</span></div>
+              <p class="ach-desc" style="position:relative;z-index:1;">完成从 Outlook／OneDrive 邮件取得、Python 读取、GAS 解析、案件判定到 Google Sheet 写入的自动化链路，并通过 <strong class="green">175项自动测试</strong>。</p>
+              <p class="ach-desc" style="position:relative;z-index:1;">同步完成远程电脑部署、开机自启动及无人值守运行环境，为后续正式案件持续验证和稳定化奠定基础。</p>
+            </div>
+            <div class="ach-right">
+              <div class="dc green-dc"><div class="dc-label">自动测试</div><div class="dc-val">175/175</div><div class="dc-sub">全部通过</div></div>
+              <div class="dc green-dc"><div class="dc-label">处理链路</div><div class="dc-val sm">取得 · 解析<br>判定 · 写入</div></div>
+              <div class="dc green-dc"><div class="dc-label">运行方式</div><div class="dc-val sm">远程部署<br>无人值守</div></div>
+              <div class="dc green-dc"><div class="dc-label">阶段</div><div class="dc-val sm">上线验证</div></div>
+            </div>
+          </div>
         </div>
-        <div class="ach-right">
-          <div class="dc purple-dc"><div class="dc-label">平台升级</div><div class="dc-val sm">认证＋权限<br>日志＋统计</div></div>
-          <div class="dc purple-dc"><div class="dc-label">地域主数据</div><div class="dc-val">47/47</div><div class="dc-sub">都道府县覆盖</div></div>
-          <div class="dc purple-dc"><div class="dc-label">统计口径</div><div class="dc-val sm">15分钟去重</div></div>
-          <div class="dc purple-dc"><div class="dc-label">安全原则</div><div class="dc-val sm">候选≠正式结果</div><div class="dc-sub">WARN明确标识</div></div>
+      </details>
+
+      <details class="month-module">
+        <summary>
+          <span class="module-no">02</span>
+          <span class="module-copy"><strong>DV360設定チェック 第一阶段</strong><small>YouTube／TrueView 五层解析完成</small></span>
+          <span class="module-toggle">展开详情</span>
+        </summary>
+        <div class="module-body">
+          <div class="ach-main gap20">
+            <div class="ach-left"><div class="dark-grid"></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge blue">第一阶段完成</span><span class="status-date">2026.07</span></div>
+              <p class="ach-desc" style="position:relative;z-index:1;">完成 YouTube／TrueView 的 <strong class="purple">CP／IO／LI／GP／CR 五层解析</strong>，逐步补充 Frequency、预算、时间、地域、Audience 等主要业务规则。</p>
+              <p class="ach-desc" style="position:relative;z-index:1;">建立后续扩展 OTT、Display 等媒体类型所需的统一解析和对比框架。</p>
+            </div>
+            <div class="ach-right">
+              <div class="dc purple-dc"><div class="dc-label">解析层级</div><div class="dc-val">5层</div></div>
+              <div class="dc purple-dc"><div class="dc-label">覆盖类型</div><div class="dc-val sm">YouTube<br>TrueView</div></div>
+              <div class="dc purple-dc"><div class="dc-label">重点规则</div><div class="dc-val sm">地域 · Audience<br>预算 · 时间</div></div>
+              <div class="dc purple-dc"><div class="dc-label">阶段</div><div class="dc-val sm">框架完成</div></div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="principle-grid">
-        <div class="pc"><div class="pc-title purple">🔐 QC门户管理能力</div><ul class="pc-list"><li><span class="ic">✓</span>个人邮箱注册登录与管理者权限</li><li><span class="ic">✓</span>Token过期自动识别与重新登录</li><li><span class="ic">✓</span>完成操作后记录日志，打开页面不计数</li><li><span class="ic">✓</span>按日期、人员、课室、工具生成Summary</li><li><span class="ic">✓</span>忘记密码功能于7月下半月继续补齐</li></ul></div>
-        <div class="pc"><div class="pc-title purple">🧩 现场工具改善</div><ul class="pc-list"><li><span class="ic">✓</span>地域转换验证模块与复制功能</li><li><span class="ic">✓</span>Excel零宽字符及开头空行清洗</li><li><span class="ic">✓</span>文本包含关系异常标色修复</li><li><span class="ic">✓</span>Amazon PVA PG不适用项目正确跳过</li><li><span class="ic">✓</span>现场诉求纳入Obsidian统一管理</li></ul></div>
+      </details>
+
+      <details class="month-module">
+        <summary>
+          <span class="module-no">03</span>
+          <span class="module-copy"><strong>Amazon DSP設定チェック 持续升级</strong><small>Creative／CR防错规则与PVA稳定性改善</small></span>
+          <span class="module-toggle">展开详情</span>
+        </summary>
+        <div class="module-body">
+          <div class="ach-main gap20">
+            <div class="ach-left"><div class="dark-grid"></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">规则升级完成</span><span class="status-date">2026.07</span></div>
+              <p class="ach-desc" style="position:relative;z-index:1;">追加 Creative 层日期、时间带、状态检查，并区分初期案件／CR追加案件两种模式；同步修复 PVA Sheet、Segment 等读取问题。</p>
+              <p class="ach-desc" style="position:relative;z-index:1;">持续把现场实际错误转化为自动判定规则，降低误报、漏报和人工确认负担。</p>
+            </div>
+            <div class="ach-right">
+              <div class="dc"><div class="dc-label">新增检查</div><div class="dc-val sm">日期 · 时间带<br>CR状态</div></div>
+              <div class="dc"><div class="dc-label">案件模式</div><div class="dc-val">2种</div><div class="dc-sub">初期／CR追加</div></div>
+              <div class="dc"><div class="dc-label">覆盖</div><div class="dc-val sm">DSP · PVA</div></div>
+              <div class="dc"><div class="dc-label">目标</div><div class="dc-val sm">减少误报漏报</div></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="month-module">
+        <summary>
+          <span class="module-no">04</span>
+          <span class="module-copy"><strong>QC门户与现场品质工具升级</strong><small>登录权限 · 使用日志 · Summary · 清洗／对比工具</small></span>
+          <span class="module-toggle">展开详情</span>
+        </summary>
+        <div class="module-body">
+          <div class="ach-main gap20">
+            <div class="ach-left"><div class="dark-grid"></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge blue">平台能力升级</span><span class="status-date">2026.07</span></div>
+              <p class="ach-desc" style="position:relative;z-index:1;">QC门户追加个人登录、权限控制、Token处理、使用日志与 Summary 统计能力，同时持续完善地域转换、Excel不可见字符清洗及对比工具等现场品质功能。</p>
+              <p class="ach-desc" style="position:relative;z-index:1;">将零散工具逐步纳入统一入口和统一管理口径，提高可追踪性和复用性。</p>
+            </div>
+            <div class="ach-right">
+              <div class="dc purple-dc"><div class="dc-label">管理能力</div><div class="dc-val sm">认证 · 权限<br>日志 · 统计</div></div>
+              <div class="dc purple-dc"><div class="dc-label">地域主数据</div><div class="dc-val">47/47</div></div>
+              <div class="dc purple-dc"><div class="dc-label">现场工具</div><div class="dc-val sm">清洗 · 对比<br>转换</div></div>
+              <div class="dc purple-dc"><div class="dc-label">方向</div><div class="dc-val sm">统一管理</div></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="month-module">
+        <summary>
+          <span class="module-no">05</span>
+          <span class="module-copy"><strong>现场效率与远程运行环境改善</strong><small>Excel 40秒→7秒 · 自动开机／启动／关机</small></span>
+          <span class="module-toggle">展开详情</span>
+        </summary>
+        <div class="module-body">
+          <div class="ach-main gap20">
+            <div class="ach-left"><div class="dark-grid"></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">效率改善完成</span><span class="status-date">2026.07</span></div>
+              <p class="ach-desc" style="position:relative;z-index:1;">针对大型 Excel 文件完成轻量化处理，样本打开时间由约 <strong class="green">40秒缩短至约7秒</strong>，并录制操作视频向现场共享。</p>
+              <p class="ach-desc" style="position:relative;z-index:1;">同时完善远程电脑自动开机、程序启动及定点关机机制，减少每日人工环境准备。</p>
+            </div>
+            <div class="ach-right">
+              <div class="dc green-dc"><div class="dc-label">Excel打开时间</div><div class="dc-val">40s→7s</div></div>
+              <div class="dc green-dc"><div class="dc-label">缩短比例</div><div class="dc-val">82.5%</div></div>
+              <div class="dc green-dc"><div class="dc-label">推广</div><div class="dc-val sm">视频共享</div></div>
+              <div class="dc green-dc"><div class="dc-label">远程运行</div><div class="dc-val sm">自动开机<br>启动 · 关机</div></div>
+            </div>
+          </div>
+        </div>
+      </details>
       </div>
     </div>
 
     <div id="a4" class="ach-page">
       <div class="ach-header">
-        <div class="kicker green">2026.07.16—07.28 · RECENT</div>
+        <div class="kicker green">2026.08.01—08.17 · FIRST HALF</div>
         <div class="sec-divider"></div>
-        <h2>2026年7月下半月核心成果</h2>
-        <p>本期成果按项目独立归档。默认显示四个模块标题，点击模块可展开查看详细内容。</p>
+        <h2>2026年8月上半月核心成果</h2>
+        <p>围绕设定校正、自动转记稳定化和业务报表工具持续推进，重点项目进入实用化阶段。</p>
       </div>
       <div class="month-modules">
-      <details class="month-module">
+
+      <details class="month-module" open>
         <summary>
           <span class="module-no">01</span>
-          <span class="module-copy"><strong>2课Outlook TODO自动汇总</strong><small>核心功能完成 · 正式案件测试阶段</small></span>
+          <span class="module-copy"><strong>DV360設定チェック 多媒体类型扩展</strong><small>YouTube回归 · OTT完善 · Display开发与正式测试</small></span>
           <span class="module-toggle">展开详情</span>
         </summary>
         <div class="module-body">
-        <h2>2课Outlook TODO自动汇总全流程完成</h2>
-        <p>OneDrive · Python · GAS · Google Sheet — 邮件取得、解析、业务判定与总表写入形成完整自动化链路</p>
-      </div>
-      <div class="ach-main gap20">
-        <div class="ach-left"><div class="dark-grid"></div>
-          <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge" style="background:linear-gradient(90deg,#10b981,#34d399);color:#022c22;">核心功能完成</span><span class="status-date">截至2026.07.28</span></div>
-          <p class="ach-desc" style="position:relative;z-index:1;"><strong class="green">2课Outlook TODO自动汇总</strong>已完成从OneDrive下载邮件记录、Python读取与发送、GAS解析、业务字段提取、案件状态判断、重复防止、总表写入及日志记录的完整链路。</p>
-          <p class="ach-desc" style="position:relative;z-index:1;">当前代码规模约<strong>3500行</strong>，已完成<strong>175项自动测试且全部通过</strong>。7月28日完成核心功能，下一阶段使用正式依赖邮件进行连续验证。</p>
-          <div class="flow-row" style="position:relative;z-index:1;"><div class="flow-node green-n">Outlook／OneDrive</div><div class="flow-arr">→</div><div class="flow-node green-n">Python读取</div><div class="flow-arr">→</div><div class="flow-node green-n">GAS解析判定</div><div class="flow-arr">→</div><div class="flow-node green-n">TODO总表</div></div>
+          <div class="ach-main gap20">
+            <div class="ach-left"><div class="dark-grid"></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">持续开发</span><span class="status-date">截至2026.08.17</span></div>
+              <p class="ach-desc" style="position:relative;z-index:1;">YouTube／TrueView 完成回归，OTT 完成 CP／IO／LI 主要规则及整体流程贯通，Display 类型完成主要结构开发并进入正式案件测试。</p>
+              <p class="ach-desc" style="position:relative;z-index:1;">持续根据现场反馈修正时间带、地域、名称匹配、默认值及各层级业务规则，逐步扩大可用范围。</p>
+            </div>
+            <div class="ach-right">
+              <div class="dc purple-dc"><div class="dc-label">YouTube</div><div class="dc-val sm">回归完成</div></div>
+              <div class="dc purple-dc"><div class="dc-label">OTT</div><div class="dc-val sm">主要流程贯通</div></div>
+              <div class="dc purple-dc"><div class="dc-label">Display</div><div class="dc-val sm">正式测试中</div></div>
+              <div class="dc purple-dc"><div class="dc-label">当前阶段</div><div class="dc-val sm">现场反馈修正</div></div>
+            </div>
+          </div>
         </div>
-        <div class="ach-right">
-          <div class="dc green-dc"><div class="dc-label">代码规模</div><div class="dc-val">≈3500行</div></div>
-          <div class="dc green-dc"><div class="dc-label">自动测试</div><div class="dc-val">175/175</div><div class="dc-sub">全部通过</div></div>
-          <div class="dc green-dc"><div class="dc-label">处理链路</div><div class="dc-val sm">取得 · 解析<br>判定 · 写入</div></div>
-          <div class="dc green-dc"><div class="dc-label">当前阶段</div><div class="dc-val sm">正式案件测试</div></div>
-        </div>
-      </div>
-      <div class="principle-grid gap20">
-        <div class="pc"><div class="pc-title green">📧 自动取得与字段识别</div><ul class="pc-list"><li><span class="ic">✓</span>邮件记录自动下载、读取及上传</li><li><span class="ic">✓</span>媒体、代理店、案件名、都道府县等字段识别</li><li><span class="ic">✓</span>营业担当及相关担当字段补强</li></ul></div>
-        <div class="pc"><div class="pc-title green">🧠 业务判定与安全处理</div><ul class="pc-list"><li><span class="ic">✓</span>新规、追加、反走及重复案件判断</li><li><span class="ic">✓</span>异常案件NEEDS_REVIEW及日志记录</li><li><span class="ic">✓</span>接入惠海QC门户并完成登录校验</li></ul></div>
-      </div>
-      <div class="phase-row"><div class="phase-card ph-active"><div class="phase-tag">当前状态</div><div class="phase-title">核心功能完成，进入正式案件测试</div><div class="phase-desc">结合正式邮件持续验证字段识别和异常处理；如无新增需求且运行稳定，8月初考虑正式上线。</div></div><div class="phase-card"><div class="phase-tag">业务价值</div><div class="phase-title">降低漏记、重复登记与人工判断偏差</div><div class="phase-desc">将人工查看邮件、提取信息和填写总表的流程，转化为自动取得、自动解析和自动汇总。</div></div></div>
       </details>
+
       <details class="month-module">
         <summary>
           <span class="module-no">02</span>
-          <span class="module-copy"><strong>Amazon DSP设定检查规则升级</strong><small>日期／时间带／状态防错规则追加</small></span>
+          <span class="module-copy"><strong>Amazon DSP設定チェック 稳定化</strong><small>Audience／Frequency／CR日期继承等实际案件修正</small></span>
           <span class="module-toggle">展开详情</span>
         </summary>
         <div class="module-body">
-        <h2>Amazon DSP设定检查规则升级</h2>
-        <p>针对现场实际设定错误补充CR日期、时间带、状态和案件模式检查，持续降低误报与漏报</p>
-      </div>
-      <div class="ach-main gap20">
-        <div class="ach-left"><div class="dark-grid"></div>
-          <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">功能追加完成</span><span class="status-date">2026.07下半月</span></div>
-          <p class="ach-desc" style="position:relative;z-index:1;">新增Creative层的<strong>日期、时间带及状态检查</strong>，并区分“初期案件”和“CR追加案件”两种检查模式。初期案件检查LI与CR，CR追加案件仅检查状态为追加的CR内容。</p>
-          <p class="ach-desc" style="position:relative;z-index:1;">同步修复PVA设定Sheet读取、Segment识别和相关误报问题，使检查规则更贴近DSP／PVA／OTT实际业务流程。</p>
-          <div class="flow-row" style="position:relative;z-index:1;"><div class="flow-node">设定表／后台数据</div><div class="flow-arr">→</div><div class="flow-node">案件模式识别</div><div class="flow-arr">→</div><div class="flow-node">日期·时间·状态检查</div><div class="flow-arr">→</div><div class="flow-node">异常提示</div></div>
+          <div class="ach-main gap20">
+            <div class="ach-left"><div class="dark-grid"></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">已上线 · 持续优化</span><span class="status-date">2026.08上半月</span></div>
+              <p class="ach-desc" style="position:relative;z-index:1;">根据现场案件继续修正 Audience、Frequency、Daypart 等判定逻辑；CR 下载恢复后，完成 Creative 日期继承问题修复并追加专项测试。</p>
+              <p class="ach-desc" style="position:relative;z-index:1;">工具保持正式使用状态，通过实际反馈持续提高判定准确性和稳定性。</p>
+            </div>
+            <div class="ach-right">
+              <div class="dc green-dc"><div class="dc-label">状态</div><div class="dc-val sm">正式使用</div></div>
+              <div class="dc green-dc"><div class="dc-label">重点修正</div><div class="dc-val sm">Audience<br>Frequency</div></div>
+              <div class="dc green-dc"><div class="dc-label">CR</div><div class="dc-val sm">日期继承修复</div></div>
+              <div class="dc green-dc"><div class="dc-label">验证</div><div class="dc-val sm">专项测试追加</div></div>
+            </div>
+          </div>
         </div>
-        <div class="ach-right">
-          <div class="dc"><div class="dc-label">新增检查</div><div class="dc-val sm">日期 · 时间带<br>CR状态</div></div>
-          <div class="dc"><div class="dc-label">案件模式</div><div class="dc-val">2种</div><div class="dc-sub">初期／CR追加</div></div>
-          <div class="dc"><div class="dc-label">覆盖类型</div><div class="dc-val sm">DSP · PVA<br>OTT</div></div>
-          <div class="dc"><div class="dc-label">改善方向</div><div class="dc-val sm">减少误报漏报</div></div>
-        </div>
-      </div>
-      <div class="principle-grid"><div class="pc"><div class="pc-title">🛡️ 新增防错规则</div><ul class="pc-list"><li><span class="ic">✓</span>CR开始日、结束日与时间带自动检查</li><li><span class="ic">✓</span>初期案件CR状态应为ACTIVE</li><li><span class="ic">✓</span>CR追加案件状态应为INACTIVE</li></ul></div><div class="pc"><div class="pc-title">🔧 稳定性修复</div><ul class="pc-list"><li><span class="ic">✓</span>PVA设定Sheet表头识别修复</li><li><span class="ic">✓</span>Segment①／②等Sheet动态识别</li><li><span class="ic">✓</span>不适用字段按案件条件正确跳过</li></ul></div></div>
       </details>
+
       <details class="month-module">
         <summary>
           <span class="module-no">03</span>
-          <span class="module-copy"><strong>DV360设定比对工具第一阶段</strong><small>CP／IO／LI／GP／CR五层解析</small></span>
+          <span class="module-copy"><strong>2课邮件自动转记正式运行与稳定化</strong><small>无人值守运行 · 案件字段提取与判定逻辑集中修正</small></span>
           <span class="module-toggle">展开详情</span>
         </summary>
         <div class="module-body">
-        <h2>DV360设定比对工具完成第一阶段框架</h2>
-        <p>YouTube／TrueView样本实现CP、IO、LI、GP、CR五层解析，并逐步补充业务规则与地域判断</p>
-      </div>
-      <div class="ach-main gap20">
-        <div class="ach-left"><div class="dark-grid"></div>
-          <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge blue">第一阶段完成</span><span class="status-date">2026.07下半月</span></div>
-          <p class="ach-desc" style="position:relative;z-index:1;">完成<strong class="purple">CP／IO／LI／GP／CR五个层级</strong>的数据解析，并补充Creative Types、IO说明、Frequency、时间、预算、收益模型及语言等主要检查规则。</p>
-          <p class="ach-desc" style="position:relative;z-index:1;">地域部分明确后续需要结合地域ID Master，并区分Include与Exclude，避免地域内容正确但设定位置错误仍被漏判。</p>
-          <div class="flow-row" style="position:relative;z-index:1;"><div class="flow-node purple-n">CP</div><div class="flow-arr">→</div><div class="flow-node purple-n">IO</div><div class="flow-arr">→</div><div class="flow-node purple-n">LI</div><div class="flow-arr">→</div><div class="flow-node purple-n">GP</div><div class="flow-arr">→</div><div class="flow-node purple-n">CR</div></div>
+          <div class="ach-main gap20">
+            <div class="ach-left"><div class="dark-grid"></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">上线运行</span><span class="status-date">2026.08上半月</span></div>
+              <p class="ach-desc" style="position:relative;z-index:1;">在远程无人值守环境中持续运行，并集中修正代理店、广告主、诉求商材、営業担当等字段提取，以及新规／既存案件判定逻辑。</p>
+              <p class="ach-desc" style="position:relative;z-index:1;">通过真实邮件和运行日志反复验证，主要问题已解决，后续继续观察稳定性。</p>
+            </div>
+            <div class="ach-right">
+              <div class="dc green-dc"><div class="dc-label">运行</div><div class="dc-val sm">无人值守</div></div>
+              <div class="dc green-dc"><div class="dc-label">字段</div><div class="dc-val sm">代理店 · 广告主<br>诉求 · 担当</div></div>
+              <div class="dc green-dc"><div class="dc-label">判定</div><div class="dc-val sm">新规／既存</div></div>
+              <div class="dc green-dc"><div class="dc-label">阶段</div><div class="dc-val sm">稳定性跟进</div></div>
+            </div>
+          </div>
         </div>
-        <div class="ach-right">
-          <div class="dc purple-dc"><div class="dc-label">解析层级</div><div class="dc-val">5层</div></div>
-          <div class="dc purple-dc"><div class="dc-label">当前媒体</div><div class="dc-val sm">YouTube<br>TrueView</div></div>
-          <div class="dc purple-dc"><div class="dc-label">地域方向</div><div class="dc-val sm">Include／Exclude</div></div>
-          <div class="dc purple-dc"><div class="dc-label">当前阶段</div><div class="dc-val sm">规则补强中</div></div>
-        </div>
-      </div>
-      <div class="principle-grid"><div class="pc"><div class="pc-title purple">📋 已完成规则</div><ul class="pc-list"><li><span class="ic">✓</span>Creative Types与IO说明</li><li><span class="ic">✓</span>Frequency、开始结束时间与日预算</li><li><span class="ic">✓</span>收益模型、语言等业务字段</li></ul></div><div class="pc"><div class="pc-title purple">🚧 下一步补强</div><ul class="pc-list"><li><span class="ic">→</span>GP层规则继续完善</li><li><span class="ic">→</span>地域ID Master接入</li><li><span class="ic">→</span>扩大实际案件样本验证</li></ul></div></div>
       </details>
+
       <details class="month-module">
         <summary>
           <span class="module-no">04</span>
-          <span class="module-copy"><strong>Excel轻量化与远程运行环境</strong><small>40秒→7秒 · 自动开机／启动／关机</small></span>
+          <span class="module-copy"><strong>业务报表与Excel工具改善</strong><small>純広告报表宏交付 · 报表宏／对比／清洗工具持续完善</small></span>
           <span class="module-toggle">展开详情</span>
         </summary>
         <div class="module-body">
-        <h2>Excel轻量化与远程自动运行环境改善</h2>
-        <p>大型表格打开时间明显缩短，并完善远程电脑自动开机、程序启动及定点关机机制</p>
-      </div>
-      <div class="ach-main gap20">
-        <div class="ach-left"><div class="dark-grid"></div>
-          <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge" style="background:linear-gradient(90deg,#10b981,#34d399);color:#022c22;">效率改善完成</span><span class="status-date">2026.07下半月</span></div>
-          <p class="ach-desc" style="position:relative;z-index:1;">针对大型Excel文件打开缓慢及卡死问题完成轻量化处理。实际测试中，打开时间由约<strong class="green">40秒缩短至约7秒</strong>，约减少82.5%，并已录制简短操作视频向全员共享。</p>
-          <p class="ach-desc" style="position:relative;z-index:1;">同时完善远程电脑运行环境，配置周一至周五自动开机、VPN前置、Python／BAT程序启动及21点后定点关机，减少每日人工环境准备。</p>
-          <div class="flow-row" style="position:relative;z-index:1;"><div class="flow-node green-n">表格轻量化</div><div class="flow-arr">→</div><div class="flow-node green-n">操作视频推广</div><div class="flow-arr">→</div><div class="flow-node green-n">自动开机</div><div class="flow-arr">→</div><div class="flow-node green-n">程序自启／关机</div></div>
+          <div class="ach-main gap20">
+            <div class="ach-left"><div class="dark-grid"></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">阶段完成</span><span class="status-date">2026.08上半月</span></div>
+              <p class="ach-desc" style="position:relative;z-index:1;">完成 1课純広告报表宏的格式、日期、文件名、分页及多创意动态扩展，已交付负责人使用；同时完成董馨宁报表工具宏修改及最终验收。</p>
+              <p class="ach-desc" style="position:relative;z-index:1;">Excel 对比工具继续优化公式／格式差异判定，清洗工具补充 .xlsm 支持及空白格式行误判修复。</p>
+            </div>
+            <div class="ach-right">
+              <div class="dc"><div class="dc-label">純広告报表宏</div><div class="dc-val sm">已交付</div></div>
+              <div class="dc"><div class="dc-label">报表工具宏</div><div class="dc-val sm">验收完成</div></div>
+              <div class="dc"><div class="dc-label">Excel对比</div><div class="dc-val sm">判定优化</div></div>
+              <div class="dc"><div class="dc-label">清洗工具</div><div class="dc-val sm">.xlsm支持</div></div>
+            </div>
+          </div>
         </div>
-        <div class="ach-right">
-          <div class="dc green-dc"><div class="dc-label">Excel打开时间</div><div class="dc-val">40s→7s</div></div>
-          <div class="dc green-dc"><div class="dc-label">缩短比例</div><div class="dc-val">82.5%</div></div>
-          <div class="dc green-dc"><div class="dc-label">推广状态</div><div class="dc-val sm">视频已共享</div></div>
-          <div class="dc green-dc"><div class="dc-label">远程运行</div><div class="dc-val sm">开机·启动·关机</div></div>
+      </details>
+
+      <details class="month-module">
+        <summary>
+          <span class="module-no">05</span>
+          <span class="module-copy"><strong>5課 Metaターゲティング校正工具</strong><small>离线工具开发完成 · 自建字典方案验证中</small></span>
+          <span class="module-toggle">展开详情</span>
+        </summary>
+        <div class="module-body">
+          <div class="ach-main gap20">
+            <div class="ach-left"><div class="dark-grid"></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">工具完成 · 效果验证中</span><span class="status-date">2026.08上半月</span></div>
+              <p class="ach-desc" style="position:relative;z-index:1;">完成设定表与 Meta 管理画面复制文本的离线校正工具，支持纯文本一致、表记ゆれ一致及辞書一致等分层匹配。</p>
+              <p class="ach-desc" style="position:relative;z-index:1;">受 Meta 官方可取得数据范围限制，目前自动校正效果仍需通过现场积累各广告主数据、自建汇总字典的方式继续验证。</p>
+            </div>
+            <div class="ach-right">
+              <div class="dc purple-dc"><div class="dc-label">工具</div><div class="dc-val sm">开发完成</div></div>
+              <div class="dc purple-dc"><div class="dc-label">匹配</div><div class="dc-val sm">一致 · 表记ゆれ<br>辞書一致</div></div>
+              <div class="dc purple-dc"><div class="dc-label">限制</div><div class="dc-val sm">官方数据范围</div></div>
+              <div class="dc purple-dc"><div class="dc-label">下一步</div><div class="dc-val sm">现场数据积累</div></div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="principle-grid"><div class="pc"><div class="pc-title green">⚡ 现场效率改善</div><ul class="pc-list"><li><span class="ic">✓</span>减少大型Excel等待与卡死风险</li><li><span class="ic">✓</span>形成可复用的轻量化操作方式</li><li><span class="ic">✓</span>通过视频向全员推广</li></ul></div><div class="pc"><div class="pc-title green">🖥️ 自动运行环境</div><ul class="pc-list"><li><span class="ic">✓</span>周一至周五自动开机</li><li><span class="ic">✓</span>VPN状态下依次启动Python程序</li><li><span class="ic">✓</span>21点后自动关机</li></ul></div></div>
       </details>
       </div>
     </div>
@@ -1260,72 +1366,49 @@ body {
 ========================================== -->
 <div id="p4" class="page">
   <div class="container">
-    <div class="sec-hd"><div class="sec-divider"></div><h2>工作计划</h2><p>2026年7月下旬—8月 · 品质防错与自动化稳定化推进方向</p></div>
+    <div class="sec-hd"><div class="sec-divider"></div><h2>工作计划</h2><p>2026年8月下半月 · 未完成项目推进与正式运用稳定化</p></div>
 
     <div class="plan-grid">
       <div class="plan-card theme-red" data-type="大型项目">
-        <div class="plan-top">
-          <div class="plan-pri">PRIORITY 01</div>
-          <div class="plan-badge">大型项目</div>
-        </div>
-        <div class="plan-title">DV360比对工具第二阶段：规则全量覆盖与异常自动判定</div>
-        <div class="plan-owner"><span class="plan-avatar">冯</span>冯翠梅</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>预计工期：2周</div>
+        <div class="plan-top"><div class="plan-pri">PRIORITY 01</div><div class="plan-badge">开发推进</div></div>
+        <div class="plan-title">2課 TVer設定校正工具</div>
+        <div class="plan-owner"><span class="plan-avatar">刘</span>刘丽伟</div>
+        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>完成剩余比较逻辑、真实案件回归及上线准备</div>
       </div>
-      <div class="plan-card theme-purple" data-type="需求对接">
-        <div class="plan-top">
-          <div class="plan-pri">PRIORITY 02</div>
-          <div class="plan-badge">需求对接</div>
-        </div>
-        <div class="plan-title">大塚製薬起票需求</div>
-        <div class="plan-owner"><span class="plan-avatar">董</span>董馨宁</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>预计工期：3天</div>
+
+      <div class="plan-card theme-purple" data-type="稳定化">
+        <div class="plan-top"><div class="plan-pri">PRIORITY 02</div><div class="plan-badge">现场反馈</div></div>
+        <div class="plan-title">DV360設定チェック稳定化</div>
+        <div class="plan-owner"><span class="plan-avatar">冯</span>冯翠梅／张宇驰</div>
+        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>对应 Display／OTT／YouTube 新反馈并完成回归测试</div>
       </div>
-      <div class="plan-card theme-orange" data-type="轻量修复">
-        <div class="plan-top">
-          <div class="plan-pri">PRIORITY 03</div>
-          <div class="plan-badge">轻量修复</div>
-        </div>
-        <div class="plan-title">CR比对规则上线后补丁修复</div>
-        <div style="font-size:12px;color:#64748b;margin-top:6px;line-height:1.5;">注：针对正式数据运行中的特殊Case优化</div>
-        <div class="plan-owner"><span class="plan-avatar">张</span>张宇驰</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>预计工期：2小时</div>
+
+      <div class="plan-card theme-orange" data-type="大型项目">
+        <div class="plan-top"><div class="plan-pri">PRIORITY 03</div><div class="plan-badge">自动化</div></div>
+        <div class="plan-title">件数表自动化填写开发</div>
+        <div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div>
+        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>继续完善取数、业务映射、写入及月度运用验证</div>
       </div>
-      <div class="plan-card theme-blue" data-type="需求确认">
-        <div class="plan-top">
-          <div class="plan-pri">PRIORITY 04</div>
-          <div class="plan-badge">需求确认</div>
-        </div>
-        <div class="plan-title">AP财务业务 · 收支管理</div>
-        <div class="plan-owner"><span class="plan-avatar">丛</span>丛琦</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>预计工期：1周</div>
-      </div>
+
       <div class="plan-card theme-green" data-type="长期项目">
-        <div class="plan-top">
-          <div class="plan-pri">PRIORITY 05</div>
-          <div class="plan-badge">长期项目</div>
-        </div>
+        <div class="plan-top"><div class="plan-pri">PRIORITY 04</div><div class="plan-badge">流程自动化</div></div>
         <div class="plan-title">TL业务全流程自动化</div>
         <div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>预计工期：2个月</div>
+        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>在 Step1 已完成基础上继续推进后续业务流程</div>
       </div>
-      <div class="plan-card theme-sky" data-type="待确认">
-        <div class="plan-top">
-          <div class="plan-pri">PRIORITY 06</div>
-          <div class="plan-badge">待确认</div>
-        </div>
-        <div class="plan-title">纯广工具需求</div>
-        <div class="plan-owner"><span class="plan-avatar">董</span>董馨宁</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>预计工期：确认后评估</div>
+
+      <div class="plan-card theme-sky" data-type="稳定运行">
+        <div class="plan-top"><div class="plan-pri">PRIORITY 05</div><div class="plan-badge">持续跟进</div></div>
+        <div class="plan-title">2課邮件自动转记稳定性跟进</div>
+        <div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div>
+        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>持续观察正式运行，针对新邮件样式与异常案件补强判定</div>
       </div>
-      <div class="plan-card theme-gray" data-type="待申请">
-        <div class="plan-top">
-          <div class="plan-pri">PRIORITY 07</div>
-          <div class="plan-badge">待申请</div>
-        </div>
-        <div class="plan-title">专用工具开发</div>
-        <div class="plan-owner"><span class="plan-avatar">顾</span>顾麒麟（5课）</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>预计工期：申请后评估</div>
+
+      <div class="plan-card theme-gray" data-type="效果验证">
+        <div class="plan-top"><div class="plan-pri">PRIORITY 06</div><div class="plan-badge">现场验证</div></div>
+        <div class="plan-title">5課 Metaターゲティング校正工具效果验证</div>
+        <div class="plan-owner"><span class="plan-avatar">顾</span>顾麒麒（5課）</div>
+        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>结合现场复制数据验证自建字典与匹配效果</div>
       </div>
     </div>
   </div>
@@ -1333,604 +1416,78 @@ body {
 </div>
 
 <!-- ==========================================
-     PAGE 5 · 课长周定例（历史议题记录）
+     PAGE 5 · 月AI定例报告
 ========================================== -->
-
-<!--
-  维护说明：
-  新增周定例记录时：
-  1. 复制一条 <details class="meeting-item"> 整块；
-  2. 修改日期、标题、类型、状态和内容；
-  3. 插入列表最上方（最新记录在第一条）；
-  4. 仅最新一条保留 open 属性，其余移除 open。
-  历史内容不得删除。
--->
-
 <div id="p5" class="page">
   <div class="container">
     <div class="sec-hd">
       <div class="sec-divider"></div>
-      <h2>课长周定例 · 历史议题记录</h2>
-      <p>按日期降序保存历次议题，最新内容默认展开 | 查看日期：<span class="today-date"></span></p>
+      <h2>月AI定例报告</h2>
+      <p>按月份归档已完成的AI辅助开发、自动化与品质改善成果 | 更新截至：<span class="report-updated-at"></span></p>
     </div>
 
-    <!-- ====== 记录① 最新：7月下半月成果汇报 ====== -->
+    <!-- ====== 2026年8月：截至当前已完成 ====== -->
     <details class="meeting-item latest" open>
-      <summary class="meeting-summary"><span class="ms-left"><span class="ms-date">2026.07.28</span><span class="ms-title">7月下半月自动化与品质改善成果</span><span class="ms-meta"><span class="ms-type">阶段成果 · 自动化／品质防错</span><span class="ms-status status-done">核心功能完成</span></span></span><span class="ms-arrow">▾</span></summary>
-      <div class="meeting-content">
-        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin:14px 0;"><div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:8px;">📌 本次汇报重点</div><p style="font-size:13px;color:var(--text);line-height:1.85;">本次重点汇报2课TODO自动汇总全流程完成、Amazon DSP品质检查升级、DV360第一阶段、Excel轻量化及远程自动运行环境建设。</p></div>
-        <div class="tpl-grid">
-          <div class="tpl-card"><h4>2课TODO自动汇总</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成OneDrive、Python、GAS和Google Sheet的完整链路，代码约3500行，175项测试全部通过。7月28日完成核心功能，下一步进入正式案件测试。</p></div>
-          <div class="tpl-card"><h4>品质检查升级</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">Amazon DSP追加CR日期、时间带和状态检查；DV360完成CP／IO／LI／GP／CR五层解析第一阶段，持续完善地域与业务规则。</p></div>
-          <div class="tpl-card"><h4>现场效率改善</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">Excel轻量化将样本打开时间由约40秒缩短到约7秒，已录制操作视频并向全员共享。</p></div>
-          <div class="tpl-card"><h4>运行环境</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">推进远程电脑工作日自动开机、VPN前置、程序自动启动及21点后定点关机，降低日常人工操作。</p></div>
-        </div>
-      </div>
-    </details>
-
-    <!-- ====== 历史记录：AI与CodeBuddy分享 ====== -->
-    <details class="meeting-item">
       <summary class="meeting-summary">
         <span class="ms-left">
-          <span class="ms-date">2026.07.13</span>
-          <span class="ms-title">AI与CodeBuddy现场辅助实践分享</span>
-          <span class="ms-meta">
-            <span class="ms-type">内部经验分享 · AI辅助工作方法</span>
-            <span class="ms-status status-prepare">分享准备中</span>
-          </span>
-        </span>
-        <span class="ms-arrow">▾</span>
+          <span class="ms-date">2026.08</span>
+          <span class="ms-title">8月截至目前完成成果</span>
+          <span class="ms-meta"><span class="ms-type">AI开发 · 自动化／品质防错</span><span class="ms-status status-done">阶段成果完成</span></span>
+        </span><span class="ms-arrow">▾</span>
       </summary>
       <div class="meeting-content">
-
-        <!-- 定位说明 -->
-        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:8px;">📌 定位说明</div>
-          <p style="font-size:13px;color:var(--text);line-height:1.8;">
-            本次分享<strong>不是统一推广AI平台</strong>，也不是要求现场人员学习开发，
-            而是分享本人实际使用后形成的<strong>基础方法和风险边界</strong>。
-            目标对象是：不熟悉AI沟通的现场成员、使用CodeBuddy但不知如何下达指令的成员、
-            以及希望使用AI整理报告、分析问题或修改小工具的成员。
-          </p>
+        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin:14px 0;"><div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:8px;">📌 8月完成重点</div><p style="font-size:13px;color:var(--text);line-height:1.85;">8月上半月以既有工具稳定化和媒体类型扩展为主，完成DV360阶段扩展、Amazon DSP实际案件修正、2课邮件自动转记正式运行优化，以及多项报表／Excel工具交付。</p></div>
+        <div class="tpl-grid">
+          <div class="tpl-card"><h4>DV360設定チェック</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">YouTube／TrueView回归完成；OTT主要层级和规则完成；Display类型完成阶段开发并进入正式案件测试，三类媒体形成统一的校正框架。</p></div>
+          <div class="tpl-card"><h4>Amazon DSP設定チェック</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成Audience、Frequency等规则修正；CR下载恢复后补齐Creative日期继承逻辑和专项测试，正式工具持续稳定运行。</p></div>
+          <div class="tpl-card"><h4>2課邮件自动转记</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成无人值守正式运行，并集中修正代理店、广告主、诉求商材、营业担当等字段提取及新规／既存案件判定逻辑。</p></div>
+          <div class="tpl-card"><h4>报表与Excel工具</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">1課純広告报表宏完成实际纳品格式优化并交付负责人；同时完成报表宏、Excel对比、XLSM支持及清洗工具等现场改善。</p></div>
+          <div class="tpl-card"><h4>5課 Metaターゲティング校正工具</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成离线校正页面开发，支持纯文本一致、表記ゆれ一致及辞書一致等匹配方式，并形成自建数据字典的基础方案。</p></div>
         </div>
-
-        <!-- 分享方向A -->
-        <div style="background:linear-gradient(135deg,#f0f9ff,#e8f0fe);border-radius:10px;padding:16px;margin-bottom:14px;border:1px solid rgba(26,86,219,0.15);">
-          <div style="font-size:13px;font-weight:800;color:var(--brand);margin-bottom:12px;">💡 分享方向A：如何与AI沟通</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div style="font-size:12px;color:var(--text);line-height:1.8;">
-              <strong>沟通要点：</strong><br>
-              1. 先说明背景和目标<br>
-              2. 描述实际结果与预期结果<br>
-              3. 提供截图、文件、错误信息和操作步骤<br>
-              4. 第一次先要求只读分析<br>
-              5. 明确允许修改与禁止修改范围
-            </div>
-            <div style="font-size:12px;color:var(--text);line-height:1.8;">
-              <strong>安全要求：</strong><br>
-              6. 要求AI说明风险和验证方法<br>
-              7. 修改后必须提供验证证据<br>
-              8. 关键结论必须由人确认<br>
-              9. AI输出不等于事实<br>
-              10. 不直接说「帮我修好」
-            </div>
-          </div>
-        </div>
-
-        <!-- 分享方向B -->
-        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:16px;margin-bottom:14px;border:1px solid rgba(16,185,129,0.25);">
-          <div style="font-size:13px;font-weight:800;color:var(--success);margin-bottom:12px;">💡 分享方向B：如何把CodeBuddy用到实际工作</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);">
-              <div style="font-size:12px;font-weight:800;color:var(--success);margin-bottom:6px;">✅ 适合的使用场景</div>
-              <ul style="font-size:11px;color:var(--sub);line-height:1.7;padding-left:14px;">
-                <li>HTML文字与小范围样式调整</li>
-                <li>Excel公式、宏和错误原因分析</li>
-                <li>现有Python、GAS、JavaScript脚本检查</li>
-                <li>报告、手顺和邮件整理</li>
-                <li>小范围修改</li>
-                <li>修改前后差异确认</li>
-                <li>本地验证和完成报告</li>
-              </ul>
-            </div>
-            <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);">
-              <div style="font-size:12px;font-weight:800;color:var(--danger);margin-bottom:6px;">🚫 禁止或慎用</div>
-              <ul style="font-size:11px;color:var(--sub);line-height:1.7;padding-left:14px;">
-                <li>未明确范围的大规模修改</li>
-                <li>未备份的重要正式文件</li>
-                <li>未授权操作真实系统</li>
-                <li>未确认直接Push或部署</li>
-                <li>上传账号、客户机密和敏感数据</li>
-                <li>未经确认运行宏、脚本、删除或批量覆盖</li>
-                <li>仅凭AI说「已修复」就结束</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <!-- 标准流程 -->
-        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:8px;">📋 建议标准操作流程</div>
-          <div style="font-family:monospace;font-size:12px;color:var(--text);line-height:2;background:#fff;border-radius:6px;padding:12px;border:1px solid var(--border);text-align:center;">
-            问题描述 → 提供证据 → AI整理需求 → CodeBuddy只读分析 → 人工确认 → 限定范围修改 → 实际验证 → 保存结果
-          </div>
-        </div>
-
-        <!-- 可直接复制模板 -->
-        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:800;color:var(--brand);margin-bottom:12px;">📋 可直接复制使用的 AI / CodeBuddy 模板</div>
-          <p style="font-size:11px;color:var(--sub);margin-bottom:14px;">以下模板可直接复制到ChatGPT或CodeBuddy中使用。替换【】中的内容即可。</p>
-
-          <div class="tpl-grid">
-            <!-- 模板① -->
-            <div class="tpl-card">
-              <h4>模板① 让AI帮我整理问题</h4>
-              <div class="tpl-use">📋 复制后替换【】内容即可使用</div>
-              <div class="tpl-code">请帮我把下面的问题整理清楚，暂时不要给解决方案。
-
-【业务名称】
-填写业务或工具名称
-
-【当前操作】
-1.
-2.
-3.
-
-【实际结果】
-填写现在发生了什么
-
-【预期结果】
-填写原本应该出现什么结果
-
-【证据】
-填写错误信息、截图、文件名或样本数据
-
-请输出：
-1. 问题摘要
-2. 已知事实
-3. 仍缺少的信息
-4. 推荐下一步检查顺序
-
-不要虚构未提供的信息。</div>
-            </div>
-            <!-- 模板② -->
-            <div class="tpl-card">
-              <h4>模板② 让CodeBuddy先检查，不修改</h4>
-              <div class="tpl-use">📋 复制后替换【】内容即可使用</div>
-              <div class="tpl-code">请先只读分析，不要修改任何文件。
-
-【目标文件或目录】
-填写路径
-
-【问题】
-填写具体问题
-
-【实际结果】
-填写当前结果
-
-【预期结果】
-填写目标结果
-
-请确认：
-1. 问题可能出现在哪个文件或函数
-2. 最可能的原因
-3. 建议修改范围
-4. 是否会影响其他功能
-5. 修改后应如何验证
-
-限制：
-- 不修改文件
-- 不运行危险脚本
-- 不删除或覆盖数据
-- 不提交
-- 不Push
-
-请输出分析报告，等待我确认后再修改。</div>
-            </div>
-            <!-- 模板③ -->
-            <div class="tpl-card">
-              <h4>模板③ 确认后授权小范围修改</h4>
-              <div class="tpl-use">📋 复制后替换【】内容即可使用</div>
-              <div class="tpl-code">根据刚才的分析，授权进行本次修改。
-
-【允许修改】
-- 填写允许修改的文件
-- 填写允许修改的功能
-
-【禁止修改】
-- 其他页面
-- 无关功能
-- 数据结构
-- 未指定文件
-- 正式环境
-
-【完成标准】
-1.
-2.
-3.
-
-要求：
-- 只修改本次问题相关内容
-- 修改前确认git status
-- 修改后说明具体修改位置
-- 不提交
-- 不Push
-- 完成后等待人工确认</div>
-            </div>
-            <!-- 模板④ -->
-            <div class="tpl-card">
-              <h4>模板④ 要求CodeBuddy提供验证证据</h4>
-              <div class="tpl-use">📋 复制后替换【】内容即可使用</div>
-              <div class="tpl-code">请对刚才的修改进行实际验证。
-
-必须确认：
-1. 语法检查是否通过
-2. 页面或程序是否能正常运行
-3. 原问题是否已复现并确认解决
-4. 是否影响其他功能
-5. git diff是否仅包含授权范围
-6. 是否存在未验证事项
-
-请输出：
-- 修改文件
-- 修改位置
-- 修改内容
-- 实际执行的验证
-- 验证结果
-- 剩余风险
-
-不要只回复「应该可以」或「已修复」。</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 错误 vs 正确指令对比 -->
-        <div style="margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:12px;">🔍 同一个问题，不同沟通方式的结果</div>
-          <div class="compare-grid">
-            <div class="compare-bad">
-              <h4>❌ 不推荐</h4>
-              <div class="tpl-code" style="font-size:11px;line-height:1.7;max-height:none;">
-帮我把这个页面修好看一点。</div>
-              <div style="font-size:11px;color:var(--sub);margin-top:10px;line-height:1.7;">
-                <strong>问题说明：</strong><br>
-                · 没有说明哪个页面<br>
-                · 没有说明哪里不好看<br>
-                · 没有修改边界<br>
-                · 没有完成标准<br>
-                · AI可能大范围改动
-              </div>
-            </div>
-            <div class="compare-good">
-              <h4>✅ 推荐</h4>
-              <div class="tpl-code" style="font-size:11px;line-height:1.7;max-height:none;">
-请先只读检查，不要修改。
-
-目标文件：yomiko_kanri.html
-
-当前问题：
-表格右侧「编辑」「删除」按钮距离页面边缘太近，视觉拥挤。
-
-预期结果：
-桌面端按钮右侧保留自然空白；
-两个按钮保持同一行；
-左侧筛选区域不得变化；
-内容过宽时只允许表格区域横向滚动。
-
-请先说明：
-1. 需要修改哪些CSS
-2. 是否会影响移动端
-3. 建议验证方法
-
-等待确认后再修改。</div>
-            </div>
-          </div>
-          <p style="font-size:12px;color:var(--brand);font-weight:600;margin-top:4px;">💡 问题越具体、证据越完整、边界越明确，AI输出越稳定。</p>
-        </div>
-
-        <!-- 实际案例：Excel宏 -->
-        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:800;color:var(--brand);margin-bottom:12px;">🧪 实际案例：Excel宏报错的正确提问方式</div>
-
-          <div class="case-step">
-            <h4>第一步：现场人员提供</h4>
-            <p style="font-size:12px;color:var(--text);line-height:1.8;">
-              宏文件名称 · 报错截图 · 点击了哪个按钮 · 当前Sheet名称 · 预期操作结果 · 是否允许修改宏
-            </p>
-          </div>
-
-          <div class="case-step">
-            <h4>第二步：先让AI判断</h4>
-            <div class="tpl-code" style="font-size:11px;max-height:none;">
-请先分析报错原因，不要修改宏。
-
-当前情况：
-点击「デバイス別_取り込み」后报错。
-宏预期读取Sheet「デバイス別」，但下载文件中的Sheet名称为「デバイス」。
-
-请判断：
-1. 是否是Sheet名称不一致导致
-2. 是否需要修改宏
-3. 能否通过统一下载文件Sheet名称解决
-4. 哪种方式风险更低</div>
-          </div>
-
-          <div class="case-step">
-            <h4>第三步：人工决定</h4>
-            <p style="font-size:12px;color:var(--text);line-height:1.8;">
-              如果只需统一Sheet名称即可正常运行，<strong>应优先修改操作规则</strong>，不要为了「让AI做点什么」而修改宏。
-            </p>
-          </div>
-
-          <p style="font-size:12px;color:var(--sub);line-height:1.8;margin-top:8px;">
-            该案例强调：AI不一定必须修改文件；正确判断原因比直接动代码更重要；避免无效开发。
-          </p>
-        </div>
-
-        <!-- 分享目标 -->
-        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:16px;border:1px solid rgba(16,185,129,0.25);">
-          <div style="font-size:13px;font-weight:800;color:var(--success);margin-bottom:10px;">🎯 分享的最终目标</div>
-          <p style="font-size:13px;color:var(--text);line-height:1.8;">
-            让成员掌握四项基本能力：<strong>会说明问题、会让AI先分析、会限制修改范围、会确认验证结果</strong>。
-            不要求「让所有人学会开发」。
-          </p>
-          <p style="font-size:12px;color:var(--sub);line-height:1.8;margin-top:8px;">
-            💡 飞书等协作工具可由擅长人员继续探索连接方式，本次分享不作为必须掌握内容，也不将报告人描述为飞书方向负责人。
-          </p>
-        </div>
-
       </div>
     </details>
 
-    <!-- ====== 记录②：QC门户提案（已落地） ====== -->
+    <!-- ====== 2026年7月 ====== -->
     <details class="meeting-item done">
       <summary class="meeting-summary">
         <span class="ms-left">
-          <span class="ms-date">2026.06.30</span>
-          <span class="ms-title">QC门户 用户注册制＋自动使用统计系统导入提案</span>
-          <span class="ms-meta">
-            <span class="ms-type">系统改善提案 · 质量KPI自动化</span>
-            <span class="ms-status status-done">已落地 · 已转为核心成果③</span>
-          </span>
-        </span>
-        <span class="ms-arrow">▸</span>
+          <span class="ms-date">2026.07</span>
+          <span class="ms-title">7月完成成果</span>
+          <span class="ms-meta"><span class="ms-type">自动化 · QC／品质改善</span><span class="ms-status status-done">已完成</span></span>
+        </span><span class="ms-arrow">▾</span>
       </summary>
       <div class="meeting-content">
-
-        <!-- 状态说明 -->
-        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:14px;margin-bottom:16px;border:1px solid rgba(16,185,129,0.3);">
-          <div style="font-size:13px;font-weight:800;color:var(--success);margin-bottom:4px;">✅ 当前状态</div>
-          <p style="font-size:12px;color:var(--text);line-height:1.8;">
-            本议题已在2026年7月完成主要功能落地，现已迁移至<strong>「核心成果④ QC门户质量管理平台」</strong>。以下内容作为当时的提案记录保留。
-          </p>
+        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin:14px 0;"><div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:8px;">📌 7月完成重点</div><p style="font-size:13px;color:var(--text);line-height:1.85;">7月完成2课邮件自动转记核心链路和无人值守环境，DV360第一阶段解析框架、Amazon DSP防错规则、QC门户管理能力及现场效率改善同步落地。</p></div>
+        <div class="tpl-grid">
+          <div class="tpl-card"><h4>2課 Outlook邮件自动转记</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成OneDrive／Python／GAS／Google Sheet完整链路，175项自动测试通过，并部署远程电脑实现开机自启动和无人值守运行。</p></div>
+          <div class="tpl-card"><h4>DV360設定チェック 第一阶段</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">YouTube／TrueView完成CP、IO、LI、GP、CR五层解析，建立后续规则扩展与实际案件验证的统一框架。</p></div>
+          <div class="tpl-card"><h4>Amazon DSP設定チェック升级</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">追加Creative日期、时间带、状态及初期／CR追加案件模式检查，并完成PVA读取、Segment识别等稳定性修复。</p></div>
+          <div class="tpl-card"><h4>QC门户与现场品质工具</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成个人登录、权限、Token、使用日志、Summary统计等管理能力，并持续完善地域转换、Excel清洗及现场工具问题修复。</p></div>
+          <div class="tpl-card"><h4>现场效率与运行环境</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">Excel轻量化将样本打开时间由约40秒缩短至约7秒；同时完成远程电脑自动开机、程序启动及定点关机环境。</p></div>
         </div>
-
-        <!-- 背景 -->
-        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:8px;">📋 背景 · 当前课题</div>
-          <p style="font-size:13px;color:var(--text);line-height:1.8;">
-            当时QC门户使用<strong>单一共享密码</strong>全员登录，
-            <strong style="color:var(--danger);">无法掌握「谁、何时、用了哪个工具、发现了多少差异」。</strong>
-            已开发的工具群的核心价值不仅是<strong style="color:var(--accent);">「工时削减」更在于「准确性保障与人为错误防止」</strong>，
-            但由于质量贡献无法量化，管理层只能看到工时削减这一面。
-          </p>
-        </div>
-
-        <!-- 提案核心 -->
-        <div style="background:linear-gradient(135deg,#f0f9ff,#e8f0fe);border-radius:10px;padding:16px;margin-bottom:14px;border:1px solid rgba(26,86,219,0.15);">
-          <div style="font-size:13px;font-weight:800;color:var(--brand);margin-bottom:12px;">💡 提案内容：GAS后端实现注册制 + 自动统计</div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-            <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);">
-              <div style="font-size:12px;font-weight:800;color:var(--brand);margin-bottom:4px;">🔐 用户注册 · 登录</div>
-              <p style="font-size:11px;color:var(--sub);line-height:1.7;">
-                姓名 · 邮箱 · 密码个人注册。<br>
-                注册后本人才能使用工具。<br>
-                GAS认证，Google Sheet管理用户。
-              </p>
-            </div>
-            <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);">
-              <div style="font-size:12px;font-weight:800;color:var(--brand);margin-bottom:4px;">📊 使用日志自动采集</div>
-              <p style="font-size:11px;color:var(--sub);line-height:1.7;">
-                每次使用工具自动记录：<br>
-                谁 · 何时 · 哪个工具 · 发现多少差异<br>
-                → 通过GAS存入Google Sheet。
-              </p>
-            </div>
-          </div>
-
-          <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);margin-bottom:10px;">
-            <div style="font-size:12px;font-weight:800;color:var(--brand);margin-bottom:4px;">📈 自动生成的质量KPI（月度）</div>
-            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px;">
-              <tr style="background:#f0f9ff;">
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">指标</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">内容</td>
-              </tr>
-              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🛠️ 工具别使用次数</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">各工具月度使用次数</td></tr>
-              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">👤 个人使用实绩</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">谁用了多少次、哪个工具</td></tr>
-              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🔍 差异检出总数</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">全工具合计发现的差异数</td></tr>
-              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">⚠️ 重大差异检出数</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">金额·投放设定等关键差异</td></tr>
-              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">⏱️ 预估返工回避时间</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">重大差异 × 平均修复时间（15min）</td></tr>
-            </table>
-          </div>
-        </div>
-
-        <!-- 系统架构 -->
-        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:8px;">🏗️ 系统架构（全部使用现有技术实现）</div>
-          <div style="font-family:monospace;font-size:11px;color:var(--sub);line-height:1.8;background:#fff;border-radius:6px;padding:12px;border:1px solid var(--border);">
-┌─────────────────────────────────────────┐<br>
-│  <strong>GAS Web App（免费·社内基础设施）</strong>          │<br>
-│  /register → 用户注册 → Sheet「users」     │<br>
-│  /login    → 认证 → Token发行               │<br>
-│  /usage    → 使用日志接收 → Sheet「logs」    │<br>
-└──────────────┬──────────────────────────┘<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;▲<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│ fetch POST（注册/登录/日志发送）<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>
-┌──────────────┴──────────────────────────┐<br>
-│  <strong>QC门户（惠海）</strong>                              │<br>
-│  index.html → 注册·登录画面                   │<br>
-│  各工具页面 → Session验证 + 完成时自动发送日志      │<br>
-└─────────────────────────────────────────┘
-          </div>
-        </div>
-
-        <!-- 预期效果 -->
-        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:16px;border:1px solid rgba(16,185,129,0.25);">
-          <div style="font-size:13px;font-weight:800;color:var(--success);margin-bottom:10px;">🎯 预期效果</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div>
-              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;">🔐 安全层面</div>
-              <ul style="font-size:11px;color:var(--sub);line-height:1.8;padding-left:16px;">
-                <li>个人单位的访问管理</li>
-                <li>不再需要共享密码</li>
-                <li>离职人员即时屏蔽</li>
-              </ul>
-            </div>
-            <div>
-              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;">📊 质量管理层面</div>
-              <ul style="font-size:11px;color:var(--sub);line-height:1.8;padding-left:16px;">
-                <li>差异检出数自动数值化</li>
-                <li>质量贡献度可视化</li>
-                <li>工时削减 + 质量提升双轴评价</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
       </div>
     </details>
 
-    <!-- ====== 记录③：入稿表校验提案（暂未推进） ====== -->
-    <details class="meeting-item pending">
+    <!-- ====== 2026年6月 ====== -->
+    <details class="meeting-item done">
       <summary class="meeting-summary">
         <span class="ms-left">
-          <span class="ms-date">2026.06.30</span>
-          <span class="ms-title">入稿表自动校验工具开发提案 — 设定表依赖前的质量检查强化</span>
-          <span class="ms-meta">
-            <span class="ms-type">历史提案 · 质量事前防止</span>
-            <span class="ms-status status-pending">暂未推进</span>
-          </span>
-        </span>
-        <span class="ms-arrow">▸</span>
+          <span class="ms-date">2026.06</span>
+          <span class="ms-title">6月完成成果</span>
+          <span class="ms-meta"><span class="ms-type">品质校正工具落地</span><span class="ms-status status-done">已完成</span></span>
+        </span><span class="ms-arrow">▾</span>
       </summary>
       <div class="meeting-content">
-
-        <!-- 状态说明 -->
-        <div style="background:rgba(239,68,68,0.04);border-radius:10px;padding:14px;margin-bottom:16px;border:1px solid rgba(239,68,68,0.15);">
-          <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:4px;">⏸️ 当前状态</div>
-          <p style="font-size:12px;color:var(--text);line-height:1.8;">
-            该议题为2026年6月阶段的构想记录，目前未列入近期优先推进项目，仅作为历史提案留存。
-          </p>
+        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin:14px 0;"><div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:8px;">📌 6月完成重点</div><p style="font-size:13px;color:var(--text);line-height:1.85;">6月完成Amazon DSP／PVA设定自动对比工具正式落地，将人工逐项检索的校正方式转为系统优先提示差异项目。</p></div>
+        <div class="tpl-grid">
+          <div class="tpl-card"><h4>Amazon DSP／PVA设定自动对比</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成后台数据与设定表自动读取、结构化比较及差异报告，重点覆盖配信条件、金额、Frequency、Audience等项目，用于自我校正及W校正辅助。</p></div>
+          <div class="tpl-card"><h4>校正方式升级</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">由“人工逐项确认”转为“优先确认系统提示的异常项目”，建立后续CR、PVA及更多业务规则持续扩展的技术基础。</p></div>
         </div>
-
-        <!-- 背景 -->
-        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px;">📋 背景 · 当前课题</div>
-          <p style="font-size:13px;color:var(--text);line-height:1.8;">
-            在目前入稿表→设定表的流转中，<strong>入稿表阶段的不完备·错误有被直接转记到设定表的风险</strong>。
-            日方担当会对入稿表进行事前检查，但人工确认存在局限，
-            格式不符·必填项遗漏·CR（创意要件）不一致等问题时有发生，往往在后续工序中才被发现。
-          </p>
-          <p style="font-size:13px;color:var(--sub);line-height:1.8;margin-top:8px;">
-            <strong style="color:var(--accent);">如果在入稿表阶段就能检测出问题</strong>，可以大幅削减后续工序的返工。
-          </p>
-        </div>
-
-        <!-- 提案内容 -->
-        <div style="background:linear-gradient(135deg,#fefce8,#fef9c3);border-radius:10px;padding:16px;margin-bottom:14px;border:1px solid rgba(245,158,11,0.25);">
-          <div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:12px;">💡 提案内容：入稿表自动校验引擎</div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-            <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);">
-              <div style="font-size:12px;font-weight:800;color:var(--accent);margin-bottom:4px;">📥 输入：入稿表 + CR定义</div>
-              <p style="font-size:11px;color:var(--sub);line-height:1.7;">
-                入稿表（Excel）+ CR（创意要件）定义上传。
-                CR定义可预先设定并重复使用。
-              </p>
-            </div>
-            <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);">
-              <div style="font-size:12px;font-weight:800;color:var(--accent);margin-bottom:4px;">⚙️ 处理：固定规则审查</div>
-              <p style="font-size:11px;color:var(--sub);line-height:1.7;">
-                入稿表各项目与CR定义逐项对照。<br>
-                必填检查 / 格式校验 / 数值范围检查 / 矛盾检测。
-              </p>
-            </div>
-          </div>
-
-          <div style="background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);">
-            <div style="font-size:12px;font-weight:800;color:var(--accent);margin-bottom:4px;">📤 输出：问题点报告</div>
-            <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:6px;">
-              <tr style="background:#fefce8;">
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">检查项目</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">检测内容</td>
-                <td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:700;">示例</td>
-              </tr>
-              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🔴 必填项缺失</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">入稿表必填单元格为空</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">刊登日未填写</td></tr>
-              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🟡 格式不匹配</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">日期/金额/编码格式与规定不一致</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">日期非西历格式</td></tr>
-              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🟡 数值范围异常</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">金额·尺寸等超出CR允许范围</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">广告尺寸不符合规定</td></tr>
-              <tr><td style="padding:5px 8px;border:1px solid #e2e8f0;">🔵 CR矛盾检测</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">多项目间的逻辑矛盾</td><td style="padding:5px 8px;border:1px solid #e2e8f0;">刊登日晚于截止日</td></tr>
-            </table>
-          </div>
-
-          <div style="margin-top:12px;background:#fff;border-radius:8px;padding:12px;border:1px solid var(--border);">
-            <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:6px;">⚡ 预估工时与阶段规划</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-              <div style="text-align:center;padding:8px;background:#fefce8;border-radius:6px;">
-                <div style="font-size:18px;font-weight:900;color:#92400e;">Phase 1</div>
-                <div style="font-size:10px;color:var(--sub);margin-top:3px;">读卖新闻CR定义<br>+ 基础检查逻辑<br>（预计1~2个月）</div>
-              </div>
-              <div style="text-align:center;padding:8px;background:#fefce8;border-radius:6px;">
-                <div style="font-size:18px;font-weight:900;color:#92400e;">Phase 2</div>
-                <div style="font-size:10px;color:var(--sub);margin-top:3px;">其他媒体CR定义追加<br>+ 高级矛盾检测<br>（预计2~3个月）</div>
-              </div>
-              <div style="text-align:center;padding:8px;background:#fefce8;border-radius:6px;">
-                <div style="font-size:18px;font-weight:900;color:#92400e;">Phase 3</div>
-                <div style="font-size:10px;color:var(--sub);margin-top:3px;">全媒体对应<br>+ 设定表自动反映联动<br>（预计3~6个月）</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 可行性 -->
-        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:8px;">🔧 可行性 · 现有技术复用</div>
-          <p style="font-size:12px;color:var(--text);line-height:1.8;">
-            本提案并非从零开发，而是<strong>沿用1课已落地的「AmazonDSP设定检查」「DV360设定检查」相同技术架构</strong>（Excel上传→与规定值自动对照→差异报告输出），将核心引擎应用于入稿表领域。
-          </p>
-        </div>
-
-        <!-- 预期效果 -->
-        <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;padding:16px;border:1px solid rgba(16,185,129,0.25);">
-          <div style="font-size:13px;font-weight:800;color:var(--success);margin-bottom:10px;">🎯 预期效果</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div>
-              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;">🛡️ 质量方面</div>
-              <ul style="font-size:11px;color:var(--sub);line-height:1.8;padding-left:16px;">
-                <li>入稿表问题早期发现</li>
-                <li>设定表误转记风险降低</li>
-                <li>检查标准的统一·标准化</li>
-              </ul>
-            </div>
-            <div>
-              <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;">⏱️ 效率方面</div>
-              <ul style="font-size:11px;color:var(--sub);line-height:1.8;padding-left:16px;">
-                <li>削减人工检查工时</li>
-                <li>压缩后续工序返工时间</li>
-                <li>减轻日方担当确认负担（辅助角色）</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
       </div>
     </details>
-
   </div>
-  <div class="footer">長春恵海業務報告 · 馬 林 · 课长周定例</div>
+  <div class="footer">長春恵海業務報告 · 馬 林 · 月AI定例报告</div>
 </div>
-
 
 <!-- ==========================================
      SCRIPTS
@@ -2087,7 +1644,7 @@ new Chart(document.getElementById('chartTrend').getContext('2d'), {
 
 /* ---------- 日期自动化 ---------- */
 // ★ 内容更新截至固定日期，后续只需修改此一处
-const REPORT_UPDATED_AT = '2026.07.28';
+const REPORT_UPDATED_AT = '2026.08.18';
 
 (function() {
   const now = new Date();

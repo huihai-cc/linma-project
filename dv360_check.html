@@ -1189,15 +1189,13 @@ const DOWNLOAD_FIELD_VALIDATION_RULES = {
       const result=evaluateDv360GeoTargeting(value);
       return {dVal:result.dVal,result:result.result};
     }}],
-    ['TrueView Category Exclusions Targeting',{alwaysDisplay:true,evaluate(value){
-      const actual=normalizeCategoryExclusions(value);
-      return {dVal:String(value===null||value===undefined?'':value).trim()||'(未設定)',result:sameOrderedValues(actual,STANDARD_TRUEVIEW_CATEGORY_EXCLUSIONS)?'ok':'warning'};
-    }}],
+    // 2026-08-18: 「TrueView Category Exclusions Targeting（カテゴリ除外）」は Google が legacy 化し、
+    // advertiser 階層の Brand suitability 管理へ移行したため、YouTube LI の検証項目から削除。
+    // 旧 SDF に残留値があっても LI 不一致・warning にはしない（パーサー互換のみ残す）。
   ]),
   // GP MP 固定规则：alwaysDisplay 确保即使空值也显示；实际判定在 compareGP 中完成
   GP: normalizedRuleMap([
     ['Keyword Targeting - Exclude',{alwaysDisplay:true}],
-    ['Category Targeting - Exclude',{alwaysDisplay:true}],
     ['Placement Targeting - URLs - Exclude',{alwaysDisplay:true}],
     ['Placement Targeting - Apps - Exclude',{alwaysDisplay:true}],
     ['Placement Targeting - YouTube Channels - Exclude',{alwaysDisplay:true}],
@@ -1220,13 +1218,8 @@ const GP_MP_UNIFIED_RULES = {
     // 560 keywords extracted from SDF-AdGroups.csv all rows (identical)
     master: "9条ネット; CCTV; ESP科学研究所; GLA; GLA関西本部; God Light Association; ISIS; Incidente; J-House; NATO; SBSネットワーク; TPPを考える国民会議; TPP交渉への早期参加を求める国民会議; Unfall; accident; crash; goto; isuramu; yukawa; Случай; いじめ; かいざん; かりゆしクラブ; がんばろう 日本 国民協議会; すめら教; たちあがれ日本; ひかりの輪; ひき逃げ; ほんぶしん; ほんみち; みどりのテーブル; みどりの会議; みどりの未来; みどりの風; ものみの塔; よい国つくろう 日本志民会議; よろこび家族の和; アクシデント; アバターコース; アパルトヘイト; アーレフ; イジメ; イスラエル; イスラム; イスラム国; イスラーム; イスラーム国; イムマヌエル綜合伝道団; イラン; ウェスレアン・ホーリネス教団; ウクライナ; エプスタイン; エホバの証人; エルサレム; カルバリキリスト教団; ガザ; クルド人; クーデーター; サイエントロジー; ザイン; ショットガン; シリア; シーア派; ジハード; ジュリーハンプ; ジュリー・ハンプ; ジョンベネ; ステルスジェット; スンニ派; セクシャルハラスメント; セクハラ; セブンスデー・アドベンチスト教会; ソウル新聞; ソウル経済; チャイナネット; テロ; トゥルース教; トヨタ社員; トヨタ自動車社員; ドラッグ; ネタニヤフ; ハマス; ハメネイ; ハンギョレ; ハーメネイー; バグダディ; パリ; パレスチナ; パワハラ; パワーハラスメント; パーフェクトリバティー教団; ファタハ; ファミリー・インターナショナル; フランス; フリーウェイクラブ; ブラック企業; ブレッシングチャーチインターナショナル; プチエンジェル; プーチン; ヘラルド経済; ベストグループ; ペンテコステ派; ホルムズ海峡; ミサイル; モサド; モジタバ; モジュタバ; ライフスペース; ライフル; ラエリアンムーブメント; リコール; リストラ; レイプ; ロシア; ワールドメイト; 一人一票実現国民会議; 一燈園; 一畑薬師教団; 一神教学会; 三宝教団; 三橋派; 上尾イエス之御霊教会; 下方; 下請; 下請け; 下降; 不審; 不振; 不正; 不適切な関係; 不適切行為; 世界基督教統一神霊協会; 世界大戦; 世界救世教 いづのめ教団; 世界救世教 主之光教団; 世界日報; 世界真光文明教団; 中国中央電視台; 中国交通報; 中国婦女報; 中国工商報; 中国情報局; 中国新聞社; 中国経営報; 中国経済時報; 中国緑色時報; 中国軍網; 中国郵政報; 中国電力新聞; 中国青年報; 中央日報; 中山身語正宗; 中核派; 九頭竜大社; 事故; 京郷新聞; 人殺; 人民中国; 人民公安報; 人民日報; 人民法院報; 人質; 仏国土をつくろう会; 伊藤穣一; 低迷; 佛所護念会教団; 併合; 保守バプテスト同盟; 信貴山真言宗; 修養団捧誠会; 倒産; 偕和會; 停戦; 停電; 傀儡政権; 光明日報; 児童買春; 入間愛の教会; 全国勝手連連合会; 全国若手市議会議員の会; 八大龍王大自然愛信教団; 六合教会; 六水院; 兵器; 内紛; 円応教; 冨士大石寺顕正会; 凋落; 処刑; 出雲大社教; 出雲心友教会; 出雲教; 創価学会; 北京週報; 十字架のイエス・ベネディクト修道会; 危機; 危険; 原始福音・キリストの幕屋; 原発; 唯一会; 善隣教; 四大道; 国柱会; 国民日報; 国際勝共連合; 国際商報; 土砂崩れ; 在家仏教こころの会; 在家日蓮宗浄風会; 在日大韓基督教会総会; 地震; 基督兄弟団; 基督心宗教団; 基督聖協団; 売春; 大乗教; 大倭教; 大和教; 大和教団; 大山ねずの命神示教会; 大山孤命神示教会; 大慧會教団; 大本; 大父母苑; 大破; 大祖教; 大行社; 大阪に在る教会; 大阪みぎわチャペル; 天元教; 天台宗 金峯山修験本宗; 天台宗和宗; 天台宗寺門派; 天台宗本山修験宗; 天台真盛宗; 天爽会; 天理教; 天祖光教; 天聖真美会; 天華の救済; 天道玉皇山弥勒寺; 失策; 女性社員; 如来宗; 妙智會教団; 妙道会教団; 妙霊教; 子羊の群れキリスト教会; 孝道教団; 安倍; 安倍晋三; 安楽死党; 宗教法人カトリック中央協議会; 容疑者; 密輸; 寳珠宗寳珠会; 対話でつなごう滋賀の会; 小児性愛; 山蔭神道; 山陽イエス之御霊教会; 崇教真光; 崩れ; 崩壊; 市民ネットワーク・千葉県; 市民連帯・波21; 希心会; 平和教; 幸福の科学; 幸福会ヤマギシ会; 庚申会; 引き逃げ; 弾薬; 当て逃げ; 後藤; 御嶽教; 心肺停止; 心霊界教団; 念仏宗; 念佛宗; 念佛宗三寶山無量壽寺; 念法眞教; 思想研究団体JPNA; 思親会; 急落; 性加害; 性的虐待; 悪口; 悪評; 惨殺; 愛みやざき; 愛善苑; 愛知県警; 戦争; 戦闘; 戦闘機; 扶桑教; 拷問; 損出; 損失; 搬送; 摂理; 撤退; 改ざん; 改竄; 政党そうぞう; 救世主教; 救世神教; 救世軍; 救急; 教派神道連合会; 散弾銃; 文化放送ネットワーク; 文化日報; 斬首; 新宗教研究; 新座観音神護院; 新政みえ; 新明国上教会; 新生佛教教団; 新義真言宗; 新華社通信; 新華通信; 日之教; 日本アジア・アフリカ・ラテンアメリカ連帯委員会; 日本アッセンブリーズ・オブ・ゴッド; 日本アライアンス教団; 日本イエス・キリスト教団; 日本キリスト改革派教会; 日本ナザレン教団; 日本ハリストス正教会教団; 日本バハイ共同体; 日本バプテスト・バイブル・フェローシップ; 日本バプテスト同盟; 日本バプテスト教会連合; 日本バプテスト連盟; 日本フリーメソジスト教団; 日本ホーリネス教団; 日本ボランティア会; 日本ヴェーダーンタソサイテイ; 日本医師連盟; 日本同盟基督教団; 日本基督改革派教会; 日本山妙法寺大僧伽; 日本平和神軍; 日本心霊科学協会; 日本李登輝友の会; 日本民主教育政治連盟; 日本理学療法士連盟; 日本神の教会; 日本福音ペンテコステ教団; 日本福音ルーテル教会; 日本福音教会; 日本聖公会; 日本聖契キリスト教団; 日本長老教会; 日蓮宗; 日蓮正宗; 日蓮法華宗; 日蓮誠宗; 日隆門流; 時宗; 暗殺; 暗雲; 暴力; 曹洞宗; 朝鮮日報; 期貨日報; 末日聖徒イエス・キリスト教会; 本化妙宗聯盟; 本山修験宗; 本門佛立宗; 本門法華宗; 東亜日報; 東京・生活者ネットワーク; 東日本大震災; 松緑神道大和山; 森弘行; 正叉日報; 正法事門法華宗; 正理会; 武器庫; 武装; 殺人; 殺害; 毎日経済; 民団新聞; 気学宗家 法道会; 決別; 法制日報; 法師宗; 法相宗; 法華宗本門流; 法華宗真門流; 法華宗陣門流; 洗心教団; 津波; 流出; 浄土宗 西山深草派; 浄土宗 西山禅林寺派; 浄土宗 鎮西派; 浄土真宗 本願寺派; 浄土真宗 東本願寺派; 浄土真宗 真宗佛光寺派; 浄土真宗 真宗出雲路派; 浄土真宗 真宗大谷派; 浄土真宗 真宗浄興寺派; 浄土真宗 真宗誠照寺派; 浄土真宗 真宗高田派; 浄土真宗 華光会; 浄土真宗親鸞会; 減税日本; 湯川; 滅びる; 漏洩; 火災; 炎上; 燃える; 爆弾; 爆発; 爆発事故; 特殊部隊; 独裁; 玉光神社; 生き埋め; 生長の家; 疑惑; 疲弊; 白光真宏会; 盗; 盗作; 県民クラブ; 真の道; 真イエス教会; 真如苑; 真生会; 真言三宝宗; 真言宗中山寺派; 真言宗善通寺派; 真言宗大覚寺派; 真言宗智山派; 真言宗泉涌寺派; 真言宗犬鳴派; 真言宗石槌派; 真言宗総本山; 真言宗豊山派; 真言宗醍醐派; 真言宗金毘羅尊流; 真言宗霊雲寺派; 真言宗須磨寺派; 短寿命; 砲撃; 破たん; 破産; 破綻; 神の肉体たる紫光学苑堅帯教; 神一條教本部教会; 神奈川ネットワーク運動; 神幽現救世真光文明教団; 神慈秀明会; 神理教; 神社本庁; 神道修成派; 神道大和教; 神道大教; 神道政治連盟; 神道禊教; 神霊教; 禊教; 福知山維新の会; 空爆; 立正佼成会; 第二院クラブ; 箱根大天狗山神社; 経営不振; 経営危機; 経営破たん; 経営破綻; 経済日報; 統一日報; 維新の会; 緑の党グリーンズジャパン; 緑・にいがた; 聖イエス会; 聖シャーベル修道会; 聖心教会; 聖護院門跡; 聯合ニュース; 能登半島地震; 脱原発政治連盟; 自動車運転過失致死傷; 自然の泉; 自然社; 自由社会を守る国民会議; 草莽全国地方議員の会; 荒井久美子; 荒井容疑者; 荒薙教; 虐殺; 虹と緑; 融通念佛宗; 衰退; 製造本部副本部長; 西山浄土宗; 要会; 解脱会; 解雇; 豊田家御曹司; 豊田理彰; 負; 負の遺産; 赤字; 身代金; 身玉山 宗三郎; 軍事作戦; 軍事行動; 轢逃げ; 辯天宗; 逃亡; 逃走; 過失; 道交法; 違反; 選挙へ行こう 実行委員会; 避難; 都民のハートに火をつける会; 金光教; 鈴木晶子; 銃; 銃器; 関東大震災; 阪神淡路大震災; 防弾; 防弾チョッキ; 防空; 阿含宗; 陽光子友乃会; 難民; 霊友会; 霊山寺真言宗; 霊波之光; 霊相道; 青蓮院門跡; 非武装化; 革命的共産主義者同盟全国委員会; 韓国放送公社; 韓国教育放送公社; 韓国日報; 韓国経済; 頑張れ日本 全国行動委員会; 顕本法華宗; 顧客情報; 飢饉; 首相; 高麗木教; 麻薬; 麻薬密輸; 黄檗宗; 黎明教会; 黒住教; 사고",
   },
-  categoryExclude: {
-    fieldKey: "Category Targeting - Exclude",
-    displayLabel: "排除类别",
-    settingDisplay: "MP統一ルール",
-    comparisonType: "set",
-    master: "54; 56; 59; 1020",
-  },
+  // 2026-08-18: categoryExclude（Category Targeting - Exclude / 排除类别）は Google が legacy 化し
+  // advertiser 階層の Brand suitability 管理へ移行したため、YouTube GP の比較対象から削除。
   urlExclude: {
     fieldKey: "Placement Targeting - URLs - Exclude",
     displayLabel: "排除URL",
@@ -1463,7 +1456,7 @@ function appendDownloadOnlyItems(level,downloadRecord,coreItems){
     if(!rule.alwaysDisplay||excluded.has(normalized)||covered.has(normalized)||existing.has(normalized)||added.has(normalized)) return;
     const value=Object.prototype.hasOwnProperty.call(downloadRecord.rawFields,rule.field)?downloadRecord.rawFields[rule.field]:'';
     // OTT LI: TrueView Category Exclusions Targeting は 空/未設定 をデフォルトとして非表示
-    // （YouTube の TrueView カテゴリ除外統一ルールは維持）
+    // （2026-08-18: YouTube LI はカテゴリ除外を legacy 扱いにしたため、この OTT 用ルールのみ残る）
     if(mediaType==='ott'&&level==='LI'&&rule.field==='TrueView Category Exclusions Targeting'&&!hasMeaningfulDownloadValue(value)) return;
     const evaluated=rule.evaluate(value,downloadRecord);
     addItem(rule.field,evaluated.dVal,evaluated.result,'raw-sdf-validation',rule.alwaysDisplay);
@@ -5414,9 +5407,19 @@ function normPacing(v){
 function normVideoType(v){
   if(!v) return '';
   const s=normStr(v);
+  const compact=s.replace(/[\s_\-/()（）【】]+/g,'');
+  // 2026-08-18: Non-Skippable の表記揺れ（VRC(Non-Skippable) / VRC (Non Skippable) /
+  // VRC(NonS) / TrueView/Non Skippable / Non Skippable など）はすべて同一 canonical
+  // 'vrc_nonskippable' に統一する。以前は YouTube 側だけで 'youtube_nonskippable' が
+  // 使われ、設定表 VRC(Non-Skippable) と SDF TrueView/Non Skippable が不一致になっていた。
+  if(compact==='vrcnonskippable'||compact==='vrcnons'||compact==='vrcnon'||
+     compact==='trueviewnonskippable'||compact==='trvnonskip'||compact==='nonskippable'||compact==='nonskip'){
+    return 'vrc_nonskippable';
+  }
   if(s.includes('vrc')&&s.includes('non')) return 'vrc_nonskippable';
   if(s.includes('vrc')&&(s.includes('skip')||s.includes('(s)'))) return 'vrc_skippable';
   if(s.includes('trueview')&&s.includes('reach')) return 'vrc_skippable';
+  if(s.includes('trueview')&&s.includes('non')) return 'vrc_nonskippable';
   if(s.includes('trueview')&&s.includes('view')) return 'vvc';
   if(s.includes('vvc')||s.includes('viewable')) return 'vvc';
   if(s.includes('bumper')) return 'bumper';
@@ -5425,10 +5428,9 @@ function normVideoType(v){
   return s;
 }
 function normYoutubeVideoType(v){
-  if(!v) return '';
-  const compact=normStr(v).replace(/[\s_\-/]+/g,'');
-  // 最終確認済みの明示 synonym。ここでは fuzzy や部分一致を追加しない。
-  if(compact==='trvnonskip'||compact==='nonskippable'||compact==='trueviewnonskippable') return 'youtube_nonskippable';
+  // YouTube LI も normVideoType の unified canonical に一本化（2026-08-18）。
+  // 旧実装はここで 'youtube_nonskippable' を別定義しており、
+  // 設定表 VRC(Non-Skippable) との不一致を生んでいた。
   return normVideoType(v);
 }
 function normIoType(v){
@@ -6017,8 +6019,13 @@ function getDemographicExpectedTokens(settingValue,fieldType){
   }else if(fieldType==='age'){
     expected=getAgeExpectedTokens(raw,compact);
   }else if(fieldType==='parentalStatus'){
-    if(compact.includes('all')||compact.includes('すべて')) expected=['not a parent','parent'];
+    // 2026-08-18: parentalStatus の ALL（すべて/ALL/▼選択/空白）は
+    // Not a parent + Parent を核心集合とし、Unknown は必須にしない。
+    // 明示的な「不明あり」指定がある場合だけ Unknown を必須にする。
+    const hasAll=compact.includes('all')||compact.includes('すべて')||compact.includes('全年齢');
+    if(hasAll) expected=['not a parent','parent'];
     else expected=parseUnknownTokens(raw).map(token=>canonicalDemographicToken(token,fieldType)).filter(token=>token!=='unknown');
+    if(requirement==='include'&&(/不明(?:あり|有|含む)/.test(compact)||/unknown(?:含む|あり|有)/.test(compact))) expected.push('unknown');
   }else if(fieldType==='householdIncome'){
     const templateUnknown=compact.match(/不明あり[／/](あり|なし)$/);
     if(templateUnknown){
@@ -6028,7 +6035,9 @@ function getDemographicExpectedTokens(settingValue,fieldType){
       expected=['top 10%','11-20%','21-30%','31-40%','41-50%','lower 50%'];
     }else expected=getHouseholdIncomeExpectedTokens(raw);
   }
-  if(requirement==='include') expected.push('unknown');
+  // 2026-08-18: parentalStatus は分支側で Unknown の必須/任意を完全に制御する
+  // （ALL/すべて では Unknown 必須にしない。不明あり明示時のみ分支で追加済み）。
+  if(requirement==='include'&&fieldType!=='parentalStatus') expected.push('unknown');
   if(requirement==='exclude') expected=expected.filter(token=>token!=='unknown');
   return {tokens:[...new Set(expected)],requirement,
     defaulted:Boolean(parentalSetting&&parentalSetting.defaulted),
@@ -6061,6 +6070,12 @@ function compareDemographicTargeting(settingValue,downloadValue,fieldType,mismat
   });
   const settingSet=new Set(normalizedSetting),downloadSet=new Set(normalizedDownload);
   const ignoredExtraTokens=new Set(comparisonOptions&&comparisonOptions.ignoredExtraTokens||[]);
+  // 2026-08-18: parentalStatus の ALL（すべて/ALL/▼選択/空白）では Unknown は required ではなく
+  // ダウンロード側の optional token。SDF に Unknown が残っていても不一致にしない。
+  // （性別/年齢/世帯年収には適用しない。世帯年収の Unknown 必須/除外規則は維持）
+  const parentalAllWithoutRequiredUnknown=fieldType==='parentalStatus'&&
+    expected.requirement==='include'&&!expected.tokens.includes('unknown');
+  if(parentalAllWithoutRequiredUnknown) ignoredExtraTokens.add('unknown');
   const missing=normalizedSetting.filter(token=>!downloadSet.has(token));
   const extra=normalizedDownload.filter(token=>
     !settingSet.has(token)&&!ignoredExtraTokens.has(token));
@@ -8769,11 +8784,9 @@ function compareGP(s,d,settingAudience){
   items.push({label:RP.keywordExclude.displayLabel,sVal:'S: '+RP.keywordExclude.settingDisplay,dVal:kwVal.replace(/^D:/i,'').trim(),
     result:kwCmp.result,mpDetail:kwCmp.result==='warning'?formatDiffSummary(kwCmp.missing,kwCmp.extra):''});
 
-  // Category Targeting - Exclude
-  const catVal=raw['Category Targeting - Exclude']||'';
-  const catCmp=compareMasterSet(catVal,RP.categoryExclude);
-  items.push({label:RP.categoryExclude.displayLabel,sVal:'S: '+RP.categoryExclude.settingDisplay,dVal:catVal.replace(/^D:/i,'').trim(),
-    result:catCmp.result,mpDetail:catCmp.result==='warning'?formatDiffSummary(catCmp.missing,catCmp.extra):''});
+  // 2026-08-18: 旧「カテゴリ除外（Category Targeting - Exclude）」は Google が legacy 化し
+  // advertiser 階層の Brand suitability / Content themes で管理されるため、
+  // YouTube GP の比較項目から削除（不一致数・問題総覧にも含めない）。
 
   // Placement Targeting - URLs - Exclude
   const urlVal=raw['Placement Targeting - URLs - Exclude']||'';
@@ -9446,7 +9459,7 @@ function getCoreLevelColumns(level,youtubeOnly){
   let coreColumns=[];
   switch(level){
     case 'CP': coreColumns=[
-      {key:'ステータス', label:'ステータス\nStatus'},
+      {key:'ステータス', label:'ステータス'},
       {key:'全体目標', label:'全体目標'},
       {key:'Campaign Goal KPI', label:'Campaign\nGoal KPI'},
       {key:'KPI値', label:'KPI値'},
@@ -9460,7 +9473,7 @@ function getCoreLevelColumns(level,youtubeOnly){
       if(mediaType==='display'){
         coreColumns=[
           {key:'IO名', label:'IO名'},
-          {key:'ステータス', label:'ステータス\nStatus'},
+          {key:'ステータス', label:'ステータス'},
           {key:'IOタイプ', label:'IOタイプ'},
           {key:'目標指標', label:'目標指標'},
           {key:'予算タイプ', label:'予算タイプ'},
@@ -9479,7 +9492,7 @@ function getCoreLevelColumns(level,youtubeOnly){
         ];
       }else{
         coreColumns=[
-          {key:'ステータス', label:'ステータス\nStatus'},
+          {key:'ステータス', label:'ステータス'},
           {key:'IOタイプ', label:'IOタイプ'},
           ...(mediaType==='ott'?
             [{key:'最適化', label:'最適化'},
@@ -9513,15 +9526,16 @@ function getCoreLevelColumns(level,youtubeOnly){
       {key:'Life Event 除外', label:'Life Event\n除外'},
       {key:'Detailed Demo 配信', label:'Detailed Demo\n配信'},
       {key:'Detailed Demo 除外', label:'Detailed Demo\n除外'},
-      {key:'排除类别', label:'排除类别\nCategory Targeting - Exclude'},
-      {key:'排除关键词', label:'排除关键词\nKeyword Targeting - Exclude'},
-      {key:'排除URL', label:'排除URL\nPlacement Targeting\n- URLs - Exclude'},
-      {key:'排除应用', label:'排除应用\nPlacement Targeting\n- Apps - Exclude'},
-      {key:'排除YouTube频道', label:'排除YouTube频道\nPlacement Targeting\n- YouTube Channels - Exclude'},
-      {key:'世帯年収', label:'世帯年収\nDemographic Targeting\nHousehold Income'},
-      {key:'子供の有無', label:'子供の有無\nDemographic Targeting\nParental Status'},
-      {key:'自动优化投放', label:'自动优化投放\nOptimized Targeting'},
-      {key:'受众扩展种子列表排除', label:'受众扩展种子列表排除\nAudience Expansion\nSeed List Excluded'},
+      // 2026-08-18: 旧「カテゴリ除外（Category Targeting - Exclude）」は Google が legacy 化し
+      // advertiser 階層の Brand suitability 管理へ移行したため、YouTube GP の比較項目から削除。
+      {key:'排除关键词', label:'排除关键词'},
+      {key:'排除URL', label:'排除URL'},
+      {key:'排除应用', label:'排除应用'},
+      {key:'排除YouTube频道', label:'排除YouTube频道'},
+      {key:'世帯年収', label:'世帯年収'},
+      {key:'子供の有無', label:'子供の有無'},
+      {key:'自动优化投放', label:'自动优化投放'},
+      {key:'受众扩展种子列表排除', label:'受众扩展种子列表排除'},
     ]; break;
     case 'LI':
       if(youtubeOnly){
@@ -9534,14 +9548,14 @@ function getCoreLevelColumns(level,youtubeOnly){
           {key:'終了日', label:'終了日'},
           {key:'終了時間', label:'終了時間'},
           {key:'予算', label:'予算'},
-          {key:'日予算 / Pacing Amount', label:'日予算 /\nPacing Amount'},
+          {key:'日予算 / Pacing Amount', label:'日予算'},
           {key:'配信ペース', label:'配信ペース'},
           {key:'課金形態', label:'課金形態'},
           {key:'入札単価', label:'入札単価'},
           {key:'広告枠ソース', label:'広告枠ソース'},
           {key:'収益モデル', label:'収益モデル'},
           {key:'言語', label:'言語'},
-          {key:'地域 / Geography Targeting', label:'地域 /\nGeography Targeting'},
+          {key:'地域 / Geography Targeting', label:'地域'},
           {key:'性別', label:'性別'},
           {key:'年齢', label:'年齢'},
           {key:'子供の有無', label:'子供の有無'},
@@ -9568,7 +9582,7 @@ function getCoreLevelColumns(level,youtubeOnly){
           {key:'環境', label:'環境'},
           {key:'曜日と時間', label:'曜日と時間'},
           {key:'Daypart Time Zone', label:'Daypart\nTime Zone'},
-          {key:'地域 / Geography Targeting', label:'地域 /\nGeography Targeting'},
+          {key:'地域 / Geography Targeting', label:'地域'},
           {key:'Deal ID', label:'Deal ID'},
           {key:'性別', label:'性別'},
           {key:'年齢', label:'年齢'},
@@ -9590,8 +9604,8 @@ function getCoreLevelColumns(level,youtubeOnly){
           {key:'Subtype', label:'Subtype'},
           {key:'開始日', label:'開始日'},
           {key:'終了日', label:'終了日'},
-          {key:'予算期間 / Budget Type', label:'予算期間 /\nBudget Type'},
-          {key:'配信ペース / Pacing', label:'配信ペース /\nPacing'},
+          {key:'予算期間 / Budget Type', label:'予算期間'},
+          {key:'配信ペース / Pacing', label:'配信ペース'},
           {key:'予算', label:'予算'},
           {key:'入札形式', label:'入札形式'},
           {key:'目標単価', label:'目標単価'},
@@ -9602,7 +9616,7 @@ function getCoreLevelColumns(level,youtubeOnly){
           {key:'環境', label:'環境'},
           {key:'曜日と時間', label:'曜日と時間'},
           {key:'Daypart Time Zone', label:'Daypart\nTime Zone'},
-          {key:'地域 / Geography Targeting', label:'地域 /\nGeography Targeting'},
+          {key:'地域 / Geography Targeting', label:'地域'},
           {key:'性別', label:'性別'},
           {key:'年齢', label:'年齢'},
           {key:'子供の有無', label:'子供の有無'},
@@ -9629,15 +9643,15 @@ function getCoreLevelColumns(level,youtubeOnly){
     case 'CR': coreColumns=[
       {key:'ステータス', label:'案件区分\nステータス'},
       {key:'raw_sdf__status', label:'📥 状态\nStatus'},
-      {key:'動画ID', label:'動画ID\nVideo Id'},
-      {key:'表示URL', label:'表示URL\nDisplay URL'},
+      {key:'動画ID', label:'動画ID'},
+      {key:'表示URL', label:'表示URL'},
       {key:'LP URL', label:'LP URL\nLanding Page URL'},
       {key:'CTA', label:'CTA\nCall to Action'},
-      {key:'見出し', label:'見出し\nHeadline'},
-      {key:'長い見出し※', label:'長い見出し※\nIn-feed Video Headline'},
-      {key:'説明※', label:'説明※\nDescription 1'},
+      {key:'見出し', label:'見出し'},
+      {key:'長い見出し※', label:'長い見出し※'},
+      {key:'説明※', label:'説明※'},
       {key:'コンパニオンバナー', label:'コンパニオンバナー'},
-      {key:'広告形式', label:'広告形式\nAd Type'},
+      {key:'広告形式', label:'広告形式'},
     ]; break;
   }
   return coreColumns;

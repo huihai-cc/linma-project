@@ -178,26 +178,24 @@ test('GP MP compareMasterSet: 空 → warning', () => {
 });
 
 // ============================================================
-//  3. Category Targeting - Exclude
+//  3. Category Targeting - Exclude（2026-08-18: legacy 化により比較対象外）
 // ============================================================
-test('GP MP Category: 54;56;59;1020 → ok', () => {
+// Google が legacy Category Exclusions（News / Politics 等）を廃止し、
+// advertiser 階層の Brand suitability / Content themes 管理へ移行したため、
+// YouTube GP は旧「カテゴリ除外」を正式比較項目として扱わない。
+test('GP MP Category: 旧値があっても 排除类别 比較項目を出さない', () => {
   const items = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': 'D:54; 56; 59; 1020;' }), '');
-  const item = findCompareItem(items, '排除类别');
-  assert.equal(item.result, 'ok');
+  assert.equal(findCompareItem(items, '排除类别'), undefined);
 });
 
-test('GP MP Category: 1020 不足 → warning', () => {
-  const items = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59;' }), '');
-  const item = findCompareItem(items, '排除类别');
-  assert.equal(item.result, 'warning');
-  assert.match(item.mpDetail, /不足/);
-});
-
-test('GP MP Category: 999 追加 → warning', () => {
-  const items = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59; 1020; 999;' }), '');
-  const item = findCompareItem(items, '排除类别');
-  assert.equal(item.result, 'warning');
-  assert.match(item.mpDetail, /追加/);
+test('GP MP Category: 標準値・欠落・追加のいずれも不一致にしない', () => {
+  const standard = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': 'D:54; 56; 59; 1020;' }), '');
+  const missing = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59;' }), '');
+  const extra = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59; 1020; 999;' }), '');
+  assert.equal(standard.some(item => item.label === '排除类别'), false);
+  assert.equal(missing.some(item => item.label === '排除类别'), false);
+  assert.equal(extra.some(item => item.label === '排除类别'), false);
+  assert.equal(missing.some(item => item.result === 'warning' && /カテゴリ|Category/.test(item.label)), false);
 });
 
 // ============================================================
@@ -309,11 +307,11 @@ test('GP MP Parental Status: ALL＋3項目 → ok', () => {
   assert.equal(item.result, 'ok');
 });
 
-test('GP MP Parental Status: Unknown不足 → warning', () => {
+test('GP MP Parental Status: ALL では Unknown 不足は不一致にしない（2026-08-18 新ルール）', () => {
   const items = api.compareGP({}, makeGpDownload({ 'Demographic Targeting Parental Status': 'Not a parent; Parent;' }), '');
   const item = findCompareItem(items, '子供の有無');
-  assert.equal(item.result, 'warning');
-  assert.match(item.mpDetail, /Unknown/);
+  assert.equal(item.result, 'ok');
+  assert.equal(item.mpDetail, '');
 });
 
 test('GP MP Parental Status: Parent不足 → warning', () => {
@@ -451,28 +449,21 @@ test('GP MP UI 表示名: 9フィールドすべて指定名で表示', () => {
 test('GP MP UI: MPフィールドの設定表側にMP統一ルールが表示される', () => {
   const items = api.compareGP({}, makeGpDownload({
     'Keyword Targeting - Exclude': 'test;',
-    'Category Targeting - Exclude': '54;',
   }), '');
   const kw = findCompareItem(items, '排除关键词');
   assert.match(kw.sVal, /MP統一ルール/);
-  const cat = findCompareItem(items, '排除类别');
-  assert.match(cat.sVal, /MP統一ルール/);
-});
-
-test('GP MP UI: ダウンロード側は実際のD:内容を保持', () => {
-  const items = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': 'D:54; 56; 59; 1020;' }), '');
-  const cat = findCompareItem(items, '排除类别');
-  assert.match(cat.dVal, /54.*56.*59.*1020/);
+  // 2026-08-18: 旧カテゴリ除外は比較項目として出さない
+  assert.equal(findCompareItem(items, '排除类别'), undefined);
 });
 
 // ============================================================
 // 14. GP複数行独立判定
 // ============================================================
 test('GP MP 独立判定: 行ごとに独立して結果を返す', () => {
-  const gp1 = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59; 1020;' }), '');
-  const gp2 = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59;' }), '');
-  assert.equal(findCompareItem(gp1, '排除类别').result, 'ok');
-  assert.equal(findCompareItem(gp2, '排除类别').result, 'warning');
+  const gp1 = api.compareGP({}, makeGpDownload({ 'Keyword Targeting - Exclude': 'A; B;' }), '');
+  const gp2 = api.compareGP({}, makeGpDownload({ 'Keyword Targeting - Exclude': 'A;' }), '');
+  assert.equal(findCompareItem(gp1, '排除关键词').result, 'warning');
+  assert.equal(findCompareItem(gp2, '排除关键词').result, 'warning');
 });
 
 // ============================================================
@@ -545,22 +536,17 @@ test('GP MP 标签: GP全字段使用已确认的本地标题', () => {
 // ============================================================
 // 16. 差异渲染（2026-08-03 追加）
 // ============================================================
-test('GP MP 差异渲染: Category不足时mpDetail包含不足信息', () => {
-  const items = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59;' }), '');
-  const item = findCompareItem(items, '排除类别');
+test('GP MP 差异渲染: 旧Category値は差異レンダリング対象外（2026-08-18）', () => {
+  const missing = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59;' }), '');
+  const extra = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59; 1020; 999;' }), '');
+  assert.equal(findCompareItem(missing, '排除类别'), undefined);
+  assert.equal(findCompareItem(extra, '排除类别'), undefined);
+  // 他の MP 項目（URL）は従来どおり差異レンダリングされる
+  const items = api.compareGP({}, makeGpDownload({ 'Placement Targeting - URLs - Exclude': 'fc2web.com; fc2.com; EXTRA_SITE;' }), '');
+  const item = findCompareItem(items, '排除URL');
   assert.equal(item.result, 'warning');
-  assert.ok(item.mpDetail, 'mpDetail must exist');
   assert.match(item.mpDetail, /不足/);
-  assert.match(item.mpDetail, /1020/);
-});
-
-test('GP MP 差异渲染: Category多了时mpDetail包含追加信息', () => {
-  const items = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59; 1020; 999;' }), '');
-  const item = findCompareItem(items, '排除类别');
-  assert.equal(item.result, 'warning');
-  assert.ok(item.mpDetail, 'mpDetail must exist');
   assert.match(item.mpDetail, /追加/);
-  assert.match(item.mpDetail, /999/);
 });
 
 test('GP MP 差异渲染: URL不足和追加同时可见', () => {
@@ -587,16 +573,15 @@ test('GP MP 差异渲染: YouTube差异显示件数', () => {
 // ============================================================
 // 17. warning/mismatch 分類（2026-08-03 追加）
 // ============================================================
-test('GP MP 統計: master完全一致はok', () => {
-  const items = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59; 1020;' }), '');
-  assert.equal(findCompareItem(items, '排除类别').result, 'ok');
-});
-
-test('GP MP 統計: master不一致はwarning（mismatchではない）', () => {
-  const items = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59;' }), '');
-  const item = findCompareItem(items, '排除类别');
-  assert.equal(item.result, 'warning');
-  assert.notEqual(item.result, 'mismatch');
+test('GP MP 統計: 旧Category値は比較統計に含まれない（2026-08-18）', () => {
+  const complete = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59; 1020;' }), '');
+  const missing = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59;' }), '');
+  // 旧カテゴリ除外は比較項目そのものが存在しない（不一致・warning を生まない）
+  assert.equal(findCompareItem(complete, '排除类别'), undefined);
+  assert.equal(findCompareItem(missing, '排除类别'), undefined);
+  const categoryMentioned = items => items.some(item => /1020|54;|カテゴリ/.test(item.mpDetail || ''));
+  assert.equal(categoryMentioned(complete), false);
+  assert.equal(categoryMentioned(missing), false);
 });
 
 test('GP MP 統計: MP warningはcalcOwnStatusでmismatchにカウントされない', () => {
@@ -628,12 +613,14 @@ test('GP MP 統計: mismatchがある場合はmismatch', () => {
 // ============================================================
 // 18. 回帰確認
 // ============================================================
-test('GP MP 回帰: 完全一致時にS:MP統一ルールとD:実値が表示される', () => {
-  const items = api.compareGP({}, makeGpDownload({ 'Category Targeting - Exclude': '54; 56; 59; 1020;' }), '');
-  const item = findCompareItem(items, '排除类别');
-  assert.equal(item.result, 'ok');
+test('GP MP 回帰: 完全一致時にS:MP統一ルールとD:実値が表示される（Keyword）', () => {
+  const items = api.compareGP({}, makeGpDownload({ 'Keyword Targeting - Exclude': 'D:1; 2; 3;' }), '');
+  const item = findCompareItem(items, '排除关键词');
+  assert.equal(item.result, 'warning');
   assert.match(item.sVal, /MP統一ルール/);
-  assert.match(item.dVal, /54.*56.*59.*1020/);
+  assert.match(item.dVal, /1.*2.*3/);
+  // 2026-08-18: 旧カテゴリ除外は完全一致ケースでも比較項目として出さない
+  assert.equal(findCompareItem(items, '排除类别'), undefined);
 });
 
 test('GP MP 回帰: 3行独立', () => {
