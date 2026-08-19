@@ -691,9 +691,11 @@ function openUpdateModal(focusIndex){
 function closeUpdateModal(){document.getElementById('updateModal').classList.remove('show');if(!document.getElementById('drawer').classList.contains('open'))document.body.style.overflow='';}
 
 // ==================== Init ====================
+// ★ 首页 = 第一层认证入口：getValidSession() 校验 token 是否过期
+// 过期 → 清除 qc_session → 保持登录页（不弹窗、不 redirect）
 document.addEventListener('DOMContentLoaded',function(){
-  var user=getUser();
-  if(user){showMain();}
+  var session=getValidSession();
+  if(session){showMain();}
   applyPortalI18n();
 });
 </script>

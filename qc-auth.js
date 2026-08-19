@@ -18,11 +18,12 @@ function checkAuth() {
     return null;
   }
   // ★ 客户端侧校验 token 是否过期（base64 解码，无需请求 GAS）
+  // 与 getValidSession() 一致：expiry 非数字或已过期均视为认证失败
   try {
     const decoded = atob(session.token);
     const parts = decoded.split('|');
-    const expiry = parseInt(parts[1]);
-    if (!isNaN(expiry) && Date.now() > expiry) {
+    const expiry = parseInt(parts[1], 10);
+    if (!expiry || Date.now() > expiry) {
       localStorage.removeItem('qc_session');
       if (!window._qc_token_expired) {
         window._qc_token_expired = true;
@@ -45,6 +46,29 @@ function getSession() {
     const raw = localStorage.getItem('qc_session');
     return raw ? JSON.parse(raw) : null;
   } catch (e) {
+    return null;
+  }
+}
+
+// ★ 纯检查函数：校验 session 是否存在且 token 未过期
+// 首页使用：不弹 alert、不跳转、不 redirect
+// 过期或解析失败时清除 qc_session 并返回 null
+function getValidSession() {
+  const session = getSession();
+  if (!session || !session.token) {
+    return null;
+  }
+  try {
+    const decoded = atob(session.token);
+    const parts = decoded.split('|');
+    const expiry = parseInt(parts[1], 10);
+    if (!expiry || Date.now() > expiry) {
+      localStorage.removeItem('qc_session');
+      return null;
+    }
+    return session;
+  } catch (e) {
+    localStorage.removeItem('qc_session');
     return null;
   }
 }

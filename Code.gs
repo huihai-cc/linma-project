@@ -6,7 +6,7 @@
 
 const SHEET_ID = '1GlYrGBSwztn6dr3d70XzXiLcoBF7H9VELnWOAs5Nd5Y';
 const SECRET = 'huihai_qc_2026_secret_key';
-const TOKEN_EXPIRY_HOURS = 8;
+const TOKEN_EXPIRY_HOURS = 12; // 登录 Token 有效期（小时）：12小时
 
 // 允许注册的邮箱尾缀（白名单）
 const ALLOWED_DOMAINS = ['@hakuhodody-one.co.jp', '@dac.co.jp', '@adpro-inc.co.jp', '@huihai-info.com'];
