@@ -582,11 +582,22 @@ function renderGroups(){
 function toggleSection(id){document.getElementById(id).classList.toggle('collapsed');}
 
 // ==================== Recent ====================
-function getRecent(){try{return JSON.parse(localStorage.getItem('qc_recent_tools')||'[]');}catch(e){return[];}}
-function recordRecent(name){var list=getRecent().filter(function(x){return x!==name;});list.unshift(name);if(list.length>8)list=list.slice(0,8);localStorage.setItem('qc_recent_tools',JSON.stringify(list));}
+function getToolUsage(){try{return JSON.parse(localStorage.getItem('qc_tool_usage')||'{}');}catch(e){return{};}}
+function recordRecent(name){
+  try{name=decodeURIComponent(name);}catch(e){}
+  var usage=getToolUsage();
+  if(!usage[name])usage[name]={count:0,lastUsed:0};
+  usage[name].count+=1;
+  usage[name].lastUsed=Date.now();
+  localStorage.setItem('qc_tool_usage',JSON.stringify(usage));
+}
 function renderRecent(){
-  var grid=document.getElementById('recentGrid');var recent=getRecent().slice(0,4);var tools=[];
-  if(recent.length>0){recent.forEach(function(name){var t=TOOLS.find(function(x){return x.name===name&&!x.disabled;});if(t)tools.push(t);});}
+  var grid=document.getElementById('recentGrid');var usage=getToolUsage();
+  var tools=TOOLS.filter(function(tool){return !tool.disabled&&usage[tool.name];}).sort(function(a,b){
+    var ua=usage[a.name],ub=usage[b.name];
+    if(ub.count!==ua.count)return ub.count-ua.count;
+    return ub.lastUsed-ua.lastUsed;
+  }).slice(0,4);
   if(tools.length===0){['Excel文件轻量化','Excel対比','Amazon DSP 設定チェック','地域表記変換チェック'].forEach(function(n){var t=TOOLS.find(function(x){return x.name===n;});if(t)tools.push(t);});}
   grid.innerHTML=tools.map(function(t){return cardHTML(t);}).join('');
 }
