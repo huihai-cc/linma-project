@@ -188,6 +188,7 @@ textarea#regionInput::placeholder{color:#bbb;font-size:0.82rem;}
   <select id="mediaSelect">
     <option value="dv360">DV360設定依頼</option>
     <option value="toyokeizai">東洋経済新報社</option>
+    <option value="amazon">Amazon DSP</option>
   </select>
   <span class="media-badge" id="mediaBadge">DV360設定依頼</span>
 </div>
@@ -275,7 +276,7 @@ textarea#regionInput::placeholder{color:#bbb;font-size:0.82rem;}
 //  　- 命中後 OK_市区町村 / OK_都道府県 が可能
 //  　- 来源：DV360管理画面確認、既有正確設定表、人工確認
 // ============================================================
-const CONFIRMED_REGION_MASTER = [
+var CONFIRMED_REGION_MASTER = [
   // ── 都道府県レベル（保持）──
   { media:"dv360", prefectureJp:"大阪府", municipalityJp:"", displayName:"Osaka, Japan", level:"都道府県" },
   { media:"dv360", prefectureJp:"京都府", municipalityJp:"", displayName:"Kyoto, Japan", level:"都道府県" },
@@ -738,7 +739,7 @@ const MUNICIPALITIES = {
   '沖縄県': '那覇市,沖縄市,宜野湾市,石垣市,浦添市,名護市,糸満市,豊見城市,うるま市,宮古島市,南城市'
 };
 // CANDIDATE_REGION_MASTER 生成（47都道府県 + 全市区町村）
-const CANDIDATE_REGION_MASTER = (function(){
+var CANDIDATE_REGION_MASTER = (function(){
   const out = [];
   for(const [prefJP, prefEN] of Object.entries(PREF_EN)) {
     out.push({media:'dv360', prefectureJp:prefJP, municipalityJp:'', displayName:prefEN+', Japan', level:'都道府県', note:''});
@@ -754,10 +755,326 @@ const CANDIDATE_REGION_MASTER = (function(){
 })();
 
 // ============================================================
+// ============================================================
+//  Amazon地域 Master（255条 + 47都道府県）
+// ============================================================
+var AMAZON_CONFIRMED_REGION_MASTER = [
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"伊東市", displayName:"Ito, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福井県", municipalityJp:"越前市", displayName:"Echizen, Fukui, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"塩尻市", displayName:"Shiojiri, Nagano, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"岡谷市", displayName:"Okaya, Nagano, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"下田市", displayName:"Shimoda, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"鹿児島県", municipalityJp:"肝属郡", displayName:"Kimotsuki, Kagoshima, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"菊川市", displayName:"Kikugawa, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"久留米市", displayName:"Kurume, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"宮崎県", municipalityJp:"宮崎市", displayName:"Miyazaki, Miyazaki, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"石川県", municipalityJp:"金沢市", displayName:"Kanazawa, Ishikawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"駒ヶ根市", displayName:"Komagane, Nagano, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"熊本県", municipalityJp:"熊本市", displayName:"Kumamoto, Kumamoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"御前崎市", displayName:"Omaezaki, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"御殿場市", displayName:"Gotemba, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"行橋市", displayName:"Yukuhashi, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"富山県", municipalityJp:"高岡市", displayName:"Takaoka, Toyama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"富山県", municipalityJp:"黒部市", displayName:"Kurobe, Toyama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"佐賀県", municipalityJp:"佐賀市", displayName:"Saga, Saga, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長崎県", municipalityJp:"佐世保市", displayName:"Sasebo, Nagasaki, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福井県", municipalityJp:"坂井市", displayName:"Sakai, Fukui, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"三島市", displayName:"Mishima, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"石川県", municipalityJp:"七尾市", displayName:"Nanao, Ishikawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"宗像市", displayName:"Munakata, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"春日市", displayName:"Kasuga, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"駿東郡", displayName:"Sunto, Shizuoka, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"石川県", municipalityJp:"小松市", displayName:"Komatsu, Ishikawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福井県", municipalityJp:"小浜市", displayName:"Obama, Fukui, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"松本市", displayName:"Matsumoto, Nagano, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"焼津市", displayName:"Yaizu, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"熊本県", municipalityJp:"上益城郡", displayName:"Kamimashiki, Kumamoto, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"上田市", displayName:"Ueda, Nagano, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"熊本県", municipalityJp:"人吉市", displayName:"Hitoyoshi, Kumamoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"諏訪市", displayName:"Suwa, Nagano, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"裾野市", displayName:"Susono, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長崎県", municipalityJp:"西彼杵郡", displayName:"Nishisonogi, Nagasaki, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"静岡市", displayName:"Shizuoka, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"千曲市", displayName:"Chikuma, Nagano, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"糟屋郡", displayName:"Kasuya, Fukuoka, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"袋井市", displayName:"Fukuroi, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"大町市", displayName:"Omachi, Nagano, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大分県", municipalityJp:"大分市", displayName:"Oita, Oita, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福井県", municipalityJp:"大野市", displayName:"Ono, Fukui, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"筑後市", displayName:"Chikugo, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"筑紫野市", displayName:"Chikushino, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大分県", municipalityJp:"中津市", displayName:"Nakatsu, Oita, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長崎県", municipalityJp:"長崎市", displayName:"Nagasaki, Nagasaki, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"長野市", displayName:"Nagano, Nagano, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"直方市", displayName:"Nogata, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"宮崎県", municipalityJp:"都城市", displayName:"Miyakonojo, Miyazaki, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"富山県", municipalityJp:"砺波市", displayName:"Tonami, Toyama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"佐賀県", municipalityJp:"唐津市", displayName:"Karatsu, Saga, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"藤枝市", displayName:"Fujieda, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福井県", municipalityJp:"敦賀市", displayName:"Tsuruga, Fukui, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大分県", municipalityJp:"日田市", displayName:"Hita, Oita, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"熱海市", displayName:"Atami, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"石川県", municipalityJp:"白山市", displayName:"Hakusan, Ishikawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"熊本県", municipalityJp:"八代市", displayName:"Yatsushiro, Kumamoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"飯塚市", displayName:"Iizuka, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"飯田市", displayName:"Iida, Nagano, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"磐田市", displayName:"Iwata, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"浜松市", displayName:"Hamamatsu, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"富山県", municipalityJp:"富山市", displayName:"Toyama, Toyama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"富士市", displayName:"Fuji, Shizuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福井県", municipalityJp:"福井市", displayName:"Fukui, Fukui, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"福岡市", displayName:"Fukuoka, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"福津市", displayName:"Fukutsu, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大分県", municipalityJp:"別府市", displayName:"Beppu, Oita, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"石川県", municipalityJp:"鳳珠郡", displayName:"Hosu, Ishikawa, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"北九州市", displayName:"Kitakyushu, Fukuoka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"石川県", municipalityJp:"野々市", displayName:"Nonoichi, Ishikawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"長崎県", municipalityJp:"諫早市", displayName:"Isahaya, Nagasaki, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"安芸郡", displayName:"Aki, Hiroshima, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"安芸高田市", displayName:"Akitakata, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"島根県", municipalityJp:"安来市", displayName:"Yasugi, Shimane, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛媛県", municipalityJp:"伊予郡", displayName:"Iyo, Ehime, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"井原市", displayName:"Ibara, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"宇部市", displayName:"Ube, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛媛県", municipalityJp:"宇和島市", displayName:"Uwajima, Ehime, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"島根県", municipalityJp:"益田市", displayName:"Masuda, Shimane, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"岡山市", displayName:"Okayama, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"下関市", displayName:"Shimonoseki, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"下松市", displayName:"Kudamatsu, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"笠岡市", displayName:"Kasaoka, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"香川県", municipalityJp:"丸亀市", displayName:"Marugame, Kagawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"岩国市", displayName:"Iwakuni, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"鳥取県", municipalityJp:"境港市", displayName:"Sakaiminato, Tottori, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"玉野市", displayName:"Tamano, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"呉市", displayName:"Kure, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"光市", displayName:"Hikari, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"広島市", displayName:"Hiroshima, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"島根県", municipalityJp:"江津市", displayName:"Gotsu, Shimane, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"江田島市", displayName:"Etajima, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"香川県", municipalityJp:"高松市", displayName:"Takamatsu, Kagawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛媛県", municipalityJp:"今治市", displayName:"Imabari, Ehime, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"三原市", displayName:"Mihara, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"三次市", displayName:"Miyoshi, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"香川県", municipalityJp:"三豊市", displayName:"Mitoyo, Kagawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"山口市", displayName:"Yamaguchi, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛媛県", municipalityJp:"四国中央市", displayName:"Shikokuchuo, Ehime, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"周南市", displayName:"Shunan, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"島根県", municipalityJp:"出雲市", displayName:"Izumo, Shimane, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"庄原市", displayName:"Shobara, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"島根県", municipalityJp:"松江市", displayName:"Matsue, Shimane, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛媛県", municipalityJp:"松山市", displayName:"Matsuyama, Ehime, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛媛県", municipalityJp:"新居浜市", displayName:"Niihama, Ehime, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"新見市", displayName:"Niimi, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"世羅郡", displayName:"Sera, Hiroshima, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"赤磐市", displayName:"Akaiwa, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"浅口市", displayName:"Asakuchi, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"鳥取県", municipalityJp:"倉吉市", displayName:"Kurayoshi, Tottori, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"倉敷市", displayName:"Kurashiki, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"総社市", displayName:"Soja, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"大竹市", displayName:"Otake, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"島根県", municipalityJp:"大田市", displayName:"Oda, Shimane, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"竹原市", displayName:"Takehara, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"長門市", displayName:"Nagato, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"鳥取県", municipalityJp:"鳥取市", displayName:"Tottori, Tottori, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"津山市", displayName:"Tsuyama, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛媛県", municipalityJp:"東温市", displayName:"Toon, Ehime, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"東広島市", displayName:"Higashihiroshima, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"廿日市", displayName:"Hatsukaichi, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"萩市", displayName:"Hagi, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛媛県", municipalityJp:"八幡浜市", displayName:"Yawatahama, Ehime, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"備前市", displayName:"Bizen, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"尾道市", displayName:"Onomichi, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"美作市", displayName:"Mimasaka, Okayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"島根県", municipalityJp:"浜田市", displayName:"Hamada, Shimane, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"府中市", displayName:"Fuchu, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"福山市", displayName:"Fukuyama, Hiroshima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"鳥取県", municipalityJp:"米子市", displayName:"Yonago, Tottori, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"防府市", displayName:"Hofu, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"柳井市", displayName:"Yanai, Yamaguchi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"愛知郡", displayName:"Aichi, Aichi, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"芦屋市", displayName:"Ashiya, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"安城市", displayName:"Anjo, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"伊勢市", displayName:"Ise, Mie, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"伊丹市", displayName:"Itami, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"一宮市", displayName:"Ichinomiya, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"稲沢市", displayName:"Inazawa, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"茨木市", displayName:"Ibaraki, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"羽島市", displayName:"Hashima, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"加古川市", displayName:"Kakogawa, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"加東市", displayName:"Kato, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"可児市", displayName:"Kani, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"河内長野市", displayName:"Kawachinagano, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"各務原市", displayName:"Kakamigahara, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"奈良県", municipalityJp:"橿原市", displayName:"Kashihara, Nara, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"刈谷市", displayName:"Kariya, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"関市", displayName:"Seki, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"岸和田市", displayName:"Kishiwada, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"岐阜市", displayName:"Gifu, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"京都府", municipalityJp:"亀岡市", displayName:"Kameoka, Kyoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"亀山市", displayName:"Kameyama, Mie, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"京都府", municipalityJp:"久世郡", displayName:"Kuse, Kyoto, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"京都府", municipalityJp:"京都市", displayName:"Kyoto, Kyoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"滋賀県", municipalityJp:"近江八幡市", displayName:"Omihachiman, Shiga, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"熊野市", displayName:"Kumano, Mie, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"桑名市", displayName:"Kuwana, Mie, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"郡上市", displayName:"Gujo, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"恵那市", displayName:"Ena, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"滋賀県", municipalityJp:"湖南市", displayName:"Konan, Shiga, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"交野市", displayName:"Katano, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"滋賀県", municipalityJp:"甲賀市", displayName:"Koka, Shiga, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"奈良県", municipalityJp:"香芝市", displayName:"Kashiba, Nara, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"高山市", displayName:"Takayama, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"高槻市", displayName:"Takatsuki, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"高浜市", displayName:"Takahama, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"堺市", displayName:"Sakai, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"三重郡", displayName:"Mie, Mie, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"三田市", displayName:"Sanda, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"三木市", displayName:"Miki, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"四日市", displayName:"Yokkaichi, Mie, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"志摩市", displayName:"Shima, Mie, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"滋賀県", municipalityJp:"守山市", displayName:"Moriyama, Shiga, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"洲本市", displayName:"Sumoto, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"春日井市", displayName:"Kasugai, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"小牧市", displayName:"Komaki, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"松原市", displayName:"Matsubara, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"松阪市", displayName:"Matsusaka, Mie, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"京都府", municipalityJp:"城陽市", displayName:"Joyo, Kyoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"常滑市", displayName:"Tokoname, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"寝屋川市", displayName:"Neyagawa, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"神戸市", displayName:"Kobe, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"神崎郡", displayName:"Kanzaki, Hyogo, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"吹田市", displayName:"Suita, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"瑞浪市", displayName:"Mizunami, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"瀬戸市", displayName:"Seto, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"西宮市", displayName:"Nishinomiya, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"西脇市", displayName:"Nishiwaki, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"赤穂市", displayName:"Ako, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"川西市", displayName:"Kawanishi, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"泉大津市", displayName:"Izumiotsu, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"泉南郡", displayName:"Sennan, Osaka, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"滋賀県", municipalityJp:"草津市", displayName:"Kusatsu, Shiga, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"多治見市", displayName:"Tajimi, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"大垣市", displayName:"Ogaki, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"大阪市", displayName:"Osaka, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"滋賀県", municipalityJp:"大津市", displayName:"Otsu, Shiga, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"大東市", displayName:"Daito, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"大府市", displayName:"Obu, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"奈良県", municipalityJp:"大和郡", displayName:"Yamatokoriyama, Nara, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"丹羽郡", displayName:"Niwa, Aichi, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"丹波市", displayName:"Tamba, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"知多郡", displayName:"Chita, Aichi, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"知立市", displayName:"Chiryu, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"中津川市", displayName:"Nakatsugawa, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"京都府", municipalityJp:"長岡京市", displayName:"Nagaokakyo, Kyoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"長久手市", displayName:"Nagakute, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"津市", displayName:"Tsu, Mie, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"津島市", displayName:"Tsushima, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"東海市", displayName:"Tokai, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"滋賀県", municipalityJp:"東近江市", displayName:"Higashiomi, Shiga, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"東大阪市", displayName:"Higashiosaka, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"和歌山県", municipalityJp:"東牟婁郡", displayName:"Higashimuro, Wakayama, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"徳島県", municipalityJp:"徳島市", displayName:"Tokushima, Tokushima, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"奈良県", municipalityJp:"奈良市", displayName:"Nara, Nara, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"尼崎市", displayName:"Amagasaki, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"日進市", displayName:"Nisshin, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"京都府", municipalityJp:"八幡市", displayName:"Yawata, Kyoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"八尾市", displayName:"Yao, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"半田市", displayName:"Handa, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"尾張旭市", displayName:"Owariasahi, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"尾鷲市", displayName:"Owase, Mie, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"滋賀県", municipalityJp:"彦根市", displayName:"Hikone, Shiga, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"姫路市", displayName:"Himeji, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"富田林市", displayName:"Tondabayashi, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"京都府", municipalityJp:"舞鶴市", displayName:"Maizuru, Kyoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"京都府", municipalityJp:"福知山市", displayName:"Fukuchiyama, Kyoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"碧南市", displayName:"Hekinan, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"宝塚市", displayName:"Takarazuka, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"豊中市", displayName:"Toyonaka, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"豊田市", displayName:"Toyota, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"豊明市", displayName:"Toyoake, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"奈良県", municipalityJp:"北葛城郡", displayName:"Kitakatsuragi, Nara, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"本巣市", displayName:"Motosu, Gifu, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"枚方市", displayName:"Hirakata, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"箕面市", displayName:"Mino, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"名古屋市", displayName:"Nagoya, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"明石市", displayName:"Akashi, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"京都府", municipalityJp:"木津川市", displayName:"Kizugawa, Kyoto, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"門真市", displayName:"Kadoma, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"弥富市", displayName:"Yatomi, Aichi, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"揖保郡", displayName:"Ibo, Hyogo, JP", level:"郡", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"養父市", displayName:"Yabu, Hyogo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"鈴鹿市", displayName:"Suzuka, Mie, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"和歌山県", municipalityJp:"和歌山市", displayName:"Wakayama, Wakayama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"和泉市", displayName:"Izumi, Osaka, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"神奈川県", municipalityJp:"横浜市", displayName:"Yokohama, Kanagawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"埼玉県", municipalityJp:"三郷市", displayName:"Misato, Saitama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"神奈川県", municipalityJp:"小田原市", displayName:"Odawara, Kanagawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"埼玉県", municipalityJp:"上尾市", displayName:"Ageo, Saitama, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"神奈川県", municipalityJp:"秦野市", displayName:"Hadano, Kanagawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"東京都", municipalityJp:"千代田区", displayName:"Chiyoda, Tokyo, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"神奈川県", municipalityJp:"川崎市", displayName:"Kawasaki, Kanagawa, JP", level:"市区町村", source:"Amazon管理画面確認済み" },
+  { media:"amazon", prefectureJp:"千葉県", municipalityJp:"柏市", displayName:"Kashiwa, Chiba, JP", level:"市区町村", source:"Amazon管理画面確認済み" }
+];
+
+var AMAZON_PREFECTURE_MASTER = [
+  { media:"amazon", prefectureJp:"北海道", municipalityJp:"", displayName:"Hokkaido, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"青森県", municipalityJp:"", displayName:"Aomori, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"岩手県", municipalityJp:"", displayName:"Iwate, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"宮城県", municipalityJp:"", displayName:"Miyagi, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"秋田県", municipalityJp:"", displayName:"Akita, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"山形県", municipalityJp:"", displayName:"Yamagata, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"福島県", municipalityJp:"", displayName:"Fukushima, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"茨城県", municipalityJp:"", displayName:"Ibaraki, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"栃木県", municipalityJp:"", displayName:"Tochigi, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"群馬県", municipalityJp:"", displayName:"Gunma, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"埼玉県", municipalityJp:"", displayName:"Saitama, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"千葉県", municipalityJp:"", displayName:"Chiba, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"東京都", municipalityJp:"", displayName:"Tokyo, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"神奈川県", municipalityJp:"", displayName:"Kanagawa, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"新潟県", municipalityJp:"", displayName:"Niigata, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"富山県", municipalityJp:"", displayName:"Toyama, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"石川県", municipalityJp:"", displayName:"Ishikawa, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"福井県", municipalityJp:"", displayName:"Fukui, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"山梨県", municipalityJp:"", displayName:"Yamanashi, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"長野県", municipalityJp:"", displayName:"Nagano, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"岐阜県", municipalityJp:"", displayName:"Gifu, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"静岡県", municipalityJp:"", displayName:"Shizuoka, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"愛知県", municipalityJp:"", displayName:"Aichi, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"三重県", municipalityJp:"", displayName:"Mie, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"滋賀県", municipalityJp:"", displayName:"Shiga, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"京都府", municipalityJp:"", displayName:"Kyoto, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"大阪府", municipalityJp:"", displayName:"Osaka, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"兵庫県", municipalityJp:"", displayName:"Hyogo, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"奈良県", municipalityJp:"", displayName:"Nara, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"和歌山県", municipalityJp:"", displayName:"Wakayama, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"鳥取県", municipalityJp:"", displayName:"Tottori, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"島根県", municipalityJp:"", displayName:"Shimane, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"岡山県", municipalityJp:"", displayName:"Okayama, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"広島県", municipalityJp:"", displayName:"Hiroshima, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"山口県", municipalityJp:"", displayName:"Yamaguchi, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"徳島県", municipalityJp:"", displayName:"Tokushima, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"香川県", municipalityJp:"", displayName:"Kagawa, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"愛媛県", municipalityJp:"", displayName:"Ehime, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"高知県", municipalityJp:"", displayName:"Kochi, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"福岡県", municipalityJp:"", displayName:"Fukuoka, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"佐賀県", municipalityJp:"", displayName:"Saga, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"長崎県", municipalityJp:"", displayName:"Nagasaki, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"熊本県", municipalityJp:"", displayName:"Kumamoto, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"大分県", municipalityJp:"", displayName:"Oita, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"宮崎県", municipalityJp:"", displayName:"Miyazaki, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"鹿児島県", municipalityJp:"", displayName:"Kagoshima, JP", level:"都道府県", source:"Amazon命名形式から生成" },
+  { media:"amazon", prefectureJp:"沖縄県", municipalityJp:"", displayName:"Okinawa, JP", level:"都道府県", source:"Amazon命名形式から生成" }
+];
+
 //  都道府県一覧（正規表現生成用）+ マスタ取得ヘルパー
 //  全47都道府県を CONFIRMED + CANDIDATE から収集
 // ============================================================
 function getMaster(media) {
+  if (media === 'amazon') {
+    const confirmed = AMAZON_CONFIRMED_REGION_MASTER;
+    const pref = AMAZON_PREFECTURE_MASTER;
+    return { confirmed: [...confirmed, ...pref], candidate: [], all: [...confirmed, ...pref] };
+  }
   const confirmed = CONFIRMED_REGION_MASTER.filter(m => m.media === media);
   const candidate = CANDIDATE_REGION_MASTER.filter(m => m.media === media);
   return { confirmed, candidate, all: [...confirmed, ...candidate] };
@@ -773,7 +1090,7 @@ const PREF_REGEX = new RegExp('^(' + PREF_PATTERNS.map(p => p.replace(/[.*+?^${}
 //  東洋経済新報社 用 英文都道府県 → 日文都道府県マッピング
 //  全47都道府県
 // ============================================================
-const TOYOKEIZAI_PREF_MAP = {
+var TOYOKEIZAI_PREF_MAP = {
   'hokkaido':'北海道','aomori':'青森県','iwate':'岩手県','miyagi':'宮城県',
   'akita':'秋田県','yamagata':'山形県','fukushima':'福島県',
   'ibaraki':'茨城県','tochigi':'栃木県','gunma':'群馬県','saitama':'埼玉県',
@@ -1036,6 +1353,98 @@ function parseLine(raw) {
   return { raw, prefecture: '', municipality: line, parsed: '（都道府県なし）' + line };
 }
 
+
+// ============================================================
+//  Amazon専用マッチング
+// ============================================================
+function findAmazonMatches(parsed, master) {
+  const { prefecture, municipality } = parsed;
+
+  // 都道府県＋市区町村
+  if (prefecture && municipality) {
+    const exact = master.filter(m => m.prefectureJp === prefecture && m.municipalityJp === municipality);
+    if (exact.length === 1) {
+      return { status: 'OK_市区町村', displayName: exact[0].displayName, note: '' };
+    }
+    // 都道府県のみ confirmed
+    const prefOnly = master.filter(m => m.prefectureJp === prefecture && !m.municipalityJp);
+    if (prefOnly.length > 0) {
+      return { status: 'WARN_市区町村未登録', displayName: prefOnly[0].displayName, note: '「' + municipality + '」はAmazon管理画面確認済み地域に未登録のため、都道府県レベルで表示しています。' };
+    }
+    return { status: 'NG_未識別', displayName: '', note: '「' + prefecture + '」「' + municipality + '」を識別できません' };
+  }
+
+  // 都道府県のみ
+  if (prefecture && !municipality) {
+    const prefOnly = master.filter(m => m.prefectureJp === prefecture && !m.municipalityJp);
+    if (prefOnly.length === 1) {
+      return { status: 'OK_都道府県', displayName: prefOnly[0].displayName, note: '' };
+    }
+    return { status: 'NG_未識別', displayName: '', note: '「' + prefecture + '」はマスタに登録されていません' };
+  }
+
+  // 市区町村のみ
+  if (!prefecture && municipality) {
+    const exact = master.filter(m => m.municipalityJp === municipality && m.municipalityJp);
+    const dedup = new Map();
+    exact.forEach(m => {
+      const key = m.prefectureJp + '\x00' + m.municipalityJp;
+      if (!dedup.has(key)) dedup.set(key, m);
+    });
+    const entries = [...dedup.values()];
+
+    if (entries.length === 1) {
+      const matched = entries[0];
+      return { status: 'OK_市区町村', displayName: matched.displayName, note: '' };
+    }
+    if (entries.length > 1) {
+      const prefSet = [...new Set(entries.map(m => m.prefectureJp))];
+      const opts = prefSet.map(p => p + municipality).join('、');
+      return { status: 'WARN_候補複数', displayName: '', note: '候補: ' + opts + ' — 都道府県を確認してください' };
+    }
+    return { status: 'NG_未識別', displayName: '', note: '都道府県が不明、かつマスタに該当する市区町村がありません' };
+  }
+
+  return { status: 'NG_未識別', displayName: '', note: '入力が空です' };
+}
+
+function getAmazonPrefectureAliasMap() {
+  var map = new Map();
+  if (typeof AMAZON_PREFECTURE_MASTER !== 'undefined') {
+    AMAZON_PREFECTURE_MASTER.forEach(function(item) {
+      map.set(item.prefectureJp, item);
+      if (item.prefectureJp !== '北海道') {
+        var shortName = item.prefectureJp.replace(/[都府県]$/, '');
+        map.set(shortName, item);
+      }
+    });
+  }
+  return map;
+}
+
+function resolveAmazonPrefectureAlias(parsed) {
+  var aliasMap = getAmazonPrefectureAliasMap();
+  if (parsed.prefecture && aliasMap.has(parsed.prefecture)) {
+    var resolved = aliasMap.get(parsed.prefecture);
+    return {
+      raw: parsed.raw,
+      prefecture: resolved.prefectureJp,
+      municipality: parsed.municipality,
+      parsed: resolved.prefectureJp + (parsed.municipality ? ' / ' + parsed.municipality : '')
+    };
+  }
+  if (!parsed.prefecture && parsed.municipality && aliasMap.has(parsed.municipality)) {
+    var resolved = aliasMap.get(parsed.municipality);
+    return {
+      raw: parsed.raw,
+      prefecture: resolved.prefectureJp,
+      municipality: '',
+      parsed: resolved.prefectureJp
+    };
+  }
+  return parsed;
+}
+
 // ============================================================
 //  Master マッチング（优先级: confirmed市区町村 > 都道府県 > candidate > 候補複数）
 // ============================================================
@@ -1046,6 +1455,12 @@ function findMatches(parsed) {
     return { status: 'NG_未識別', displayName: '', note: '入力が空です' };
   }
   const { confirmed, candidate } = getMaster(media);
+
+  // Amazon専用マッチング
+  if (media === 'amazon') {
+    var resolved = resolveAmazonPrefectureAlias(parsed);
+    return findAmazonMatches(resolved, confirmed);
+  }
 
   if (prefecture && municipality) {
     // Priority 1: confirmed 市区町村 exact
@@ -1188,9 +1603,21 @@ function updateMediaUI() {
     textarea.placeholder = '例（タブ区切り3列）：\nTokyo\t5176\t4338\nOsaka\t1685\t1461\nHokkaido\t819\t758';
     inputHint.innerHTML = '💡 Excelや媒体管理画面から3列をコピーしてそのまま貼り付け（タブ区切り）してください。47都道府県以外は「対象外」と表示されます。';
     hintBox.style.display = 'none';
+    hintBox.innerHTML = '✅ <b>TOYOKEIZAI</b> 用の変換モードです。47都道府県のみ対応。';
     sampleBtn.textContent = '📋 サンプルを読み込む';
     if (copyBtn.style.display !== 'none') copyBtn.textContent = '📋 3列データをコピー';
     badge.textContent = '東洋経済新報社';
+    badge.style.display = 'inline-block';
+  } else if (media === 'amazon') {
+    subtitleEl.textContent = '日方地域記載 → Amazon管理画面用表記へ変換';
+    inputLabel.textContent = '📝 地域記載を入力';
+    textarea.placeholder = '静岡県伊東市\n福岡県宗像市\n東京都千代田区\n大阪府';
+    inputHint.innerHTML = '💡 Excelまたは設定表の日本語地域を1行1件で入力してください。Amazon管理画面で確認済みの地域は正式表記へ変換します。';
+    hintBox.style.display = 'block';
+    hintBox.innerHTML = '✅ <b>CONFIRMED</b>（Amazon管理画面確認済み）と 📌 <b>都道府県命名形式</b>（Amazon命名形式から生成）で判定。<br>変換結果を正式利用する前に、必要に応じてAmazon管理画面で実際の表示表記を確認してください。';
+    sampleBtn.textContent = '📋 サンプルを読み込む';
+    if (copyBtn.style.display !== 'none') copyBtn.textContent = '📋 変換結果をコピー';
+    badge.textContent = 'Amazon DSP';
     badge.style.display = 'inline-block';
   } else {
     subtitleEl.textContent = '日方地域記載 → 媒体管理画面用表記へ変換';
@@ -1198,12 +1625,14 @@ function updateMediaUI() {
     textarea.placeholder = '例（1行1件）：\n群馬県前橋市\n東京都港区\n\nA/B/C列がタブ区切りの場合：\n群馬県    北群馬郡    吉岡町\n東京都    港区';
     inputHint.innerHTML = '💡 1行1件で入力してください。A/B/C列が別れている場合も1行にタブ区切りでまとめて入力可能です。';
     hintBox.style.display = 'block';
+    hintBox.innerHTML = '✅ <b>CONFIRMED</b>（DV360確認済）と 🔶 <b>CANDIDATE</b>（AI/公開データ由来・未確認）の2層マスタで判定。<br>🔶 CANDIDATE 由来の変換結果は <b>必ずDV360管理画面で実際の表記を確認</b>してから正式利用してください。';
     sampleBtn.textContent = '📋 サンプルを読み込む';
     if (copyBtn.style.display !== 'none') copyBtn.textContent = '📋 変換結果をコピー';
     badge.textContent = 'DV360設定依頼';
     badge.style.display = 'inline-block';
   }
   resetAll();
+  renderMasterTable();
 }
 
 // ============================================================
@@ -1251,6 +1680,7 @@ function runConversion() {
 //  結果描画
 // ============================================================
 function renderResults(results) {
+  const media = getMediaConfig().media;
   // DV360モードの表头に戻す
   var thead = document.querySelector('.result-table thead');
   thead.innerHTML = '<tr>' +
@@ -1300,7 +1730,7 @@ function renderResults(results) {
   // 行描画
   tbody.innerHTML = results.map(r => {
     const [cls, label] = getStatusBadge(r.status);
-    const dn = r.displayName ? esc(r.displayName) + levelSuffix(r.status, r.displayName) : '<span style="color:#ccc;">-</span>';
+    const dn = r.displayName ? (media === 'amazon' ? esc(r.displayName) : esc(r.displayName) + levelSuffix(r.status, r.displayName)) : '<span style="color:#ccc;">-</span>';
     return '<tr>' +
       '<td class="col-no">' + r.idx + '</td>' +
       '<td class="col-raw">' + esc(r.raw) + '</td>' +
@@ -1324,7 +1754,9 @@ function renderResults(results) {
   // 使用統計ログ（DV360）
   var warnTotal = warnUnreg + warnMulti + warnUnconfirmed + warnPrefEstimated;
   var okTotal = okCity + okPref;
-  sendLog('地域表記変換チェック-DV360', warnTotal + ng, ng, '入力' + total + '件／OK' + okTotal + '件／要確認' + warnTotal + '件／未識別' + ng + '件');
+  var logName = '地域表記変換チェック-DV360';
+  if (media === 'amazon') logName = '地域表記変換チェック-AmazonDSP';
+  sendLog(logName, warnTotal + ng, ng, '入力' + total + '件／OK' + okTotal + '件／要確認' + warnTotal + '件／未識別' + ng + '件');
 }
 
 // ============================================================
@@ -1375,8 +1807,29 @@ function loadSample() {
     return;
   }
 
+  if (media === 'amazon') {
+    var sample = [
+      '静岡県伊東市',
+      '福岡県宗像市',
+      '岡山県玉野市',
+      '大阪府岸和田市',
+      '埼玉県三郷市',
+      '東京都千代田区',
+      '東京都',
+      '大阪府',
+      '伊東市',
+      '東京都存在しない市',
+      '存在しない市',
+    ].join('\n');
+    document.getElementById('regionInput').value = sample;
+    document.getElementById('controlBar').classList.add('show');
+    updateLineCount();
+    runConversion();
+    return;
+  }
+
   // ▼ DV360 sample
-  sample = [
+  var sample = [
     '群馬県前橋市',
     '東京都港区',
     '東京都',
@@ -1407,10 +1860,22 @@ function toggleMaster() {
 function renderMasterTable() {
   const rows = document.getElementById('masterBodyRows');
   const media = getMediaConfig().media;
-  const confirmed = CONFIRMED_REGION_MASTER.filter(m => m.media === media);
-  const candidate = CANDIDATE_REGION_MASTER.filter(m => m.media === media);
-  const totalAll = confirmed.length + candidate.length;
-  document.getElementById('masterCount').textContent = '（CONFIRMED:' + confirmed.length + ' / CANDIDATE:' + candidate.length + ' = 計' + totalAll + '件）';
+  let confirmed, candidate, totalAll, sourceLabel;
+
+  if (media === 'amazon') {
+    const master = getMaster(media);
+    confirmed = master.confirmed.filter(m => m.source === 'Amazon管理画面確認済み');
+    candidate = master.confirmed.filter(m => m.source === 'Amazon命名形式から生成');
+    totalAll = confirmed.length + candidate.length;
+    sourceLabel = '管理画面確認済み';
+    document.getElementById('masterCount').textContent = '（管理画面確認済み:' + confirmed.length + ' / 都道府県命名形式:' + candidate.length + ' = 計' + totalAll + '件）';
+  } else {
+    confirmed = CONFIRMED_REGION_MASTER.filter(m => m.media === media);
+    candidate = CANDIDATE_REGION_MASTER.filter(m => m.media === media);
+    totalAll = confirmed.length + candidate.length;
+    sourceLabel = 'CONFIRMED';
+    document.getElementById('masterCount').textContent = '（CONFIRMED:' + confirmed.length + ' / CANDIDATE:' + candidate.length + ' = 計' + totalAll + '件）';
+  }
 
   rows.innerHTML = [
     ...confirmed.map(m => ({ ...m, source: 'confirmed' })),
@@ -1421,7 +1886,7 @@ function renderMasterTable() {
       '<td>' + (m.municipalityJp ? esc(m.municipalityJp) : '<span style="color:#ccc;">-</span>') + '</td>' +
       '<td>' + esc(m.displayName) + '</td>' +
       '<td>' + esc(m.level) + '</td>' +
-      '<td>' + (m.source === 'confirmed' ? '<span style="color:#27ae60;">confirmed</span>' : '<span style="color:#e67e22;">candidate</span>') + '</td>' +
+      '<td>' + (m.source === 'confirmed' ? '<span style="color:#27ae60;">' + sourceLabel + '</span>' : '<span style="color:#e67e22;">' + (media === 'amazon' ? '都道府県命名形式' : 'candidate') + '</span>') + '</td>' +
       '<td>' + (m.note ? esc(m.note) : '') + '</td>' +
     '</tr>'
   ).join('');
@@ -1489,12 +1954,13 @@ window.addEventListener('pageshow', function() {
 //  変換結果コピー
 // ============================================================
 function copyConversionResults() {
-  if (getMediaConfig().media === 'toyokeizai') {
+  var media = getMediaConfig().media;
+  if (media === 'toyokeizai') {
     copyToyokeizaiResults();
     return;
   }
 
-  // ▼ DV360 mode
+  // ▼ DV360 / Amazon mode
   const tbody = document.getElementById('resultBody');
   const rows = tbody.querySelectorAll('tr');
   const results = [];
