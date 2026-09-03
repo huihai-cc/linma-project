@@ -140,7 +140,7 @@ async function verifyEmailCode(email, code) {
   return await apiCall('verify', { email, code });
 }
 
-async function sendLog(tool, diffCount, criticalCount, note) {
+async function sendLog(tool, diffCount, criticalCount, note, caseName, caseSessionId) {
   var session = getSession();
   console.info('[sendLog] start', {
     tool: tool,
@@ -162,7 +162,9 @@ async function sendLog(tool, diffCount, criticalCount, note) {
       tool: tool,
       diffCount: diffCount || 0,
       criticalCount: criticalCount || 0,
-      note: note || ''
+      note: note || '',
+      caseName: caseName || '',
+      caseSessionId: caseSessionId || ''
     });
     console.info('[sendLog] response', { ok: result.ok, error: result.error, tool: tool });
     return result;

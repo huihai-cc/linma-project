@@ -165,7 +165,7 @@ function handleLogin(data) {
 // ==================== 使用日志 ====================
 
 function handleLog(data) {
-  const { token, tool, diffCount, criticalCount, note } = data;
+  const { token, tool, diffCount, criticalCount, note, caseName, caseSessionId } = data;
   if (!token) return json({ ok: false, error: '未授权' });
 
   const user = verifyToken(token);
@@ -187,7 +187,9 @@ function handleLog(data) {
     diffCount || 0,        // F: 差異数量
     criticalCount || 0,    // G: 差異数
     note || '',            // H: 備考
-    monthLabel             // I: 月統計
+    monthLabel,            // I: 月統計
+    caseName || '',        // J: 案件名（旧调用为空）
+    caseSessionId || ''    // K: 案件Session ID（旧调用为空）
   ]);
   return json({ ok: true });
 }
@@ -511,6 +513,7 @@ function rebuildSummary() {
   if (logsData.length <= 1) {
     // 只有表头或空，清空 summary 后退出
     clearAndWriteSummary(ss, []);
+    rebuildCaseSummarySafely();
     return;
   }
 
@@ -620,6 +623,183 @@ function rebuildSummary() {
 
   // ---- 5. 写入 summary sheet ----
   clearAndWriteSummary(ss, summaryRows);
+  rebuildCaseSummarySafely();
+}
+
+/**
+ * summary 已成功写入后，独立刷新案件级汇总。
+ * 案件汇总失败时保留已生成的 summary，并将错误写入执行日志。
+ */
+function rebuildCaseSummarySafely() {
+  try {
+    rebuildCaseSummary();
+  } catch (err) {
+    console.error('[rebuildSummary] rebuildCaseSummary failed:', err);
+  }
+}
+
+// ============================================================
+// 案件级汇总 — rebuildCaseSummary()
+// 从 logs 原始明细生成独立的 case_summary 汇总表
+// ============================================================
+
+const CASE_SUMMARY_HEADERS = [
+  '集計日',       // A: Session 首次日志日期
+  '対象月',       // B: Session 首次日志所属月
+  'メール',       // C: user@mail.com
+  '氏名',         // D: 山田太郎
+  '課室',         // E: 第一クリエイティブ課
+  'ツール名',     // F: 日語显示工具名
+  '案件名',       // G: logs J
+  '案件Session ID', // H: logs K
+  '実行回数',     // I: 同一 Session 的日志条数
+  '差異件数合計', // J: F 列 diffCount 合计
+  '初回利用時間', // K: 最早日志时间
+  '最終利用時間', // L: 最晚日志时间
+];
+
+function rebuildCaseSummary() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+
+  const logsSheet = ss.getSheetByName('logs');
+  if (!logsSheet) { throw new Error('logs sheet not found'); }
+
+  const logsData = logsSheet.getDataRange().getValues();
+  const groups = {};
+
+  // 只处理包含案件名和案件 Session ID 的新日志；旧历史日志不推测案件。
+  for (let r = 1; r < logsData.length; r++) {
+    const row = logsData[r];
+    const email = String(row[1] || '').trim();
+    const name = String(row[2] || '').trim();
+    const dept = String(row[3] || '').trim();
+    const tool = String(row[4] || '').trim();
+    const caseName = String(row[9] || '').trim();
+    const caseSessionId = String(row[10] || '').trim();
+    const parsedTs = parseLogTimestamp(row[0]);
+    if (!parsedTs || !email || !tool || !caseName || !caseSessionId) continue;
+
+    const diff = parseFloat(row[5]) || 0;
+    const rawMonth = row[8];
+    const month = rawMonth instanceof Date
+      ? Utilities.formatDate(rawMonth, 'Asia/Tokyo', 'yyyy年MM月')
+      : String(rawMonth || '').trim();
+    const key = email + '|' + tool + '|' + caseSessionId;
+
+    if (!groups[key]) {
+      groups[key] = {
+        email,
+        name,
+        dept,
+        tool,
+        caseName,
+        caseSessionId,
+        records: [],
+      };
+    }
+
+    groups[key].records.push({ ts: parsedTs, diff, month });
+    // 与现有 summary 保持一致：非空姓名/课室使用最新日志值。
+    if (name) groups[key].name = name;
+    if (dept) groups[key].dept = dept;
+  }
+
+  const caseSummaryRows = [];
+  Object.values(groups).forEach(group => {
+    const records = group.records;
+    records.sort((a, b) => a.ts.getTime() - b.ts.getTime());
+
+    const firstRecord = records[0];
+    const lastRecord = records[records.length - 1];
+    const firstDate = formatJst(firstRecord.ts).slice(0, 10);
+    const firstMonth = firstRecord.month ||
+      Utilities.formatDate(firstRecord.ts, 'Asia/Tokyo', 'yyyy年MM月');
+    const totalDiff = records.reduce((sum, record) => sum + record.diff, 0);
+
+    caseSummaryRows.push([
+      firstDate,
+      firstMonth,
+      group.email,
+      group.name,
+      group.dept,
+      TOOL_NAME_JA[group.tool] || group.tool,
+      group.caseName,
+      group.caseSessionId,
+      records.length,
+      totalDiff,
+      formatJst(firstRecord.ts),
+      formatJst(lastRecord.ts),
+    ]);
+  });
+
+  // 排序规则沿用现有 summary 的主要顺序，并用 Session ID 稳定同组排序。
+  caseSummaryRows.sort((a, b) => {
+    const dateCmp = b[0].localeCompare(a[0]);
+    if (dateCmp !== 0) return dateCmp;
+    const deptCmp = (a[4] || '').localeCompare(b[4] || '');
+    if (deptCmp !== 0) return deptCmp;
+    const nameCmp = (a[3] || '').localeCompare(b[3] || '');
+    if (nameCmp !== 0) return nameCmp;
+    const toolCmp = (a[5] || '').localeCompare(b[5] || '');
+    if (toolCmp !== 0) return toolCmp;
+    return (a[7] || '').localeCompare(b[7] || '');
+  });
+
+  clearAndWriteCaseSummary(ss, caseSummaryRows);
+}
+
+const BACKEND_SHEET_COLUMN_WIDTHS = {
+  logs: [150, 220, 90, 65, 190, 85, 85, 280, 100, 260, 140],
+  summary: [105, 100, 220, 90, 65, 190, 85, 100, 100, 155, 155, 260],
+  case_summary: [105, 100, 220, 90, 65, 190, 280, 140, 85, 100, 155, 155],
+};
+
+/**
+ * 后台统计表统一格式化：固定列宽、冻结表头、垂直居中且关闭自动换行。
+ * 不写入数据，也不改变表头或过滤器结构。
+ */
+function formatBackendSheet(sheetName, ss) {
+  const spreadsheet = ss || SpreadsheetApp.openById(SHEET_ID);
+  const sheet = spreadsheet.getSheetByName(sheetName);
+  const widths = BACKEND_SHEET_COLUMN_WIDTHS[sheetName];
+  if (!sheet || !widths) return false;
+
+  sheet.setFrozenRows(1);
+  widths.forEach((width, index) => sheet.setColumnWidth(index + 1, width));
+
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  if (lastRow > 0 && lastColumn > 0) {
+    sheet.getRange(1, 1, lastRow, lastColumn)
+      .setVerticalAlignment('middle')
+      .setWrap(false);
+  }
+  return true;
+}
+
+/**
+ * 手动执行一次即可统一格式化 logs / summary / case_summary。
+ * logs 不在每次 handleLog() 时重复格式化。
+ */
+function formatBackendSheets() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  ['logs', 'summary', 'case_summary'].forEach(sheetName => {
+    formatBackendSheet(sheetName, ss);
+  });
+}
+
+function clearAndWriteCaseSummary(ss, rows) {
+  let sheet = ss.getSheetByName('case_summary');
+  if (!sheet) {
+    sheet = ss.insertSheet('case_summary');
+  }
+
+  sheet.clear();
+  const dataRange = [CASE_SUMMARY_HEADERS].concat(rows);
+  sheet.getRange(1, 1, dataRange.length, CASE_SUMMARY_HEADERS.length)
+    .setValues(dataRange);
+  sheet.getRange(1, 1, 1, CASE_SUMMARY_HEADERS.length).setFontWeight('bold');
+  formatBackendSheet('case_summary', ss);
 }
 
 /**
@@ -646,8 +826,7 @@ function clearAndWriteSummary(ss, rows) {
   // 表头加粗
   sheet.getRange(1, 1, 1, SUMMARY_HEADERS.length).setFontWeight('bold');
 
-  // 自动调整列宽（取表头和前 5 行数据的最宽值做参考）
-  sheet.autoResizeColumns(1, SUMMARY_HEADERS.length);
+  formatBackendSheet('summary', ss);
 }
 
 /**

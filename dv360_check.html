@@ -279,6 +279,7 @@ body.dv-column-resizing{cursor:col-resize;user-select:none;}
 </head>
 <body>
 <script src="qc-auth.js"></script>
+<script src="qc-case-session.js"></script>
 <style>
 .qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
 .qc-userbar a{color:#67e8f9;text-decoration:none;}
@@ -324,6 +325,17 @@ body.dv-column-resizing{cursor:col-resize;user-select:none;}
   </select>
   <span id="control-info" style="font-size:0.78rem;color:#888;margin-left:auto;"></span>
 </div>
+<div id="dv-case-session-bar"
+     style="background:#fff;border-bottom:1px solid #e0e0e0;padding:8px 20px;
+            display:flex;align-items:center;gap:8px;font-size:0.82rem;color:#2c3e50;">
+  <span style="font-weight:bold;">当前案件：</span>
+  <strong id="dv-case-name" style="color:#2874a6;">未設定</strong>
+  <button type="button" id="dv-case-change-btn" onclick="changeDvCaseSession()"
+          style="margin-left:4px;background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;
+                 border-radius:4px;padding:3px 10px;font-size:0.76rem;cursor:pointer;">
+    変更
+  </button>
+</div>
 <div id="encoding-warning" class="encoding-warning" role="status" aria-live="polite"></div>
 
 <!-- Upload Zone (2-Zone Layout) -->
@@ -356,7 +368,7 @@ body.dv-column-resizing{cursor:col-resize;user-select:none;}
 
 <!-- Controls -->
 <div id="control-bar" class="control-bar">
-  <button class="btn btn-check" onclick="runCheck()">🔍 チェック開始</button>
+  <button id="dv-check-btn" class="btn btn-check" onclick="runCheck()">🔍 チェック開始</button>
   <button class="btn btn-reset" onclick="resetAll()">🗑️ リセット</button>
 </div>
 
@@ -467,6 +479,8 @@ let visibleLevels   = new Set(getVisibleLevels());
 let selectedNodeId  = null;
 let allComparisonData = null;
 let selectedCaseType = 'initial';
+let dvCheckRunning = false;
+let dvExecutionCase = null;
 
 function getSelectedDv360CaseType(){
   return selectedCaseType;
@@ -475,6 +489,68 @@ function getSelectedDv360CaseType(){
 function getSelectedDv360CaseLabel(){
   const rules=DV360_CASE_STATUS_RULES[getSelectedDv360CaseType()];
   return rules?rules.label:DV360_CASE_STATUS_RULES.initial.label;
+}
+
+function getDvSessionScopeKey(){
+  const type = selectedMediaType !== 'auto' ? selectedMediaType : mediaType;
+  return type ? `dv360:${type}` : '';
+}
+
+// ===== 案件 Session UI / gate =====
+function getDvCurrentUser(){
+  return typeof getUser === 'function' ? getUser() : null;
+}
+
+function renderDvCaseSession(){
+  if(typeof QCCaseSession === 'undefined') return;
+  const scopeKey = getDvSessionScopeKey();
+  const active = scopeKey
+    ? QCCaseSession.getActiveCaseSession(scopeKey, getDvCurrentUser())
+    : null;
+  const nameEl = document.getElementById('dv-case-name');
+  if(nameEl) nameEl.textContent = active ? active.caseName : '未設定';
+}
+
+function requestDvCaseName(){
+  return window.prompt('案件名を入力してください / 请输入案件名', '');
+}
+
+function ensureDvCaseSession(scopeKey){
+  if(!scopeKey) return null;
+  const result = QCCaseSession.ensureCaseSession(scopeKey, getDvCurrentUser(), requestDvCaseName);
+  if(!result.ok){
+    alert(result.error || '案件名不能为空');
+    return null;
+  }
+  renderDvCaseSession();
+  return result.session;
+}
+
+window.changeDvCaseSession = function(){
+  const scopeKey = getDvSessionScopeKey();
+  if(!scopeKey){
+    alert('メディア種類を確定してから案件名を変更してください。');
+    return;
+  }
+  const requestedName = requestDvCaseName();
+  if(requestedName === null) return;
+  try{
+    QCCaseSession.changeCaseSession(scopeKey, requestedName, getDvCurrentUser());
+    renderDvCaseSession();
+  }catch(error){
+    alert(error.message || '案件名不能为空');
+  }
+};
+
+function releaseDvCheckLock(){
+  dvCheckRunning = false;
+  dvExecutionCase = null;
+  const button = document.getElementById('dv-check-btn');
+  if(button){
+    button.disabled = false;
+    button.style.opacity = '';
+    button.style.cursor = 'pointer';
+  }
 }
 
 function setSelectedDv360CaseType(caseType){
@@ -1716,9 +1792,13 @@ function initMediaSelector(){
   if(mediaSelect){
     mediaSelect.addEventListener('change', function(){
       selectedMediaType = this.value;
+      if(selectedMediaType === 'auto'){
+        mediaType = '';
+      }
       if(selectedMediaType !== 'auto'){
         dvUpdateMediaBadge(selectedMediaType);
       }
+      renderDvCaseSession();
     });
   }
 }
@@ -4532,8 +4612,17 @@ function parseSdfData(csvFiles){
 
 // ===== RUN CHECK =====
 async function runCheck(){
+  if(dvCheckRunning) return;
   // Phase 1: 使用 2 分区上传系统
   if(!dvSettingFiles.length || !dvDownloadFiles.length){ alert('ファイルをアップロードしてください'); return; }
+
+  dvCheckRunning = true;
+  const checkButton = document.getElementById('dv-check-btn');
+  if(checkButton){
+    checkButton.disabled = true;
+    checkButton.style.opacity = '0.6';
+    checkButton.style.cursor = 'wait';
+  }
 
   const activeCaseType=getSelectedDv360CaseType();
   console.log('[DV360] caseType:',activeCaseType,'statusRules:',DV360_CASE_STATUS_RULES[activeCaseType]);
@@ -4623,6 +4712,13 @@ async function runCheck(){
     // Phase 2: 用户选择优先
     mediaType=getEffectiveMediaType(autoDetected);
     log(`メディア判定: ${mediaType} (自動:${autoDetected}, 選択:${selectedMediaType}) / 設定ファイル:${settingFiles.length}件 / CSV:${csvFiles.length}件`);
+    const scopeKey = getDvSessionScopeKey();
+    const activeCase = ensureDvCaseSession(scopeKey);
+    if(!activeCase){
+      progress.classList.remove('show');
+      return;
+    }
+    dvExecutionCase = QCCaseSession.snapshotCaseSession(scopeKey, activeCase);
     if(mediaType==='youtube'||mediaType==='ott'||mediaType==='display'){
       await ensureGeoMasterLoaded();
       console.log('[DV360] 地域master:',GEO_TARGET_MASTER_SOURCE,`${geoTargetNameById.size}件`);
@@ -4700,10 +4796,13 @@ async function runCheck(){
     allComparisonData=result;
     treeRoots=result.roots;
     progress.classList.remove('show');
-    renderAll();
+    QCCaseSession.touchCaseSession(dvExecutionCase, getDvCurrentUser());
+    renderAll(dvExecutionCase);
   } catch(err){
     progress.textContent='❌ エラー: '+err.message;
     console.error('[DV360]',err);
+  } finally {
+    releaseDvCheckLock();
   }
 }
 
@@ -9767,8 +9866,8 @@ window.switchLevel=function(level){
 };
 
 // ── メインレンダリング ──
-function renderAll(){
-  renderStats();
+function renderAll(executionCase){
+  renderStats(executionCase);
   renderIssueSummary();
   document.getElementById('result-summary').style.display='block';
 
@@ -10047,7 +10146,7 @@ function renderIssueSummary(){
   box.style.display='block';
 }
 
-function renderStats(){
+function renderStats(executionCase){
   const bar=document.getElementById('stats-bar');
   if(!allComparisonData){bar.classList.remove('show');return;}
   bar.classList.add('show');
@@ -10085,7 +10184,10 @@ function renderStats(){
  }
 
  // 自动上报使用日志
- sendLog('DV360设定检查', stats.mismatch, 1, '一致:'+stats.ok+' 未匹配:'+stats.notfound+' 需确认:'+stats.warning);
+ sendLog('DV360设定检查', stats.mismatch, 1,
+   '一致:'+stats.ok+' 未匹配:'+stats.notfound+' 需确认:'+stats.warning,
+   executionCase && executionCase.caseName || '',
+   executionCase && executionCase.sessionId || '');
 }
 
 // ===== Phase 6: 行高调整 & 结果头部渲染 =====
@@ -10294,6 +10396,7 @@ document.getElementById('result-issues').addEventListener('click', e=>{
 
 // 页面加载完成后检查编码库是否就绪
 function preloadYoutubeAudienceAliasMaster(){
+  renderDvCaseSession();
   ensureYoutubeAudienceAliasReady().catch(error=>{
     console.warn('[DV360] YouTube Audience Alias マスタの事前読み込みに失敗しました:',
       error&&error.cause?error.cause.message:error.message);

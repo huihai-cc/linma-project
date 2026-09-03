@@ -120,6 +120,7 @@ const LibLoader = {
 </head>
 <body>
 <script src="qc-auth.js"></script>
+<script src="qc-case-session.js"></script>
 <style>
 .qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
 .qc-userbar a{color:#67e8f9;text-decoration:none;}
@@ -172,6 +173,18 @@ const LibLoader = {
         style="display:none;color:#2874a6;font-size:0.78rem;font-weight:bold;margin-left:10px;"></span>
 </div>
 
+<div id="sc-case-session-bar"
+     style="background:#fff;border-bottom:1px solid #e0e0e0;padding:8px 20px;
+            display:flex;align-items:center;gap:8px;font-size:0.82rem;color:#2c3e50;">
+  <span style="font-weight:bold;">当前案件：</span>
+  <strong id="sc-case-name" style="color:#2874a6;">未設定</strong>
+  <button type="button" id="sc-case-change-btn" onclick="changeScCaseSession()"
+          style="margin-left:4px;background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;
+                 border-radius:4px;padding:3px 10px;font-size:0.76rem;cursor:pointer;">
+    変更
+  </button>
+</div>
+
 <!-- アップロード＆結果エリア -->
 <div id="sc-upload-area" style="display:none; padding:0 20px 20px;">
 
@@ -215,7 +228,7 @@ const LibLoader = {
 
   <div id="sc-controls"
        style="display:none;align-items:center;gap:10px;padding:10px 0;flex-wrap:wrap;">
-    <button onclick="runSettingCheck()"
+    <button id="sc-check-btn" onclick="runSettingCheck()"
         style="background:#e74c3c;color:white;border:none;border-radius:6px;
                padding:8px 20px;font-size:0.88rem;font-weight:bold;cursor:pointer;">
         🔍 チェック開始
@@ -276,6 +289,8 @@ let scDetectedSystem = '';      // 自動検出モードで判定された実際
 let scCaseMode = 'initial';     // 默认：初期案件
 let scSystemManual = false;     // ユーザーがチェック対象を手動変更したか（自動判定をスキップ）
 let scCaseModeManual = false;   // ユーザーが案件区分を手動変更したか（自動判定をスキップ）
+let scCheckRunning = false;
+let scExecutionCase = null;
 
 // 実際にチェックに使うシステムを返す
 //   auto + 判定成功 → scDetectedSystem / 手動指定 → scSystem / auto + 未判定 → ''
@@ -283,6 +298,68 @@ function getEffectiveAmazonSystem(){
     if(scSystem && scSystem !== 'auto' && SC_SYSTEMS[scSystem]) return scSystem;
     if(scSystem === 'auto' && scDetectedSystem && SC_SYSTEMS[scDetectedSystem]) return scDetectedSystem;
     return '';
+}
+
+function getScSessionScopeKey(){
+    const system = getEffectiveAmazonSystem();
+    return system ? `amazon:${system}` : '';
+}
+
+// ===== 案件 Session UI / gate =====
+function getScCurrentUser(){
+    return typeof getUser === 'function' ? getUser() : null;
+}
+
+function renderScCaseSession(){
+    if(typeof QCCaseSession === 'undefined') return;
+    const scopeKey = getScSessionScopeKey();
+    const active = scopeKey
+        ? QCCaseSession.getActiveCaseSession(scopeKey, getScCurrentUser())
+        : null;
+    const nameEl = document.getElementById('sc-case-name');
+    if(nameEl) nameEl.textContent = active ? active.caseName : '未設定';
+}
+
+function requestScCaseName(){
+    return window.prompt('案件名を入力してください / 请输入案件名', '');
+}
+
+function ensureScCaseSession(scopeKey){
+    if(!scopeKey) return null;
+    const result = QCCaseSession.ensureCaseSession(scopeKey, getScCurrentUser(), requestScCaseName);
+    if(!result.ok){
+        alert(result.error || '案件名不能为空');
+        return null;
+    }
+    renderScCaseSession();
+    return result.session;
+}
+
+window.changeScCaseSession = function(){
+    const scopeKey = getScSessionScopeKey();
+    if(!scopeKey){
+        alert('チェック対象の種類を確定してから案件名を変更してください。');
+        return;
+    }
+    const requestedName = requestScCaseName();
+    if(requestedName === null) return;
+    try{
+        QCCaseSession.changeCaseSession(scopeKey, requestedName, getScCurrentUser());
+        renderScCaseSession();
+    }catch(error){
+        alert(error.message || '案件名不能为空');
+    }
+};
+
+function releaseScCheckLock(){
+    scCheckRunning = false;
+    scExecutionCase = null;
+    const button = document.getElementById('sc-check-btn');
+    if(button){
+        button.disabled = false;
+        button.style.opacity = '';
+        button.style.cursor = 'pointer';
+    }
 }
 
 // ===== sessionStorage 读写函数 =====
@@ -370,6 +447,7 @@ function refreshSystemSelectionUI(){
 
 // ===== 初期化 =====
 document.addEventListener('DOMContentLoaded', function(){
+    renderScCaseSession();
     // 从 sessionStorage 恢复行高
     SC_ROW_HEIGHT = scLoadRowHeight();
     // 从 sessionStorage 恢复列宽
@@ -389,12 +467,14 @@ document.addEventListener('DOMContentLoaded', function(){
         if(scSystem === 'auto'){
             // 自動検出に戻す → 次回アップロード時に再判定する
             scSystemManual = false;
+            scDetectedSystem = '';
         } else {
             // 手動選択 → 以後の自動判定は上書きしない
             scSystemManual = true;
         }
         applyScSystemUI();
         refreshSystemSelectionUI();
+        renderScCaseSession();
     });
     document.getElementById('sc-case-mode-select').addEventListener('change', function(){
         scCaseMode = this.value;
@@ -530,6 +610,7 @@ window.scRemoveFile = function(side, idx){
 
 // ===== チェック実行 =====
 function runSettingCheck(){
+    if(scCheckRunning) return;
     const modeError = document.getElementById('sc-case-mode-error');
     if(!Object.prototype.hasOwnProperty.call(SC_CASE_MODES, scCaseMode)){
         modeError.textContent = '案件区分（初期案件／CR追加案件）を選択してください。';
@@ -542,14 +623,28 @@ function runSettingCheck(){
     if(!scFilesS.length || !scFilesD.length){ alert('設定表とダウンロードデータを両方アップロードしてください'); return; }
     // 「自動検出」は有効な選択肢（読込後に実際のシステムを判定する）。無効値のみここで弾く
     if(scSystem !== 'auto' && !SC_SYSTEMS[scSystem]){ alert('チェック対象を選択してください'); return; }
+    scCheckRunning = true;
+    const checkButton = document.getElementById('sc-check-btn');
+    if(checkButton){
+        checkButton.disabled = true;
+        checkButton.style.opacity = '0.6';
+        checkButton.style.cursor = 'wait';
+    }
     const progress = document.getElementById('sc-progress');
     progress.textContent = '⏳ ファイルを読み込み中...';
     progress.classList.add('show');
     document.getElementById('sc-result-area').innerHTML = '';
-    LibLoader.loadXLSX().then(() => _runSettingCheck());
+    LibLoader.loadXLSX()
+        .then(() => _runSettingCheck())
+        .catch(error=>{
+            progress.textContent = '❌ チェック失敗：' + error.message;
+            console.error(error);
+        })
+        .finally(releaseScCheckLock);
 }
 
 function _runSettingCheck(){
+    return new Promise((resolve, reject)=>{
     const progress = document.getElementById('sc-progress');
     let doneS = 0, doneD = 0;
     const wbsS = [], wbsD = [];
@@ -560,32 +655,54 @@ function _runSettingCheck(){
             scWbsD = wbsD;
             // ★ チェック対象・案件区分の自動判定（手動変更時はスキップ）。
             //    自動検出に失敗した場合は false を返し、チェックを開始しない
-            if(autoDetectAndApply()) _doSettingCheck();
+            try{
+                if(autoDetectAndApply()){
+                    const scopeKey = getScSessionScopeKey();
+                    const activeCase = ensureScCaseSession(scopeKey);
+                    if(!activeCase){
+                        progress.classList.remove('show');
+                        resolve();
+                        return;
+                    }
+                    scExecutionCase = QCCaseSession.snapshotCaseSession(scopeKey, activeCase);
+                    _doSettingCheck(scExecutionCase).then(resolve, reject);
+                } else {
+                    resolve();
+                }
+            }catch(error){
+                reject(error);
+            }
         }
     }
 
     scFilesS.forEach((file, idx)=>{
-        readWb(file, wb=>{ wbsS[idx] = { wb, fileName: file.name }; doneS++; tryProceed(); });
+        readWb(file, wb=>{ wbsS[idx] = { wb, fileName: file.name }; doneS++; tryProceed(); }, reject);
     });
     scFilesD.forEach((file, idx)=>{
-        readWb(file, wb=>{ wbsD[idx] = { wb, fileName: file.name }; doneD++; tryProceed(); });
+        readWb(file, wb=>{ wbsD[idx] = { wb, fileName: file.name }; doneD++; tryProceed(); }, reject);
+    });
     });
 }
 
-function readWb(file, cb){
+function readWb(file, cb, errCb){
     const reader = new FileReader();
     reader.onload = e=>{
-        const data = new Uint8Array(e.target.result);
-        const wb   = XLSX.read(data, {type:'array', cellStyles:true, cellNF:true, cellDates:true});
-        cb(wb);
+        try{
+            const data = new Uint8Array(e.target.result);
+            const wb   = XLSX.read(data, {type:'array', cellStyles:true, cellNF:true, cellDates:true});
+            cb(wb);
+        }catch(error){
+            if(errCb) errCb(error);
+        }
     };
+    reader.onerror = ()=>{ if(errCb) errCb(new Error('ファイルの読み込みに失敗しました: ' + file.name)); };
     reader.readAsArrayBuffer(file);
 }
 
-function _doSettingCheck(){
+function _doSettingCheck(executionCase){
     const progress = document.getElementById('sc-progress');
     progress.textContent = '⏳ データ解析中...';
-    setTimeout(()=>{
+    return new Promise((resolve, reject)=>setTimeout(()=>{
         try{
             const sys = getEffectiveAmazonSystem();
             if(sys){
@@ -594,12 +711,17 @@ function _doSettingCheck(){
                 scResults = { error: 'チェック対象を選択してください。' };
             }
             document.getElementById('sc-progress').classList.remove('show');
-            renderScResult();
+            if(scResults && !scResults.error){
+                QCCaseSession.touchCaseSession(executionCase, getScCurrentUser());
+            }
+            renderScResult(executionCase);
+            resolve();
         } catch(err){
             document.getElementById('sc-progress').textContent = '❌ チェック失敗：' + err.message;
             console.error(err);
+            reject(err);
         }
-    }, 50);
+    }, 50));
 }
 
 // ===== 正規化・解析関数（変更なし） =====
@@ -6153,7 +6275,7 @@ function scIOSelectAll(val){
 }
 
 // ===== renderScResult（IO名グルーピング強化） =====
-function renderScResult(){
+function renderScResult(executionCase){
     if(!scResults) return;
     const result=document.getElementById('sc-result-area');
     if(scResults.error){
@@ -6180,6 +6302,12 @@ function renderScResult(){
                 LIチェック：CR追加案件のため対象外
             </div>
             ${renderCreativeResultSection(scResults.creative)}`;
+        const creativeDiffCount = Number(scResults.creative && scResults.creative.mismatchCount || 0);
+        sendLog('AmazonDSP设定检查', creativeDiffCount, 1,
+            `CR追加案件 未发现:${scResults.creative && scResults.creative.notFoundCount || 0}`,
+            executionCase && executionCase.caseName || '',
+            executionCase && executionCase.sessionId || '')
+            .then(r => console.log('✅ 上报结果:', r));
         return;
     }
 
@@ -6958,7 +7086,11 @@ const visibleCols = activeCols.filter(col=>{
 
     // 自动上报使用日志
     console.log('📊 AmazonDSP对比结果:', { mismatchCount, foundCount, notFoundCount, settingCount });
-    sendLog('AmazonDSP设定检查', mismatchCount, 1, `匹配:${foundCount} 未发现:${notFoundCount}`).then(r => console.log('✅ 上报结果:', r));
+    sendLog('AmazonDSP设定检查', mismatchCount, 1,
+        `匹配:${foundCount} 未发现:${notFoundCount}`,
+        executionCase && executionCase.caseName || '',
+        executionCase && executionCase.sessionId || '')
+        .then(r => console.log('✅ 上报结果:', r));
 }
 
 // ===== 以下、既存関数（変更なし） =====
