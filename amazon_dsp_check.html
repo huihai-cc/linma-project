@@ -188,6 +188,44 @@ const LibLoader = {
 <!-- アップロード＆結果エリア -->
 <div id="sc-upload-area" style="display:none; padding:0 20px 20px;">
 
+  <div id="sc-unified-upload-area">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;
+                padding:16px 0 8px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:0.92rem;font-weight:bold;color:#2c3e50;">
+          設定表・ダウンロードデータをまとめてアップロード
+        </div>
+        <div style="color:#888;font-size:0.76rem;margin-top:4px;">
+          .xlsx / .xls をまとめて選択できます。役割を確認できないファイルは自動で割り当てません。
+        </div>
+      </div>
+      <button type="button" id="sc-manual-upload-mode" onclick="setScUploadMode('legacy')"
+              style="background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;
+                     border-radius:4px;padding:6px 12px;font-size:0.78rem;cursor:pointer;">
+        手動アップロードモード
+      </button>
+    </div>
+    <div id="sc-drop-unified"
+         style="border:2px dashed #2980b9;border-radius:8px;padding:28px 20px;
+                text-align:center;cursor:pointer;background:#f5faff;min-height:132px;
+                display:flex;flex-direction:column;align-items:center;justify-content:center;
+                transition:all 0.3s;">
+      <div style="font-size:2rem;margin-bottom:8px;">📦</div>
+      <div style="color:#2471a3;font-size:0.94rem;font-weight:bold;">2つ以上のファイルをまとめてドロップ</div>
+      <div style="color:#888;font-size:0.76rem;margin-top:6px;">支持 .xlsx / .xls（設定表・ダウンロードデータ）</div>
+      <input type="file" id="sc-input-unified" accept=".xlsx,.xls" multiple style="display:none">
+    </div>
+    <div id="sc-unified-state" style="margin-top:10px;font-size:0.8rem;"></div>
+  </div>
+
+  <div id="sc-legacy-upload-area" style="display:none;">
+  <div style="display:flex;justify-content:flex-end;padding-top:12px;">
+    <button type="button" id="sc-unified-upload-mode" onclick="setScUploadMode('unified')"
+            style="background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;
+                   border-radius:4px;padding:6px 12px;font-size:0.78rem;cursor:pointer;">
+      统一アップロードモードへ戻る
+    </button>
+  </div>
   <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px 0;">
 
     <div>
@@ -224,6 +262,7 @@ const LibLoader = {
       <div id="sc-download-info" style="margin-top:4px;font-size:0.78rem;"></div>
     </div>
 
+  </div>
   </div>
 
   <div id="sc-controls"
@@ -354,12 +393,7 @@ window.changeScCaseSession = function(){
 function releaseScCheckLock(){
     scCheckRunning = false;
     scExecutionCase = null;
-    const button = document.getElementById('sc-check-btn');
-    if(button){
-        button.disabled = false;
-        button.style.opacity = '';
-        button.style.cursor = 'pointer';
-    }
+    scSyncControls();
 }
 
 // ===== sessionStorage 读写函数 =====
@@ -406,6 +440,461 @@ const SC_SYSTEMS = {
 const SC_CASE_MODES = {
     initial: '初期案件',
     creative_addition: 'CR追加案件',
+};
+
+// ===== 統一アップロード（入力適配層のみ） =====
+let scUploadMode = 'unified';
+let scUnifiedUploadSeq = 0;
+let scUnifiedState = {
+    files: [],
+    status: 'empty',
+    confirmed: false,
+    reason: '',
+};
+
+const SC_UNIFIED_SUPPORTED_EXT = /\.(xlsx|xls)$/i;
+const SC_UNIFIED_SETTING_SUPPORT = [
+    'type', 'メディア', 'start day', 'start time', 'end day', 'end time',
+    'device', 'device type', 'mobile environment', 'pacing', 'base supply bid',
+    'line item budget', 'supply sources', 'ssp', 'dealid', 'deal名', '予算',
+];
+const SC_UNIFIED_DOWNLOAD_SUPPORT = [
+    'line type', 'supply source', 'base supply bid', 'pacing profile',
+    'audience names', 'order name', 'video ad content type',
+];
+
+function _scUnifiedRows(wb, sheetName, limit = 100){
+    const ws = wb && wb.Sheets ? wb.Sheets[sheetName] : null;
+    if(!ws || !ws['!ref'] || typeof XLSX === 'undefined' || !XLSX.utils) return [];
+    return XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false}).slice(0, limit);
+}
+
+function _scUnifiedText(rows){
+    return rows.map(row => row.map(cell => String(cell ?? '').trim()).join(' ')).join(' ');
+}
+
+function _scUnifiedHeaderEvidence(wb){
+    const settingSheets = [];
+    const settingHeaders = [];
+    const downloadSheets = [];
+    const downloadHeaders = [];
+    const sheetNames = wb && Array.isArray(wb.SheetNames) ? wb.SheetNames : [];
+
+    sheetNames.forEach(sheetName => {
+        const rows = _scUnifiedRows(wb, sheetName, 100);
+        if(!rows.length) return;
+        const sheetText = String(sheetName);
+        const settingSheet = /設定シート|LineItem(?:設定)?/i.test(sheetText);
+        if(settingSheet) settingSheets.push(sheetName);
+
+        rows.forEach((row, rowIndex) => {
+            const cells = row.map(cell => String(cell ?? '').trim());
+            const rowText = cells.join(' ');
+            const liName = /ラインアイテム名|line item name/i.test(rowText);
+            if(liName){
+                const windowText = _scUnifiedText(rows.slice(rowIndex, rowIndex + 5));
+                const supportCount = SC_UNIFIED_SETTING_SUPPORT
+                    .filter(keyword => windowText.toLowerCase().includes(keyword.toLowerCase())).length;
+                if(supportCount >= 2){
+                    settingHeaders.push({sheetName, rowIndex, supportCount});
+                }
+            }
+        });
+
+        const upperName = sheetText.toUpperCase();
+        if(upperName.includes('DISPLAY LINE ITEMS') || upperName.includes('VIDEO LINE ITEMS')){
+            downloadSheets.push(sheetName);
+            rows.forEach((row, rowIndex) => {
+                const rowText = row.map(cell => String(cell ?? '').trim()).join(' ');
+                if(/line name/i.test(rowText)){
+                    const supportCount = SC_UNIFIED_DOWNLOAD_SUPPORT
+                        .filter(keyword => rowText.toLowerCase().includes(keyword.toLowerCase())).length;
+                    if(supportCount >= 1){
+                        downloadHeaders.push({sheetName, rowIndex, supportCount});
+                    }
+                }
+            });
+        }
+    });
+
+    return {
+        setting: {
+            sheetNames: settingSheets,
+            headers: settingHeaders,
+            strong: settingHeaders.length > 0,
+        },
+        download: {
+            sheetNames: downloadSheets,
+            headers: downloadHeaders,
+            strong: downloadHeaders.length > 0,
+        },
+    };
+}
+
+function _scUnifiedProbe(fn){
+    try {
+        return {ok:true, value:fn()};
+    } catch(error){
+        return {ok:false, error};
+    }
+}
+
+function _scUnifiedProbeSetting(wb){
+    const probes = [
+        ['DSP', () => readSettingTableDSP(wb)],
+        ['PVA', () => readSettingTableVideo(wb, 'amazon_pva')],
+        ['OTT', () => readSettingTableVideo(wb, 'amazon_ott')],
+    ];
+    const hits = [];
+    const errors = [];
+    probes.forEach(([name, fn]) => {
+        const result = _scUnifiedProbe(fn);
+        if(!result.ok){ errors.push(`${name}: ${result.error.message || result.error}`); return; }
+        if(Array.isArray(result.value) && result.value.length > 0) hits.push(name);
+    });
+    return {readable:hits.length > 0, hits, errors};
+}
+
+function _scUnifiedProbeDownload(wb, fileName){
+    const probes = [
+        ['DSP', () => readDownloadDataDSPMulti([{wb, fileName}])],
+        ['Video', () => readDownloadDataVideoMulti([{wb, fileName}])],
+    ];
+    const hits = [];
+    const errors = [];
+    probes.forEach(([name, fn]) => {
+        const result = _scUnifiedProbe(fn);
+        if(!result.ok){ errors.push(`${name}: ${result.error.message || result.error}`); return; }
+        const files = result.value && Array.isArray(result.value.files) ? result.value.files : [];
+        if(files.some(file => file && file.sheet && file.sheet !== '（未発見）')) hits.push(name);
+    });
+    return {readable:hits.length > 0, hits, errors};
+}
+
+function classifyAmazonUploadFile(file, wb, readError){
+    const name = file && file.name ? file.name : '（名称不明）';
+    const base = {
+        file, wb, name, role:'unknown', confidence:'none', conflict:false,
+        setting:{high:false, readable:false, evidence:[], probe:null},
+        download:{high:false, readable:false, evidence:[], probe:null},
+        reason:'',
+    };
+    if(readError){
+        base.reason = `${name}: ファイルを読み込めない、または破損しています。`;
+        base.error = String(readError.message || readError);
+        return base;
+    }
+    if(!file || !SC_UNIFIED_SUPPORTED_EXT.test(name)){
+        base.reason = `${name}: Amazon設定チェックで扱える .xlsx / .xls ではありません。`;
+        return base;
+    }
+    if(!wb || !Array.isArray(wb.SheetNames)){
+        base.reason = `${name}: Excelワークブックを読み込めません。`;
+        return base;
+    }
+
+    const structure = _scUnifiedHeaderEvidence(wb);
+    const settingProbe = _scUnifiedProbeSetting(wb);
+    const downloadProbe = _scUnifiedProbeDownload(wb, name);
+    const settingHigh = structure.setting.strong && settingProbe.readable;
+    const downloadHigh = structure.download.strong && downloadProbe.readable;
+
+    base.setting = {
+        high:settingHigh,
+        readable:settingProbe.readable,
+        evidence:structure.setting.headers.map(e => `${e.sheetName} / header ${e.supportCount} signals`),
+        probe:settingProbe,
+    };
+    base.download = {
+        high:downloadHigh,
+        readable:downloadProbe.readable,
+        evidence:structure.download.headers.map(e => `${e.sheetName} / header ${e.supportCount} signals`),
+        probe:downloadProbe,
+    };
+
+    if(settingHigh && downloadHigh){
+        base.conflict = true;
+        base.reason = `${name}: 設定表とダウンロードデータの両方の強い構造を検出しました。`;
+    } else if(settingHigh){
+        base.role = 'setting';
+        base.confidence = 'high';
+        base.reason = `${name}: 設定表のSheet/Headerと既存設定表parser probeが一致しました。`;
+    } else if(downloadHigh){
+        base.role = 'download';
+        base.confidence = 'high';
+        base.reason = `${name}: SDFの固定Sheet/Headerと既存ダウンロードparser probeが一致しました。`;
+    } else {
+        const reasons = [];
+        if(!structure.setting.strong && !structure.download.strong) reasons.push('設定表/SDFの強いSheet・Headerがありません');
+        if(structure.setting.strong && !settingProbe.readable) reasons.push('既存設定表parserで有効な行を読めません');
+        if(structure.download.strong && !downloadProbe.readable) reasons.push('既存ダウンロードparserで有効なSDF Sheetを読めません');
+        base.reason = `${name}: 自動役割判定不可（${reasons.join('、') || '証拠不足'}）。`;
+    }
+    return base;
+}
+
+function validateAmazonUnifiedRole(item, role){
+    const name = item && item.name ? item.name : '（名称不明）';
+    if(!item || item.error){
+        return {ok:false, reason:`${name}: ファイルを読み込めない、または破損しています。`};
+    }
+    if(role !== 'setting' && role !== 'download'){
+        return {ok:false, reason:`${name}: 設定表／ダウンロードデータの役割を指定してください。`};
+    }
+    const evidence = item[role];
+    if(!evidence || !evidence.readable || !evidence.high){
+        const label = role === 'setting' ? '設定表' : 'ダウンロードデータ';
+        return {ok:false, reason:`${name}: ${label}として必要なSheet/Headerと既存parser probeを確認できません。`};
+    }
+    return {ok:true};
+}
+
+function _scUnifiedRoleOverride(overrides, index, item){
+    if(Array.isArray(overrides) && (overrides[index] === 'setting' || overrides[index] === 'download')) return overrides[index];
+    if(overrides && typeof overrides === 'object'){
+        const value = overrides[item && item.name] ?? overrides[index];
+        if(value === 'setting' || value === 'download') return value;
+    }
+    return '';
+}
+
+function _scUnifiedFailure(items, reason){
+    scFilesS = [];
+    scFilesD = [];
+    scWbsS = [];
+    scWbsD = [];
+    scUnifiedState = {
+        files:(items || []).map(item => ({file:item.file, classification:item, role:'', source:''})),
+        status:'failed', confirmed:false, reason,
+    };
+    renderAmazonUnifiedUploadState();
+    scSyncControls();
+    return {ok:false, reason};
+}
+
+function assignAmazonUnifiedFiles(items, options = {}){
+    if(!Array.isArray(items) || items.length < 2){
+        const names = (items || []).map(item => item && item.name
+            ? item.name
+            : item && item.file && item.file.name ? item.file.name : 'ファイル');
+        return _scUnifiedFailure(items || [], `${names.join('、') || 'ファイル'}：設定表とダウンロードデータを含む2つ以上のファイルを選択してください。`);
+    }
+
+    const settings = [];
+    const downloads = [];
+    const assignments = [];
+    const overrides = options.roleOverrides || options.overrides;
+
+    for(let i=0; i<items.length; i++){
+        const item = items[i];
+        const override = _scUnifiedRoleOverride(overrides, i, item);
+        if(item && item.error){
+            return _scUnifiedFailure(items, item.reason
+                || `${item.file && item.file.name ? item.file.name : 'ファイル'}: ファイルを読み込めない、または破損しています。`);
+        }
+        if(!override && (!item || item.conflict || item.role === 'unknown' || item.confidence !== 'high')){
+            return _scUnifiedFailure(items, item && item.reason
+                ? item.reason
+                : `${item && item.name ? item.name : 'ファイル'}: 自動役割判定の確信度が不足しています。`);
+        }
+        const role = override || item.role;
+        const valid = validateAmazonUnifiedRole(item, role);
+        if(!valid.ok) return _scUnifiedFailure(items, valid.reason);
+        assignments.push({item, role, source:override ? 'manual' : 'auto'});
+        if(role === 'setting') settings.push(item.file);
+        if(role === 'download') downloads.push(item.file);
+    }
+
+    if(!settings.length || !downloads.length){
+        return _scUnifiedFailure(items, !settings.length
+            ? '設定表の役割を確認できるファイルがありません。'
+            : 'ダウンロードデータの役割を確認できるファイルがありません。');
+    }
+
+    scFilesS = settings;
+    scFilesD = downloads;
+    scWbsS = [];
+    scWbsD = [];
+    scUnifiedState = {
+        files:assignments.map(({item, role, source}) => ({file:item.file, classification:item, role, source})),
+        status:'ready', confirmed:true, reason:'',
+    };
+    renderAmazonUnifiedUploadState();
+    scSyncControls();
+    return {ok:true, settingFiles:settings, downloadFiles:downloads, assignments};
+}
+
+function renderAmazonUnifiedUploadState(){
+    const container = document.getElementById('sc-unified-state');
+    if(!container) return;
+    const state = scUnifiedState || {files:[], status:'empty', reason:''};
+    if(!state.files || !state.files.length){
+        container.innerHTML = '';
+        return;
+    }
+    const roleLabel = role => role === 'setting' ? '設定表' : role === 'download' ? 'ダウンロードデータ' : '未確認';
+    const cards = state.files.map((entry, index) => {
+        const classification = entry.classification || {};
+        const role = entry.role || '';
+        const badge = role ? (entry.source === 'manual' ? '手動指定' : '自動識別') : '判定待ち';
+        return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+                          padding:7px 10px;margin:5px 0;background:#fff;border:1px solid #dce3ea;
+                          border-radius:5px;">
+            <span style="flex:1;min-width:180px;word-break:break-all;">📄 ${esc(entry.file && entry.file.name || classification.name || '（名称不明）')}</span>
+            <strong style="color:${role === 'setting' ? '#2471a3' : role === 'download' ? '#1e8449' : '#c0392b'};">${roleLabel(role)}</strong>
+            <span style="font-size:0.72rem;color:${role ? '#27ae60' : '#c0392b'};">[${badge}]</span>
+            <select aria-label="${esc((entry.file && entry.file.name) || 'ファイル')} の役割"
+                    onchange="scUnifiedRoleChange(${index}, this.value)"
+                    style="font-size:0.76rem;padding:3px 5px;border:1px solid #bdc3c7;border-radius:3px;">
+              <option value="" ${!role ? 'selected' : ''}>役割を選択</option>
+              <option value="setting" ${role === 'setting' ? 'selected' : ''}>設定表</option>
+              <option value="download" ${role === 'download' ? 'selected' : ''}>ダウンロードデータ</option>
+            </select>
+            <button type="button" onclick="scUnifiedRemoveFile(${index})"
+                    style="background:#e74c3c;color:#fff;border:none;border-radius:3px;padding:2px 7px;cursor:pointer;">✕</button>
+          </div>`;
+    }).join('');
+    const settings = state.files.filter(entry => entry.role === 'setting')
+        .map(entry => esc(entry.file && entry.file.name || entry.classification && entry.classification.name || ''))
+        .join('、');
+    const downloads = state.files.filter(entry => entry.role === 'download')
+        .map(entry => esc(entry.file && entry.file.name || entry.classification && entry.classification.name || ''))
+        .join('、');
+    const summary = `<div style="padding:5px 2px;color:#2c3e50;">
+        <div>設定表：${settings || '未確認'}</div>
+        <div>ダウンロード：${downloads || '未確認'}</div>
+      </div>`;
+    const failure = state.reason
+        ? `<div style="color:#c0392b;background:#fff5f5;border:1px solid #f5b7b1;border-radius:4px;padding:7px;margin-top:6px;">
+             ❌ 自動判定を停止しました：${esc(state.reason)}<br>手動で役割を指定するか、手動アップロードモードへ切り替えてください。
+           </div>`
+        : '';
+    container.innerHTML = summary + cards + failure;
+}
+
+function scSyncControls(){
+    const controls = document.getElementById('sc-controls');
+    const button = document.getElementById('sc-check-btn');
+    if(!controls) return;
+    const unifiedReady = scUploadMode === 'unified'
+        && scUnifiedState && scUnifiedState.confirmed
+        && !scUnifiedState.reason && scFilesS.length > 0 && scFilesD.length > 0;
+    const legacyReady = scUploadMode === 'legacy' && scFilesS.length > 0 && scFilesD.length > 0;
+    const ready = unifiedReady || legacyReady;
+    controls.style.display = ready ? 'flex' : 'none';
+    controls.style.flexWrap = 'wrap';
+    if(button){
+        button.disabled = !ready || scCheckRunning;
+        button.style.opacity = button.disabled ? '0.6' : '';
+        button.style.cursor = button.disabled ? 'not-allowed' : 'pointer';
+    }
+}
+
+function setScUploadMode(mode){
+    scUploadMode = mode === 'legacy' ? 'legacy' : 'unified';
+    const unified = document.getElementById('sc-unified-upload-area');
+    const legacy = document.getElementById('sc-legacy-upload-area');
+    if(unified) unified.style.display = scUploadMode === 'unified' ? 'block' : 'none';
+    if(legacy) legacy.style.display = scUploadMode === 'legacy' ? 'block' : 'none';
+    scSyncControls();
+}
+
+function initScUnifiedDrop(){
+    const drop = document.getElementById('sc-drop-unified');
+    const input = document.getElementById('sc-input-unified');
+    if(!drop || !input) return;
+    drop.addEventListener('click', event => {
+        if(event.target.tagName !== 'BUTTON' && event.target.tagName !== 'SELECT') input.click();
+    });
+    input.addEventListener('change', event => {
+        const files = event.target.files ? Array.from(event.target.files) : [];
+        event.target.value = '';
+        if(files.length) handleScUnifiedFiles(files);
+    });
+    drop.addEventListener('dragover', event => { event.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+    drop.addEventListener('drop', event => {
+        event.preventDefault(); drop.classList.remove('dragover');
+        if(event.dataTransfer.files && event.dataTransfer.files.length) handleScUnifiedFiles(Array.from(event.dataTransfer.files));
+    });
+}
+
+function handleScUnifiedFiles(files){
+    const uniqueFiles = [];
+    const seen = new Set();
+    files.forEach(file => {
+        const key = `${file.name}::${file.size || 0}::${file.lastModified || 0}`;
+        if(!seen.has(key)){ seen.add(key); uniqueFiles.push(file); }
+    });
+    if(!uniqueFiles.length) return;
+    const seq = ++scUnifiedUploadSeq;
+    scFilesS = [];
+    scFilesD = [];
+    scWbsS = [];
+    scWbsD = [];
+    scUnifiedState = {
+        files:uniqueFiles.map(file => ({file, classification:null, role:'', source:''})),
+        status:'reading', confirmed:false, reason:'',
+    };
+    renderAmazonUnifiedUploadState();
+    scSyncControls();
+
+    LibLoader.loadXLSX().then(() => Promise.all(uniqueFiles.map(file => {
+        if(!SC_UNIFIED_SUPPORTED_EXT.test(file.name || '')) return Promise.resolve(classifyAmazonUploadFile(file, null));
+        return new Promise(resolve => {
+            readWb(file,
+                wb => resolve(classifyAmazonUploadFile(file, wb)),
+                error => resolve(classifyAmazonUploadFile(file, null, error)));
+        });
+    }))).then(items => {
+        if(seq !== scUnifiedUploadSeq) return;
+        assignAmazonUnifiedFiles(items);
+    }).catch(error => {
+        if(seq !== scUnifiedUploadSeq) return;
+        _scUnifiedFailure(uniqueFiles.map(file => classifyAmazonUploadFile(file, null, error)),
+            `統一アップロードを読み込めませんでした：${error.message || error}`);
+    });
+}
+
+window.scUnifiedRemoveFile = function(index){
+    const entries = scUnifiedState && Array.isArray(scUnifiedState.files) ? scUnifiedState.files : [];
+    if(index < 0 || index >= entries.length) return;
+    const remaining = entries.filter((_, current) => current !== index).map(entry => entry.classification).filter(Boolean);
+    if(!remaining.length) return _scUnifiedFailure([], 'ファイルがありません。設定表とダウンロードデータを選択してください。');
+    const overrides = entries.filter((_, current) => current !== index)
+        .map(entry => entry.source === 'manual' ? entry.role || '' : '');
+    assignAmazonUnifiedFiles(remaining, {roleOverrides:overrides});
+};
+
+window.scUnifiedRoleChange = function(index, role){
+    const entries = scUnifiedState && Array.isArray(scUnifiedState.files) ? scUnifiedState.files : [];
+    if(!entries[index] || !entries[index].classification) return;
+    const classification = entries[index].classification;
+    const valid = validateAmazonUnifiedRole(classification, role);
+    if(!valid.ok){
+        scFilesS=[]; scFilesD=[]; scWbsS=[]; scWbsD=[];
+        scUnifiedState = {
+            files:entries.map(entry => ({...entry})), status:'failed', confirmed:false,
+            reason:valid.reason,
+        };
+        renderAmazonUnifiedUploadState();
+        scSyncControls();
+        return {ok:false, reason:valid.reason};
+    }
+
+    const pending = entries.map((entry, current) => current === index
+        ? {...entry, role, source:'manual'}
+        : {...entry});
+    if(pending.some(entry => !entry.role)){
+        scFilesS=[]; scFilesD=[]; scWbsS=[]; scWbsD=[];
+        const reason = '一部のファイルの役割が未指定です。すべてのファイルを設定表／ダウンロードデータに指定してください。';
+        scUnifiedState = {files:pending, status:'pending', confirmed:false, reason};
+        renderAmazonUnifiedUploadState();
+        scSyncControls();
+        return {ok:false, reason};
+    }
+    const overrides = pending.map(entry => entry.source === 'manual' ? entry.role : '');
+    return assignAmazonUnifiedFiles(pending.map(entry => entry.classification), {roleOverrides:overrides});
 };
 
 // ===== システムBadge・アップロード域の表示同期 =====
@@ -485,6 +974,8 @@ document.addEventListener('DOMContentLoaded', function(){
     });
     initScMultiDrop('setting');
     initScMultiDrop('download');
+    initScUnifiedDrop();
+    setScUploadMode('unified');
     initCRColumnResize();
 });
 
@@ -539,11 +1030,7 @@ function handleScFiles(side, files){
     }
 
     renderScFileList(side);
-
-    if(scFilesS.length > 0 && scFilesD.length > 0){
-        document.getElementById('sc-controls').style.display = 'flex';
-        document.getElementById('sc-controls').style.flexWrap = 'wrap';
-    }
+    scSyncControls();
 }
 
 // ===== ファイルリスト表示 =====
@@ -602,10 +1089,7 @@ window.scRemoveFile = function(side, idx){
         scFilesD.splice(idx, 1);
     }
     renderScFileList(side);
-
-    if(scFilesS.length === 0 || scFilesD.length === 0){
-        document.getElementById('sc-controls').style.display = 'none';
-    }
+    scSyncControls();
 };
 
 // ===== チェック実行 =====
@@ -7136,8 +7620,10 @@ function scToggleKisson(){
 }
 
 function resetSettingCheck(){
+    scUnifiedUploadSeq++;
     scFilesS=[]; scFilesD=[]; scWbsS=[]; scWbsD=[];
     scResults=null; scCurrentFilter='all'; _scKissonVisible=false;
+    scUnifiedState={files:[],status:'empty',confirmed:false,reason:''};
     // 選択をデフォルト（自動検出／初期案件）に戻す
     scSystem = 'auto';
     scDetectedSystem = '';     // 次回アップロード時に再自動判定する
@@ -7167,6 +7653,8 @@ function resetSettingCheck(){
         if(info) info.innerHTML='';
     });
     document.getElementById('sc-controls').style.display='none';
+    renderAmazonUnifiedUploadState();
+    scSyncControls();
     document.getElementById('sc-result-area').innerHTML='';
     document.getElementById('sc-progress').classList.remove('show');
     document.getElementById('sc-filter-btns').style.display='none';
@@ -7332,6 +7820,7 @@ window.scUpdateRowHeight = function(val){
 
 window.runSettingCheck=runSettingCheck;
 window.resetSettingCheck=resetSettingCheck;
+window.setScUploadMode=setScUploadMode;
 window.scFilterResult=scFilterResult;
 window.scToggleKisson=scToggleKisson;
 window._scGetResults=function(){return scResults;};

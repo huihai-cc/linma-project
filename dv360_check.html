@@ -50,6 +50,33 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
   padding:1px 6px;font-size:0.7rem;cursor:pointer;margin-left:auto;flex-shrink:0;}
 .dv-file-item.setting-item{border-color:#3498db;}
 .dv-file-item.download-item{border-color:#27ae60;}
+.dv-unified-upload-section{padding:16px 20px 8px;max-width:1040px;}
+.dv-unified-drop-zone{border:2px dashed #3498db;border-radius:10px;padding:24px 20px;text-align:center;cursor:pointer;background:#f8fbfe;min-height:132px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.2s;}
+.dv-unified-drop-zone:hover,.dv-unified-drop-zone.dragover{border-color:#1a6fa8;background:#eaf2fb;}
+.dv-unified-drop-zone.has-files{border-style:solid;}
+.dv-unified-title{color:#2980b9;font-size:0.95rem;font-weight:bold;}
+.dv-unified-sub{color:#777;font-size:0.74rem;margin-top:5px;}
+.dv-unified-status{min-height:22px;margin-top:8px;font-size:0.78rem;line-height:1.5;}
+.dv-unified-status.error{color:#c0392b;background:#fff5f5;border:1px solid #f5c6cb;border-radius:5px;padding:6px 10px;}
+.dv-unified-status.success{color:#1e8449;background:#f0fff4;border:1px solid #b7e4c7;border-radius:5px;padding:6px 10px;}
+.dv-unified-file-list{display:grid;gap:6px;margin-top:8px;}
+.dv-unified-file-card{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #d9e2ec;border-radius:5px;padding:8px 10px;font-size:0.78rem;}
+.dv-unified-file-card.setting{border-left:4px solid #3498db;}
+.dv-unified-file-card.download{border-left:4px solid #27ae60;}
+.dv-unified-file-card.invalid,.dv-unified-file-card.unknown{border-left:4px solid #e67e22;}
+.dv-unified-file-name{flex:1;min-width:0;word-break:break-all;}
+.dv-unified-file-meta{color:#888;font-size:0.7rem;white-space:nowrap;}
+.dv-unified-role{padding:4px 7px;border:1px solid #bdc3c7;border-radius:4px;background:#fff;font-size:0.75rem;}
+.dv-unified-role-badge{font-size:0.68rem;font-weight:bold;color:#fff;border-radius:9px;padding:2px 7px;white-space:nowrap;}
+.dv-unified-role-badge.auto{background:#2980b9;}
+.dv-unified-role-badge.manual{background:#8e44ad;}
+.dv-unified-role-badge.pending{background:#e67e22;}
+.dv-unified-reason{color:#a04000;font-size:0.72rem;margin:2px 0 0 28px;line-height:1.4;}
+.dv-unified-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px;}
+.dv-unified-actions .btn{font-size:0.76rem;}
+.dv-unified-actions .btn-secondary{background:#95a5a6;color:#fff;}
+.dv-unified-actions .btn-secondary:hover{background:#7f8c8d;}
+.dv-legacy-mode-link{display:inline-block;margin-bottom:8px;color:#2874a6;font-size:0.78rem;cursor:pointer;text-decoration:underline;background:none;border:0;padding:0;}
 
 /* ===== Controls ===== */
 .control-bar{display:none;align-items:center;gap:10px;padding:8px 20px;flex-wrap:wrap;background:#f8f9fa;border-top:1px solid #e0e0e0;}
@@ -338,8 +365,23 @@ body.dv-column-resizing{cursor:col-resize;user-select:none;}
 </div>
 <div id="encoding-warning" class="encoding-warning" role="status" aria-live="polite"></div>
 
-<!-- Upload Zone (2-Zone Layout) -->
-<div class="upload-section">
+<!-- Upload Zone (Unified Adapter; legacy two-zone upload remains available) -->
+<div id="dv-unified-upload-section" class="dv-unified-upload-section">
+  <div id="dv-unified-drop-zone" class="dv-unified-drop-zone">
+    <div class="dv-upload-icon">📁</div>
+    <div class="dv-unified-title">設定表・ダウンロードデータをまとめてアップロード</div>
+    <div class="dv-unified-sub">2ファイルをドラッグ＆ドロップ（.xlsx / .xls / .zip / .csv）</div>
+    <input type="file" id="dv-unified-input" accept=".xlsx,.xls,.zip,.csv" multiple style="display:none">
+  </div>
+  <div id="dv-unified-status" class="dv-unified-status" role="status" aria-live="polite"></div>
+  <div id="dv-unified-file-list" class="dv-unified-file-list"></div>
+  <div class="dv-unified-actions">
+    <button type="button" class="btn btn-secondary" id="dv-manual-upload-toggle" onclick="dvShowLegacyUploadMode()">手動アップロードモード</button>
+  </div>
+</div>
+
+<div id="dv-legacy-upload-section" class="upload-section" style="display:none;">
+  <button type="button" class="dv-legacy-mode-link" onclick="dvShowUnifiedUploadMode()">← 统一上传模式に戻る</button>
   <div class="upload-grid">
     <!-- 設定表ゾーン -->
     <div>
@@ -926,6 +968,9 @@ async function ensureYoutubeAudienceAliasReady(){
 // ===== Phase 1: 2-Zone Upload State =====
 let dvSettingFiles   = [];
 let dvDownloadFiles  = [];
+let dvUnifiedUploadFiles = [];
+let dvUnifiedClassifications = [];
+let dvUnifiedMode = true;
 
 // ===== UTILS =====
 function esc(s){
@@ -1771,6 +1816,410 @@ function dvUpdateControls(){
   }
 }
 
+// ===== Unified Upload Adapter (role classification only; existing parsers stay unchanged) =====
+const dvUnifiedDropZone = document.getElementById('dv-unified-drop-zone');
+const dvUnifiedInput = document.getElementById('dv-unified-input');
+const dvUnifiedStatus = document.getElementById('dv-unified-status');
+const dvUnifiedFileList = document.getElementById('dv-unified-file-list');
+const dvUnifiedUploadSection = document.getElementById('dv-unified-upload-section');
+const dvLegacyUploadSection = document.getElementById('dv-legacy-upload-section');
+const DV_UNIFIED_SUPPORTED_EXTENSIONS = new Set(['xlsx','xls','zip','csv']);
+const DV_UNIFIED_SDF_TYPES = new Set(['Campaigns','InsertionOrders','LineItems','AdGroups','AdGroupAds']);
+const DV_UNIFIED_SDF_IDS = ['Campaign Id','Io Id','Line Item Id','Ad Group Id','Ad Id'];
+
+function dvUnifiedFileExtension(file){
+  const name=String(file&&file.name||'');
+  const match=name.match(/\.([^.\\/]+)$/);
+  return match?match[1].toLowerCase():'';
+}
+
+function dvUnifiedNormalize(value){
+  return String(value===null||value===undefined?'':value).normalize('NFKC').replace(/[\s\r\n]+/g,'').trim();
+}
+
+function dvUnifiedHasMeaningfulRows(rows){
+  return Array.isArray(rows)&&rows.slice(1).some(row=>Array.isArray(row)&&row.some(value=>String(value===null||value===undefined?'':value).trim()!==''));
+}
+
+function dvUnifiedRecordCount(result){
+  if(!result||typeof result!=='object') return 0;
+  return ['cpList','ioList','liList','gpList','crList'].reduce((count,key)=>count+(Array.isArray(result[key])?result[key].length:0),0);
+}
+
+function dvUnifiedSettingEvidence(source){
+  const evidence=[];
+  const sheetNames=Array.isArray(source&&source.sheetNames)?source.sheetNames:[];
+  const sheets=source&&source.sheets||{};
+  const visibleNames=getVisibleSettingSheetNames(source);
+  visibleNames.forEach(sheetName=>{
+    const rows=Array.isArray(sheets[sheetName])?sheets[sheetName]:[];
+    const normalizedName=dvUnifiedNormalize(sheetName);
+    const joined=rows.slice(0,100).map(row=>(row||[]).map(dvUnifiedNormalize).join(' ')).join('\n');
+    if(normalizedName==='設定シート' && joined.includes('NO') && joined.includes('IO名') &&
+       joined.includes('広告申込情報名') && joined.includes('広告申込情報タイプ') && joined.includes('ディスプレイ')){
+      evidence.push({mediaType:'display',sheetName,marker:'設定シート + Display header'});
+    }
+    if(sheetName.includes('運用者用') && joined.includes('キャンペーン名') && joined.includes('IO名') &&
+       joined.includes('広告申込情報名')){
+      evidence.push({mediaType:'youtube',sheetName,marker:'運用者用 + YouTube header'});
+    }
+    if(/設定シート\s*[（(]\s*(OTT|RTB|PMP)\s*[）)]/.test(sheetName) && joined.includes('NO') &&
+       joined.includes('IO名') && joined.includes('全体予算')){
+      evidence.push({mediaType:'ott',sheetName,marker:'OTT/RTB/PMP + OTT header'});
+    }
+  });
+  // Keep this independent from detectMediaType(): a final default media type is not a role signal.
+  return {evidence,hasRows:Object.values(sheets).some(dvUnifiedHasMeaningfulRows)};
+}
+
+async function dvUnifiedHasExcelSignature(file,extension){
+  const bytes=await readAsArrayBuffer(file);
+  if(extension==='xlsx') return bytes[0]===0x50&&bytes[1]===0x4B;
+  // OLE Compound File signature used by legacy .xls workbooks.
+  return bytes[0]===0xD0&&bytes[1]===0xCF&&bytes[2]===0x11&&bytes[3]===0xE0&&bytes[4]===0xA1&&bytes[5]===0xB1&&bytes[6]===0x1A&&bytes[7]===0xE1;
+}
+
+function dvUnifiedProbeSetting(source,fileName,evidence){
+  const probes=[];
+  const seen=new Set();
+  (evidence||[]).forEach(item=>{
+    if(seen.has(item.mediaType)) return;
+    seen.add(item.mediaType);
+    try{
+      const result=item.mediaType==='display'
+        ?parseDisplaySetting(source.sheets,source.sheetNames,fileName,source.worksheets)
+        :item.mediaType==='ott'
+          ?parseOttSetting(source.sheets,source.sheetNames,fileName)
+          :parseYoutubeSetting(source.sheets,source.sheetNames,fileName,source.worksheets);
+      probes.push({mediaType:item.mediaType,recordCount:dvUnifiedRecordCount(result),ok:true});
+    }catch(error){
+      probes.push({mediaType:item.mediaType,recordCount:0,ok:false,error:String(error&&error.message||error)});
+    }
+  });
+  return probes;
+}
+
+function dvUnifiedSdfHeaderInfo(name,rows){
+  const base=String(getSdfFileTypeName(name)||'');
+  const canonical=[...DV_UNIFIED_SDF_TYPES].find(type=>type.toLowerCase()===base.toLowerCase())||'';
+  const headers=Array.isArray(rows&&rows[0])
+    ?rows[0].map(value=>String(value===null||value===undefined?'':value).replace(/^\uFEFF/,'').trim())
+    :[];
+  const headerSet=new Set(headers);
+  const hasName=headerSet.has('Name');
+  const hasStatus=headerSet.has('Status')||headerSet.has('Entity Status')||headerSet.has('Primary Status');
+  const idCount=DV_UNIFIED_SDF_IDS.filter(id=>headerSet.has(id)).length;
+  const expectedId={Campaigns:'Campaign Id',InsertionOrders:'Io Id',LineItems:'Line Item Id',AdGroups:'Ad Group Id',AdGroupAds:'Ad Id'}[canonical];
+  const hasExpectedId=!!expectedId&&headerSet.has(expectedId);
+  const standardHeader=!!canonical&&hasExpectedId&&hasName&&(hasStatus||idCount>=2);
+  return {base,canonical,headers,standardHeader,hasExpectedId,hasName,hasStatus,idCount};
+}
+
+function dvUnifiedParsedSdfProbe(csvFiles){
+  if(!Array.isArray(csvFiles)||!csvFiles.length) return {recordCount:0,schema:null};
+  try{
+    const result=parseSdfData(csvFiles);
+    return {recordCount:dvUnifiedRecordCount(result),schema:detectSdfSchema(csvFiles),ok:true};
+  }catch(error){
+    return {recordCount:0,schema:null,ok:false,error:String(error&&error.message||error)};
+  }
+}
+
+async function dvUnifiedCollectZipCsvEntries(fileBlob,parentName){
+  const entries=await extractZip(fileBlob);
+  const csvFiles=[];
+  for(const entry of entries){
+    const extension=dvUnifiedFileExtension({name:entry.name});
+    if(extension==='csv'){
+      const rows=await parseCsv(entry.blob);
+      csvFiles.push({name:entry.name,blob:entry.blob,rows,path:entry.path||entry.name,parentZip:parentName});
+    }else if(extension==='zip'){
+      const nested=await dvUnifiedCollectZipCsvEntries(entry.blob,parentName);
+      csvFiles.push(...nested);
+    }
+  }
+  return csvFiles;
+}
+
+function dvUnifiedInvalidClassification(file,reason,readable=false){
+  return {file,name:String(file&&file.name||''),extension:dvUnifiedFileExtension(file),readable,
+    candidates:{setting:false,download:false},suggestedRole:'unknown',confidence:'invalid',
+    settingEvidence:[],downloadEvidence:[],probes:[],reasons:[reason]};
+}
+
+/**
+ * Classify one upload for its role. This is deliberately independent from media detection.
+ * @returns {Promise<Object>} read-only classification result
+ */
+async function classifyDv360UploadFile(file){
+  const extension=dvUnifiedFileExtension(file);
+  const name=String(file&&file.name||'');
+  if(!file||!name||!DV_UNIFIED_SUPPORTED_EXTENSIONS.has(extension)){
+    return dvUnifiedInvalidClassification(file,`「${name||'（名前なし）'}」は対応拡張子ではありません。対応: .xlsx / .xls / .zip / .csv`);
+  }
+
+  if(extension==='xlsx'||extension==='xls'){
+    let source;
+    try{
+      if(!(await dvUnifiedHasExcelSignature(file,extension))){
+        return dvUnifiedInvalidClassification(file,`「${name}」はExcelコンテナのsignatureと一致しません（ファイル破損または形式不正）。`);
+      }
+    }catch(error){
+      return dvUnifiedInvalidClassification(file,`「${name}」を読み込めません（ファイル破損または形式不正）。`);
+    }
+    try{ source=await parseXlsx(file); }
+    catch(error){ return dvUnifiedInvalidClassification(file,`「${name}」はExcelとして読み込めません（ファイル破損または形式不正）。`); }
+    const hasWorksheetRows=source&&source.sheets&&Object.values(source.sheets).some(rows=>Array.isArray(rows)&&rows.length>0);
+    if(!source||!Array.isArray(source.sheetNames)||source.sheetNames.length===0||!hasWorksheetRows){
+      return dvUnifiedInvalidClassification(file,`「${name}」はExcelとして読み込めません（ファイル破損または形式不正）。`);
+    }
+    const settingInfo=dvUnifiedSettingEvidence(source);
+    const probes=dvUnifiedProbeSetting(source,name,settingInfo.evidence);
+    const parserRecognized=probes.some(probe=>probe.ok===true);
+    const strongSetting=settingInfo.evidence.length>0&&parserRecognized;
+    const reasons=[];
+    if(settingInfo.evidence.length===0) reasons.push(`「${name}」にDV360設定表のシート名・header markerが見つかりません。`);
+    else if(!parserRecognized) reasons.push(`「${name}」は既存の設定表parser probeでも認識できません。`);
+    return {file,name,extension,readable:true,candidates:{setting:strongSetting,download:false},
+      suggestedRole:strongSetting?'setting':'unknown',confidence:strongSetting?'high':'low',
+      settingEvidence:settingInfo.evidence,downloadEvidence:[],probes,reasons};
+  }
+
+  let csvFiles=[];
+  try{
+    if(extension==='zip') csvFiles=await dvUnifiedCollectZipCsvEntries(file,name);
+    else csvFiles=[{name,blob:file,rows:await parseCsv(file),path:name,parentZip:''}];
+  }catch(error){
+    const reason=extension==='zip'
+      ?`「${name}」をZIPとして読み込めません（ファイル破損または形式不正）。`
+      :`「${name}」をCSVとして読み込めません（ファイル破損または形式不正）。`;
+    return dvUnifiedInvalidClassification(file,reason);
+  }
+  const validCsvFiles=[];
+  const downloadEvidence=[];
+  for(const csvFile of csvFiles){
+    const info=dvUnifiedSdfHeaderInfo(csvFile.name,csvFile.rows);
+    if(info.standardHeader&&dvUnifiedHasMeaningfulRows(csvFile.rows)){
+      validCsvFiles.push(csvFile);
+      downloadEvidence.push({path:csvFile.path||csvFile.name,type:info.canonical,marker:'standard SDF header'});
+    }
+  }
+  const probe=dvUnifiedParsedSdfProbe(validCsvFiles);
+  const highDownload=validCsvFiles.length>0&&probe.recordCount>0&&probe.ok!==false;
+  const reasons=[];
+  if(!highDownload){
+    reasons.push(extension==='zip'
+      ?`「${name}」のZIP内に標準SDF CSV（認識可能なheaderとデータ行）がありません。`
+      :`「${name}」に標準SDFのファイル名・header markerとデータ行がありません。`);
+  }
+  return {file,name,extension,readable:true,candidates:{setting:false,download:highDownload},
+    suggestedRole:highDownload?'download':'unknown',confidence:highDownload?'high':'low',
+    settingEvidence:[],downloadEvidence,probes:[probe],reasons};
+}
+
+function dvUnifiedClassificationRole(classification){
+  if(!classification) return '';
+  return classification.manualRole||classification.suggestedRole||'';
+}
+
+function validateDv360UnifiedRole(classification,role){
+  const normalized=String(role||'').toLowerCase();
+  const name=String(classification&&classification.name||'（名前なし）');
+  if(normalized!=='setting'&&normalized!=='download') return {ok:false,reason:`「${name}」の役割が未指定です。`};
+  if(!classification||classification.readable!==true) return {ok:false,reason:`「${name}」は正常に読み込めないため、${normalized==='setting'?'設定表':'ダウンロードデータ'}に指定できません。`};
+  if(!classification.candidates||classification.candidates[normalized]!==true){
+    return {ok:false,reason:`「${name}」は${normalized==='setting'?'DV360設定表':'標準SDFダウンロードデータ'}として読める構造ではありません。`};
+  }
+  return {ok:true,reason:''};
+}
+
+function dvUnifiedRoleOverrides(classifiedFiles,roleOverrides){
+  return (classifiedFiles||[]).map((classification,index)=>{
+    if(Array.isArray(roleOverrides)&&roleOverrides[index]) return roleOverrides[index];
+    if(roleOverrides&&typeof roleOverrides==='object'&&!Array.isArray(roleOverrides)){
+      if(roleOverrides[index]) return roleOverrides[index];
+      if(roleOverrides[classification.name]) return roleOverrides[classification.name];
+    }
+    return dvUnifiedClassificationRole(classification);
+  });
+}
+
+/**
+ * Assign exactly one validated setting and one validated download to the existing arrays.
+ * Without roleOverrides this is the high-confidence auto path; with overrides it is the
+ * manual path, but format/readability checks still apply.
+ */
+function assignDv360UnifiedFiles(classifiedFiles,roleOverrides){
+  const classified=Array.isArray(classifiedFiles)?classifiedFiles:[];
+  if(classified.length!==2){
+    dvSettingFiles=[];dvDownloadFiles=[];
+    return {ok:false,status:'needs-confirmation',errors:[`统一上传要求正好2个顶层文件，当前为${classified.length}个。`],setting:null,download:null};
+  }
+  const hasOverrides=Array.isArray(roleOverrides)
+    ?roleOverrides.some(Boolean)
+    :!!(roleOverrides&&Object.keys(roleOverrides).length);
+  if(!hasOverrides&&classified.some(item=>item.confidence!=='high')){
+    dvSettingFiles=[];dvDownloadFiles=[];
+    return {ok:false,status:'needs-confirmation',errors:classified.map(item=>item.reasons&&item.reasons.length?item.reasons.join(' '):`「${item.name}」的自动识别置信度不足。`),setting:null,download:null};
+  }
+  const roles=dvUnifiedRoleOverrides(classified,roleOverrides);
+  const errors=[];
+  classified.forEach((classification,index)=>{
+    const validation=validateDv360UnifiedRole(classification,roles[index]);
+    if(!validation.ok) errors.push(validation.reason);
+  });
+  if(roles.filter(role=>role==='setting').length!==1||roles.filter(role=>role==='download').length!==1){
+    errors.push('两个文件必须分别指定为「設定表」和「ダウンロードデータ」，不能猜测同一角色。');
+  }
+  if(errors.length){
+    dvSettingFiles=[];dvDownloadFiles=[];
+    return {ok:false,status:'needs-confirmation',errors,setting:null,download:null};
+  }
+  const settingIndex=roles.indexOf('setting');
+  const downloadIndex=roles.indexOf('download');
+  const setting=classified[settingIndex],download=classified[downloadIndex];
+  dvSettingFiles=[{name:setting.file.name,blob:setting.file,type:'xlsx'}];
+  dvDownloadFiles=[{name:download.file.name,blob:download.file,type:download.extension==='zip'?'zip':'csv'}];
+  return {ok:true,status:hasOverrides?'manual':'auto',errors:[],setting:{file:setting.file},download:{file:download.file}};
+}
+
+function classifyDv360UnifiedFiles(classifiedFiles){
+  return assignDv360UnifiedFiles(classifiedFiles);
+}
+
+function dvUnifiedReasonText(classification){
+  const reasons=classification&&classification.reasons||[];
+  return reasons.length?reasons.join(' '):'自动识别置信度不足。';
+}
+
+function dvUnifiedRenderStatus(result){
+  if(!dvUnifiedStatus) return;
+  dvUnifiedStatus.className='dv-unified-status';
+  const count=dvUnifiedClassifications.length;
+  if(!count){ dvUnifiedStatus.textContent=''; return; }
+  if(result&&result.ok){
+    dvUnifiedStatus.classList.add('success');
+    const mode=result.status==='manual'?'手動指定':'自動識別';
+    dvUnifiedStatus.textContent=`設定表：${result.setting.file.name} [${mode}]　ダウンロード：${result.download.file.name} [${mode}]`;
+    return;
+  }
+  dvUnifiedStatus.classList.add('error');
+  const fileReasons=dvUnifiedClassifications.map(classification=>`「${classification.name}」：${dvUnifiedReasonText(classification)}`);
+  const countReason=count!==2?`トップレベルのファイル数が${count}個です。正確に2個を指定してください。`:'自動割り当てできる高置信度の一組ではありません。';
+  dvUnifiedStatus.innerHTML=`<div>${esc(countReason)}</div>${fileReasons.map(reason=>`<div>${esc(reason)}</div>`).join('')}<div>下の役割を手動指定して再確認するか、「手動アップロードモード」に切り替えてください。</div>`;
+}
+
+function renderDv360UnifiedUploadState(){
+  if(!dvUnifiedFileList) return;
+  const roles=dvUnifiedClassifications.map(dvUnifiedClassificationRole);
+  const hasManual=roles.some((role,index)=>!!(dvUnifiedClassifications[index]&&dvUnifiedClassifications[index].manualRole));
+  const result=dvUnifiedClassifications.length===2
+    ?assignDv360UnifiedFiles(dvUnifiedClassifications,hasManual?roles:undefined)
+    :assignDv360UnifiedFiles(dvUnifiedClassifications);
+  dvUnifiedFileList.innerHTML=dvUnifiedClassifications.map((classification,index)=>{
+    const role=roles[index];
+    const validRole=role==='setting'||role==='download';
+    const cardRole=validRole?role:(classification.confidence==='invalid'?'invalid':'unknown');
+    const reasonText=classification.confidence==='high'?'':dvUnifiedReasonText(classification);
+    const badge=classification.manualRole
+      ?'<span class="dv-unified-role-badge manual">手動指定</span>'
+      :classification.confidence==='high'
+        ?'<span class="dv-unified-role-badge auto">自動識別</span>'
+        :'<span class="dv-unified-role-badge pending">要確認</span>';
+    return `<div class="dv-unified-file-card ${cardRole}">
+      <span>${classification.extension==='zip'?'📦':classification.extension==='csv'?'📄':'📊'}</span>
+      <div class="dv-unified-file-name"><div>${esc(classification.name)}</div>${reasonText?`<div class="dv-unified-reason">${esc(reasonText)}</div>`:''}</div>
+      <span class="dv-unified-file-meta">${classification.file&&classification.file.size!==undefined?`${(classification.file.size/1024).toFixed(0)}KB`:''}</span>
+      <select class="dv-unified-role" data-dv-unified-role="${index}" aria-label="${esc(classification.name)} の役割">
+        <option value=""${!validRole?' selected':''}>役割を選択</option>
+        <option value="setting"${role==='setting'?' selected':''}>設定表</option>
+        <option value="download"${role==='download'?' selected':''}>ダウンロード</option>
+      </select>
+      ${badge}
+      <button type="button" class="remove-btn" data-dv-unified-remove="${index}" aria-label="${esc(classification.name)}を削除">✕</button>
+    </div>`;
+  }).join('');
+  dvUnifiedRenderStatus(result);
+  dvUpdateControls();
+  if(typeof dvUnifiedFileList.querySelectorAll==='function'){
+    dvUnifiedFileList.querySelectorAll('[data-dv-unified-role]').forEach(select=>{
+      select.addEventListener('change',event=>{
+        const index=Number(event.target.dataset.dvUnifiedRole);
+        if(dvUnifiedClassifications[index]){
+          dvUnifiedClassifications[index].manualRole=event.target.value||'';
+          renderDv360UnifiedUploadState();
+        }
+      });
+    });
+    dvUnifiedFileList.querySelectorAll('[data-dv-unified-remove]').forEach(button=>{
+      button.addEventListener('click',()=>dvRemoveUnifiedFile(Number(button.dataset.dvUnifiedRemove)));
+    });
+  }
+}
+
+async function dvUnifiedHandleFiles(files){
+  const selected=Array.from(files||[]);
+  selected.forEach(file=>{
+    const duplicate=dvUnifiedUploadFiles.some(existing=>existing.name===file.name&&existing.size===file.size&&existing.lastModified===file.lastModified);
+    if(!duplicate) dvUnifiedUploadFiles.push(file);
+  });
+  if(!dvUnifiedUploadFiles.length){
+    dvUnifiedClassifications=[];
+    renderDv360UnifiedUploadState();
+    dvUpdateControls();
+    return;
+  }
+  dvUnifiedClassifications=await Promise.all(dvUnifiedUploadFiles.map(classifyDv360UploadFile));
+  renderDv360UnifiedUploadState();
+}
+
+function dvRemoveUnifiedFile(index){
+  if(index<0||index>=dvUnifiedUploadFiles.length) return;
+  dvUnifiedUploadFiles.splice(index,1);
+  dvUnifiedClassifications.splice(index,1);
+  dvSettingFiles=[];dvDownloadFiles=[];
+  renderDv360UnifiedUploadState();
+  dvUpdateControls();
+}
+
+function dvShowLegacyUploadMode(){
+  dvUnifiedMode=false;
+  if(dvUnifiedUploadSection) dvUnifiedUploadSection.style.display='none';
+  if(dvLegacyUploadSection) dvLegacyUploadSection.style.display='block';
+  dvSettingFiles=[];dvDownloadFiles=[];
+  dvUpdateControls();
+}
+
+function dvShowUnifiedUploadMode(){
+  dvUnifiedMode=true;
+  if(dvUnifiedUploadSection) dvUnifiedUploadSection.style.display='block';
+  if(dvLegacyUploadSection) dvLegacyUploadSection.style.display='none';
+  dvSettingFiles=[];dvDownloadFiles=[];
+  dvRenderFileList('setting');dvRenderFileList('download');
+  renderDv360UnifiedUploadState();
+  dvUpdateControls();
+}
+
+function initDv360UnifiedUpload(){
+  if(!dvUnifiedDropZone||!dvUnifiedInput) return;
+  dvUnifiedDropZone.addEventListener('click',()=>dvUnifiedInput.click());
+  dvUnifiedInput.addEventListener('change',event=>{
+    if(event.target.files&&event.target.files.length) dvUnifiedHandleFiles(event.target.files);
+    dvUnifiedInput.value='';
+  });
+  dvUnifiedDropZone.addEventListener('dragover',event=>{event.preventDefault();dvUnifiedDropZone.classList.add('dragover');});
+  dvUnifiedDropZone.addEventListener('dragleave',()=>dvUnifiedDropZone.classList.remove('dragover'));
+  dvUnifiedDropZone.addEventListener('drop',event=>{
+    event.preventDefault();dvUnifiedDropZone.classList.remove('dragover');
+    if(event.dataTransfer.files&&event.dataTransfer.files.length) dvUnifiedHandleFiles(event.dataTransfer.files);
+  });
+}
+
+window.dvShowLegacyUploadMode=dvShowLegacyUploadMode;
+window.dvShowUnifiedUploadMode=dvShowUnifiedUploadMode;
+window.dvRemoveUnifiedFile=dvRemoveUnifiedFile;
+window.renderDv360UnifiedUploadState=renderDv360UnifiedUploadState;
+
 /**
  * 媒体タイプを検出してバッジを表示
  * @param {'youtube'|'ott'|'display'} detected - 検出された媒体タイプ
@@ -1819,6 +2268,8 @@ function getEffectiveMediaType(autoDetected){
 // ===== 初始化上传系统（必须在DOM元素定义后调用） =====
 dvInitUpload('setting');
 dvInitUpload('download');
+initDv360UnifiedUpload();
+renderDv360UnifiedUploadState();
 
 // ===== Phase 2: Media Selector Init =====
 initMediaSelector();
@@ -10348,6 +10799,11 @@ window.resetAll=function(){
   // Phase 1: 2-Zone Upload Reset
   dvSettingFiles=[];
   dvDownloadFiles=[];
+  dvUnifiedUploadFiles=[];
+  dvUnifiedClassifications=[];
+  dvUnifiedMode=true;
+  if(dvUnifiedUploadSection) dvUnifiedUploadSection.style.display='block';
+  if(dvLegacyUploadSection) dvLegacyUploadSection.style.display='none';
   mediaType='';treeRoots=[];allComparisonData=null;
   selectedNodeId=null;statusFilter='all';currentLevel='CP';
   setSelectedDv360CaseType('initial');
@@ -10355,6 +10811,7 @@ window.resetAll=function(){
   // Phase 1: 2-Zone Upload Reset
   dvRenderFileList('setting');
   dvRenderFileList('download');
+  renderDv360UnifiedUploadState();
   dvUpdateControls();
   ['control-bar','progress','stats-bar','filter-bar','level-tab-bar','result-table-wrap'].forEach(id=>{
     document.getElementById(id).classList.remove('show');
