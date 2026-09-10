@@ -3158,12 +3158,40 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
         col.householdIncomeEnd=householdIncomeHeaders[0]+1;
         col.householdIncomeUnknown=householdIncomeHeaders[1]??-1;
       }
+      // ── merged-cell 対応（2026-09-10 修正）──
+      // 同一 IO 配下の複数 LI 行で IO名/開始日/開始時間/終了日/終了時間などの IO 級セルが
+      // 縦結合される場合、sheet_to_json は結合範囲の左上セルにしか値を出力せず、
+      // 2 行目以降が空文字になり LI 時間比較が崩れる（開始 00:00 誤表示 / 終了がデフォルト
+      // 23:59 で見かけ正常になる false normal など）。
+      // worksheet の !merges に基づき、座標が実在する結合範囲に含まれる場合のみ左上値を
+      // 参照する merge-aware accessor。結合範囲外の真正空白は決して伝播しない。
+      // LI 行固有フィールド（SEG名/予算/ターゲティング等）は従来通り自身の行を読む。
+      const salesMergeAnchors=new Map();
+      {
+        const salesWorksheet=(worksheets&&worksheets[salesSheet])||null;
+        const salesMerges=(salesWorksheet&&Array.isArray(salesWorksheet['!merges']))?salesWorksheet['!merges']:[];
+        for(const mg of salesMerges){
+          for(let ri=mg.s.r;ri<=mg.e.r&&ri<rows.length;ri++){
+            for(let ci=mg.s.c;ci<=mg.e.c;ci++){
+              salesMergeAnchors.set(ri+'\u0000'+ci,mg.s);
+            }
+          }
+        }
+      }
+      const readMergedAwareCell=(rowIndex,colIndex)=>{
+        const current=(rows[rowIndex]||[])[colIndex];
+        if(String(current===undefined||current===null?'':current).trim()!=='') return current===undefined?'':current;
+        const anchor=salesMergeAnchors.get(rowIndex+'\u0000'+colIndex);
+        if(!anchor) return '';
+        const anchored=(rows[anchor.r]||[])[anchor.c];
+        return anchored===undefined||anchored===null?'':anchored;
+      };
       const usedOpLiDetails=new Set();
       for(let i=hdrRow+1;i<rows.length;i++){
         const r=rows[i];
         const idxVal    =String(r[0]||'').trim();
         if(!idxVal||!/^\d+$/.test(idxVal)) continue;
-        const salesIOName=String(r[col.io]||'').trim();
+        const salesIOName=String(readMergedAwareCell(i,col.io)||'').trim();
         const segName    =String(r[col.seg]||'').trim();
         if(!salesIOName&&!segName) continue;
 
@@ -3215,10 +3243,10 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
             pacing     :String(r[col.pacing]||'').trim(),
             brandLift  :String(r[col.brandLift]||'').trim(),
             timeSpec   :String(r[col.timeSpec]||'').trim(),
-            startDate  :followsIo?opDetail.liPeriod:(opDetail.liStartDate||fmtDateVal(r[col.startDate])),
-            startTime  :String(r[col.startTime]||'').trim(),
-            endDate    :followsIo?opDetail.liPeriod:(opDetail.liEndDate||fmtDateVal(r[col.endDate])),
-            endTime    :String(r[col.endTime]||'').trim(),
+            startDate  :followsIo?opDetail.liPeriod:(opDetail.liStartDate||fmtDateVal(readMergedAwareCell(i,col.startDate))),
+            startTime  :String(readMergedAwareCell(i,col.startTime)||'').trim(),
+            endDate    :followsIo?opDetail.liPeriod:(opDetail.liEndDate||fmtDateVal(readMergedAwareCell(i,col.endDate))),
+            endTime    :String(readMergedAwareCell(i,col.endTime)||'').trim(),
             billing    :String(r[col.billing]||'').trim(),
             bidCap     :String(r[col.bidCap]||'').trim(),
             typeName   :String(r[col.typeName]||'').trim(),
@@ -3294,7 +3322,12 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
     }
     if(crHdr<0) continue;
     const hdr=rows[crHdr];
-    const col={io:3,li:4,gp:5,cr:6,startDate:7,endDate:8,videoUrl:9,landingUrl:10,displayUrl:11,cta:15,headline:17,longHeadline:19,description:21,companion:23,clickTracker:24};
+    // Schema-dependent optional creative fields（長い見出し/説明/コンパニオン）は Header の存在を権威とする（2026-09-10 修正）。
+    // 固定デフォルト列 index（19/21/23）を残すと、VRC(NonS) の「T=コンパニオンバナー」や
+    // YTN の「T=備考」のような列構成が異なるテンプレートで他業務列を誤読するため、
+    // sentinel -1 で初期化し Header で見つかった場合のみ上書き。存在しない列は空文字を返す。
+    const readOptionalColumn=(row,index)=>index>=0?String(row[index]||'').trim():'';
+    const col={io:3,li:4,gp:5,cr:6,startDate:7,endDate:8,videoUrl:9,landingUrl:10,displayUrl:11,cta:15,headline:17,longHeadline:-1,description:-1,companion:-1,clickTracker:24};
     const hasAdNameHeader=hdr.some(h=>String(h||'').includes('広告名'));
     hdr.forEach((h,i)=>{
       const hs=String(h||'');
@@ -3315,11 +3348,38 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
       if(hs.includes('コンパニオン')) col.companion=i;
       if(hs.includes('クリック')&&hs.includes('URL')) col.clickTracker=i;
     });
+    // ── CR 親フィールド merged-cell 対応（2026-09-10 修正）──
+    // 入稿物管理表では IO名/LI名/GP名が縦結合される実案件（例: D10:D15/E10:E12 構成）があり、
+    // sheet_to_json は結合左上セルにしか値を出力しないため merge continuation 行の CR が
+    // IO/LI/GP 親スコープを失い階層マッチ（lpName/gpName スコープ）が崩れる。
+    // 当該シートの !merges に基づく merge-aware accessor で親 3 フィールドのみ左上値で復元する。
+    // （封板済み Sales sheet helper とは別のローカル map。結合範囲外の真正空白は伝播しない。
+    //　 CR 固有フィールド（URL/見出し等）は各自行を読み続ける）
+    const crMergeAnchors=new Map();
+    {
+      const crWorksheet=(worksheets&&worksheets[sname])||null;
+      const crMerges=(crWorksheet&&Array.isArray(crWorksheet['!merges']))?crWorksheet['!merges']:[];
+      for(const mg of crMerges){
+        for(let ri=mg.s.r;ri<=mg.e.r&&ri<rows.length;ri++){
+          for(let ci=mg.s.c;ci<=mg.e.c;ci++){
+            crMergeAnchors.set(ri+'\u0000'+ci,mg.s);
+          }
+        }
+      }
+    }
+    const readCrMergedCell=(rowIndex,colIndex)=>{
+      const current=(rows[rowIndex]||[])[colIndex];
+      if(String(current===undefined||current===null?'':current).trim()!=='') return current===undefined?'':current;
+      const anchor=crMergeAnchors.get(rowIndex+'\u0000'+colIndex);
+      if(!anchor) return '';
+      const anchored=(rows[anchor.r]||[])[anchor.c];
+      return anchored===undefined||anchored===null?'':anchored;
+    };
     for(let i=crHdr+1;i<rows.length;i++){
       const r=rows[i];
-      const crIoName=String(r[col.io]||'').trim();
-      const crLiName=String(r[col.li]||'').trim();
-      const gpName  =String(r[col.gp]||'').trim();
+      const crIoName=String(readCrMergedCell(i,col.io)||'').trim();
+      const crLiName=String(readCrMergedCell(i,col.li)||'').trim();
+      const gpName  =String(readCrMergedCell(i,col.gp)||'').trim();
       const crName  =String(r[col.cr]||'').trim();
       if(!crName||['広告名','YouTube動画タイトル'].includes(crName)) continue;
       if(crName.includes('見本')||crName.includes('例）')||crName.includes('※')) continue;
@@ -3368,10 +3428,10 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
           displayUrl:String(r[col.displayUrl]||'').trim(),
           cta       :String(r[col.cta]||'').trim(),
           headline  :String(r[col.headline]||'').trim(),
-          longHeadline:String(r[col.longHeadline]||'').trim(),
-          description:String(r[col.description]||'').trim(),
-          companionBanner:String(r[col.companion]||'').trim(),
-          companionBannerAssetId:companionAssetIdByFilename.get(normStr(String(r[col.companion]||'').trim()))||'',
+          longHeadline:readOptionalColumn(r,col.longHeadline),
+          description:readOptionalColumn(r,col.description),
+          companionBanner:readOptionalColumn(r,col.companion),
+          companionBannerAssetId:companionAssetIdByFilename.get(normStr(readOptionalColumn(r,col.companion)))||'',
           clickTracker:String(r[col.clickTracker]||'').trim(),
           material:String(r[col.videoUrl]||'').trim(),
         }
@@ -5701,11 +5761,17 @@ function compareDaypart(settingValue,downloadValue){
   return {s,d,result};
 }
 
-function compareYoutubeLiDaypartTime(settingValue,downloadValue,isEnd,options={}){
-  const setting=parseSettingDaypart(settingValue),download=parseDaypartTargeting(downloadValue);
-  const s=normalizeSimpleTime(isEnd?setting.endDisplay:setting.startDisplay,isEnd);
+// YouTube LI 開始/終了時間比較（2026-09-10 修正）
+// Setting: 設定表の「開始時間/終了時間」列（sf.startTime / sf.endTime）を主データソースとする。
+//   従来は sf.daypart（例: 2026/9/10(木)10:00～2026/9/30(水)23:59）を主データソースにしていたが、
+//   parseSettingDaypart がこの「日付+時刻～日付+時刻」形式を解析できず、normalizeSimpleTime の
+//   先頭 HH:MM が start/end 両方に表示される問題があったため修正。
+// Download: LI SDF の Daypart Targeting 開始/終了時間を従来通り使用する。
+function compareYoutubeLiTime(settingTime,downloadDaypart,isEnd,options={}){
+  const s=normalizeSimpleTime(settingTime,isEnd);
+  const download=parseDaypartTargeting(downloadDaypart);
   const d=normalizeSimpleTime(isEnd?download.endDisplay:download.startDisplay,isEnd);
-  if(!setting.known||!download.known||!s.known||!d.known){
+  if(!s.known||!download.known||!d.known){
     return {sVal:s.value,dVal:d.value,result:'warning'};
   }
   if(isEnd&&isPeriodLongerThanSevenDays(options.startDate,options.endDate)){
@@ -7344,13 +7410,19 @@ function compareIO(s,d){
   if(youtubeOnly){
     const optimizationRaw=String(sf.optimize||sf.optimization||'').trim();
     const optimizationKey=normStr(optimizationRaw);
+    const downloadOptimization=String(df.autoBudget||'').trim().toLowerCase();
+    // 2026-09-10 修正: 設定表の最適化未設定（空/placeholder）は業務上デフォルト OFF=False と同等。
+    // 未知テキストは canonical unknown のまま warning とし、Download 空値も勝手に false と解釈しない。
+    const settingUnsetOptimization=!optimizationKey||optimizationKey==='-'||
+      optimizationKey.includes('未設定')||optimizationKey.includes('設定なし');
     const settingOptimization=optimizationKey.includes('手動で管理')?'false':
       optimizationKey.includes('自動的に最適化')?'true':
-      (optimizationKey==='true'||optimizationKey==='false'?optimizationKey:'');
-    const downloadOptimization=String(df.autoBudget||'').trim().toLowerCase();
+      (optimizationKey==='true'||optimizationKey==='false')?optimizationKey:
+      (settingUnsetOptimization?'false':'');
+    const downloadOptimizationKnown=downloadOptimization==='true'||downloadOptimization==='false';
     items.push({
       label:'最適化',sVal:optimizationRaw||'(設定表なし)',dVal:df.autoBudget||'(空欄)',
-      result:settingOptimization&&downloadOptimization
+      result:settingOptimization&&downloadOptimizationKnown
         ?compareField(settingOptimization,downloadOptimization):'warning',
       sourceSdfFields:['Auto Budget Allocation'],
     });
@@ -9239,8 +9311,8 @@ function compareLI(s,d){
     startDate:(d.resolvedIo&&d.resolvedIo.startDate)||sf.startDate,
     endDate:(d.resolvedIo&&d.resolvedIo.endDate)||sf.endDate,
   };
-  const startTime=compareYoutubeLiDaypartTime(sf.daypart||'',df.daypartTargeting||'',false,liTimeOptions);
-  const endTime=compareYoutubeLiDaypartTime(sf.daypart||'',df.daypartTargeting||'',true,liTimeOptions);
+  const startTime=compareYoutubeLiTime(sf.startTime||'',df.daypartTargeting||'',false,liTimeOptions);
+  const endTime=compareYoutubeLiTime(sf.endTime||'',df.daypartTargeting||'',true,liTimeOptions);
   const items=[
     // 2026-08-18: 状態 Status（raw_sdf__status）は buildCaseStatusItem に統合し重複表示しない
     buildCaseStatusItem('LI',d),
