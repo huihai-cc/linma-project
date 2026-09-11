@@ -216,7 +216,8 @@ test('YouTube LI age range uses the configured start and end ages', () => {
 
 test('YouTube LI daypart displays only normalized start and end times', () => {
   const { api } = loadDv360Api();
-  const items = api.compareLI({ fields: { daypart: '火曜日 10:00~00:00', startDate: '2026/08/18', endDate: '2026/08/18' } },
+  // 2026-09-10: LI 開始/終了時間的 Setting 主数据源已改为 sf.startTime/sf.endTime（旧 sf.daypart 已废除）
+  const items = api.compareLI({ fields: { daypart: '火曜日 10:00~00:00', startTime: '10:00', endTime: '24:00', startDate: '2026/08/18', endDate: '2026/08/18' } },
     makeYoutubeDownload({ daypartTargeting: '314096;' }));
   const start = findYoutubeItem(items, '開始時間');
   const end = findYoutubeItem(items, '終了時間');
@@ -226,7 +227,8 @@ test('YouTube LI daypart displays only normalized start and end times', () => {
 
 test('YouTube LI date-qualified weekday daypart keeps its own 24:00 end time', () => {
   const { api } = loadDv360Api();
-  const items = api.compareLI({ fields: { daypart: '8/18(火)のみ\n12:00～24:00', startDate: '2026/08/18', endDate: '2026/08/18' } },
+  // 2026-09-10: 同上，startTime/endTime 为主数据源，daypart 仅为设定表原始列
+  const items = api.compareLI({ fields: { daypart: '8/18(火)のみ\n12:00～24:00', startTime: '12:00', endTime: '24:00', startDate: '2026/08/18', endDate: '2026/08/18' } },
     makeYoutubeDownload({ daypartTargeting: '314896;' }));
   const start = findYoutubeItem(items, '開始時間');
   const end = findYoutubeItem(items, '終了時間');

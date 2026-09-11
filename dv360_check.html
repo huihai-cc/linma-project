@@ -2433,14 +2433,98 @@ function stripBomAndDecode(uint8Arr, encoding){
   return new TextDecoder(encoding, {fatal:false}).decode(buf);
 }
 
+function parseCsvTextSafely(csvText){
+  const text=String(csvText===null||csvText===undefined?'':csvText).replace(/^\uFEFF/,'');
+  if(!text) return [];
+
+  const rows=[];
+  let row=[],field='',inQuotes=false,afterQuote=false;
+
+  const finishField=()=>{
+    row.push(String(field));
+    field='';
+    afterQuote=false;
+  };
+  const finishRecord=()=>{
+    finishField();
+    // Keep meaningful empty-cell records such as ",," but ignore blank lines.
+    if(row.length>1||row[0]!=='') rows.push(row);
+    row=[];
+  };
+
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(inQuotes){
+      if(ch==='"'){
+        if(text[i+1]==='"'){
+          field+='"';
+          i++;
+        }else{
+          inQuotes=false;
+          afterQuote=true;
+        }
+      }else{
+        field+=ch;
+      }
+      continue;
+    }
+
+    if(afterQuote){
+      if(ch===','){
+        finishField();
+        continue;
+      }
+      if(ch==='\r'||ch==='\n'){
+        finishRecord();
+        if(ch==='\r'&&text[i+1]==='\n') i++;
+        continue;
+      }
+      throw new Error(`CSV parse error: unexpected character after closing quote at offset ${i}`);
+    }
+
+    if(ch==='"'){
+      if(field!=='') throw new Error(`CSV parse error: unexpected quote at offset ${i}`);
+      inQuotes=true;
+      continue;
+    }
+    if(ch===','){
+      finishField();
+      continue;
+    }
+    if(ch==='\r'||ch==='\n'){
+      finishRecord();
+      if(ch==='\r'&&text[i+1]==='\n') i++;
+      continue;
+    }
+    field+=ch;
+  }
+
+  if(inQuotes) throw new Error('CSV parse error: unterminated quoted field');
+  if(afterQuote||field!==''||row.length) finishRecord();
+  return rows;
+}
+
+function validateCsvRowsStructure(rows){
+  if(!Array.isArray(rows)||!rows.length) return [];
+  if(!Array.isArray(rows[0])) throw new Error('CSV structure error: header row is not an array');
+  const expected=rows[0].length;
+  if(!expected) throw new Error('CSV structure error: header has no columns');
+
+  return rows.map((row,rowIndex)=>{
+    if(!Array.isArray(row)) throw new Error(`CSV structure error: row ${rowIndex+1} is not an array`);
+    const normalized=row.map(value=>String(value===null||value===undefined?'':value));
+    if(normalized.length>expected){
+      throw new Error(`CSV structure error: row ${rowIndex+1} has ${normalized.length} columns; expected ${expected}`);
+    }
+    while(normalized.length<expected) normalized.push('');
+    return normalized;
+  });
+}
+
 async function parseCsv(blob){
   const data = await readAsArrayBuffer(blob);
   const csvText = detectAndDecodeCSV(data);
-  const wb = XLSX.read(csvText, {type:'string'});
-  if(!wb.SheetNames.length) return [];
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  if(!ws||!ws['!ref']) return [];
-  return XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+  return validateCsvRowsStructure(parseCsvTextSafely(csvText));
 }
 
 // ===== MEDIA TYPE =====
@@ -2956,6 +3040,8 @@ function buildYoutubeAudienceComparisonItems(settingAudience,downloadRecord){
 function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
   const cpList=[],ioList=[],liList=[],gpList=[],crList=[];
   const text=v=>String(v===undefined||v===null?'':v).trim();
+  const normalizeLiSubtype=value=>String(value===undefined||value===null?'':value).normalize('NFKC').trim();
+  const isAdSequenceSubtype=value=>normalizeLiSubtype(value)==='広告シーケンス';
   const isPlaceholder=v=>{
     const s=text(v);
     return !s||s==='FALSE'||s.includes('▼選択')||s.includes('-_-_')||/^[-_●]+$/.test(s);
@@ -3017,7 +3103,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
     }
     if(ioHdr>=0){
       const col={no:1,ioName:2,ioType:3,goal:4,budget:5,budgetNet:6,startDate:9,startTime:10,endDate:11,endTime:12,
-        pacing:13,pacingRate:14,kpi:16,kpiVal:17,optimize:18,fq:19,margin:20,quality:21,liName:23,typeName:24,
+        pacing:13,pacingRate:14,kpi:16,kpiVal:17,optimize:18,fq:19,margin:20,quality:21,liName:23,typeName:24,liSubtype:-1,
         language:27,region:28,daypart:29,liPeriod:33,liStartDate:34,liEndDate:35,dailyBudget:38,revenueModel:51,
         gpName:52,gpVideoFormat:53,gpBidStrategy:60,gpBidCost:61,gender:62,genderUnknown:63,
         ageStart:64,ageEnd:65,ageUnknown:66,audienceList:-1,audienceManual:-1};
@@ -3029,6 +3115,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
         else if(s.includes('全体予算')) col.budget=i;
         else if(s.includes('予算')&&s.includes('％')) col.budgetNet=i;
         else if(s.includes('広告申込情報名')) col.liName=i;
+        else if(s.includes('広告申込情報のサブタイプ')) col.liSubtype=i;
         else if(s.includes('広告グループ名')) col.gpName=i;
         else if(s.includes('マージン')) col.margin=i;
         else if(s.includes('品質')) col.quality=i;
@@ -3070,24 +3157,29 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
           const age=[text(r[col.ageStart]),text(r[col.ageEnd])].filter(Boolean).join(' / ');
           const ageUnknown=text(r[col.ageUnknown]);
           const gpName=text(r[col.gpName]),gpVideoFormat=text(r[col.gpVideoFormat]);
+          const liSubtype=col.liSubtype>=0?text(r[col.liSubtype]):'';
           const gpBidStrategy=text(r[col.gpBidStrategy]),gpBidCost=text(r[col.gpBidCost]);
           const audienceListRaw=col.audienceList>=0?text(r[col.audienceList]):'';
           const audienceManualRaw=col.audienceManual>=0?text(r[col.audienceManual]):'';
           const audienceSheetReferences=extractYoutubeAudienceSheetReferences(audienceManualRaw).sheetNames;
-          const detail={name:opLiName,ioName:lastIOName,sourceSheet:opSheet,sourceRow:i+1,gpName,gpVideoFormat,
+          const detail={name:opLiName,ioName:lastIOName,sourceSheet:opSheet,sourceRow:i+1,gpName,gpVideoFormat,liSubtype,
             gpBidStrategy,gpBidCost,gender,age,ageUnknown,region:text(r[col.region]),
             language:text(r[col.language]),daypart:text(r[col.daypart]),liPeriod:text(r[col.liPeriod]),
             liStartDate:fmtDateVal(r[col.liStartDate]),liEndDate:fmtDateVal(r[col.liEndDate]),
             dailyBudget:text(r[col.dailyBudget]),revenueModel:text(r[col.revenueModel]),audienceListRaw,audienceManualRaw,
             audienceSheetReferences,
             rawValues:{ioName:lastIOName,liName:opLiName,gpName,gpVideoFormat,gpBidStrategy,gpBidCost,
-              audienceListRaw,audienceManualRaw,audienceSheetReferences:[...audienceSheetReferences]}};
+              audienceListRaw,audienceManualRaw,audienceSheetReferences:[...audienceSheetReferences],liSubtype}};
           group.liDetails.push(detail);
           opLiDetails.push(detail);
         }
       }
     }
   }
+
+  const sequenceLiKeys=new Set(opLiDetails.filter(detail=>isAdSequenceSubtype(detail.liSubtype))
+    .map(detail=>normStr(detail.ioName)+'\u0000'+normStr(detail.name)));
+  const sequenceLiRowCount=opLiDetails.filter(detail=>isAdSequenceSubtype(detail.liSubtype)).length;
 
   ioMap.forEach(group=>{
     const validSegments=group.segments.filter(seg=>seg.startDate||seg.endDate||money(seg.budgetNet)!==null||money(seg.budgetGross)!==null);
@@ -3222,6 +3314,8 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
         // ── 修正5: ioName が空でも name が同じなら重複とみなす ──
         if(liList.find(l=>normStr(l.name)===normStr(primaryLIName)&&normStr(l.ioName)===normStr(primaryIOName))) continue;
         const opDetail=matchedOpDetail||findOpLiDetail(primaryLIName,primaryIOName)||{};
+        const liSubtype=text(opDetail.liSubtype);
+        const isAdSequence=sequenceLiKeys.has(normStr(primaryIOName)+'\u0000'+normStr(primaryLIName))||isAdSequenceSubtype(liSubtype);
         const followsIo=isSameAsIo(opDetail.liPeriod);
         const householdIncomeRange=[text(r[col.householdIncomeStart]),text(r[col.householdIncomeEnd])]
           .filter(value=>value&&!isPlaceholder(value));
@@ -3229,7 +3323,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
         const householdIncome=[...(householdIncomeRange.length?householdIncomeRange:['ALL']),text(r[col.householdIncomeUnknown])]
           .filter(value=>value&&!isPlaceholder(value)).join(' / ');
 
-        liList.push({
+        const liRecord={
           name:primaryLIName, ioName:primaryIOName,
           sheet:salesSheet, sourceSheet:opDetail.sourceSheet||'', fileName,
           fields:{
@@ -3269,9 +3363,15 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
             daypart    :opDetail.daypart||'',
             dailyBudget:opDetail.dailyBudget||'',
             revenueModel:opDetail.revenueModel||'',
+            liSubtype,
             materialSheet:text(r[col.materialSheet]),
           }
-        });
+        };
+        if(isAdSequence){
+          liRecord.comparisonSupport='unsupported';
+          liRecord.comparisonUnsupportedReason='youtube_ad_sequence';
+        }
+        liList.push(liRecord);
       }
     }
   }
@@ -3294,10 +3394,11 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
       }
     });
   });
-  const requestedMaterialSheets=new Set(liList.map(li=>li.fields.materialSheet).filter(v=>!isPlaceholder(v)).map(normStr));
+  const normalizeMaterialSheetName=value=>normStr(value).replace(/[（）]/g,bracket=>bracket==='（'?'(':')');
+  const requestedMaterialSheets=new Set(liList.map(li=>li.fields.materialSheet).filter(v=>!isPlaceholder(v)).map(normalizeMaterialSheetName));
   const requestedVideoTypes=liList.map(li=>normVideoType(li.fields.videoType));
   const isRequestedMaterialSheet=name=>{
-    const normalized=normStr(name);
+    const normalized=normalizeMaterialSheetName(name);
     if(requestedMaterialSheets.size) return [...requestedMaterialSheets].some(req=>normalized===req||normalized.includes(req)||req.includes(normalized));
     if(normalized.includes('オーディオ')) return requestedVideoTypes.some(type=>type.includes('audio'));
     if(normalized.includes('nons')||normalized.includes('ノンスキ')||normalized.includes('ytn')){
@@ -3505,7 +3606,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
     gp.audienceCatalog=audience;
     (gp.references||[]).forEach(reference=>{reference.audienceCatalog=audience;});
   });
-  return {cpList,ioList,liList,gpList,crList,audience};
+  return {cpList,ioList,liList,gpList,crList,audience,sequenceLiCount:sequenceLiRowCount};
 }
 
 // ===== OTT/DISPLAY SETTING PARSER (v1.1 Phase1) =====
@@ -9646,6 +9747,8 @@ function getLiIdentity(li){
   return {id,name};
 }
 
+const YOUTUBE_AD_SEQUENCE_UNSUPPORTED_NOTICE='広告シーケンスはSDFから比較用データを取得できないため、自動比較対象外です。設定表の内容をもとに、DV360管理画面で設定内容をご確認ください。';
+
 function buildComparisonTree(setting, download){
   const sCP=setting.cp,sIO=setting.io,sLI=setting.li,sGP=setting.gp,sCR=setting.cr;
   const settingAudienceCatalog=setting.audience||createEmptyYoutubeAudienceResult();
@@ -9653,6 +9756,20 @@ function buildComparisonTree(setting, download){
   const matchedDCP=new Set(),matchedDIO=new Set(),matchedDLI=new Set(),matchedDGP=new Set(),matchedDCR=new Set();
   // YouTube / OTT は比較項目の双空非表示を適用する（媒体別の空値規則は helper 内で分離）。
   const filterItems=(mediaType==='youtube'||mediaType==='ott')?filterVisibleComparisonItems:(items)=>items;
+  const isYoutubeAdSequenceLi=li=>String(li&&li.fields&&li.fields.liSubtype||'').normalize('NFKC').trim()==='広告シーケンス';
+  const unsupportedComparisonItems=()=>[{
+    label:'広告シーケンス',key:'__youtube_ad_sequence_unsupported__',sVal:'',dVal:'',
+    result:'unsupported',detail:YOUTUBE_AD_SEQUENCE_UNSUPPORTED_NOTICE,alwaysDisplay:true
+  }];
+  const unsupportedSettingLiNames=new Set(sLI.filter(isYoutubeAdSequenceLi).map(li=>normStr(li.name)));
+  const unsupportedDownloadLiIds=new Set(dLI
+    .filter(li=>unsupportedSettingLiNames.has(normStr(li.name)))
+    .map(li=>String(li.id||'').trim()).filter(Boolean));
+  const isUnsupportedDownloadGp=gp=>unsupportedDownloadLiIds.has(String(gp.liId||'').trim())||
+    unsupportedSettingLiNames.has(normStr(gp.liName));
+  const unsupportedDownloadGpIds=new Set(dGP.filter(isUnsupportedDownloadGp)
+    .map(gp=>String(gp.id||'').trim()).filter(Boolean));
+  const isUnsupportedDownloadCr=cr=>unsupportedDownloadGpIds.has(String(cr.gpId||'').trim());
   const gpReferencesForLi=(gp,li)=>{
     if(!Array.isArray(gp.references)||!gp.references.length){
       return normStr(gp.liName)===normStr(li.name)&&
@@ -9857,17 +9974,21 @@ function buildComparisonTree(setting, download){
       if(ioMatched) matchedDIO.add(dIoMatch.match);
 
       ioData.lis.forEach(sLi=>{
-        const dLiMatch=ioMatched
+        const sequenceLi=isYoutubeAdSequenceLi(sLi);
+        const dLiMatch=!sequenceLi&&ioMatched
           ?findBest(sLi.name,underIO(dIoMatch.match),matchedDLI,{nameKey:scopedLiNameKey})
-          :diagnosticMatch(sLi.name,dLI,matchedDLI,'parent-io-unmatched',{nameKey:scopedLiNameKey});
-        const liMatched=hasFormalMatch(dLiMatch);
-        const liComparisonItems=liMatched
-          ?appendDownloadOnlyItems('LI',dLiMatch.match,compareLI(sLi,dLiMatch.match)):[];
+          :!sequenceLi?diagnosticMatch(sLi.name,dLI,matchedDLI,'parent-io-unmatched',{nameKey:scopedLiNameKey}):null;
+        const liMatched=!sequenceLi&&hasFormalMatch(dLiMatch);
+        const liComparisonItems=sequenceLi
+          ?unsupportedComparisonItems()
+          :liMatched?appendDownloadOnlyItems('LI',dLiMatch.match,compareLI(sLi,dLiMatch.match)):[];
         const liNode={level:'LI',id:nodeId('LI',sLi.name),name:sLi.name,ioName,
-          found:liMatched,matchedName:liMatched?dLiMatch.match.name:null,
+          found:sequenceLi||liMatched,matchedName:liMatched?dLiMatch.match.name:null,
           matchedId:liMatched?dLiMatch.match.id:null,
           ambiguous:!!(dLiMatch&&dLiMatch.ambiguous),candidate:!!(dLiMatch&&dLiMatch.candidate),
-          compItems:liMatched?(mediaType==='display'
+          comparisonSupport:sequenceLi?'unsupported':undefined,
+          comparisonUnsupportedReason:sequenceLi?'youtube_ad_sequence':undefined,
+          compItems:sequenceLi?liComparisonItems:liMatched?(mediaType==='display'
             ?filterVisibleComparisonItems(liComparisonItems)
             :filterItems(liComparisonItems)):matchWarningItems('LI',sLi.name,dLiMatch),children:[]};
         if(liMatched) matchedDLI.add(dLiMatch.match);
@@ -9888,45 +10009,52 @@ function buildComparisonTree(setting, download){
 
         gpGroupMap.forEach(gpData=>{
           const gpName=gpData.name;
+          const gpUnsupported=sequenceLi;
           const scopedSettingAudience=resolveYoutubeAudienceForSettingRecord(
             gpData.sGp||{fields:{}},
             gpData.sGp?(gpData.sGp.audienceCatalog||settingAudienceCatalog):createEmptyYoutubeAudienceResult());
           // 親LIが一致済み → GPは親LIスコープ内でのみ照合（跨LI fallback 禁止）
           // 親LIが不一致 → 診断用に全体候補検索のみ（正式マッチにせず候補 warning）
           let dGpMatch=null,gpMatchScope='li';
-          if(liMatched){
+          if(liMatched&&!gpUnsupported){
             // 親LI一致 → そのLI配下のみ検索。見つからなければ GP 未マッチ（跨LI fallback 禁止）
             dGpMatch=findBest(gpName,underLI(dLiMatch.match),matchedDGP);
-          }else{
+          }else if(!gpUnsupported){
             // 親LI不一致 → 診断用に全体候補検索のみ。正式マッチにせず候補 warning（matchedDGP を消費しない）
             dGpMatch=diagnosticMatch(gpName,dGP,matchedDGP,'parent-li-unmatched');
             if(dGpMatch) gpMatchScope='candidate';
           }
-          const gpMatched=hasFormalMatch(dGpMatch);
-          const rawGpCompItems=gpMatched
+          const gpMatched=!gpUnsupported&&hasFormalMatch(dGpMatch);
+          const rawGpCompItems=gpUnsupported
+            ?unsupportedComparisonItems()
+            :gpMatched
             ?appendDownloadOnlyItems('GP',dGpMatch.match,compareGP(gpData.sGp,dGpMatch.match,scopedSettingAudience))
             :matchWarningItems('GP',gpName,dGpMatch);
           const finalGpCompItems=gpMatched
             ?(mediaType==='youtube'?filterVisibleComparisonItems(rawGpCompItems):filterItems(rawGpCompItems))
             :rawGpCompItems;
           const gpNode={level:'GP',id:nodeId('GP',gpName),name:gpName,
-            found:gpMatched,matchedName:gpMatched?dGpMatch.match.name:null,
+            found:gpUnsupported||gpMatched,matchedName:gpMatched?dGpMatch.match.name:null,
             matchedId:gpMatched?dGpMatch.match.id:null,
             ambiguous:!!(dGpMatch&&dGpMatch.ambiguous),
             candidate:!!(dGpMatch&&dGpMatch.candidate)||gpMatchScope==='candidate',
-            compItems:finalGpCompItems,children:[]};
+            comparisonSupport:gpUnsupported?'unsupported':undefined,
+            comparisonUnsupportedReason:gpUnsupported?'youtube_ad_sequence':undefined,
+            compItems:gpUnsupported?rawGpCompItems:finalGpCompItems,children:[]};
           if(gpMatched&&gpMatchScope==='li') matchedDGP.add(dGpMatch.match);
 
           gpData.crs.forEach(sCr=>{
-            const dCrMatch=gpMatched
+            const dCrMatch=!gpUnsupported&&gpMatched
               ?findBest(sCr.name,underGP(dGpMatch.match),matchedDCR)
-              :diagnosticMatch(sCr.name,dCR,matchedDCR,'parent-gp-unmatched');
-            const crMatched=hasFormalMatch(dCrMatch);
+              :!gpUnsupported?diagnosticMatch(sCr.name,dCR,matchedDCR,'parent-gp-unmatched'):null;
+            const crMatched=!gpUnsupported&&hasFormalMatch(dCrMatch);
             const crNode={level:'CR',id:nodeId('CR',sCr.name),name:sCr.name,
-              found:crMatched,matchedName:crMatched?dCrMatch.match.name:null,
+              found:gpUnsupported||crMatched,matchedName:crMatched?dCrMatch.match.name:null,
               matchedId:crMatched?dCrMatch.match.id:null,
               ambiguous:!!(dCrMatch&&dCrMatch.ambiguous),candidate:!!(dCrMatch&&dCrMatch.candidate),
-              compItems:crMatched?filterItems(appendDownloadOnlyItems('CR',dCrMatch.match,
+              comparisonSupport:gpUnsupported?'unsupported':undefined,
+              comparisonUnsupportedReason:gpUnsupported?'youtube_ad_sequence':undefined,
+              compItems:gpUnsupported?unsupportedComparisonItems():crMatched?filterItems(appendDownloadOnlyItems('CR',dCrMatch.match,
                 compareCR(sCr,dCrMatch.match))):matchWarningItems('CR',sCr.name,dCrMatch),children:[]};
             if(crMatched) matchedDCR.add(dCrMatch.match);
             updateNodeStatus(crNode);
@@ -9957,10 +10085,10 @@ function buildComparisonTree(setting, download){
   };
   dCP.forEach(d=>{if(!matchedDCP.has(d)) addSdfOnlyNode('CP',d);});
   dIO.forEach(d=>{if(!matchedDIO.has(d)) addSdfOnlyNode('IO',d);});
-  dLI.forEach(d=>{if(!matchedDLI.has(d)) addSdfOnlyNode('LI',d);});
-  if(mediaType==='youtube') dGP.forEach(d=>{if(!matchedDGP.has(d)) addSdfOnlyNode('GP',d);});
+  dLI.forEach(d=>{if(!matchedDLI.has(d)&&!unsupportedSettingLiNames.has(normStr(d.name))) addSdfOnlyNode('LI',d);});
+  if(mediaType==='youtube') dGP.forEach(d=>{if(!matchedDGP.has(d)&&!isUnsupportedDownloadGp(d)) addSdfOnlyNode('GP',d);});
   // OTT / Display は CR 対象外。YouTube のみ名称一致しなかった SDF CR も追跡可能にする。
-  if(mediaType==='youtube') dCR.forEach(d=>{if(!matchedDCR.has(d)) addSdfOnlyNode('CR',d);});
+  if(mediaType==='youtube') dCR.forEach(d=>{if(!matchedDCR.has(d)&&!isUnsupportedDownloadCr(d)) addSdfOnlyNode('CR',d);});
   // ── 2026-08-09: 親LIを設定表から特定できない Setting GP → warning ──
   // liName がどの設定表 LI にも一致しない GP は、同名 GP への安易な global fallback をせず
   // 「GPの親LIを設定表から特定できません」として警告表示する。
@@ -9988,6 +10116,12 @@ function buildComparisonTree(setting, download){
 
 // ── 修正7: 子が先に確定しているので普通に集計できる ──
 function updateNodeStatus(node){
+  if(node.comparisonSupport==='unsupported'){
+    node.status='unsupported';
+    node.okCount=0;
+    node.totalCount=node.children.length;
+    return;
+  }
   const hasChildMismatch=node.children.some(c=>c.status==='mismatch');
   const hasChildWarning =node.children.some(c=>c.status==='warning');
   const hasChildNotFound=node.children.some(c=>c.status==='notfound')&&!node.children.some(c=>c.status!=='notfound');
@@ -10302,7 +10436,7 @@ function getCoreLevelColumns(level,youtubeOnly){
 
 function getLevelColumns(level){
   const coreColumns=getCoreLevelColumns(level,mediaType==='youtube');
-  const levelItems=collectLevelItems(level);
+  const levelItems=collectLevelItems(level).filter(item=>!item.unsupported);
   if((mediaType==='ott'&&level==='LI')||mediaType==='youtube'||(mediaType==='display'&&(level==='IO'||level==='LI'))){
     // 対応する compItem が存在するコア列だけを最終列に含める（列レベル双空非表示）。
     // OTT LI: 双方空（例: 曜日と時間 / 言語 / 環境 / 地域 / オーディエンス / 人口属性）の空列を出さない。
@@ -10333,10 +10467,22 @@ function calcOwnStatus(compItems){
 }
 
 function getNodeOwnStatus(node){
+  if(node.comparisonSupport==='unsupported') return 'unsupported';
   if(node.fromSdf) return 'warning';
   if(node.candidate||node.ambiguous) return 'warning';
   if(!node.found) return 'notfound';
   return calcOwnStatus(node.compItems||[]);
+}
+
+function getComparisonStatusCounts(){
+  const stats={ok:0,mismatch:0,warning:0,notfound:0};
+  function countStatus(node){
+    const ownStatus=getNodeOwnStatus(node);
+    if(Object.prototype.hasOwnProperty.call(stats,ownStatus)) stats[ownStatus]++;
+    (node.children||[]).forEach(countStatus);
+  }
+  treeRoots.forEach(countStatus);
+  return stats;
 }
 
 // ── ツリーから指定レベルの全アイテムを収集 ──
@@ -10353,6 +10499,7 @@ function collectLevelItems(level){
         ownStatus:getNodeOwnStatus(node),
         compItems:node.compItems||[],
         fromSdf:!!node.fromSdf,
+        unsupported:node.comparisonSupport==='unsupported',
         ioName:node.ioName||''  // Phase 6-4: LI分组用
       });
     }
@@ -10443,6 +10590,12 @@ function renderLevelTable(level){
     return;
   }
 
+  if(statusFilter==='all'&&items.every(item=>item.unsupported)){
+    wrap.innerHTML=`<div class="comparison-unsupported-notice" style="margin:12px;padding:14px 16px;background:#fff8e1;border:1px solid #f1c40f;border-radius:6px;color:#8a6d1d;font-size:0.8rem;line-height:1.6;">⚠️ ${esc(YOUTUBE_AD_SEQUENCE_UNSUPPORTED_NOTICE)}</div>`;
+    wrap.classList.add('show');
+    return;
+  }
+
   // フィルタ適用 — 修复: 使用 ownStatus 而不是 status，避免子节点状态影响当前级别
   let visibleItems=items;
   if(statusFilter!=='all'){
@@ -10492,11 +10645,12 @@ function renderLevelTable(level){
       // IOグループヘッダー行
       const ioHasMismatch = ioItems.some(it => it.ownStatus === 'mismatch');
       const ioHasWarning = ioItems.some(it => it.ownStatus === 'warning');
+      const ioUnsupportedCount = ioItems.filter(it => it.unsupported).length;
       const ioMatchCount = ioItems.filter(it => it.ownStatus === 'ok').length;
       const ioMismatchCount = ioItems.filter(it => it.ownStatus === 'mismatch').length;
       const ioWarningCount = ioItems.filter(it => it.ownStatus === 'warning').length;
-      const groupBg=ioHasMismatch?'#4a1a1a':ioHasWarning?'#4a351a':'#1a3a1a';
-      const groupColor=ioHasMismatch?'#e74c3c':ioHasWarning?'#f39c12':'#27ae60';
+      const groupBg=ioHasMismatch?'#4a1a1a':ioHasWarning?'#4a351a':ioUnsupportedCount?'#5a4a20':'#1a3a1a';
+      const groupColor=ioHasMismatch?'#e74c3c':ioHasWarning?'#f39c12':ioUnsupportedCount?'#f1c40f':'#27ae60';
 
       html += `<tr data-io-header="1">
         <td colspan="${cols.length + 3}" style="background:${groupBg};
@@ -10504,7 +10658,7 @@ function renderLevelTable(level){
           color:white;font-weight:bold;font-size:0.82rem;padding:8px 12px;">
           🗂️ IO：${esc(ioName)}
           <span style="background:${groupColor};border-radius:10px;padding:2px 8px;font-size:0.72rem;margin-left:8px;">
-            LI ${ioItems.length}件 | ✅${ioMatchCount} | ❌${ioMismatchCount} | ⚠${ioWarningCount}
+            LI ${ioItems.length}件${ioUnsupportedCount?` | 対象外:${ioUnsupportedCount}`:''} | ✅${ioMatchCount} | ❌${ioMismatchCount} | ⚠${ioWarningCount}
           </span>
         </td>
       </tr>`;
@@ -10547,6 +10701,11 @@ function formatIssueItemLabel(it){
 }
 
 function _buildRowHtml(item, idx, level, cols, statusIcon, statusText){
+  if(item.unsupported){
+    return `<tr class="row-unsupported">
+      <td colspan="${cols.length + 3}" style="color:#8a6d1d;text-align:center;font-size:0.72rem;background:#fff8e1;padding:10px;">⚠️ ${esc(YOUTUBE_AD_SEQUENCE_UNSUPPORTED_NOTICE)}</td>
+    </tr>`;
+  }
   if(!item.found && !item.fromSdf){
     return `<tr class="row-notfound">
       <td class="col-no">${idx+1}</td>
@@ -10673,9 +10832,7 @@ function renderStats(executionCase){
   const bar=document.getElementById('stats-bar');
   if(!allComparisonData){bar.classList.remove('show');return;}
   bar.classList.add('show');
-  const stats={ok:0,mismatch:0,warning:0,notfound:0};
-  function countStatus(node){const ownStatus=getNodeOwnStatus(node);stats[ownStatus]=(stats[ownStatus]||0)+1;node.children.forEach(countStatus);}
-  treeRoots.forEach(countStatus);
+  const stats=getComparisonStatusCounts();
   const caseLabel=getSelectedDv360CaseLabel();
   bar.innerHTML=`
     <span style="font-weight:bold;">📊 ${mediaType.toUpperCase()}</span>
