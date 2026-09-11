@@ -1479,14 +1479,22 @@ function _segmentNameFuzzyEquals(a, b){
     if(!ta || !tb) return false;
     return ta === tb;
 }
+// Segment比較専用：AmazonのDemographic > Gender階層だけを共通名へ正規化する。
+// 全体のAudience正規化や、他カテゴリの短い末尾トークンには適用しない。
+function _normalizeSegmentComparableName(value){
+    const normalized = _normalizeAudienceName(String(value || ''));
+    const genderPrefix = /^demographic\s*>\s*gender\s*>\s*(.+)$/i;
+    const match = normalized.match(genderPrefix);
+    return match ? match[1].trim() : normalized;
+}
 // ===== セグメント名の統一等価判定（双向比較で双方共通に使う） =====
 // 設定表側とダウンロード側のどちらに適用しても同じ結果になるよう、
 // 既存の _normalizeAudienceName（Demo/Demographic 前缀、末尾数字ID除去）と
 // _segmentNameFuzzyEquals（AudienceOne/Audience One、Intimate Merger 等の表記揺れ）を
 // 両側対称に組み合わせる。
 function _segmentNamesEquivalent(settingName, downloadName){
-    const normS = _normalizeAudienceName(settingName  || '').toLowerCase();
-    const normD = _normalizeAudienceName(downloadName || '').toLowerCase();
+    const normS = _normalizeSegmentComparableName(settingName  || '').toLowerCase();
+    const normD = _normalizeSegmentComparableName(downloadName || '').toLowerCase();
     if(!normS || !normD) return false;
     if(normS === normD) return true;
     // 階層区切り > の最終部分（"Demographic > Age > X" → "X"）も比較に使う
@@ -2185,6 +2193,34 @@ function _normalizeSheetName(name) {
 }
 
 function _findSegmentForLI(audienceVal, segMap, liName) {
+    // ── 明示的なSheet参照（例：「セグメントシート1」で指定） ──
+    // 外側の引用符と明示的な指示語だけを除去し、Sheet名とは完全一致で解決する。
+    const normalizedAudience = _normalizeSheetName(audienceVal);
+    const explicitRefMatch = normalizedAudience.match(
+        /^(?:「([^」]*)」|『([^』]*)』|"([^"]*)"|“([^”]*)”)(?:\s*で指定)?$/
+    );
+    const explicitCandidate = _normalizeSheetName(
+        explicitRefMatch
+            ? [explicitRefMatch[1], explicitRefMatch[2], explicitRefMatch[3], explicitRefMatch[4]]
+                .find(value => value !== undefined) || ''
+            : normalizedAudience
+    );
+    if (explicitCandidate) {
+        const exactMatches = Object.entries(segMap).filter(([sheetName]) =>
+            _normalizeSheetName(sheetName) === explicitCandidate
+        );
+        if (exactMatches.length === 1) {
+            const [sheetName, data] = exactMatches[0];
+            data.__sheetName__ = sheetName;
+            return data;
+        }
+        if (exactMatches.length > 1) {
+            console.warn('[SegmentSheet] 明示参照が曖昧:', audienceVal,
+                '候補:', exactMatches.map(([sheetName]) => sheetName));
+            return { groups: [], groupOps: [], __directRef__: true, __ambiguous__: true };
+        }
+    }
+
     if (!audienceVal || !audienceVal.includes('セグメントシート')) {
         // ── 直接Sheet名参照モード ──
         // audienceVal = "セグメント①" なら segMap["セグメント①"] を検索
@@ -2196,6 +2232,7 @@ function _findSegmentForLI(audienceVal, segMap, liName) {
             const normSheet = _normalizeSheetName(sheetName);
             if (normSheet === normAud) {
                 // 完全一致
+                data.__sheetName__ = sheetName;
                 if (data.groups.length > 0) return data;
                 // 解析結果が空でも直参照と分かる場合はマーカーを返す
                 return { groups: [], groupOps: [], __directRef__: true, __sheetName__: sheetName };
@@ -2572,20 +2609,6 @@ function _readSegmentSheetOldFMT(rows){
     // データ行（行3以降）でInclude/Excludeが入っている列 = TYPE_COL
     // その右隣の列 = SEG_COL
 
-    // まずグループ間演算子を行0～2から探す
-    for(let ri = 0; ri <= 2; ri++){
-        const r = rows[ri] || [];
-        r.forEach(v => {
-            const s = String(v || '').trim();
-            if(result.groupOps.length >= 2) return;
-            if(s.includes('および') || s.toLowerCase() === 'and'){
-                result.groupOps.push('and');
-            } else if(s.includes('または') || s.toLowerCase() === 'or'){
-                result.groupOps.push('or');
-            }
-        });
-    }
-
     // ===== データ行から列インデックスを動的検出 =====
     // 行3（index=3）を見て、Include/Excludeが入っている列を探す
     const SKIP_LABELS = [
@@ -2625,6 +2648,21 @@ function _readSegmentSheetOldFMT(rows){
     if(dataStartRow === -1 || typeCols.length === 0){
         console.log('★旧FMT: 列構造検出失敗');
         return result;
+    }
+
+    // グループ間演算子をデータ開始行まで探す。
+    // JKA Ver1-5では「および(and)」が表頭行（dataStartRow）にあるため、
+    // 固定の行0～2だけでは取得できない。内側演算子の重複も除去する。
+    for(let ri = 0; ri <= dataStartRow; ri++){
+        const r = rows[ri] || [];
+        r.forEach(v => {
+            const s = String(v || '').trim();
+            if(s.includes('および') || s.toLowerCase() === 'and'){
+                if(!result.groupOps.includes('and')) result.groupOps.push('and');
+            } else if(s.includes('または') || s.toLowerCase() === 'or'){
+                if(!result.groupOps.includes('or')) result.groupOps.push('or');
+            }
+        });
     }
 
     // ===== グループごとにセグメント収集 =====
@@ -3595,10 +3633,8 @@ const DL_COLUMNS_VIDEO = [
     { key:'3P fees',                   ja:'3Pフィー',            checkFn:null, autoHide:true },
     { key:'Base supply bid*',          ja:'ベースCPM',
       checkFn:(s,v) => {
-        // ★ PVA PG案件：ベースCPMはDealレベルで管理されるため比較対象外
-        if(s.__SYSTEM__ === 'amazon_pva' &&
-           String(s.deal_type || '').trim().toLowerCase() === 'programmatic guaranteed'){
-            s.__pg_skip__ = 'PGのため比較対象外';
+        // ★ PVAではBase CPMをQC対象外（PG／非PG共通）
+        if(s.__SYSTEM__ === 'amazon_pva'){
             return null;
         }
         return normNum(s.base_cpm) === normNum(v);
@@ -3799,10 +3835,14 @@ function matchAndCompareVideo(settingData, downloadMap, system){
         catch(e){ result = null; }
     }
     return { key:col.key, ja:col.ja, sVal, dVal, result,
-        skipReason: sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key)
-            ? sRow.__pg_skip__ : '',
+        skipReason: (system === 'amazon_pva' && col.key === 'Base supply bid*')
+            ? 'PVAではBase CPMをQC対象外'
+            : sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key)
+                ? sRow.__pg_skip__ : '',
         // ★ 字段状態の明示（match/mismatch/review/skip）
-        status: (sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key))
+        status: (system === 'amazon_pva' && col.key === 'Base supply bid*')
+            ? 'skip'
+            : (sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key))
             ? 'skip'
             : result === true ? 'match'
             : result === false ? 'mismatch'
@@ -7011,9 +7051,11 @@ function renderScResult(executionCase){
     const LI_NAME_SKIP=new Set(['Line name*']);
     const activeCols = (scResults && (scResults.system === 'amazon_pva' || scResults.system === 'amazon_ott'))
     ? DL_COLUMNS_VIDEO : DL_COLUMNS;
+const isPvaBaseCpmColumn = col => system === 'amazon_pva' && col.key === 'Base supply bid*';
 const visibleCols = activeCols.filter(col=>{
         if(ALWAYS_HIDDEN.has(col.key)) return false;
         if(LI_NAME_SKIP.has(col.key)) return false;
+        if(isPvaBaseCpmColumn(col)) return false;
         return true;
     });
     function colHideStyle(col){ return isColumnInitiallyVisible(col)?'':'display:none;'; }
@@ -7108,7 +7150,7 @@ const visibleCols = activeCols.filter(col=>{
         <div id="sc-col-panel-body"
              style="padding:6px 16px 10px;display:flex;align-items:flex-start;
                     gap:6px;flex-wrap:wrap;border-top:1px dashed #dce3ea;">
-            ${activeCols.filter(c=>!ALWAYS_HIDDEN.has(c.key)&&!LI_NAME_SKIP.has(c.key)).map(col=>`
+            ${activeCols.filter(c=>!ALWAYS_HIDDEN.has(c.key)&&!LI_NAME_SKIP.has(c.key)&&!isPvaBaseCpmColumn(c)).map(col=>`
             <label style="display:flex;align-items:center;gap:4px;background:white;
                            border:1px solid #ccc;border-radius:4px;padding:3px 8px;
                            cursor:pointer;font-size:0.76rem;color:#555;user-select:none;"
