@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BPO定例会 · 馬 林 · 业务改善报告</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
 /* ==========================================
    ROOT & RESET
@@ -789,6 +787,8 @@ body {
 ========================================== */
 .gap20 { margin-bottom: 20px; }
 .gap32 { margin-bottom: 32px; }
+
+.report-copy{font-size:13px;line-height:1.85;margin-top:12px}.report-note{font-size:12px;color:#64748b;line-height:1.8;margin:14px 0}.report-table{width:100%;border-collapse:collapse;font-size:12.5px;line-height:1.6}.report-table th,.report-table td{padding:12px 10px;text-align:left;border-bottom:1px solid #e2e8f0;vertical-align:top}.report-table th{background:#e8f0fe;color:#1a56db}.table-scroll{overflow:auto;margin-top:16px}.report-table td:first-child{white-space:nowrap}.report-metric{font-size:36px;color:#1a56db;font-weight:750;margin:18px 0}.report-summary{padding:20px;border-radius:18px;background:#e8f0fe;line-height:1.85;font-size:14px;margin-bottom:24px}.report-ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.report-ach-grid .card{padding:24px}.report-ach-grid .badge{display:inline-block;margin-bottom:12px}.mini-bar{height:12px;border-radius:8px;background:#e2e8f0;margin:10px 0 16px}.mini-bar span{display:block;height:100%;background:#1a56db;border-radius:8px}@media(max-width:720px){.report-ach-grid,.plan-grid{grid-template-columns:1fr}.hero{padding:12px 16px}.hero h1{font-size:16px;white-space:normal}.hero-meta-row{font-size:10px}.page{padding-top:145px}.container{padding:24px 16px}.report-table{min-width:570px}.ach-header h2{font-size:24px}}
 </style>
 </head>
 <body>
@@ -843,7 +843,7 @@ body {
         <h1>【1课】BPO定例会 · 馬 林 · <span class="today-date"></span></h1>
         <div class="hero-meta">
           <div class="hero-meta-row">报告周期：2025.12 — <span class="current-year-month"></span> | 内容更新截至：<span class="report-updated-at"></span> | 汇报人：馬 林 | 职务：チームリーダー</div>
-          <div class="hero-meta-row hero-meta-tools">AI工作站：ChatGPT · Codex · VS/CodeBuddy · Obsidian | 自动化：GAS · Python · HTML/JS</div>
+          <div class="hero-meta-row hero-meta-tools">AI辅助开发：ChatGPT · Codex · WorkBuddy | 自动化：GAS · Python · HTML/JS</div>
         </div>
       </div>
     </div>
@@ -886,24 +886,24 @@ body {
 
     <div class="two-col gap20">
       <div class="card">
-        <h3>目标达成状态分布</h3>
-        <p class="csub">各目标项年度完成情况</p>
-        <div class="chart-wrap sh"><canvas id="chartGoalStatus"></canvas></div>
+        <h3>年度目标跟踪</h3>
+        <p class="csub">已完成事项与持续跟踪事项分别管理</p>
+        <p class="report-copy">降本增效、资料知识库及资格证已有阶段成果。业务质量持续按实际记录跟踪，管理课程继续推进，日语考试尚未参加。</p>
       </div>
       <div class="card">
-        <h3>自动化工具目标 vs 实际完成</h3>
-        <p class="csub">个人降本增效工具完成数量对比</p>
-        <div class="chart-wrap sh"><canvas id="chartGoalTools"></canvas></div>
+        <h3>自动化／创新登记情况</h3>
+        <p class="csub">按优秀统计表中実現者＝馬 林筛选</p>
+        <div class="report-metric">14 <small style="font-size:14px">条成果记录</small></div><p class="report-note">8条已填写前后工时，6条尚未量化。记录包括独立工具与功能模块，不直接等同于年度独立工具数量。</p>
       </div>
     </div>
 
     <div class="goal-list gap32">
       <div class="goal-item">
-        <div><div class="gname">业务质量</div><div class="gtgt">目标：Miss件数 ≤ 0件</div></div>
-        <span class="badge b-done">已完成 ✓</span>
+        <div><div class="gname">业务质量</div><div class="gtgt">目标：Miss件数 ≤ 0件 · 按实际品质记录持续跟踪</div></div>
+        <span class="badge b-progress">持续跟踪</span>
       </div>
       <div class="goal-item">
-        <div><div class="gname">降本增效（含自动化工具）</div><div class="gtgt">目标：个人 ≥ 2个，已落地7大核心项目并持续扩展多个业务检查模块及质量管理能力</div></div>
+        <div><div class="gname">降本增效（含自动化工具）</div><div class="gtgt">目标：个人 ≥ 2个，已落地多项工具；优秀统计登记14条自动化／创新成果</div></div>
         <span class="badge b-done">超额完成 ✓</span>
       </div>
       <div class="goal-item">
@@ -929,8 +929,8 @@ body {
       <p class="csub" style="margin-bottom:20px;">年度各项可量化目标达成情况一览</p>
       <div class="prog-block">
         <div class="prog-label">
-          <span>降本增效工具（目标≥2个，已落地7大核心项目并持续扩展）</span>
-          <span style="color:#10b981;font-weight:700;">超额完成 300%</span>
+          <span>降本增效工具（目标≥2个，已完成并持续扩展）</span>
+          <span style="color:#10b981;font-weight:700;">已超额完成</span>
         </div>
         <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:100%;"></div></div>
       </div>
@@ -950,112 +950,28 @@ body {
       </div>
     </div>
   </div>
-  <div class="footer">長春恵海業務報告 · 馬 林 · 技术杠杆驱动降本增效</div>
+  <div class="footer">長春恵海業務報告 · 馬 林 · 业务自动化与品质改善</div>
 </div>
 
 <!-- ==========================================
      PAGE 2 · 效率指标
 ========================================== -->
-<div id="p2" class="page">
-  <div class="container">
-    <div class="sec-hd">
-      <div class="sec-divider"></div>
-      <h2>核心效率与质量指标一览</h2>
-      <p>Key Performance Indicators — 年度自动化落地量化成果（2025.12~2026.11）</p>
-    </div>
-
-    <div class="kpi-grid gap32">
-      <div class="kpi-card">
-        <div class="kpi-v">4系統</div>
-        <div class="kpi-l">自動転記・汇总自动化</div>
-        <div class="kpi-d">Xone · 邮件 · Teams · 2课TODO</div>
-      </div>
-      <div class="kpi-card ac">
-        <div class="kpi-v">~9.4h</div>
-        <div class="kpi-l">月度节约工时</div>
-        <div class="kpi-d">保守估算，释放核心人力</div>
-      </div>
-      <div class="kpi-card su">
-        <div class="kpi-v">10中心</div>
-        <div class="kpi-l">GAS合计表覆盖中心数</div>
-        <div class="kpi-d">＋第一WEB本部跨中心汇总</div>
-      </div>
-      <div class="kpi-card wa">
-        <div class="kpi-v">20min</div>
-        <div class="kpi-l">Xone邮件机器人日均节约</div>
-        <div class="kpi-d">每日人工巡查全部自动化</div>
-      </div>
-      <div class="kpi-card su">
-        <div class="kpi-v">100%</div>
-        <div class="kpi-l">QC工具本地化率</div>
-        <div class="kpi-d">数据零外传，完全离线</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-v">50%</div>
-        <div class="kpi-l">聖教Report工时节约率</div>
-        <div class="kpi-d">48min/月 → 24min/月</div>
-      </div>
-      <div class="kpi-card ac breathe">
-        <div class="kpi-v">0风险</div>
-        <div class="kpi-l">信息安全违规事故</div>
-        <div class="kpi-d">ISMS合规，全程本地化</div>
-      </div>
-      <div class="kpi-card pu">
-        <div class="kpi-v">5平台</div>
-        <div class="kpi-l">信息自动采集覆盖</div>
-        <div class="kpi-d">Xone · Outlook · OneDrive · Teams · SharePoint</div>
-      </div>
-      <div class="kpi-card su">
-        <div class="kpi-v">100%</div>
-        <div class="kpi-l">自動転記RPA案件节约率</div>
-        <div class="kpi-d">6月实绩：1550件（自动化前）→ 0件（人工转记）</div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:20px;border-left:4px solid var(--purple);">
-      <h3 style="font-size:14px;color:var(--purple);">📊 QC门户质量KPI统计机制</h3>
-      <p style="font-size:12.5px;color:var(--sub);line-height:1.8;margin-top:6px;">
-        QC门户质量KPI统计机制已上线，支持按人员、课室、工具、日期等维度统计使用日志。
-        由于历史部分期间存在登录机制切换导致的日志缺失，本次不使用不完整数据计算7月实绩；
-        新机制下的数据完整性仍在持续确认中。预计 8 月份完成登录机制切换后的数据平滑迁移与完整性对齐。
-      </p>
-    </div>
-
-    <div class="two-col gap20">
-      <div class="card">
-        <h3>各业务月度工时对比（分钟）</h3>
-        <p class="csub">自动化前 vs 自动化后</p>
-        <div class="chart-wrap"><canvas id="chartHours"></canvas></div>
-      </div>
-      <div class="card">
-        <h3>工时节约率 · 各工具横向对比</h3>
-        <p class="csub">以百分比量化效率提升贡献</p>
-        <div class="chart-wrap"><canvas id="chartRate"></canvas></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>月度累计节约工时趋势（分钟）</h3>
-      <p class="csub">3套工具自2026年5月落地后趋势。5月、6月为落地后实绩基础；7月以后为预测趋势（含保守/基准/乐观三种情景）</p>
-      <div class="chart-wrap"><canvas id="chartTrend"></canvas></div>
-    </div>
-  </div>
-  <div class="footer">長春恵海業務報告 · 馬 林 · 技术杠杆驱动降本增效</div>
-</div>
+<div id="p2" class="page"><div class="container"><div class="sec-hd"><div class="sec-divider"></div><h2>效能提升与优秀成果汇总</h2><p>数据核对截至2026.09.15 · 个人贡献范围：実現者＝馬 林</p></div><div class="kpi-grid"><div class="kpi-card"><div class="kpi-v">39.98h</div><div class="kpi-l">表内月间节省工时合计</div><div class="kpi-d">8条已量化记录，非9月半月实绩</div></div><div class="kpi-card"><div class="kpi-v">49.1%</div><div class="kpi-l">已量化环节工时降幅</div><div class="kpi-d">按变更前后合计计算</div></div><div class="kpi-card"><div class="kpi-v">14条</div><div class="kpi-l">自动化／创新记录</div><div class="kpi-d">実現者：馬 林</div></div><div class="kpi-card"><div class="kpi-v">8／6</div><div class="kpi-l">已量化／未量化记录</div><div class="kpi-d">空白工时不按零收益计算</div></div></div><div class="card"><h3>已登记月间工时改善</h3><p class="report-copy">变更前4,889分钟 → 变更后2,490.5分钟，差额2,398.5分钟。仅汇总自动化环节，保留工具使用后的人工操作与确认时间。</p><div class="table-scroll"><table class="report-table"><thead><tr><th>NO.</th><th>项目</th><th>变更前<br>分钟／月</th><th>变更后<br>分钟／月</th><th>节省<br>小时／月</th></tr></thead><tbody><tr><td>2</td><td>工数自动拆分工具</td><td>100</td><td>2</td><td>1.63</td></tr><tr><td>4</td><td>案件依赖情报自动提取转记</td><td>1790</td><td>750</td><td>17.33</td></tr><tr><td>5</td><td>読売入稿物チェックツール</td><td>828</td><td>658</td><td>2.83</td></tr><tr><td>12</td><td>Amazon DSP設定自動対比ツール</td><td>1166</td><td>583</td><td>9.72</td></tr><tr><td>25</td><td>原稿配列ジェネレーター</td><td>30</td><td>10</td><td>0.33</td></tr><tr><td>26</td><td>（純広告版）レポート作成ツール</td><td>50</td><td>25</td><td>0.42</td></tr><tr><td>27</td><td>DV360設定自動対比ツール</td><td>764</td><td>382</td><td>6.37</td></tr><tr><td>45</td><td>Backlog内容自动转换成Outlook草稿</td><td>161</td><td>80.5</td><td>1.34</td></tr><tr><td>合计</td><td>8条已量化记录</td><td>4889</td><td>2490.5</td><td>39.98</td></tr></tbody></table></div><p class="report-note">来源：<a href="https://docs.google.com/spreadsheets/d/1Myi9PQ9ODPcuvB1nk0nFKppJQMV7yIrMbHvmO8X2dIo/edit?usp=drivesdk" target="_blank" rel="noopener">優秀統計表</a>「优秀表现（自動化・创新）」N、O列；计算方法：（N−O）÷60。此值为表内月间口径汇总，各项基准月份及业务量尚未统一，不代表9月实际累计节省，也不作年度外推。先汇总分钟再换算，分项四舍五入可能产生尾差。</p></div><div class="two-col" style="margin-top:20px"><div class="card"><h3>品质成果与待量化项目</h3><p class="report-copy">NO.8 惠海QCポータル＋共通ツール群構築、NO.23 Excel文件軽量化ツール、NO.29 Teams案件依赖情报自动提取转记、NO.44 Outlook送信チェック、NO.46 Backlog通知Windows显示、NO.47 TVer設定自動対比ツール。这些记录继续保留在成果中，未填写前后工时的项目暂不计入39.98小时。</p></div><div class="card"><h3>Excel轻量化测试成果</h3><p class="report-copy">优秀统计NO.23新增测试记录：约197MB、40个Sheet的文件，检测由299秒以上未完成改善为约37秒；输出约75MB，容量降低约62%。这是单个样本结果，暂不折算月间节省工时。</p></div></div><div class="card" style="margin-top:20px"><h3>登记状态与品质统计口径</h3><p class="report-copy">14条记录是个人自动化／创新登记数，不代表14项均获领导审批，也不包含其他优秀日报、表彰或感谢的合并计数。前8项已有审核结果，后续记录不擅自补充审批结论。</p><p class="report-copy">TVer按本人本次确认列为已完成；优秀统计NO.47仍显示「テスト中」，来源表待同步。工数自动拆分按N、O计算为98分钟／月，不把M列的其他说明重复相加。使用日志可反映采用情况；Miss改善需结合业务件数、期间及错误记录另行核算。</p></div></div><div class="footer">長春恵海業務報告 · 馬 林 · 效能与品质改善</div></div>
 
 <!-- ==========================================
      PAGE 3 · 核心成果（按月份归档）
 ========================================== -->
 <div id="p3" class="page dark-page">
   <div class="container">
-    <div class="ach-nav">
-      <button class="ach-nav-btn active" onclick="showAch('a1',this)"><span class="ach-dot"></span> 2026年5月</button>
+    <div class="ach-nav"><button class="ach-nav-btn active" onclick="showAch('a5',this)"><span class="ach-dot"></span> 2026年9月上半月</button>
+      <button class="ach-nav-btn" onclick="showAch('a1',this)"><span class="ach-dot"></span> 2026年5月</button>
       <button class="ach-nav-btn" onclick="showAch('a2',this)"><span class="ach-dot"></span> 2026年6月</button>
       <button class="ach-nav-btn" onclick="showAch('a3',this)"><span class="ach-dot"></span> 2026年7月</button>
-      <button class="ach-nav-btn" onclick="showAch('a4',this)"><span class="ach-dot"></span> 2026年8月上半月</button>
+      <button class="ach-nav-btn" onclick="showAch('a4',this)"><span class="ach-dot"></span> 2026年8月</button>
     </div>
 
-    <div id="a1" class="ach-page active">
+    <div id="a5" class="ach-page active"><div class="ach-header"><div class="kicker">2026.09.01—09.15</div><h2>2026年9月上半月核心成果</h2><p>媒体校正、邮件辅助与自动转记取得阶段成果，继续推进工具统一与数据整合。</p></div><div class="report-ach-grid"><div class="card"><h3>01　TVer設定校正工具完成</h3><p class="report-copy"><span class="badge b-done">已完成</span><br>完成Campaign／Group／Creative各层级的设定比对、真实案件验证和入口整合。将设定差异集中展示，辅助2課担当定位需要确认的项目；节省工时继续统计。</p></div><div class="card"><h3>02　Outlook邮件校正工具完成</h3><p class="report-copy"><span class="badge b-done">已投入使用</span><br>发送前集中检查宛先、CC、件名及附件，提示需要确认的内容，减少漏填和错误发送风险。后续按现场反馈持续优化规则与操作体验。</p></div><div class="card"><h3>03　Backlog→Outlook草稿自动生成</h3><p class="report-copy"><span class="badge b-done">已投入使用</span><br>提取案件信息，按对应模板整理件名和正文，预览后生成Outlook草稿。减少重复复制与编辑；优秀统计登记月间节省80.5分钟。邮件仍由作业者确认后发送，CC异常时可手动粘贴。</p></div><div class="card"><h3>04　Backlog桌面通知与三线路监控</h3><p class="report-copy"><span class="badge b-done">已完成</span><br>支持三条Backlog线路同时监控，切换当前线路不影响其他线路通知。新通知通过桌面提醒展示，并提供案件打开和确认操作，减少反复查看页面。</p></div><div class="card"><h3>05　DV360／Amazon DSP校正工具完善</h3><p class="report-copy"><span class="badge b-done">本轮改善完成</span><br>DV360完成CSV读取、合并单元格及YouTube等设定规则修复；Amazon DSP／PVA完善受众Sheet读取和判定。以真实案件反馈补强工具，已登记月间节省分别为382分钟和583分钟，不重复计为本次新增收益。</p></div><div class="card"><h3>06　自动转记正式化与速度优化</h3><p class="report-copy"><span class="badge b-done">已验收</span><br>3課由测试转为正式运行，轮询间隔由60秒调整为30秒，并完善启动恢复、重试和日志。5課转记速度优化已正式运行并验证通过；继续观察真实案件运行稳定性。</p></div><div class="card"><h3>07　Excel轻量化性能改善</h3><p class="report-copy"><span class="badge b-done">样本验证完成</span><br>约197MB、40个Sheet的测试文件，检测约37秒完成，输出约75MB，容量降低约62%。改善大型文件的处理体验，后续继续覆盖不同文件结构。</p></div></div></div>
+<div id="a1" class="ach-page">
       <div class="ach-header">
         <div class="kicker purple">2026.05 · DEPLOYED</div>
         <div class="sec-divider"></div>
@@ -1087,7 +1003,7 @@ body {
         <div class="kicker">2026.06 · DEPLOYED</div>
         <div class="sec-divider"></div>
         <h2>Amazon DSP设定自动对比工具正式落地</h2>
-        <p>现有资料可确认6月15日正式落地；因缺少完整6月逐日日报，本页统一按“2026年6月”归档</p>
+        <p>6月完成Amazon DSP／PVA设定自动对比工具落地，支援现场校正作业。</p>
       </div>
       <div class="ach-main gap20">
         <div class="ach-left"><div class="dark-grid"></div>
@@ -1098,12 +1014,12 @@ body {
         </div>
         <div class="ach-right">
           <div class="dc"><div class="dc-label">适用媒体</div><div class="dc-val sm">Amazon DSP<br>Amazon PVA</div></div>
-          <div class="dc"><div class="dc-label">异常确认</div><div class="dc-val">&lt; 5 min</div><div class="dc-sub">聚焦差异项目</div></div>
+          <div class="dc"><div class="dc-label">异常确认</div><div class="dc-val sm">差异集中展示</div><div class="dc-sub">聚焦差异项目</div></div>
           <div class="dc"><div class="dc-label">目标</div><div class="dc-val sm">减少人为遗漏</div></div>
           <div class="dc"><div class="dc-label">阶段</div><div class="dc-val sm">辅助校正</div><div class="dc-sub">持续吸收现场反馈</div></div>
         </div>
       </div>
-      <div class="phase-row"><div class="phase-card ph-active"><div class="phase-tag">6月成果</div><div class="phase-title">从人工逐项确认转为系统差异提示</div><div class="phase-desc">建立后台数据与设定表的结构化对比基础，为7月持续追加案件规则、CR检查及PVA修复提供统一架构。</div></div><div class="phase-card"><div class="phase-tag">资料边界</div><div class="phase-title">暂不强行拆分上下半月</div><div class="phase-desc">目前可确认的明确日期为6月15日。未取得完整6月逐日日报，因此保留为“2026年6月”统一成果，避免推测。</div></div></div>
+      <div class="phase-row"><div class="phase-card ph-active"><div class="phase-tag">6月成果</div><div class="phase-title">从人工逐项确认转为系统差异提示</div><div class="phase-desc">建立后台数据与设定表的结构化对比基础，为7月持续追加案件规则、CR检查及PVA修复提供统一架构。</div></div><div class="phase-card"><div class="phase-tag">运用方式</div><div class="phase-title">工具辅助与人工确认结合</div><div class="phase-desc">由系统先展示差异，担当结合案件指示确认异常及工具覆盖范围外的项目。</div></div></div>
     </div>
 
     <div id="a3" class="ach-page">
@@ -1234,9 +1150,9 @@ body {
 
     <div id="a4" class="ach-page">
       <div class="ach-header">
-        <div class="kicker green">2026.08.01—08.17 · FIRST HALF</div>
+        <div class="kicker green">2026.08 · MONTHLY</div>
         <div class="sec-divider"></div>
-        <h2>2026年8月上半月核心成果</h2>
+        <h2>2026年8月核心成果</h2>
         <p>围绕设定校正、自动转记稳定化和业务报表工具持续推进，重点项目进入实用化阶段。</p>
       </div>
       <div class="month-modules">
@@ -1250,7 +1166,7 @@ body {
         <div class="module-body">
           <div class="ach-main gap20">
             <div class="ach-left"><div class="dark-grid"></div>
-              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">持续开发</span><span class="status-date">截至2026.08.17</span></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">持续开发</span><span class="status-date">2026.08 · 阶段进展</span></div>
               <p class="ach-desc" style="position:relative;z-index:1;">YouTube／TrueView 完成回归，OTT 完成 CP／IO／LI 主要规则及整体流程贯通，Display 类型完成主要结构开发并进入正式案件测试。</p>
               <p class="ach-desc" style="position:relative;z-index:1;">持续根据现场反馈修正时间带、地域、名称匹配、默认值及各层级业务规则，逐步扩大可用范围。</p>
             </div>
@@ -1273,7 +1189,7 @@ body {
         <div class="module-body">
           <div class="ach-main gap20">
             <div class="ach-left"><div class="dark-grid"></div>
-              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">已上线 · 持续优化</span><span class="status-date">2026.08上半月</span></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">已上线 · 持续优化</span><span class="status-date">2026.08</span></div>
               <p class="ach-desc" style="position:relative;z-index:1;">根据现场案件继续修正 Audience、Frequency、Daypart 等判定逻辑；CR 下载恢复后，完成 Creative 日期继承问题修复并追加专项测试。</p>
               <p class="ach-desc" style="position:relative;z-index:1;">工具保持正式使用状态，通过实际反馈持续提高判定准确性和稳定性。</p>
             </div>
@@ -1296,7 +1212,7 @@ body {
         <div class="module-body">
           <div class="ach-main gap20">
             <div class="ach-left"><div class="dark-grid"></div>
-              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">上线运行</span><span class="status-date">2026.08上半月</span></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">上线运行</span><span class="status-date">2026.08</span></div>
               <p class="ach-desc" style="position:relative;z-index:1;">在远程无人值守环境中持续运行，并集中修正代理店、广告主、诉求商材、営業担当等字段提取，以及新规／既存案件判定逻辑。</p>
               <p class="ach-desc" style="position:relative;z-index:1;">通过真实邮件和运行日志反复验证，主要问题已解决，后续继续观察稳定性。</p>
             </div>
@@ -1319,7 +1235,7 @@ body {
         <div class="module-body">
           <div class="ach-main gap20">
             <div class="ach-left"><div class="dark-grid"></div>
-              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">阶段完成</span><span class="status-date">2026.08上半月</span></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">阶段完成</span><span class="status-date">2026.08</span></div>
               <p class="ach-desc" style="position:relative;z-index:1;">完成 1课純広告报表宏的格式、日期、文件名、分页及多创意动态扩展，已交付负责人使用；同时完成董馨宁报表工具宏修改及最终验收。</p>
               <p class="ach-desc" style="position:relative;z-index:1;">Excel 对比工具继续优化公式／格式差异判定，清洗工具补充 .xlsm 支持及空白格式行误判修复。</p>
             </div>
@@ -1342,7 +1258,7 @@ body {
         <div class="module-body">
           <div class="ach-main gap20">
             <div class="ach-left"><div class="dark-grid"></div>
-              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">工具完成 · 效果验证中</span><span class="status-date">2026.08上半月</span></div>
+              <div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">工具完成 · 效果验证中</span><span class="status-date">2026.08</span></div>
               <p class="ach-desc" style="position:relative;z-index:1;">完成设定表与 Meta 管理画面复制文本的离线校正工具，支持纯文本一致、表记ゆれ一致及辞書一致等分层匹配。</p>
               <p class="ach-desc" style="position:relative;z-index:1;">受 Meta 官方可取得数据范围限制，目前自动校正效果仍需通过现场积累各广告主数据、自建汇总字典的方式继续验证。</p>
             </div>
@@ -1358,62 +1274,13 @@ body {
       </div>
     </div>
   </div>
-  <div class="dark-footer">長春恵海業務報告 · 馬 林 · 技术杠杆驱动降本增效</div>
+  <div class="dark-footer">長春恵海業務報告 · 馬 林 · 业务自动化与品质改善</div>
 </div>
 
 <!-- ==========================================
      PAGE 4 · 工作计划
 ========================================== -->
-<div id="p4" class="page">
-  <div class="container">
-    <div class="sec-hd"><div class="sec-divider"></div><h2>工作计划</h2><p>2026年8月下半月 · 未完成项目推进与正式运用稳定化</p></div>
-
-    <div class="plan-grid">
-      <div class="plan-card theme-red" data-type="大型项目">
-        <div class="plan-top"><div class="plan-pri">PRIORITY 01</div><div class="plan-badge">开发推进</div></div>
-        <div class="plan-title">2課 TVer設定校正工具</div>
-        <div class="plan-owner"><span class="plan-avatar">刘</span>刘丽伟</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>完成剩余比较逻辑、真实案件回归及上线准备</div>
-      </div>
-
-      <div class="plan-card theme-purple" data-type="稳定化">
-        <div class="plan-top"><div class="plan-pri">PRIORITY 02</div><div class="plan-badge">现场反馈</div></div>
-        <div class="plan-title">DV360設定チェック稳定化</div>
-        <div class="plan-owner"><span class="plan-avatar">冯</span>冯翠梅／张宇驰</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>对应 Display／OTT／YouTube 新反馈并完成回归测试</div>
-      </div>
-
-      <div class="plan-card theme-orange" data-type="大型项目">
-        <div class="plan-top"><div class="plan-pri">PRIORITY 03</div><div class="plan-badge">自动化</div></div>
-        <div class="plan-title">件数表自动化填写开发</div>
-        <div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>继续完善取数、业务映射、写入及月度运用验证</div>
-      </div>
-
-      <div class="plan-card theme-green" data-type="长期项目">
-        <div class="plan-top"><div class="plan-pri">PRIORITY 04</div><div class="plan-badge">流程自动化</div></div>
-        <div class="plan-title">TL业务全流程自动化</div>
-        <div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>在 Step1 已完成基础上继续推进后续业务流程</div>
-      </div>
-
-      <div class="plan-card theme-sky" data-type="稳定运行">
-        <div class="plan-top"><div class="plan-pri">PRIORITY 05</div><div class="plan-badge">持续跟进</div></div>
-        <div class="plan-title">2課邮件自动转记稳定性跟进</div>
-        <div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>持续观察正式运行，针对新邮件样式与异常案件补强判定</div>
-      </div>
-
-      <div class="plan-card theme-gray" data-type="效果验证">
-        <div class="plan-top"><div class="plan-pri">PRIORITY 06</div><div class="plan-badge">现场验证</div></div>
-        <div class="plan-title">5課 Metaターゲティング校正工具效果验证</div>
-        <div class="plan-owner"><span class="plan-avatar">顾</span>顾麒麒（5課）</div>
-        <div class="plan-period"><svg class="mat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>结合现场复制数据验证自建字典与匹配效果</div>
-      </div>
-    </div>
-  </div>
-  <div class="footer">長春恵海業務報告 · 馬 林 · 技术杠杆驱动降本增效</div>
-</div>
+<div id="p4" class="page"><div class="container"><div class="sec-hd"><div class="sec-divider"></div><h2>工作计划</h2><p>优先推进TL报告宏与1課综合业务管理工作台试行</p></div><div class="plan-grid"><div class="plan-card theme-red"><div class="plan-top"><div class="plan-pri">PRIORITY 01</div><div class="plan-badge">开发推进</div></div><div class="plan-title">TL Report宏开发与完善</div><div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div><div class="report-copy">继续完善RAW整理、FMT自动填充及报告生成，结合真实案件完成数值、格式和异常处理验收。</div></div><div class="plan-card theme-blue"><div class="plan-top"><div class="plan-pri">PRIORITY 02</div><div class="plan-badge">重点工程</div></div><div class="plan-title">综合业务管理工作台试行（1課先行）</div><div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div><div class="report-copy">以1課TODO表为试点，通过HTML统一业务入口，逐步关联合集表格、部门数据一览及优秀统计；实现数据自动汇总、岗位权限和自定义展示。</div></div><div class="plan-card theme-purple"><div class="plan-top"><div class="plan-pri">PRIORITY 03</div><div class="plan-badge">工作台数据基础</div></div><div class="plan-title">件数表自动化</div><div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div><div class="report-copy">继续推进TODO件数与时间自动填写，以及月初提交前的隐藏、非表示和零件数检查；作为综合工作台的数据基础，避免重复录入。</div></div><div class="plan-card theme-green"><div class="plan-top"><div class="plan-pri">PRIORITY 04</div><div class="plan-badge">流程连携</div></div><div class="plan-title">設定流程HTML化与設定校正连携</div><div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div><div class="report-copy">统一流程与资料入口，探索与校正工具关联；纳入工作台整体规划，逐步形成业务流程、规则与工具的一体化入口。</div></div><div class="plan-card theme-sky"><div class="plan-top"><div class="plan-pri">PRIORITY 05</div><div class="plan-badge">持续改善</div></div><div class="plan-title">现场问题对应与工具升级</div><div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div><div class="report-copy">持续对应邮件校正、Backlog及媒体校正工具的现场反馈，完善规则、操作体验与回归验证。</div></div><div class="plan-card theme-purple"><div class="plan-top"><div class="plan-pri">PRIORITY 06</div><div class="plan-badge">效果验证</div></div><div class="plan-title">設定校正工具使用数据分析</div><div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div><div class="report-copy">结合使用日志、案件件数、工时及Miss记录分析采用情况和品质改善；先统一口径，再形成按权限展示的管理指标。</div></div></div><div class="card" style="margin-top:24px"><h3>综合业务管理工作台：统一工具、数据与管理流程</h3><p class="report-copy"><a href="workbench_concept.html" target="_blank" rel="noopener">在独立窗口查看工作台构想与岗位界面示意 →</a></p><p class="report-copy">以HTML作为统一操作与展示入口，将分散表格中的关联数据逐步汇总到Google Sheets或数据库。目标覆盖每日工作记录、月底汇总、业务负责人、培训与掌握情况、效能成果，以及诉求提出和处理进度。</p><div class="table-scroll"><table class="report-table"><thead><tr><th>现有来源</th><th>已确认的数据范围</th><th>计划关联方式</th></tr></thead><tbody><tr><td>1課_全業務TODO_2026</td><td>案件、件数、工时、练习、培训计划、效能、日次稼动</td><td>先梳理1課日常记录，关联人员、业务、日期与任务</td></tr><tr><td>合集表格_2026年度</td><td>本部／中心／课室、业务CODE、收益区分、件数与工数</td><td>形成月度及多维度汇总</td></tr><tr><td>部门数据一览「2025年02利用開始」</td><td>业务管理、负责人、培训、独立习得、工作任务、Miss</td><td>建立人员与业务能力、任务及品质关联</td></tr><tr><td>優秀統計表</td><td>改善提案、自动化成果、前后工时、审批与反馈</td><td>统一改善成果登记、进度及效能统计</td></tr></tbody></table></div><p class="report-copy"><strong>权限与个性化：</strong>按岗位及职责限定可查看的数据范围；在权限内自定义显示项目与排列。权限控制应由数据访问层执行，不仅隐藏页面卡片。</p><p class="report-copy"><strong>推进顺序：</strong>①统一人员、业务、日期等关联口径，确认数据来源与维护责任；②先接入1課TODO及件数、工时汇总；③扩展培训、业务掌握、部门与月度分析；④整合优秀成果、诉求、负责人、纳期、进度与验收记录。</p><p class="report-note">这是后续建设计划，本次仅更新报告书，尚未实施数据同步或权限系统。每天各时间点的活动记录需先确认现有开始／结束时间字段；只有总工时的数据不能还原完整时间线。Google Sheets与数据库的选型在试点数据量、更新频率和权限要求明确后确定。</p></div></div><div class="footer">長春恵海業務報告 · 馬 林 · 统一工具与数据管理</div></div>
 
 <!-- ==========================================
      PAGE 5 · 月AI定例报告
@@ -1426,23 +1293,47 @@ body {
       <p>按月份归档已完成的AI辅助开发、自动化与品质改善成果 | 更新截至：<span class="report-updated-at"></span></p>
     </div>
 
-    <!-- ====== 2026年8月：截至当前已完成 ====== -->
-    <details class="meeting-item latest" open>
+    <details class="meeting-item latest" open><summary class="meeting-summary"><span class="ms-left"><span class="ms-date">2026.09</span><span class="ms-title">9月上半月成果（截至9月15日）</span><span class="ms-meta">工具交付与运行改善</span></span><span class="ms-arrow">▾</span></summary><div class="meeting-content"><p class="report-copy">完成TVer设定校正、Outlook邮件校正、Backlog草稿生成与三线路通知；完善DV360／Amazon DSP判定规则，完成3課正式转记与5課速度优化验收，并补充Excel轻量化性能验证。</p><p class="report-copy">最新优秀统计中，馬 林登记14条自动化／创新记录，8条已量化记录的月间节省工时合计39.98小时（表内口径，非9月半月实绩）。下一步优先推进TL Report宏，以及以1課TODO为起点的综合业务管理工作台。</p></div></details>
+<!-- ====== 2026年8月：截至当前已完成 ====== -->
+    <details class="meeting-item done">
       <summary class="meeting-summary">
         <span class="ms-left">
           <span class="ms-date">2026.08</span>
-          <span class="ms-title">8月截至目前完成成果</span>
-          <span class="ms-meta"><span class="ms-type">AI开发 · 自动化／品质防错</span><span class="ms-status status-done">阶段成果完成</span></span>
+          <span class="ms-title">8月阶段成果归档</span>
+          <span class="ms-meta"><span class="ms-type">AI开发 · 自动化／知识管理</span><span class="ms-status status-done">阶段成果完成</span></span>
         </span><span class="ms-arrow">▾</span>
       </summary>
       <div class="meeting-content">
-        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin:14px 0;"><div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:8px;">📌 8月完成重点</div><p style="font-size:13px;color:var(--text);line-height:1.85;">8月上半月以既有工具稳定化和媒体类型扩展为主，完成DV360阶段扩展、Amazon DSP实际案件修正、2课邮件自动转记正式运行优化，以及多项报表／Excel工具交付。</p></div>
+        <div style="background:#f8fafc;border-radius:10px;padding:16px;margin:14px 0;">
+          <div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:8px;">📌 8月完成重点</div>
+          <p style="font-size:13px;color:var(--text);line-height:1.85;">8月围绕媒体设定校正、自动转记稳定化、純広告宏工具、知识管理方案调查及AI开发环境标准化持续推进，多项项目进入正式运行或实际案件验证阶段。</p>
+        </div>
+
         <div class="tpl-grid">
-          <div class="tpl-card"><h4>DV360設定チェック</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">YouTube／TrueView回归完成；OTT主要层级和规则完成；Display类型完成阶段开发并进入正式案件测试，三类媒体形成统一的校正框架。</p></div>
-          <div class="tpl-card"><h4>Amazon DSP設定チェック</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成Audience、Frequency等规则修正；CR下载恢复后补齐Creative日期继承逻辑和专项测试，正式工具持续稳定运行。</p></div>
-          <div class="tpl-card"><h4>2課邮件自动转记</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成无人值守正式运行，并集中修正代理店、广告主、诉求商材、营业担当等字段提取及新规／既存案件判定逻辑。</p></div>
-          <div class="tpl-card"><h4>报表与Excel工具</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">1課純広告报表宏完成实际纳品格式优化并交付负责人；同时完成报表宏、Excel对比、XLSM支持及清洗工具等现场改善。</p></div>
-          <div class="tpl-card"><h4>5課 Metaターゲティング校正工具</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成离线校正页面开发，支持纯文本一致、表記ゆれ一致及辞書一致等匹配方式，并形成自建数据字典的基础方案。</p></div>
+          <div class="tpl-card"><h4>媒体設定チェック</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">DV360持续完善 YouTube／OTT／Display；Amazon DSP根据真实案件补强CR、日期继承及判定规则；TVer完成主要比较框架与大量契约测试，继续向实用化推进。</p></div>
+
+          <div class="tpl-card"><h4>自动转记与运行稳定化</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">2課邮件自动转记完成主要提取与既存／新规判定修正；3課 Teams→TODO完成自动运行配置及真实测试，进入实际运行验证。</p></div>
+
+          <div class="tpl-card"><h4>純広告报表宏工具开发</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成1課純広告报表宏工具开发与交付，支持日期区域生成、RAW缺失日补零、灰白交替、多Creative动态扩展及Total行保护等处理，将重复性的报表制作和格式检查进一步自动化。</p></div>
+
+          <div class="tpl-card"><h4>知识库方案调查</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">针对领导提出的 Obsidian＋MarkItDown 方案完成只读调查。确认文档Markdown化和个人／管理员侧整理具备可用性，但团队运用时，Box／Google Sheet分别作为最新数据源且持续更新，存在路径不统一、共享盘读取、资料副本同步、版本一致性及维护工数增加等问题，因此不适合简单地将全部资料复制到Obsidian长期维护。</p></div>
+
+          <div class="tpl-card"><h4>替代方向：业务知识／流程门户</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">在林琳提出的“将业务流程表追加到HTML中”方向基础上，进一步设想保留 Box／Google Sheet 作为最新原始数据源，HTML负责统一展示流程、资料入口和管理信息；同时将不同媒体间的共通规则、确认项目和关联信息进行交叉整理，由管理者维护，后续再评估与各媒体设定校正工具的联动，形成更贴近实际业务的知识／流程门户。</p></div>
+
+          <div class="tpl-card"><h4>AI开发环境标准化</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">开发过程中发现 Workbuddy 会使用自身独立的 Python 环境，容易导致不同项目出现版本、依赖和运行环境不一致。为避免后续项目重复建立环境，本月开始统一整理 Python／Node／Git 及项目依赖，明确通用开发环境与部署规则，今后新项目优先按统一环境开发和交付。</p></div>
+        </div>
+
+        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;margin:16px 0 4px;">
+          <div style="font-size:13px;font-weight:700;color:#c2410c;margin-bottom:8px;">➡ 8月归档时的后续计划（最新进度见9月成果及工作计划）</div>
+          <p style="font-size:12.5px;color:var(--text);line-height:1.9;margin-bottom:8px;"><strong>【当前开发项目】</strong></p>
+          <p style="font-size:12.5px;color:var(--text);line-height:1.9;margin-bottom:8px;">
+            ① <strong>TVer設定比对：</strong>继续完成真实案件回归及上线准备，预计9月中旬进入上线测试，并通过持续测试进一步确保工具质量。<br>
+            ② <strong>件数表自动化落地：</strong>实现组员无需每日手工填写件数表，TODO上的件数与时间根据记载内容自动填写；在每月第一个工作日，自动完成合计值为0的Sheet隐藏、件数为0人员非表示及提交前相关检查。
+          </p>
+          <p style="font-size:12.5px;color:var(--text);line-height:1.9;margin:10px 0 8px;"><strong>【后续开发计划】</strong></p>
+          <p style="font-size:12.5px;color:var(--text);line-height:1.9;">
+            ① 将設定流程追加到HTML，并进一步与設定校正工具连携；② 根据现场近期反馈持续修正并升级既有工具；③ 在HTML設定校正工具中追加案件名记录，通过后台查看各成员使用工具的案件，并以此分析社内miss是否减少，为品质改善提供可追溯的数据依据。
+          </p>
         </div>
       </div>
     </details>
@@ -1493,7 +1384,7 @@ body {
      SCRIPTS
 ========================================== -->
 <script>
-Chart.register(ChartDataLabels);
+
 
 /* ---------- page switch ---------- */
 function showPage(id, btn) {
@@ -1511,142 +1402,12 @@ function showAch(id, btn) {
   btn.classList.add('active');
 }
 
-/* ---------- CHARTS ---------- */
-
-// Chart 1: Doughnut - goal status
-new Chart(document.getElementById('chartGoalStatus').getContext('2d'), {
-  type: 'doughnut',
-  data: {
-    labels: ['已完成', '进行中', '未参加'],
-    datasets: [{
-      data: [4, 1, 1],
-      backgroundColor: ['rgba(16,185,129,0.88)','rgba(245,158,11,0.82)','rgba(148,163,184,0.7)'],
-      borderWidth: 2, borderColor: '#fff'
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { position: 'right', labels: { font: { size: 12 } } },
-      tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} 项` } },
-      datalabels: {
-        color: '#fff', font: { size: 13, weight: '700' },
-        formatter: (v, ctx) => {
-          const t = ctx.dataset.data.reduce((a,b)=>a+b,0);
-          const p = Math.round(v/t*100);
-          return p >= 10 ? `${p}%` : '';
-        }
-      }
-    },
-    cutout: '62%'
-  }
-});
-
-// Chart 2: Bar - goal tools
-new Chart(document.getElementById('chartGoalTools').getContext('2d'), {
-  type: 'bar',
-  data: {
-    labels: ['个人目标（≥2个）'],
-    datasets: [
-      { label:'目标值', data:[2], backgroundColor:'rgba(148,163,184,0.5)', borderColor:'rgba(148,163,184,1)', borderWidth:1.5, borderRadius:6 },
-      { label:'实际完成', data:[6], backgroundColor:'rgba(16,185,129,0.8)', borderColor:'rgba(16,185,129,1)', borderWidth:1.5, borderRadius:6 }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { position:'top' },
-      tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw} 个` } },
-      datalabels: { anchor:'end', align:'end', offset:2, color:'#1e293b', font:{ size:12, weight:'700' }, formatter: v => `${v}个` }
-    },
-    scales: {
-      x: { grid:{ display:false } },
-      y: { beginAtZero:true, max:7, title:{ display:true, text:'工具数量（个）' } }
-    }
-  }
-});
-
-// Chart 3: Bar - hours comparison
-new Chart(document.getElementById('chartHours').getContext('2d'), {
-  type: 'bar',
-  data: {
-    labels: ['合计表RPA（5课室）', 'Xone邮件机器人', '聖教Report'],
-    datasets: [
-      { label:'自动化前（分钟/月）', data:[100,440,48], backgroundColor:'rgba(239,68,68,0.75)', borderColor:'rgba(239,68,68,1)', borderWidth:1.5, borderRadius:6 },
-      { label:'自动化后（分钟/月）', data:[3,0,24], backgroundColor:'rgba(16,185,129,0.75)', borderColor:'rgba(16,185,129,1)', borderWidth:1.5, borderRadius:6 }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend: { position:'top' },
-      tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw} 分钟` } },
-      datalabels: { anchor:'end', align:'end', offset:2, color:'#1e293b', font:{ size:11, weight:'600' }, formatter: v => v>0?`${v}m`:'0' }
-    },
-    scales: {
-      x: { grid:{ display:false } },
-      y: { beginAtZero:true, max:520, title:{ display:true, text:'分钟/月' } }
-    }
-  }
-});
-
-// Chart 4: Bar - save rate
-new Chart(document.getElementById('chartRate').getContext('2d'), {
-  type: 'bar',
-  data: {
-    labels: ['合计表 RPA','Xone邮件机器人','聖教 Report'],
-    datasets: [{
-      label:'工时节约率（%）',
-      data:[97,100,50],
-      backgroundColor:['rgba(26,86,219,0.8)','rgba(14,165,233,0.8)','rgba(245,158,11,0.8)'],
-      borderColor:['rgba(26,86,219,1)','rgba(14,165,233,1)','rgba(245,158,11,1)'],
-      borderWidth:1.5, borderRadius:8
-    }]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend:{ display:false },
-      tooltip:{ callbacks:{ label: ctx=>`节约率: ${ctx.raw}%` } },
-      datalabels:{ anchor:'end', align:'end', offset:4, color:'#1e293b', font:{ size:15, weight:'700' }, formatter: v=>`${v}%` }
-    },
-    scales: {
-      x:{ grid:{ display:false } },
-      y:{ beginAtZero:true, max:115, title:{ display:true, text:'节约率 (%)' } }
-    }
-  }
-});
-
-// Chart 5: Line - trend
-new Chart(document.getElementById('chartTrend').getContext('2d'), {
-  type: 'line',
-  data: {
-    labels: ['5月（实绩）','6月（实绩）','7月（预测）','8月（预测）','9月（预测）','10月（预测）','11月（预测）','12月（预测）'],
-    datasets: [
-      { label:'乐观预测', data:[585,595,605,615,625,635,645,655], borderColor:'rgba(16,185,129,0.9)', backgroundColor:'rgba(16,185,129,0.08)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 },
-      { label:'基准预测', data:[560,560,565,570,575,580,585,590], borderColor:'rgba(26,86,219,0.9)', backgroundColor:'rgba(26,86,219,0.06)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 },
-      { label:'保守预测', data:[520,520,522,524,526,528,530,532], borderColor:'rgba(245,158,11,0.9)', backgroundColor:'rgba(245,158,11,0.05)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 }
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: {
-      legend:{ position:'top' },
-      tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${ctx.raw} 分钟` } },
-      datalabels:{ display:false }
-    },
-    scales: {
-      x:{ grid:{ color:'rgba(0,0,0,0.04)' } },
-      y:{ beginAtZero:false, title:{ display:true, text:'节约工时（分钟/月）' } }
-    }
-  }
-});
-
 /* ---------- 日期自动化 ---------- */
 // ★ 内容更新截至固定日期，后续只需修改此一处
-const REPORT_UPDATED_AT = '2026.08.18';
+const REPORT_UPDATED_AT = '2026.09.15';
 
 (function() {
+ function refreshReportDates() {
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -1657,9 +1418,12 @@ const REPORT_UPDATED_AT = '2026.08.18';
   // 查看日期
   document.querySelectorAll('.today-date').forEach(el => { el.textContent = todayStr; });
   // 报告周期结束年月
-  document.querySelectorAll('.current-year-month').forEach(el => { el.textContent = yearMonthStr; });
+  document.querySelectorAll('.current-year-month').forEach(el => { el.textContent = REPORT_UPDATED_AT.slice(0,7); });
   // 内容更新截至
   document.querySelectorAll('.report-updated-at').forEach(el => { el.textContent = REPORT_UPDATED_AT; });
+ }
+ refreshReportDates();
+ setInterval(refreshReportDates, 60000);
 })();
 </script>
 </body>
