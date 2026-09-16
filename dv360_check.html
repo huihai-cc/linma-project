@@ -267,6 +267,16 @@ body.dv-column-resizing{cursor:col-resize;user-select:none;}
 /* Cell backgrounds */
 .cell-ok{background:#f0fff4;}
 .cell-mismatch{background:#fff0f0;}
+.qc-mismatch-focus{outline:3px solid #f39c12!important;outline-offset:-3px;box-shadow:0 0 0 4px rgba(243,156,18,.32)!important;position:relative;z-index:25;}
+.qc-mismatch-nav-trigger{cursor:pointer;}
+.qc-mismatch-nav-trigger:hover{text-decoration:underline;filter:brightness(.97);}
+.qc-mismatch-nav-floating{position:fixed;right:20px;bottom:20px;z-index:1000;display:flex;align-items:center;gap:7px;padding:8px 10px;background:#fff3cd;border:2px solid #dc3545;border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.2);color:#842029;font-size:.78rem;}
+.qc-mismatch-nav-floating[hidden]{display:none;}
+.qc-mismatch-nav-label{font-weight:700;white-space:nowrap;}
+.qc-mismatch-nav-count{min-width:64px;text-align:center;font-weight:700;white-space:nowrap;}
+.qc-mismatch-nav-btn{min-width:38px;padding:4px 7px;border:1px solid #bdc3c7;border-radius:4px;background:#f7f9fa;color:#2c3e50;cursor:pointer;font-weight:700;}
+.qc-mismatch-nav-btn:hover{background:#ecf0f1;}
+.qc-mismatch-nav-btn:focus-visible{outline:2px solid #3498db;outline-offset:2px;}
 .cell-warn{background:#fffef0;}
 .cell-empty{background:#fafafa;}
 
@@ -422,7 +432,9 @@ body.dv-column-resizing{cursor:col-resize;user-select:none;}
   <span class="hdr-badge settings" id="dv-hdr-setting-count">設定表：0件</span>
   <span class="hdr-badge download" id="dv-hdr-download-count">SDF：0件</span>
   <span class="hdr-badge match" id="dv-hdr-match-count">✅ 一致：0件</span>
-  <span class="hdr-badge mismatch" id="dv-hdr-mismatch-count">❌ 不一致：0件</span>
+  <span class="hdr-badge mismatch qc-mismatch-nav-trigger" id="dv-hdr-mismatch-count"
+    data-qc-mismatch-navigator="1" data-qc-scope="__all__" role="button" tabindex="0"
+    title="クリックしてこの範囲の不一致を確認">❌ 不一致：0件</span>
 </div>
 
 <!-- Phase 6-2: File Info Bar -->
@@ -523,6 +535,228 @@ let allComparisonData = null;
 let selectedCaseType = 'initial';
 let dvCheckRunning = false;
 let dvExecutionCase = null;
+let dvMismatchNavigator = null;
+
+// ===== Mismatch Navigator（只消费最终渲染的 data-qc-status） =====
+function createQcMismatchNavigator(options = {}){
+  const root=options.root || (typeof document!=='undefined' ? document : null);
+  const documentRef=options.document || (root&&root.ownerDocument) || (typeof document!=='undefined' ? document : null);
+  const targetSelector=options.targetSelector || '[data-qc-status="mismatch"]';
+  const summarySelector=options.summarySelector || '[data-qc-mismatch-navigator]';
+  const scopeAttribute=options.scopeAttribute || 'data-qc-scope';
+  const focusClass=options.focusClass || 'qc-mismatch-focus';
+  const focusDurationMs=Number(options.focusDurationMs)||1800;
+  const indexes=new Map();
+  const currentPositions=new Map();
+  const focusTimers=new Map();
+  let activeScope=null;
+  let manualClose=false;
+  let floatingElement=null;
+  let floatingCount=null;
+  const scopeKey=scope => scope===undefined||scope===null||String(scope)===''?'__all__':String(scope);
+  function readScope(element){
+    if(!element) return '__all__';
+    const attr=element.getAttribute && element.getAttribute(scopeAttribute);
+    if(attr!==null&&attr!==undefined&&attr!=='') return String(attr);
+    const value=element.dataset&&element.dataset.qcScope;
+    return value===undefined||value===''?'__all__':String(value);
+  }
+  function isVisible(element){
+    let current=element;
+    while(current){
+      if(current.hidden || (current.getAttribute&&current.getAttribute('hidden')!==null)) return false;
+      const style=current.style||{};
+      if(style.display==='none'||style.visibility==='hidden') return false;
+      current=current.parentElement||current.parentNode||null;
+    }
+    return true;
+  }
+  function getTargets(scope){
+    if(!root||typeof root.querySelectorAll!=='function') return [];
+    const key=scopeKey(scope);
+    return [...root.querySelectorAll(targetSelector)].filter(element=>{
+      const marker=element.getAttribute&&element.getAttribute('data-qc-status');
+      return marker==='mismatch'&&(key==='__all__'||readScope(element)===key)&&isVisible(element);
+    });
+  }
+  function clearFocus(){
+    if(root&&typeof root.querySelectorAll==='function') root.querySelectorAll('.'+focusClass).forEach(element=>element.classList&&element.classList.remove(focusClass));
+    focusTimers.forEach(timer=>clearTimeout(timer));
+    focusTimers.clear();
+  }
+  function hideFloating(){
+    if(floatingElement) floatingElement.hidden=true;
+    if(floatingCount) floatingCount.textContent='';
+  }
+  function ensureFloating(){
+    if(floatingElement) return floatingElement;
+    if(!documentRef||typeof documentRef.createElement!=='function') return null;
+    const panel=documentRef.createElement('div');
+    if(!panel||typeof panel.setAttribute!=='function'||typeof panel.appendChild!=='function'||typeof panel.addEventListener!=='function') return null;
+    panel.setAttribute('class','qc-mismatch-nav-floating');
+    panel.setAttribute('role','region');
+    panel.setAttribute('aria-label','不一致ナビゲーター');
+    panel.style.position='fixed';
+    const label=documentRef.createElement('span');
+    label.setAttribute('class','qc-mismatch-nav-label');
+    label.textContent='⚠ 不一致';
+    const count=documentRef.createElement('span');
+    count.setAttribute('class','qc-mismatch-nav-count');
+    const createButton=(action,label,ariaLabel)=>{
+      const button=documentRef.createElement('button');
+      button.setAttribute('type','button');
+      button.setAttribute('class','qc-mismatch-nav-btn');
+      button.setAttribute('data-qc-nav-action',action);
+      button.setAttribute('aria-label',ariaLabel);
+      button.textContent=label;
+      return button;
+    };
+    const prev=createButton('prev','前へ','前の不一致へ');
+    const next=createButton('next','次へ','次の不一致へ');
+    const close=createButton('close','×','不一致ナビゲーターを閉じる');
+    prev.addEventListener('click',event=>{
+      if(event&&event.preventDefault) event.preventDefault();
+      if(activeScope!==null) navigate(activeScope,-1);
+    });
+    next.addEventListener('click',event=>{
+      if(event&&event.preventDefault) event.preventDefault();
+      if(activeScope!==null) navigate(activeScope,1);
+    });
+    close.addEventListener('click',event=>{
+      if(event&&event.preventDefault) event.preventDefault();
+      closeFloating();
+    });
+    panel.appendChild(label);
+    panel.appendChild(count);
+    panel.appendChild(prev);
+    panel.appendChild(next);
+    panel.appendChild(close);
+    const host=documentRef.body||documentRef.documentElement||documentRef;
+    if(!host||typeof host.appendChild!=='function') return null;
+    host.appendChild(panel);
+    panel.hidden=true;
+    floatingElement=panel;
+    floatingCount=count;
+    return panel;
+  }
+  function refreshFloating(){
+    if(manualClose||activeScope===null){hideFloating();return;}
+    const targets=getTargets(activeScope);
+    const position=currentPositions.get(activeScope);
+    if(!targets.length||position===undefined){hideFloating();return;}
+    const panel=ensureFloating();
+    if(!panel) return;
+    if(floatingCount) floatingCount.textContent=`${position+1} / ${targets.length}`;
+    panel.hidden=false;
+  }
+  function closeFloating(){
+    manualClose=true;
+    if(activeScope!==null){indexes.delete(activeScope);currentPositions.delete(activeScope);}
+    activeScope=null;
+    clearFocus();
+    hideFloating();
+  }
+  function navigate(scope,direction=1){
+    const key=scopeKey(scope),targets=getTargets(key);
+    if(!targets.length){ indexes.delete(key); currentPositions.delete(key); if(activeScope===key) hideFloating(); clearFocus(); return null; }
+    const previous=currentPositions.get(key);
+    const current=previous===undefined
+      ? Number(indexes.get(key)||0)%targets.length
+      : (previous+(direction<0?-1:1)+targets.length)%targets.length;
+    currentPositions.set(key,current);
+    const target=targets[current];
+    indexes.set(key,(current+1)%targets.length);
+    clearFocus();
+    target.classList&&target.classList.add(focusClass);
+    if(typeof target.scrollIntoView==='function') target.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
+    const timer=setTimeout(()=>{target.classList&&target.classList.remove(focusClass);focusTimers.delete(target);},focusDurationMs);
+    focusTimers.set(target,timer);
+    if(activeScope===key) refreshFloating();
+    return target;
+  }
+  function startScope(scope){
+    manualClose=false;
+    const key=scopeKey(scope);
+    activeScope=key;
+    indexes.delete(key);
+    currentPositions.delete(key);
+    return navigate(key,1);
+  }
+  function beginLifecycle(scope){
+    manualClose=false;
+    indexes.clear();
+    currentPositions.clear();
+    activeScope=null;
+    clearFocus();
+    hideFloating();
+    const key=scopeKey(scope);
+    const targets=getTargets(key);
+    ensureFloating();
+    if(!targets.length) return null;
+    activeScope=key;
+    currentPositions.set(key,0);
+    indexes.set(key,targets.length>1?1:0);
+    refreshFloating();
+    return targets[0];
+  }
+  function refresh(scope){
+    const key=scopeKey(scope===undefined?activeScope:scope);
+    if(manualClose||activeScope!==key){hideFloating();return null;}
+    const targets=getTargets(key);
+    if(!targets.length){
+      indexes.delete(key);
+      currentPositions.delete(key);
+      clearFocus();
+      hideFloating();
+      return null;
+    }
+    const previous=currentPositions.get(key);
+    const position=Math.min(Math.max(Number.isInteger(previous)?previous:0,0),targets.length-1);
+    currentPositions.set(key,position);
+    indexes.set(key,(position+1)%targets.length);
+    clearFocus();
+    refreshFloating();
+    return targets[position];
+  }
+  function reset(scope){
+    if(scope===undefined){
+      indexes.clear();
+      currentPositions.clear();
+      activeScope=null;
+      hideFloating();
+    } else {
+      const key=scopeKey(scope);
+      indexes.delete(key);
+      currentPositions.delete(key);
+      if(activeScope===key){activeScope=null;hideFloating();}
+    }
+    clearFocus();
+  }
+  function bindSummary(summary,scope){
+    if(!summary||typeof summary.addEventListener!=='function'||summary.__qcMismatchNavigatorBound) return;
+    summary.__qcMismatchNavigatorBound=true;
+    const activate=event=>{
+      if(event&&event.preventDefault) event.preventDefault();
+      const key=scope===undefined?readScope(summary):scope;
+      if(activeScope===scopeKey(key)) navigate(key,1); else startScope(key);
+    };
+    summary.addEventListener('click',activate);
+    summary.addEventListener('keydown',event=>{if(event&&(event.key==='Enter'||event.key===' ')) activate(event);});
+  }
+  function bindSummaries(container=root){
+    if(!container||typeof container.querySelectorAll!=='function') return;
+    container.querySelectorAll(summarySelector).forEach(summary=>bindSummary(summary));
+  }
+  return {getTargets,navigate,reset,resetAll:()=>reset(),beginLifecycle,refresh,bindSummary,bindSummaries};
+}
+
+function syncDvMismatchNavigator(options={}){
+  if(!dvMismatchNavigator) dvMismatchNavigator=createQcMismatchNavigator({root:document});
+  dvMismatchNavigator.bindSummaries(document);
+  if(options.newLifecycle===false) dvMismatchNavigator.refresh('__all__');
+  else dvMismatchNavigator.beginLifecycle('__all__');
+}
+function resetDvMismatchNavigator(){ if(dvMismatchNavigator) dvMismatchNavigator.resetAll(); }
 
 function getSelectedDv360CaseType(){
   return selectedCaseType;
@@ -10527,12 +10761,12 @@ function getVisibleLevels(){
   return ['CP','IO','LI','GP','CR'];
 }
 
-window.switchLevel=function(level){
+window.switchLevel=function(level,options={newLifecycle:true}){
   currentLevel=level;
   document.querySelectorAll('.level-tab').forEach(t=>t.classList.remove('active'));
   const tab=document.querySelector(`.level-tab[data-lvl="${level}"]`);
   if(tab) tab.classList.add('active');
-  renderLevelTable(level);
+  renderLevelTable(level,options);
 };
 
 // ── メインレンダリング ──
@@ -10573,11 +10807,11 @@ function renderAll(executionCase){
   updateTabCounters();
   // デフォルトでCP表示、CPがなければ最初の有効レベルを表示
   const firstLevel=levels.find(lvl=>collectLevelItems(lvl).length>0)||levels[0];
-  switchLevel(firstLevel);
+  switchLevel(firstLevel,{newLifecycle:true});
 }
 
 // ── テーブルレンダリング ──
-function renderLevelTable(level){
+function renderLevelTable(level,options={newLifecycle:true}){
   const wrap=document.getElementById('result-table-wrap');
   const items=collectLevelItems(level);
   const cols=getLevelColumns(level);
@@ -10587,12 +10821,14 @@ function renderLevelTable(level){
   if(!items.length){
     wrap.innerHTML=`<div class="empty-state"><div class="icon">📭</div>${level}層にデータがありません</div>`;
     wrap.classList.add('show');
+    syncDvMismatchNavigator(options);
     return;
   }
 
   if(statusFilter==='all'&&items.every(item=>item.unsupported)){
     wrap.innerHTML=`<div class="comparison-unsupported-notice" style="margin:12px;padding:14px 16px;background:#fff8e1;border:1px solid #f1c40f;border-radius:6px;color:#8a6d1d;font-size:0.8rem;line-height:1.6;">⚠️ ${esc(YOUTUBE_AD_SEQUENCE_UNSUPPORTED_NOTICE)}</div>`;
     wrap.classList.add('show');
+    syncDvMismatchNavigator(options);
     return;
   }
 
@@ -10605,6 +10841,7 @@ function renderLevelTable(level){
   if(!visibleItems.length){
     wrap.innerHTML=`<div class="empty-state"><div class="icon">🔍</div>該当する${level}項目がありません（フィルタ: ${statusFilter}）</div>`;
     wrap.classList.add('show');
+    syncDvMismatchNavigator(options);
     return;
   }
 
@@ -10682,6 +10919,7 @@ function renderLevelTable(level){
   wrap.classList.add('show');
   initializeResultColumnResizers(wrap.querySelector('.result-table'));
   dvApplyGlobalRowHeight();
+  syncDvMismatchNavigator(options);
 }
 
 // ── 行レンダリング用ヘルパー ──
@@ -10746,8 +10984,9 @@ function _buildRowHtml(item, idx, level, cols, statusIcon, statusText){
     const sVal=ci?ci.sVal:'';
     const sDisplayVal=stripComparisonDisplayPrefix(sVal,'S');
     const result=ci?ci.result:'ok';
+    const qcMismatchAttr=result==='mismatch' ? ` data-qc-status="mismatch" data-qc-scope="${esc(level)}"` : '';
     const mpDetail=ci?formatMismatchDetailForDisplay(ci.mpDetail):'';
-    html += `<td class="cell-${result==='ok'?'ok':result==='mismatch'?'mismatch':'warn'} dv-cell-dblclick" title="ダブルクリックで全表示">
+    html += `<td${qcMismatchAttr} class="cell-${result==='ok'?'ok':result==='mismatch'?'mismatch':'warn'} dv-cell-dblclick" title="ダブルクリックで全表示">
       <div class="cell-s-row"><span class="cell-s-label">S:</span>${esc(sDisplayVal)||'—'}</div>
       ${mpDetail?`<div class="cell-diff-row" style="color:#e67e22;font-size:0.62rem;word-break:break-all;line-height:1.3;margin-top:2px;padding:2px 4px;background:#fff8e1;border-left:2px solid #e67e22;">${esc(mpDetail)}</div>`:''}
     </td>`;
@@ -11004,7 +11243,7 @@ window.setStatusFilter=function(filter,btn){
   statusFilter=filter;
   document.querySelectorAll('.filter-btn[data-filter]').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  renderLevelTable(currentLevel);
+  renderLevelTable(currentLevel,{newLifecycle:false});
 };
 
 window.toggleLevel=function(lvl,btn){
@@ -11013,10 +11252,10 @@ window.toggleLevel=function(lvl,btn){
   // 現在のレベルが非表示なら自動切替
   if(!visibleLevels.has(currentLevel)){
     const available=getVisibleLevels().filter(l=>visibleLevels.has(l));
-    if(available.length) switchLevel(available[0]);
+    if(available.length) switchLevel(available[0],{newLifecycle:true});
   }
   updateTabCounters();
-  renderLevelTable(currentLevel);
+  renderLevelTable(currentLevel,{newLifecycle:false});
 };
 
 window.expandAll=function(){ /* テーブルビューでは不要 */ };
@@ -11024,6 +11263,7 @@ window.collapseAll=function(){ /* テーブルビューでは不要 */ };
 window.expandProblems=function(){ /* テーブルビューでは不要 */ };
 
 window.resetAll=function(){
+  resetDvMismatchNavigator();
   uploadedFiles=[];settingFiles=[];downloadFiles=[];
   // Phase 1: 2-Zone Upload Reset
   dvSettingFiles=[];

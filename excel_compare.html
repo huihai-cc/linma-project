@@ -224,15 +224,28 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
   <button class="btn-primary" id="xlcomp-start-btn" onclick="runXlComp()" data-i18n="compareStart">📊 开始对比</button>
   <button class="btn-secondary" onclick="resetXlComp()" data-i18n="compareReset">🗑️ 重新选择</button>
   <span style="color:#999;font-size:0.82rem;margin:0 4px;">|</span>
-  <label style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
-    <input type="checkbox" id="xlcomp-bgcolor" style="accent-color:#e74c3c;" onchange="xlcompOnColorOptChange()"> <span data-i18n="compareBgColorOpt">🎨 背景颜色</span>
+  <span style="font-size:0.76rem;color:#7f8c8d;font-weight:bold;" data-i18n="compareBasicGroup">基本对比：</span>
+  <span style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;user-select:none;">
+    ✅ <span data-i18n="compareCellContentOpt">单元格内容</span>
+  </span>
+  <span style="font-size:0.76rem;color:#7f8c8d;font-weight:bold;margin-left:4px;" data-i18n="compareExtraGroup">附加对比：</span>
+  <label id="xlcomp-opt-label-bgcolor" style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
+    <input type="checkbox" id="xlcomp-bgcolor" style="accent-color:#e74c3c;" onchange="xlcompOnCompareOptChange()"> <span data-i18n="compareBgColorOpt">🎨 背景颜色</span>
   </label>
-  <label style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
-    <input type="checkbox" id="xlcomp-fontcolor" style="accent-color:#3498db;" onchange="xlcompOnColorOptChange()"> <span data-i18n="compareFontColorOpt">🔤 字体颜色</span>
+  <label id="xlcomp-opt-label-fontcolor" style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
+    <input type="checkbox" id="xlcomp-fontcolor" style="accent-color:#3498db;" onchange="xlcompOnCompareOptChange()"> <span data-i18n="compareFontColorOpt">🔤 字体颜色</span>
   </label>
-  <label style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
-    <input type="checkbox" id="xlcomp-numfmt" style="accent-color:#e67e22;" onchange="xlcompOnColorOptChange()"> <span>🔢 数字格式／单位</span>
+  <label id="xlcomp-opt-label-numfmt" style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
+    <input type="checkbox" id="xlcomp-numfmt" style="accent-color:#e67e22;" onchange="xlcompOnCompareOptChange()"> <span data-i18n="compareNumFmtOpt">🔢 数字格式／单位</span>
   </label>
+  <label id="xlcomp-opt-label-formula" style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
+    <input type="checkbox" id="xlcomp-formula" style="accent-color:#8e44ad;" onchange="xlcompOnCompareOptChange()"> <span data-i18n="compareFormulaOpt">🔢 公式</span>
+  </label>
+  <label id="xlcomp-opt-label-textbox" style="display:flex;align-items:center;gap:3px;font-size:0.82rem;color:#555;cursor:pointer;user-select:none;">
+    <input type="checkbox" id="xlcomp-textbox" style="accent-color:#16a085;" onchange="xlcompOnCompareOptChange()"> <span data-i18n="compareTextboxOpt">📝 文本框</span>
+  </label>
+  <span id="xlcomp-option-unsupported-note" class="xl-fast-disabled-note" style="display:none;" data-i18n="compareUnsupportedFast">高速模式では利用できません</span>
+  <span style="font-size:0.76rem;color:#7f8c8d;margin-left:4px;" data-i18n="compareSheetStructureAuto">Sheet构成：自动检查</span>
   <span id="xlcomp-color-note" style="display:none;font-size:0.72rem;color:#e67e22;margin-left:4px;"
         title="颜色对比以单元格直接设置的样式为准，条件格式产生的显示颜色可能无法识别。" data-i18n="compareColorNote">⚠ 条件格式颜色可能无法识别</span>
   <button id="btn-exp-xlcomp" onclick="exportXlComp()"
@@ -285,7 +298,7 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
   <button class="view-btn" id="xlcomp-view-fontcolor"
           onclick="xlcompSwitchView('fontcolor')" data-i18n="compareViewFontColor">🔤 字体颜色</button>
   <button class="view-btn" id="xlcomp-view-numfmt"
-          onclick="xlcompSwitchView('numfmt')">🔢 数字格式</button>
+          onclick="xlcompSwitchView('numfmt')" data-i18n="compareViewNumFmt">🔢 数字格式</button>
   <button class="view-btn" id="xlcomp-view-formula"
           onclick="xlcompSwitchView('formula')" data-i18n="compareViewFormula">🔢 公式</button>
   <button class="view-btn" id="xlcomp-view-textbox"
@@ -349,6 +362,7 @@ function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 let xlcompFileA = null, xlcompFileB = null;
 let xlcompWbA   = null, xlcompWbB   = null;
 let xlcompResults = null;
+let xlcompSheetStructureDiff = { onlyA: [], onlyB: [], count: 0 };
 let xlcompHideEq  = false;
 let xlcompMode    = 'excel';
 
@@ -499,23 +513,128 @@ function _fastShowDetailedError(err, context = {}){
 let xlcompCmpBg   = false; // 背景颜色对比
 let xlcompCmpFont = false; // 字体颜色对比
 let xlcompCmpNumFmt = false; // 数字格式/单位对比
+let xlcompCmpFormula = false; // 公式对比
+let xlcompCmpTextbox = false; // 文本框对比
 
-function xlcompOnColorOptChange(){
-    xlcompCmpBg   = document.getElementById('xlcomp-bgcolor').checked;
-    xlcompCmpFont = document.getElementById('xlcomp-fontcolor').checked;
-    xlcompCmpNumFmt = document.getElementById('xlcomp-numfmt').checked;
-    const note = document.getElementById('xlcomp-color-note');
-    if(note) note.style.display = (xlcompCmpBg || xlcompCmpFont) ? 'inline' : 'none';
-    xlcompUpdateColorViewBtns();
+let xlcompTextboxResults = null;
+
+function xlcompI18n(key, fallback){
+    return typeof t === 'function' ? t(key) : fallback;
 }
 
-function xlcompUpdateColorViewBtns(){
+// Sheet构成はセル比較と独立して、常に完全なSheetNamesから判定する。
+function xlcompBuildSheetStructureDiff(sheetNamesA = [], sheetNamesB = []){
+    const namesA = Array.isArray(sheetNamesA) ? sheetNamesA : [];
+    const namesB = Array.isArray(sheetNamesB) ? sheetNamesB : [];
+    const setA = new Set(namesA);
+    const setB = new Set(namesB);
+    const onlyA = namesA.filter(name => !setB.has(name));
+    const onlyB = namesB.filter(name => !setA.has(name));
+    return { onlyA, onlyB, count: onlyA.length + onlyB.length };
+}
+
+function xlcompHasAnyDiff({ cellDiffCount = 0, totalDiff = 0, fastDiffs = null, sheetStructureDiff = null } = {}){
+    const cellDiff = Array.isArray(fastDiffs)
+        ? fastDiffs.length > 0
+        : Number(cellDiffCount || totalDiff || 0) > 0;
+    return cellDiff || Number(sheetStructureDiff?.count || 0) > 0;
+}
+
+function xlcompZipFileHasDiff(fileData = {}){
+    return fileData.status === 'only_a' || fileData.status === 'only_b' ||
+        xlcompHasAnyDiff({ totalDiff: fileData.totalDiff, sheetStructureDiff: fileData.sheetStructureDiff });
+}
+
+function xlcompGetOptionSupport(){
+    const isFast = xlcompMode === 'excel' && xlcompFastMode;
+    const isZip = xlcompMode === 'zip';
+    return {
+        bg: true,
+        font: true,
+        numFmt: !isFast,
+        formula: !isFast && !isZip,
+        textbox: !isFast && !isZip,
+    };
+}
+
+function xlcompUpdateOptionAvailability(){
+    const support = xlcompGetOptionSupport();
+    const options = [
+        ['bg', 'xlcomp-bgcolor', 'xlcomp-opt-label-bgcolor'],
+        ['font', 'xlcomp-fontcolor', 'xlcomp-opt-label-fontcolor'],
+        ['numFmt', 'xlcomp-numfmt', 'xlcomp-opt-label-numfmt'],
+        ['formula', 'xlcomp-formula', 'xlcomp-opt-label-formula'],
+        ['textbox', 'xlcomp-textbox', 'xlcomp-opt-label-textbox'],
+    ];
+    let unsupported = false;
+    options.forEach(([key, checkboxId, labelId]) => {
+        const checkbox = document.getElementById(checkboxId);
+        const label = document.getElementById(labelId);
+        const enabled = !!support[key];
+        if(checkbox){
+            checkbox.disabled = !enabled;
+            if(!enabled) checkbox.checked = false;
+        }
+        if(label){
+            label.style.opacity = enabled ? '1' : '0.45';
+            label.style.cursor = enabled ? 'pointer' : 'not-allowed';
+        }
+        if(!enabled) unsupported = true;
+    });
+    const note = document.getElementById('xlcomp-option-unsupported-note');
+    if(note){
+        note.style.display = unsupported ? 'inline-block' : 'none';
+        note.textContent = xlcompMode === 'zip'
+            ? xlcompI18n('compareUnsupportedZip', 'ZIP模式では利用できません')
+            : xlcompI18n('compareUnsupportedFast', '高速模式では利用できません');
+    }
+}
+
+function xlcompOnCompareOptChange(){
+    xlcompUpdateOptionAvailability();
+    xlcompCmpBg   = !!document.getElementById('xlcomp-bgcolor')?.checked;
+    xlcompCmpFont = !!document.getElementById('xlcomp-fontcolor')?.checked;
+    xlcompCmpNumFmt = !!document.getElementById('xlcomp-numfmt')?.checked;
+    xlcompCmpFormula = !!document.getElementById('xlcomp-formula')?.checked;
+    xlcompCmpTextbox = !!document.getElementById('xlcomp-textbox')?.checked;
+    if(!xlcompCmpFormula) xlcompFormulaResults = null;
+    if(!xlcompCmpTextbox) xlcompTextboxResults = null;
+    const note = document.getElementById('xlcomp-color-note');
+    if(note) note.style.display = (xlcompCmpBg || xlcompCmpFont) ? 'inline' : 'none';
+    xlcompUpdateViewBtns();
+}
+
+function xlcompUpdateViewBtns(){
+    const cellBtn = document.getElementById('xlcomp-view-cell');
     const bgBtn = document.getElementById('xlcomp-view-bgcolor');
     const fontBtn = document.getElementById('xlcomp-view-fontcolor');
     const numFmtBtn = document.getElementById('xlcomp-view-numfmt');
+    const formulaBtn = document.getElementById('xlcomp-view-formula');
+    const textboxBtn = document.getElementById('xlcomp-view-textbox');
+    if(cellBtn){ cellBtn.style.opacity = '1'; cellBtn.style.pointerEvents = 'auto'; }
     if(bgBtn){ bgBtn.style.opacity = xlcompCmpBg ? '1' : '0.4'; bgBtn.style.pointerEvents = xlcompCmpBg ? 'auto' : 'none'; }
     if(fontBtn){ fontBtn.style.opacity = xlcompCmpFont ? '1' : '0.4'; fontBtn.style.pointerEvents = xlcompCmpFont ? 'auto' : 'none'; }
     if(numFmtBtn){ numFmtBtn.style.opacity = xlcompCmpNumFmt ? '1' : '0.4'; numFmtBtn.style.pointerEvents = xlcompCmpNumFmt ? 'auto' : 'none'; }
+    if(formulaBtn){ formulaBtn.style.opacity = xlcompCmpFormula ? '1' : '0.4'; formulaBtn.style.pointerEvents = xlcompCmpFormula ? 'auto' : 'none'; }
+    if(textboxBtn){ textboxBtn.style.opacity = xlcompCmpTextbox ? '1' : '0.4'; textboxBtn.style.pointerEvents = xlcompCmpTextbox ? 'auto' : 'none'; }
+}
+
+function xlcompResetCompareOptions(){
+    ['bgcolor','fontcolor','numfmt','formula','textbox'].forEach(name=>{
+        const checkbox = document.getElementById('xlcomp-'+name);
+        if(checkbox) checkbox.checked = false;
+    });
+    xlcompCmpBg = false;
+    xlcompCmpFont = false;
+    xlcompCmpNumFmt = false;
+    xlcompCmpFormula = false;
+    xlcompCmpTextbox = false;
+    xlcompFormulaResults = null;
+    xlcompTextboxResults = null;
+    const note = document.getElementById('xlcomp-color-note');
+    if(note) note.style.display = 'none';
+    xlcompUpdateOptionAvailability();
+    xlcompUpdateViewBtns();
 }
 
 // ===== Excel標準Indexedカラーテーブル（56色） =====
@@ -817,6 +936,8 @@ document.addEventListener('DOMContentLoaded', function(){
     if (typeof applyI18n === 'function') applyI18n();
     initXlCompDrop('a');
     initXlCompDrop('b');
+    xlcompUpdateOptionAvailability();
+    xlcompUpdateViewBtns();
     _xlcompSyncCompareEntryButtons();
 });
 
@@ -927,6 +1048,7 @@ function xlcompEnableFastMode(){
     document.getElementById('xlcomp-fast-suggest').classList.remove('show');
     document.getElementById('xlcomp-fast-indicator').classList.add('show');
     document.getElementById('xlcomp-mode-fast').classList.add('active-fast');
+    xlcompOnCompareOptChange();
     _xlcompSyncCompareEntryButtons();
     // 重新触发上传逻辑以进入高速模式流程
     _fastAfterBothFilesReady();
@@ -970,7 +1092,10 @@ function xlcompToggleFastMode(){
         if(xlcompFileA && xlcompFileB){
             document.getElementById('xlcomp-controls').style.display = 'flex';
         }
+        const standardStart = document.getElementById('xlcomp-start-btn');
+        if(standardStart) standardStart.style.display = 'inline-block';
     }
+    xlcompOnCompareOptChange();
     _xlcompSyncCompareEntryButtons();
 }
 
@@ -989,6 +1114,7 @@ function xlcompSetMode(mode){
         _fastCleanupAll();
     }
     xlcompMode = mode;
+    xlcompOnCompareOptChange();
 
     const excelBtn = document.getElementById('xlcomp-mode-excel');
     const zipBtn   = document.getElementById('xlcomp-mode-zip');
@@ -1020,6 +1146,11 @@ function xlcompSetMode(mode){
 
     xlcompFileA=null; xlcompFileB=null;
     xlcompWbA=null; xlcompWbB=null; xlcompResults=null;
+    xlcompSheetStructureDiff={ onlyA:[], onlyB:[], count:0 };
+    xlcompFormulaResults=null;
+    xlcompTextboxResults=null;
+    xlcompCurrentView='cell';
+    xlcompResetCompareOptions();
     document.getElementById('xlcomp-controls').style.display='none';
     document.getElementById('xlcomp-sheet-select').style.display='none';
     document.getElementById('xlcomp-result').innerHTML='';
@@ -1185,6 +1316,10 @@ function _showSheetSelect(){
     const progress = document.getElementById('xlcomp-progress');
     progress.classList.remove('show');
 
+    xlcompSheetStructureDiff = xlcompBuildSheetStructureDiff(
+        xlcompWbA?.SheetNames,
+        xlcompWbB?.SheetNames
+    );
     const sheetsA = new Set(xlcompWbA.SheetNames);
     const sheetsB = new Set(xlcompWbB.SheetNames);
     const allSheets = [...new Set([...xlcompWbA.SheetNames, ...xlcompWbB.SheetNames])];
@@ -1216,8 +1351,8 @@ function _showSheetSelect(){
         const isHidden=isHiddenA||isHiddenB;
 
         let statusTag='';
-        if(inA&&!inB) statusTag='<span style="background:#f39c12;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;margin-left:4px;">仅A有</span>';
-        else if(!inA&&inB) statusTag='<span style="background:#27ae60;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;margin-left:4px;">仅B有</span>';
+        if(inA&&!inB) statusTag=`<span style="background:#f39c12;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;margin-left:4px;">${xlcompI18n('compareSheetOnlyAMissing','新表中未找到')}</span>`;
+        else if(!inA&&inB) statusTag=`<span style="background:#27ae60;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;margin-left:4px;">${xlcompI18n('compareSheetOnlyBAdded','新表新增')}</span>`;
 
         let sizeTag='';
         if(isHugeSheet) sizeTag=`<span style="background:#e74c3c;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;margin-left:4px;">⚠️ ${(rowCount/10000).toFixed(0)}万行</span>`;
@@ -1279,8 +1414,12 @@ async function doXlComp(){
         return xlcompFastPhase2Start();
     }
 
-    // 色比較オプションをチェックボックスから同期
-    xlcompOnColorOptChange();
+    // 选项与完整Sheet构成先于用户选择同步。
+    xlcompOnCompareOptChange();
+    xlcompSheetStructureDiff = xlcompBuildSheetStructureDiff(
+        xlcompWbA?.SheetNames,
+        xlcompWbB?.SheetNames
+    );
     const selected=[...document.querySelectorAll('.xlcomp-sheet-cb:checked')].map(cb=>cb.dataset.sheet);
     if(!selected.length){ alert('请至少选择一个Sheet'); return; }
     window._xlcompSelectedSheets=selected;
@@ -1303,20 +1442,30 @@ async function doXlComp(){
 
     progress.textContent='⏳ 正在对比中...';
 
-    setTimeout(()=>{
-        try{
-            xlcompResults={};
-            selected.forEach(name=>{ xlcompResults[name]=compareSheet(name); });
-            xlcompHideEq=true;
-            renderXlCompResult();
-            progress.classList.remove('show');
-            document.getElementById('btn-exp-xlcomp').style.display='inline-block';
-            document.getElementById('xlcomp-btn-hide').style.display='none';
-            document.getElementById('xlcomp-btn-show').style.display='inline-block';
-        } catch(err){
-            progress.textContent='❌ 对比失败：'+err.message;
+    // 每次开始新的标准比较都建立新的附加结果缓存。
+    xlcompFormulaResults = null;
+    xlcompTextboxResults = null;
+    await new Promise(resolve=>setTimeout(resolve,30));
+    try{
+        xlcompResults={};
+        selected.forEach(name=>{ xlcompResults[name]=compareSheet(name); });
+        if(xlcompCmpFormula){
+            progress.textContent='⏳ 正在解析公式及外部参照...';
+            await prepareFormulaComparison();
         }
-    },30);
+        if(xlcompCmpTextbox){
+            progress.textContent='⏳ 正在读取文本框内容...';
+            await prepareTextboxComparison();
+        }
+        xlcompHideEq=true;
+        renderXlCompResult();
+        progress.classList.remove('show');
+        document.getElementById('btn-exp-xlcomp').style.display='inline-block';
+        document.getElementById('xlcomp-btn-hide').style.display='none';
+        document.getElementById('xlcomp-btn-show').style.display='inline-block';
+    } catch(err){
+        progress.textContent='❌ 对比失败：'+err.message;
+    }
 }
 
 // ===== シート対比コア =====
@@ -1570,10 +1719,26 @@ function sheetTo2D(ws, maxRows, maxCols, wb, needColors, needNumFmt, sheetName, 
 }
 
 // ===== 結果レンダリング =====
+function xlcompRenderSheetStructureDiffHtml(diff, compact = false){
+    if(!diff || !diff.count) return '';
+    const onlyALabel = xlcompI18n('compareSheetOnlyAMissing', '新表中未找到');
+    const onlyBLabel = xlcompI18n('compareSheetOnlyBAdded', '新表新增');
+    const title = xlcompI18n('compareSheetStructureDiff', 'Sheet构成异常');
+    const list = items => items.map(name=>`<li style="margin:3px 0;">${esc(name)}</li>`).join('');
+    return `<div class="xlcomp-sheet-structure-diff" style="padding:${compact?'10px 14px':'12px 16px'};margin-bottom:16px;background:#fff8e8;border:1px solid #f0c060;border-radius:6px;color:#7a5000;">
+        <div style="font-weight:bold;margin-bottom:6px;">⚠ ${title}：${diff.count}件</div>
+        <div style="display:flex;flex-wrap:wrap;gap:24px;font-size:0.82rem;">
+            ${diff.onlyA.length?`<div><div style="color:#c0392b;font-weight:bold;">🔴 ${onlyALabel}</div><ul style="margin:4px 0 0 20px;padding:0;">${list(diff.onlyA)}</ul></div>`:''}
+            ${diff.onlyB.length?`<div><div style="color:#27ae60;font-weight:bold;">🟢 ${onlyBLabel}</div><ul style="margin:4px 0 0 20px;padding:0;">${list(diff.onlyB)}</ul></div>`:''}
+        </div>
+    </div>`;
+}
+
 function renderXlCompResult(){
     const result=document.getElementById('xlcomp-result');
     if(!xlcompResults){ result.innerHTML=''; return; }
 
+    const structureDiff = xlcompSheetStructureDiff || { onlyA:[], onlyB:[], count:0 };
     let totalDiff=0, totalSheets=0, diffSheets=0, totalFmtDiff=0;
     Object.values(xlcompResults).forEach(r=>{
         totalSheets++;
@@ -1588,7 +1753,8 @@ function renderXlCompResult(){
                 position:sticky;top:0;z-index:100;box-shadow:0 3px 10px rgba(0,0,0,0.3);">
         <span style="font-weight:bold;font-size:0.95rem;">📊 対比結果</span>
         <span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.8rem;">差異Sheet：${diffSheets}/${totalSheets}</span>
-        <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">差異行：${totalDiff}</span>
+        <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">差异行：${totalDiff}</span>
+        ${structureDiff.count>0?`<span style="background:#f39c12;border-radius:10px;padding:2px 10px;font-size:0.8rem;">⚠ ${xlcompI18n('compareSheetStructureDiff','Sheet构成异常')}：${structureDiff.count}件</span>`:''}
         ${totalFmtDiff>0?`<span style="background:#d35400;border-radius:10px;padding:2px 10px;font-size:0.8rem;">数字格式差异：${totalFmtDiff}处</span>`:''}
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
             <button onclick="xlcompNav(-1)"
@@ -1616,7 +1782,7 @@ function renderXlCompResult(){
         const hasDiff=r.status==='only_a'||r.status==='only_b'||((r.diffCount||0)+(r.addCount||0)+(r.delCount||0)+(r.numFmtDiffCount||0))>0;
         const icon=hasDiff?'⚠️':'✅';
         const color=hasDiff?'#e74c3c':'#27ae60';
-        const diffNum=r.status==='only_a'?'仅A有':r.status==='only_b'?'仅B有':
+        const diffNum=r.status==='only_a'?xlcompI18n('compareSheetOnlyAMissing','新表中未找到'):r.status==='only_b'?xlcompI18n('compareSheetOnlyBAdded','新表新增'):
                       `${(r.diffCount||0)+(r.addCount||0)+(r.delCount||0)}处差异${(r.numFmtDiffCount||0)>0?'＋数字格式'+(r.numFmtDiffCount)+'处':''}`;
         html+=`
         <div onclick="scrollToSheet('sheet-${name.replace(/[^a-zA-Z0-9]/g,'_')}')"
@@ -1631,6 +1797,7 @@ function renderXlCompResult(){
     });
 
     html+=`</div>`;
+    html+=xlcompRenderSheetStructureDiffHtml(structureDiff);
 
     Object.entries(xlcompResults).forEach(([name,r])=>{
         const sheetId='sheet-'+name.replace(/[^a-zA-Z0-9]/g,'_');
@@ -1640,8 +1807,8 @@ function renderXlCompResult(){
                            gap:12px;flex-wrap:wrap;">
             <span style="font-weight:bold;">📋 ${name}</span>`;
 
-        if(r.status==='only_a') html+=`<span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.78rem;">仅文件A有此Sheet</span>`;
-        else if(r.status==='only_b') html+=`<span style="background:#27ae60;border-radius:10px;padding:2px 10px;font-size:0.78rem;">仅文件B有此Sheet</span>`;
+        if(r.status==='only_a') html+=`<span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.78rem;">${xlcompI18n('compareSheetOnlyAMissing','新表中未找到')}</span>`;
+        else if(r.status==='only_b') html+=`<span style="background:#27ae60;border-radius:10px;padding:2px 10px;font-size:0.78rem;">${xlcompI18n('compareSheetOnlyBAdded','新表新增')}</span>`;
         else {
             html+=`
             <span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.78rem;">修改 ${r.diffCount}行</span>
@@ -1666,7 +1833,7 @@ function renderXlCompResult(){
                 このSheetは${r.status==='only_a'?'文件A':'文件B'}にしか存在しません</div>`;
         } else if(r.rows.length===0){
             html+=`<div style="padding:20px;background:#eafaf1;border:1px solid #a9dfbf;
-                               border-top:none;text-align:center;color:#27ae60;">✅ 无差异</div>`;
+                               border-top:none;text-align:center;color:#27ae60;">✅ ${structureDiff.count>0?'此Sheet单元格无差异（Sheet构成另有异常）':'无差异'}</div>`;
         } else {
             html+=renderSheetTable(r, name);
         }
@@ -1675,7 +1842,7 @@ function renderXlCompResult(){
 
     const switcher=document.getElementById('xlcomp-view-switcher');
     if(switcher) switcher.style.display='flex';
-    xlcompUpdateColorViewBtns();
+    xlcompUpdateViewBtns();
     result.innerHTML=html;
     _addBackToTopBtn();
     setTimeout(()=>{
@@ -2169,19 +2336,35 @@ function xlcompSwitchView(view){
 }
 
 // ===== 公式対比 =====
+async function prepareFormulaComparison(){
+    if(!xlcompCmpFormula) return null;
+    if(xlcompFormulaResults) return xlcompFormulaResults;
+    if(!xlcompResults) return null;
+
+    const selectedSheets = window._xlcompSelectedSheets || Object.keys(xlcompResults);
+    const commonSheets = selectedSheets.filter(name =>
+        xlcompWbA?.SheetNames?.includes(name) && xlcompWbB?.SheetNames?.includes(name)
+    );
+    const results = {};
+    if(commonSheets.length){
+        await _xlcompEnsureExternalMaps();
+        commonSheets.forEach(name=>{ results[name]=compareSheetFormula(name); });
+    }
+    xlcompFormulaResults = results;
+    return xlcompFormulaResults;
+}
+
 async function renderFormulaView(){
     if(!xlcompResults) return;
+    if(!xlcompCmpFormula) return;
     const result=document.getElementById('xlcomp-result');
     result.innerHTML=`<div style="padding:20px;text-align:center;color:#888;">⏳ 正在解析公式及外部参照...</div>`;
 
-    try{ await _xlcompEnsureExternalMaps(); }
+    try{ await prepareFormulaComparison(); }
     catch(e){
         result.innerHTML=`<div style="padding:20px;color:#e74c3c;">❌ 外部链接解析失败：${esc(e.message)}</div>`;
         return;
     }
-
-    xlcompFormulaResults={};
-    Object.keys(xlcompResults).forEach(name=>{ xlcompFormulaResults[name]=compareSheetFormula(name); });
 
     let totalFormulaDiff=0, totalExtDiff=0;
     Object.values(xlcompFormulaResults).forEach(r=>{
@@ -2376,28 +2559,16 @@ function tbNav(dir){
 
 async function renderTextboxView(){
     if(!xlcompResults) return;
+    if(!xlcompCmpTextbox) return;
     const result=document.getElementById('xlcomp-result');
     result.innerHTML=`<div style="padding:20px;text-align:center;color:#888;">⏳ 正在读取文本框内容...</div>`;
 
-    try{ await LibLoader.loadJSZip(); }
+    let textboxResults;
+    try{ textboxResults = await prepareTextboxComparison(); }
     catch(e){ result.innerHTML=`<div style="padding:20px;color:#e74c3c;">❌ JSZip加载失败：${e.message}</div>`; return; }
 
-    const selectedSheets=window._xlcompSelectedSheets||
-        [...document.querySelectorAll('.xlcomp-sheet-cb:checked')].map(cb=>cb.dataset.sheet);
-
-    const textboxResults={};
     let totalDiff=0;
-
-    for(const name of selectedSheets){
-        const tbA=await getTextboxesFromZip(xlcompFileA, name, xlcompWbA);
-        const tbB=await getTextboxesFromZip(xlcompFileB, name, xlcompWbB);
-        if(tbA.length>0||tbB.length>0){
-            const diffs=compareTextboxes(tbA, tbB);
-            const diffCount=diffs.filter(d=>d.status!=='eq').length;
-            totalDiff+=diffCount;
-            textboxResults[name]={ tbA, tbB, diffs, diffCount };
-        }
-    }
+    Object.values(textboxResults||{}).forEach(r=>{ totalDiff += r.diffCount || 0; });
 
     const totalSheets=Object.keys(textboxResults).length;
 
@@ -2485,6 +2656,32 @@ async function renderTextboxView(){
 
     result.innerHTML=html;
     setTimeout(()=>tbNavInit(),100);
+}
+
+async function prepareTextboxComparison(){
+    if(!xlcompCmpTextbox) return null;
+    if(xlcompTextboxResults) return xlcompTextboxResults;
+    if(!xlcompResults) return null;
+
+    const selectedSheets = window._xlcompSelectedSheets || Object.keys(xlcompResults);
+    const commonSheets = selectedSheets.filter(name =>
+        xlcompWbA?.SheetNames?.includes(name) && xlcompWbB?.SheetNames?.includes(name)
+    );
+    const textboxResults = {};
+    if(commonSheets.length){
+        await LibLoader.loadJSZip();
+        for(const name of commonSheets){
+            const tbA=await getTextboxesFromZip(xlcompFileA, name, xlcompWbA);
+            const tbB=await getTextboxesFromZip(xlcompFileB, name, xlcompWbB);
+            if(tbA.length>0||tbB.length>0){
+                const diffs=compareTextboxes(tbA, tbB);
+                const diffCount=diffs.filter(d=>d.status!=='eq').length;
+                textboxResults[name]={ tbA, tbB, diffs, diffCount };
+            }
+        }
+    }
+    xlcompTextboxResults = textboxResults;
+    return xlcompTextboxResults;
 }
 
 async function getTextboxesFromZip(zipFile, sheetName, wb){
@@ -2969,17 +3166,10 @@ function resetXlComp(){
     xlcompWbA=null; xlcompWbB=null;
     xlcompResults=null; xlcompHideEq=false;
     xlcompExtMapA=null; xlcompExtMapB=null;
+    xlcompSheetStructureDiff={ onlyA:[], onlyB:[], count:0 };
 
-    // カラーチェックボックスリセット
-    const cbBg=document.getElementById('xlcomp-bgcolor');
-    const cbFont=document.getElementById('xlcomp-fontcolor');
-    const cbNumFmt=document.getElementById('xlcomp-numfmt');
-    const note=document.getElementById('xlcomp-color-note');
-    if(cbBg) cbBg.checked=false;
-    if(cbFont) cbFont.checked=false;
-    if(cbNumFmt) cbNumFmt.checked=false;
-    if(note) note.style.display='none';
-    xlcompCmpBg=false; xlcompCmpFont=false; xlcompCmpNumFmt=false;
+    xlcompCurrentView='cell';
+    xlcompResetCompareOptions();
 
     ['a','b'].forEach(side=>{
         const drop=document.getElementById('xlcomp-drop-'+side);
@@ -3009,7 +3199,9 @@ function exportXlComp(){
     if(xlcompCmpBg) optInfo += '　背景颜色对比：有効';
     if(xlcompCmpFont) optInfo += '　字体颜色对比：有効';
     if(xlcompCmpNumFmt) optInfo += '　数字格式对比：有効';
-    if(!xlcompCmpBg && !xlcompCmpFont && !xlcompCmpNumFmt) optInfo = '　颜色/格式对比：無効';
+    if(xlcompCmpFormula) optInfo += '　公式对比：有効';
+    if(xlcompCmpTextbox) optInfo += '　文本框对比：有効';
+    if(!xlcompCmpBg && !xlcompCmpFont && !xlcompCmpNumFmt && !xlcompCmpFormula && !xlcompCmpTextbox) optInfo = '　附加对比：無効';
     // Build color extra sections
     let colorExtraHtml='';
     if(xlcompCmpBg){
@@ -3085,6 +3277,8 @@ function exportXlComp(){
         }
     }
 
+    const structureExtraHtml = result.innerHTML.includes('xlcomp-sheet-structure-diff')
+        ? '' : xlcompRenderSheetStructureDiffHtml(xlcompSheetStructureDiff);
     const html=`<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8">
     <title>Excel对比报告</title>
     <style>
@@ -3099,6 +3293,7 @@ function exportXlComp(){
     <h2>📊 Excel对比报告 — ${new Date().toLocaleString()}</h2>
     <p>文件A：${xlcompFileA.name} ／ 文件B：${xlcompFileB.name}${optInfo}</p>
     ${result.innerHTML}
+    ${structureExtraHtml}
     ${colorExtraHtml}
     </body></html>`;
     const a=document.createElement('a');
@@ -3131,7 +3326,7 @@ async function readExcelsFromZip(zipFile){
 async function runZipComp(){
     if(!xlcompFileA||!xlcompFileB){ alert('请先上传两个ZIP文件'); return; }
     // 色比較オプションをチェックボックスから同期
-    xlcompOnColorOptChange();
+    xlcompOnCompareOptChange();
     const progress=document.getElementById('xlcomp-progress');
     progress.textContent='⏳ 正在解压并读取...';
     progress.classList.add('show');
@@ -3197,6 +3392,7 @@ async function runZipComp(){
             xlcompWbA=wbA; xlcompWbB=wbB;
 
             const allSheets=[...new Set([...wbA.SheetNames, ...wbB.SheetNames])];
+            const sheetStructureDiff=xlcompBuildSheetStructureDiff(wbA.SheetNames, wbB.SheetNames);
             const sheetResults={};
             allSheets.forEach(sheet=>{ sheetResults[sheet]=compareSheet(sheet); });
 
@@ -3207,7 +3403,7 @@ async function runZipComp(){
                 return s+(r.diffCount||0)+(r.addCount||0)+(r.delCount||0);
             },0);
 
-            zipResult.files[name]={ status:'both', sheets:sheetResults, sheetNames:allSheets, totalDiff, isFuzzy, matchedNameB:nameBMatched };
+            zipResult.files[name]={ status:'both', sheets:sheetResults, sheetNames:allSheets, totalDiff, sheetStructureDiff, isFuzzy, matchedNameB:nameBMatched };
         }
 
         progress.classList.remove('show');
@@ -3223,9 +3419,9 @@ async function runZipComp(){
 function renderZipCompResult(zipResult){
     const result=document.getElementById('xlcomp-result');
     const totalFiles=Object.keys(zipResult.files).length;
-    const diffFiles=Object.values(zipResult.files).filter(f=>
-        f.status==='only_a'||f.status==='only_b'||(f.status==='both'&&f.totalDiff>0)).length;
+    const diffFiles=Object.values(zipResult.files).filter(xlcompZipFileHasDiff).length;
     const totalDiffAll=Object.values(zipResult.files).reduce((s,f)=>s+(f.totalDiff||0),0);
+    const totalStructureDiffAll=Object.values(zipResult.files).reduce((s,f)=>s+(f.sheetStructureDiff?.count||0),0);
 
     let html=`
     <div style="background:#2c3e50;color:white;border-radius:8px 8px 0 0;
@@ -3235,6 +3431,7 @@ function renderZipCompResult(zipResult){
         <span style="font-weight:bold;font-size:0.95rem;">🗜️ ZIP对比结果</span>
         <span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.8rem;">有差异：${diffFiles}/${totalFiles} 个文件</span>
         <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">总差异行：${totalDiffAll}</span>
+        ${totalStructureDiffAll>0?`<span style="background:#f39c12;border-radius:10px;padding:2px 10px;font-size:0.8rem;">⚠ ${xlcompI18n('compareSheetStructureDiff','Sheet构成异常')}：${totalStructureDiffAll}件</span>`:''}
         ${zipResult.onlyA.length>0?`<span style="background:#f39c12;border-radius:10px;padding:2px 10px;font-size:0.8rem;">仅A有：${zipResult.onlyA.length}个文件</span>`:''}
         ${zipResult.onlyB.length>0?`<span style="background:#27ae60;border-radius:10px;padding:2px 10px;font-size:0.8rem;">仅B有：${zipResult.onlyB.length}个文件</span>`:''}
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
@@ -3259,7 +3456,7 @@ function renderZipCompResult(zipResult){
     <div style="border:1px solid #ddd;border-top:none;border-radius:0 0 8px 8px;overflow:hidden;">`;
 
     Object.entries(zipResult.files).forEach(([name,fileData],fileIdx)=>{
-        const hasDiff=fileData.status==='only_a'||fileData.status==='only_b'||(fileData.status==='both'&&fileData.totalDiff>0);
+        const hasDiff=xlcompZipFileHasDiff(fileData);
         const statusIcon=hasDiff?'⚠️':'✅';
         const statusColor=fileData.status==='only_a'?'#f39c12':fileData.status==='only_b'?'#27ae60':hasDiff?'#e74c3c':'#27ae60';
         const rowBg=hasDiff?'#fff8f8':'#f8fff8';
@@ -3276,7 +3473,8 @@ function renderZipCompResult(zipResult){
                 </span>
                 ${fileData.status==='only_a'?`<span style="background:#f39c12;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">仅ZIP A有</span>`:''}
                 ${fileData.status==='only_b'?`<span style="background:#27ae60;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">仅ZIP B有</span>`:''}
-                ${fileData.status==='both'&&hasDiff?`<span style="background:#e74c3c;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">差异 ${fileData.totalDiff} 行</span>`:''}
+                ${fileData.status==='both'&&fileData.sheetStructureDiff?.count>0?`<span style="background:#f39c12;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">${xlcompI18n('compareSheetStructureDiff','Sheet构成异常')} ${fileData.sheetStructureDiff.count}件</span>`:''}
+                ${fileData.status==='both'&&hasDiff&&fileData.totalDiff>0?`<span style="background:#e74c3c;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">差异 ${fileData.totalDiff} 行</span>`:''}
                 ${fileData.status==='both'&&!hasDiff?`<span style="background:#27ae60;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">✅ 完全一致</span>`:''}
                 <span style="color:#aaa;font-size:0.8rem;">▼</span>
             </div>
@@ -3286,6 +3484,7 @@ function renderZipCompResult(zipResult){
             html+=`<div style="padding:16px 20px;color:#888;font-size:0.85rem;background:#fafafa;text-align:center;">
                 此文件仅存在于 ${fileData.status==='only_a'?'ZIP A':'ZIP B'} 中</div>`;
         } else {
+            html+=xlcompRenderSheetStructureDiffHtml(fileData.sheetStructureDiff, true);
             fileData.sheetNames.forEach(sheetName=>{
                 const r=fileData.sheets[sheetName];
                 const sheetDiff=(r.diffCount||0)+(r.addCount||0)+(r.delCount||0);
@@ -3294,8 +3493,8 @@ function renderZipCompResult(zipResult){
                     <div style="background:#34495e;color:white;padding:6px 16px;
                                 display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <span style="font-size:0.85rem;font-weight:bold;">📋 ${sheetName}</span>`;
-                if(r.status==='only_a') html+=`<span style="background:#f39c12;border-radius:8px;padding:1px 8px;font-size:0.75rem;">仅A有</span>`;
-                else if(r.status==='only_b') html+=`<span style="background:#27ae60;border-radius:8px;padding:1px 8px;font-size:0.75rem;">仅B有</span>`;
+                if(r.status==='only_a') html+=`<span style="background:#f39c12;border-radius:8px;padding:1px 8px;font-size:0.75rem;">${xlcompI18n('compareSheetOnlyAMissing','新表中未找到')}</span>`;
+                else if(r.status==='only_b') html+=`<span style="background:#27ae60;border-radius:8px;padding:1px 8px;font-size:0.75rem;">${xlcompI18n('compareSheetOnlyBAdded','新表新增')}</span>`;
                 else html+=`
                     <span style="background:#e74c3c;border-radius:8px;padding:1px 8px;font-size:0.75rem;">修改 ${r.diffCount}</span>
                     <span style="background:#27ae60;border-radius:8px;padding:1px 8px;font-size:0.75rem;">新增 ${r.addCount}</span>
@@ -3358,8 +3557,16 @@ function xlzipToggleDetail(id, headerEl){
 
 // ===== 高速モード：両ファイルアップロード後処理 =====
 function _fastAfterBothFilesReady(){
-    // 隐藏标准模式控件
-    document.getElementById('xlcomp-controls').style.display = 'none';
+    // 高速模式仍显示附加选项，以便可靠支持的背景色/字体色可以被选择；
+    // 普通开始按钮和标准结果操作按钮在高速模式中隐藏。
+    document.getElementById('xlcomp-controls').style.display = 'flex';
+    const standardStart = document.getElementById('xlcomp-start-btn');
+    if(standardStart) standardStart.style.display = 'none';
+    ['btn-exp-xlcomp','xlcomp-btn-hide','xlcomp-btn-show'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el) el.style.display='none';
+    });
+    xlcompOnCompareOptChange();
     document.getElementById('xlcomp-sheet-select').style.display = 'none';
     document.getElementById('xlcomp-result').innerHTML = '';
     _xlcompSyncCompareEntryButtons();
@@ -3422,6 +3629,7 @@ async function _fastPhase1_ReadDirectory(){
         // Sheet情報を収集
         xlcompWbA = wbA; // bookSheets:trueなのでSheetsオブジェクトは空、SheetNamesのみ
         xlcompWbB = wbB;
+        xlcompSheetStructureDiff = xlcompBuildSheetStructureDiff(wbA.SheetNames, wbB.SheetNames);
 
         bar.style.width = '80%';
         document.getElementById('xlcomp-fp-phase').textContent = 'Sheet一覧を構築中...';
@@ -3674,6 +3882,10 @@ async function xlcompFastPhase2Start(){
     xlcompFastRenderIdx = 0;
     xlcompFastSheetFilter = null;
     xlcompFastWbSlimCache = new Map();
+    xlcompSheetStructureDiff = xlcompBuildSheetStructureDiff(
+        xlcompWbA?.SheetNames,
+        xlcompWbB?.SheetNames
+    );
 
     document.getElementById('xlcomp-cancelled-banner').classList.remove('show');
     document.getElementById('xlcomp-result').innerHTML = '';
@@ -4062,9 +4274,10 @@ function _fastRenderDiffList(){
     // Sheet情報収集
     const sheetNames = Object.keys(stats);
     const totalDiffCount = diffs.length;
+    const structureDiff = xlcompSheetStructureDiff || { onlyA:[], onlyB:[], count:0 };
     const isCancelled = xlcompFastPhase === 'cancelled';
 
-    if(diffs.length === 0 && !isCancelled){
+    if(diffs.length === 0 && !isCancelled && !structureDiff.count){
         result.innerHTML = `
         <div style="padding:40px;text-align:center;background:#eafaf1;border-radius:8px;
                     border:1px solid #a9dfbf;margin:20px;">
@@ -4079,7 +4292,8 @@ function _fastRenderDiffList(){
     let html = `
     <div class="xl-fast-result-header">
         <span style="font-weight:bold;font-size:0.95rem;">⚡ 高速比較結果${isCancelled ? '（途中）' : ''}</span>
-        <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">差異件数：${totalDiffCount}</span>
+        <span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">差異行：${totalDiffCount}</span>
+        ${structureDiff.count>0?`<span style="background:#f39c12;border-radius:10px;padding:2px 10px;font-size:0.8rem;">⚠ ${xlcompI18n('compareSheetStructureDiff','Sheet构成异常')}：${structureDiff.count}件</span>`:''}
         <span style="background:#7f8c8d;border-radius:10px;padding:2px 10px;font-size:0.8rem;">Sheet数：${sheetNames.length}</span>
         ${totalDiffCount > 50000 ? '<span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.8rem;">⚠ 50,000件超過（表示制限中）</span>' : ''}
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
@@ -4099,6 +4313,8 @@ function _fastRenderDiffList(){
                     onmouseout="this.style.background='#e74c3c'">下一差异 ⬇</button>
         </div>
     </div>`;
+
+    html += xlcompRenderSheetStructureDiffHtml(structureDiff, true);
 
     // Sheet統計サマリーチップ
     html += '<div style="background:#f8f8f8;border:1px solid #ddd;padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px;">';
@@ -4305,7 +4521,8 @@ function _fastOnCancel(){
 // ===== 高速モード：エクスポート =====
 function _fastExportResults(format){
     const diffs = _fastGetFilteredDiffs();
-    if(!diffs.length){ alert('エクスポートする差異がありません'); return; }
+    const structureDiff = xlcompSheetStructureDiff || { onlyA:[], onlyB:[], count:0 };
+    if(!diffs.length && !structureDiff.count){ alert('エクスポートする差異がありません'); return; }
 
     if(format === 'csv'){
         const BOM = '﻿';
@@ -4333,7 +4550,8 @@ function _fastExportResults(format){
         <h2>⚡ Excel对比报告（高速模式）— ${new Date().toLocaleString()}</h2>
         <p>文件A：${esc(xlcompFileA?.name||'?')} (${(xlcompFileA?.size/1024/1024||0).toFixed(1)}MB) ／
            文件B：${esc(xlcompFileB?.name||'?')} (${(xlcompFileB?.size/1024/1024||0).toFixed(1)}MB)</p>
-        <p>差異件数：${diffs.length} ／ Sheet数：${Object.keys(xlcompFastStats).length}</p>
+        <p>差異行：${diffs.length} ／ Sheet数：${Object.keys(xlcompFastStats).length}</p>
+        ${xlcompRenderSheetStructureDiffHtml(structureDiff, true)}
         ${xlcompFastPhase==='cancelled'?'<p style="color:#e74c3c;font-weight:bold;">⚠ 比較はキャンセルされました（不完全な結果）</p>':''}
         <table><tr><th>Sheet</th><th>セル</th><th>行</th><th>列</th><th>ファイルA</th><th>ファイルB</th><th>差異タイプ</th></tr>`;
         diffs.forEach(d => {
@@ -4360,6 +4578,9 @@ function _fastCleanupAll(){
     xlcompFastWbSlimCache = new Map();
     xlcompCancelFlag = false;
     xlcompFastSheets = [];
+    xlcompSheetStructureDiff = { onlyA:[], onlyB:[], count:0 };
+    xlcompFormulaResults = null;
+    xlcompTextboxResults = null;
 
     // 標準wbもクリア（高速モードのbookSheets:trueで作られたもの）
     if(xlcompFastMode){
