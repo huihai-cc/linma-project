@@ -157,6 +157,7 @@ const LibLoader = {
   <select id="sc-system-select">
     <option value="auto" selected>自動検出</option>
     <option value="amazon_dsp">Amazon DSP（Display）</option>
+    <option value="amazon_dsp_video">Amazon DSP（動画）</option>
     <option value="amazon_pva">Amazon DSP（PVA）</option>
     <option value="amazon_ott">Amazon OTT</option>
   </select>
@@ -323,7 +324,7 @@ const COL_ITEM_W_DEFAULT  = 120;
 let SC_COL_NO_W  = SC_COL_NO_W_DEFAULT;
 let SC_COL_LI_W  = SC_COL_LI_W_DEFAULT;
 let SC_ROW_HEIGHT = 50;   // 行高（默认50px，用户可调整）
-let scSystem = 'auto';          // ユーザー選択値（auto / amazon_dsp / amazon_pva / amazon_ott）
+let scSystem = 'auto';          // ユーザー選択値（auto / amazon_dsp / amazon_dsp_video / amazon_pva / amazon_ott）
 let scDetectedSystem = '';      // 自動検出モードで判定された実際のシステム（auto選択時のみ使用）
 let scCaseMode = 'initial';     // 默认：初期案件
 let scSystemManual = false;     // ユーザーがチェック対象を手動変更したか（自動判定をスキップ）
@@ -434,6 +435,7 @@ let _scKissonVisible = false;
 
 const SC_SYSTEMS = {
     amazon_dsp: { label: 'Amazon DSP（Display）', color: '#FF9900', badge_bg: '#FF9900' },
+    amazon_dsp_video: { label: 'Amazon DSP（動画）', color: '#16a085', badge_bg: '#16a085' },
     amazon_pva: { label: 'Amazon DSP（PVA）',     color: '#e74c3c', badge_bg: '#e74c3c' },
     amazon_ott: { label: 'Amazon OTT', color: '#8e44ad', badge_bg: '#8e44ad' },
 };
@@ -2972,6 +2974,197 @@ function readSettingTableVideo(wb, system){
     return result;
 }
 
+// ===== DSP Online Video 設定表 adapter =====
+// 既存の PVA/OTT parser は変更せず、DSP Video だけ Targeting 配下の
+// 「Mobile environment」を再解決する。テンプレート前半に同名列がある場合、
+// 最初の header を採用しない。
+function _findVideoSettingHeaderRowForAdapter(allRows){
+    for(let i=0; i<Math.min(100, allRows.length); i++){
+        const row = allRows[i] || [];
+        const rowText = row.join(' ');
+        if(!rowText.includes('ラインアイテム名') && !rowText.includes('Line Item Name')) continue;
+        let headerRowIdx = i;
+        for(let j=i+1; j<Math.min(i+5, allRows.length); j++){
+            if(_isSecondHeaderRow(allRows[j], ['start day','start time','end day','end time','device type','mobile environment'])){
+                headerRowIdx = j;
+                break;
+            }
+        }
+        return headerRowIdx;
+    }
+    return -1;
+}
+
+function _dspVideoHeaderLabel(value){
+    return String(value ?? '')
+        .split('\n')[0]
+        .replace(/（[^）]*）/g, '')
+        .replace(/\([^)]*\)/g, '')
+        .trim();
+}
+
+function _dspVideoNormalizedHeaderLabel(value){
+    return _dspVideoHeaderLabel(value)
+        .normalize('NFKC')
+        .replace(/[\s\u3000]+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+function _dspVideoParentLabel(allRows, parentRowIdx, colIdx, mergeRanges){
+    if(parentRowIdx < 0) return '';
+    const merge = (Array.isArray(mergeRanges) ? mergeRanges : []).find(m =>
+        m && m.s && m.e &&
+        m.s.r <= parentRowIdx && parentRowIdx <= m.e.r &&
+        m.s.c <= colIdx && colIdx <= m.e.c
+    );
+    if(merge){
+        return String((allRows[merge.s.r] || [])[merge.s.c] || '').trim();
+    }
+
+    // merge 情報がない synthetic row でも、同じ parent row の直近ラベルを使う。
+    const row = allRows[parentRowIdx] || [];
+    for(let c=colIdx; c>=0; c--){
+        const value = String(row[c] || '').trim();
+        if(value) return value;
+    }
+    return '';
+}
+
+function _dspVideoHeaderCandidates(allRows, headerRowIdx, mergeRanges){
+    if(headerRowIdx < 0 || !allRows[headerRowIdx]) return [];
+    const maxCols = Math.max(
+        allRows[headerRowIdx].length,
+        (allRows[headerRowIdx + 1] || []).length,
+    );
+    const candidates = [];
+    for(let index=0; index<maxCols; index++){
+        const labels = [];
+        for(let r=Math.max(0, headerRowIdx-1); r<=headerRowIdx+1 && r<allRows.length; r++){
+            const label = _dspVideoHeaderLabel((allRows[r] || [])[index]);
+            if(label) labels.push({ row:r, label });
+        }
+        const parent = _dspVideoParentLabel(allRows, headerRowIdx - 1, index, mergeRanges);
+        candidates.push({
+            index,
+            labels,
+            parent,
+            isTargeting: /targeting/i.test(parent),
+        });
+    }
+    return candidates;
+}
+
+function _dspVideoHeaderMatches(candidate, aliases){
+    return candidate.labels.some(({ label }) => {
+        const normalized = _dspVideoNormalizedHeaderLabel(label);
+        return aliases.some(alias => {
+            const target = _dspVideoNormalizedHeaderLabel(alias);
+            return normalized === target || normalized.includes(target);
+        });
+    });
+}
+
+function _dspVideoFindSettingColumn(allRows, headerRowIdx, mergeRanges, aliases){
+    const matches = _dspVideoHeaderCandidates(allRows, headerRowIdx, mergeRanges)
+        .filter(candidate => _dspVideoHeaderMatches(candidate, aliases));
+    const targetingMatches = matches.filter(candidate => candidate.isTargeting);
+    const selected = targetingMatches.length > 0 ? targetingMatches : matches;
+    if(selected.length === 0) return null;
+    return selected[0];
+}
+
+function _dspVideoColumnSource(candidate){
+    if(!candidate) return '';
+    const child = candidate.labels.map(item => item.label).join(' > ') || `列[${candidate.index + 1}]`;
+    return candidate.parent ? `${candidate.parent} > ${child}` : child;
+}
+
+function _findDSPVideoTargetingMobileEnv(allRows, headerRowIdx, mergeRanges){
+    const candidate = _dspVideoFindSettingColumn(
+        allRows, headerRowIdx, mergeRanges, ['Mobile environment']
+    );
+    if(!candidate) return null;
+    return {
+        index: candidate.index,
+        source: _dspVideoColumnSource(candidate),
+    };
+}
+
+function readSettingTableDSPVideo(wb){
+    const baseRows = readSettingTableVideo(wb, 'amazon_dsp_video');
+    const columnCache = new Map();
+    return baseRows
+        .filter(row => normalizeVideoContentTypeFromSetting(row.media) === 'ONLINE_VIDEO')
+        .map(row => {
+            const ws = wb && wb.Sheets ? wb.Sheets[row.__SHEET__] : null;
+            if(!ws || !ws['!ref']) return row;
+            let parsedSheet = columnCache.get(row.__SHEET__);
+            if(!parsedSheet){
+                const allRows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+                const headerRowIdx = _findVideoSettingHeaderRowForAdapter(allRows);
+                const mergeRanges = ws['!merges'] || [];
+                const find = aliases => _dspVideoFindSettingColumn(
+                    allRows, headerRowIdx, mergeRanges, aliases
+                );
+                parsedSheet = {
+                    allRows,
+                    headerRowIdx,
+                    columns: {
+                        line_item: find(['Line Item Name', 'ラインアイテム名']),
+                        mobile_env: find(['Mobile environment']),
+                        language: find(['Language']),
+                        domain_bl: find(['Domain']),
+                        brand_inventory_tier: find(['Inventory tier']),
+                        brand_exclusions: find(['Content exclusion categories']),
+                        viewability_pct: find(['Viewability']),
+                        viewability_excl: find(['Unmeasured viewability', '不明層']),
+                        video_init: find(['Video initiation type']),
+                        video_size: find(['Video player size']),
+                        video_comp: find(['Video completion']),
+                        position: find(['Position']),
+                    },
+                };
+                columnCache.set(row.__SHEET__, parsedSheet);
+            }
+
+            const { allRows, headerRowIdx, columns } = parsedSheet;
+            const liColIdx = columns.line_item ? columns.line_item.index : -1;
+            if(liColIdx === -1 || headerRowIdx < 0) return row;
+            const dataRow = allRows.slice(headerRowIdx + 1)
+                .find(values => String(values[liColIdx] || '').trim() === row.__LI_NAME__);
+            if(!dataRow) return row;
+
+            const read = key => {
+                const column = columns[key];
+                return column ? String(dataRow[column.index] ?? '').trim() : '';
+            };
+            if(columns.mobile_env){
+                row.mobile_env = read('mobile_env');
+                row.__MOBILE_ENV_SOURCE__ = _dspVideoColumnSource(columns.mobile_env);
+            }
+            if(columns.language) row.language = read('language');
+            if(columns.domain_bl) row.domain_bl = read('domain_bl');
+            if(columns.brand_inventory_tier) row.brand_inventory_tier = read('brand_inventory_tier');
+            if(columns.brand_exclusions) row.brand_exclusions = read('brand_exclusions');
+            if(columns.viewability_pct) row.viewability_pct = read('viewability_pct');
+            if(columns.viewability_excl) row.viewability_excl = read('viewability_excl');
+            if(columns.video_init) row.video_init = read('video_init');
+            if(columns.video_size) row.video_size = read('video_size');
+            if(columns.video_comp) row.video_comp = read('video_comp');
+            if(columns.position){
+                row.position = read('position');
+                row.video_position = row.position;
+            }
+            row.__DSP_VIDEO_FIELD_SOURCES__ = Object.fromEntries(
+                Object.entries(columns)
+                    .filter(([, column]) => column)
+                    .map(([key, column]) => [key, _dspVideoColumnSource(column)])
+            );
+            return row;
+        });
+}
+
 // ===== VIDEO LINE ITEMS 下载数据読み取り（PVA/OTT共用）=====
 function readDownloadDataVideoMulti(wbsD){
     const liMap = {};
@@ -3885,6 +4078,133 @@ function matchAndCompareVideo(settingData, downloadMap, system){
     coverageWarnings: coverageWarningsForLI,
     needsReview: coverageWarningsForLI.length > 0,
 });
+    }
+    return results;
+}
+
+// ===== DSP Online Video マッチング比対 =====
+function matchAndCompareDSPVideo(settingData, downloadMap, system){
+    const results = [];
+    for(const sRow of settingData){
+        const liName = sRow.__LI_NAME__;
+        const ioName = sRow.__IO_NAME__ || '';
+        let dRow = null;
+        let matchedName = liName;
+
+        if(downloadMap[liName]) dRow = downloadMap[liName];
+        if(!dRow && ioName){
+            const scopedNames = Object.keys(downloadMap).filter(name => {
+                const row = downloadMap[name];
+                return row.__IO_NAME_D__ &&
+                    (row.__IO_NAME_D__.includes(ioName) || ioName.includes(row.__IO_NAME_D__));
+            });
+            const fuzzy = scopedNames.find(name => {
+                const dl = name.toLowerCase();
+                const setting = liName.toLowerCase();
+                return dl === setting ||
+                    (dl.includes(setting) && setting.length / dl.length > 0.7) ||
+                    (setting.includes(dl) && dl.length / setting.length > 0.7);
+            });
+            if(fuzzy){ dRow = downloadMap[fuzzy]; matchedName = fuzzy; }
+        }
+        if(!dRow){
+            const fuzzy = Object.keys(downloadMap).find(name => {
+                const dl = name.toLowerCase();
+                const setting = liName.toLowerCase();
+                return dl === setting ||
+                    (dl.includes(setting) && setting.length / dl.length > 0.7) ||
+                    (setting.includes(dl) && dl.length / setting.length > 0.7);
+            });
+            if(fuzzy){ dRow = downloadMap[fuzzy]; matchedName = fuzzy; }
+        }
+
+        const found = !!dRow;
+        const dGet = key => {
+            if(!dRow) return '';
+            if(dRow[key] !== undefined) return String(dRow[key] || '');
+            const aliases = DL_COL_ALIASES[key] || [];
+            for(const alias of aliases){
+                if(dRow[alias] !== undefined) return String(dRow[alias] || '');
+            }
+            return '';
+        };
+        const sGet = key => {
+            const map = {
+                'Line name*': liName,
+                'Line type*': sRow.media,
+                'Video Ad Content Type*': sRow.media,
+                'Line start date': [sRow.start_day, sRow.start_time].filter(Boolean).join(' '),
+                'Line end date': [sRow.end_day, sRow.end_time].filter(Boolean).join(' '),
+                'Active/Inactive': 'Pause',
+                'Product categories*': sRow.product_small,
+                'Device type': sRow.device,
+                'Mobile environment': sRow.mobile_env,
+                'Supply source': sRow.ssp,
+                'Location targeting by': sRow.location_sig || sRow.location,
+                'Location targeting 1 of 2': sRow.location,
+                'Reach similar audiences': sRow.audience ? '（AudienceありのためNO）' : '',
+                'Audience names': sRow.audience,
+                'Language targeting': sRow.language,
+                'Amazon viewability': sRow.viewability_pct,
+                'Unmeasured viewability': sRow.viewability_excl,
+                'Brand suitability content exclusion categories': sRow.brand_exclusions || sRow.brand_safety || sRow.ssp,
+                'Brand suitability inventory tier': sRow.brand_inventory_tier || sRow.brand_safety || sRow.ssp,
+                'Automated optimization': sRow.auto_opt,
+                'Line item budget': sRow.budget,
+                'Budget cap': sRow.budget_cap,
+                'Pacing profile': sRow.pacing,
+                'Base supply bid*': sRow.base_cpm,
+                'Maximum average CPM': sRow.max_cpm,
+                'Frequency Caps': sRow.frequency,
+                'Domain Targeting - (READ ONLY)': sRow.domain_bl,
+                'Video initiation type': sRow.video_init,
+                'Video ad format': sRow.video_format,
+                'Video player size': sRow.video_size,
+                'Video completion': sRow.video_comp,
+                'In-stream position': sRow.video_position,
+                'Out-stream position': sRow.video_position,
+            };
+            return map[key] === undefined ? '' : String(map[key] || '');
+        };
+
+        const colResults = DL_COLUMNS_DSP_VIDEO.map(col => {
+            const dVal = dGet(col.key);
+            const sVal = sGet(col.key);
+            let result = null;
+            if(found && col.checkFn){
+                try { result = col.checkFn(sRow, dVal, dRow); }
+                catch(error){ result = null; }
+            }
+            return {
+                key: col.key, ja: col.ja, sVal, dVal, result,
+                status: result === true ? 'match' : result === false ? 'mismatch' : 'review',
+            };
+        });
+
+        results.push({
+            liName,
+            __IO_NAME__: sRow.__IO_NAME__ || '',
+            __SHEET__: sRow.__SHEET__ || '',
+            __FILE_S__: sRow.__FILE_S__ || '',
+            found,
+            matchedName: dRow ? matchedName : null,
+            matchedIOName: dRow ? (dRow.__IO_NAME_D__ || '') : '',
+            matchedFileD: dRow ? (dRow.__FILE_D__ || '') : '',
+            isPause: dRow ? String(dRow['Active/Inactive'] || '').toLowerCase() === 'pause' : null,
+            activeStatus: dRow ? dRow['Active/Inactive'] : '',
+            colResults,
+            mismatchCount: colResults.filter(col => col.result === false).length,
+            __audience_diff__: sRow.__audience_diff__ || '',
+            __location_diff__: sRow.__location_diff__ || '',
+            __location_excl_diff__: sRow.__location_excl_diff__ || '',
+            __brand_content_note__: sRow.__brand_content_note__ || '',
+            __brand_tier_note__: sRow.__brand_tier_note__ || '',
+            __domain_note__: sRow.__domain_note__ || '',
+            __video_position_note__: sRow.__video_position_note__ || '',
+            __daypart_diff__: sRow.__daypart_diff__ || '',
+            coverageWarnings: [],
+            needsReview: colResults.some(col => col.status === 'review'),
+        });
     }
     return results;
 }
@@ -4860,11 +5180,129 @@ function initCRColumnResize(){
 // ===== 自動判定（チェック対象・案件区分） =====
 const _detectJunk = /Follow instructions|Choose from|Don't delete|READ ONLY|informational|Use letters|Enter a number|Leave blank|Choose from dropdown/i;
 
-// ダウンロードデータからチェック対象（amazon_dsp / amazon_pva / amazon_ott）を自動判定する。
+function _normalizeDSPVideoLIName(value){
+    return String(value ?? '')
+        .normalize('NFKC')
+        .replace(/\u3000/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+function _collectAmazonVideoDownloadEvidence(wbsD){
+    const evidence = {
+        displayCount: 0,
+        videoRows: [],
+        streamingTvCount: 0,
+        pvaCount: 0,
+    };
+    (Array.isArray(wbsD) ? wbsD : []).forEach(({ wb }) => {
+        if(!wb || !Array.isArray(wb.SheetNames)) return;
+        for(const sname of wb.SheetNames){
+            const ws = wb.Sheets[sname];
+            if(!ws || !ws['!ref']) continue;
+            const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}).slice(0,40);
+            const nameU = String(sname).toUpperCase();
+            const isDisplaySheet = nameU.includes('DISPLAY LINE ITEMS');
+            const isVideoSheet = nameU.includes('VIDEO LINE ITEMS');
+            if(!isDisplaySheet && !isVideoSheet) continue;
+
+            let headerRow = -1;
+            for(let i=0; i<rows.length; i++){
+                const rowText = rows[i].join(' ').toLowerCase();
+                if(rowText.includes('line name') &&
+                   (rowText.includes('line type') || rowText.includes('supply source'))){
+                    headerRow = i;
+                    break;
+                }
+            }
+            if(headerRow === -1) continue;
+            const headers = rows[headerRow];
+            const colOf = keyword => headers.findIndex(h =>
+                String(h ?? '').toLowerCase().includes(keyword));
+            const col = {
+                li: colOf('line name'),
+                lineType: colOf('line type'),
+                contentType: colOf('video ad content type'),
+                supply: colOf('supply source'),
+                deal: colOf('deal selection'),
+                order: colOf('order name'),
+            };
+            if(col.li === -1) continue;
+            for(let i=headerRow+1; i<rows.length; i++){
+                const row = rows[i];
+                const liName = String(row[col.li] || '').trim();
+                if(!liName || _detectJunk.test(liName)) continue;
+                const lineType = col.lineType === -1 ? '' : String(row[col.lineType] || '').trim().toLowerCase();
+                if(isDisplaySheet || lineType.includes('display')){
+                    evidence.displayCount++;
+                    continue;
+                }
+                if(!isVideoSheet && !lineType.includes('video')) continue;
+                const contentType = col.contentType === -1 ? '' : String(row[col.contentType] || '')
+                    .trim().toUpperCase().replace(/[\s_]+/g, '_');
+                const supply = col.supply === -1 ? '' : String(row[col.supply] || '').trim();
+                const deal = col.deal === -1 ? '' : String(row[col.deal] || '').trim();
+                const orderName = col.order === -1 ? '' : String(row[col.order] || '').trim();
+                const pvaEvidence = deal.toLowerCase().includes('prime video ads')
+                    || orderName.toLowerCase().includes('pva')
+                    || (contentType === 'STREAMING_TV' && !supply);
+                if(contentType === 'STREAMING_TV') evidence.streamingTvCount++;
+                if(pvaEvidence) evidence.pvaCount++;
+                evidence.videoRows.push({ liName, contentType, supply, pvaEvidence });
+            }
+        }
+    });
+    return evidence;
+}
+
+// 普通 Amazon DSP Online Video の厳格な pair detector。
+// SSP は識別条件に使わず、誤判定の原因を再現するための補助情報に留める。
+function detectAmazonDSPVideoPair(wbsS, wbsD){
+    const settingRows = (Array.isArray(wbsS) ? wbsS : []).flatMap(({ wb }) =>
+        readSettingTableDSPVideo(wb)
+    );
+    const downloadEvidence = _collectAmazonVideoDownloadEvidence(wbsD);
+    const onlineSettingRows = settingRows.filter(row =>
+        normalizeVideoContentTypeFromSetting(row.media) === 'ONLINE_VIDEO'
+    );
+    const onlineDownloadRows = downloadEvidence.videoRows.filter(row =>
+        row.contentType === 'ONLINE_VIDEO'
+    );
+
+    if(downloadEvidence.displayCount > 0 || onlineSettingRows.length === 0 ||
+       onlineDownloadRows.length === 0){
+        return { determined:false, detail:'DSP Video の Setting / VIDEO LINE ITEMS / ONLINE_VIDEO 証拠が不足しています' };
+    }
+    if(downloadEvidence.streamingTvCount > 0 || downloadEvidence.pvaCount > 0){
+        return { determined:false, detail:'STREAMING_TV または PVA 専用証拠があります' };
+    }
+
+    const settingNames = new Set(onlineSettingRows.map(row =>
+        _normalizeDSPVideoLIName(row.__LI_NAME__)
+    ).filter(Boolean));
+    const matchedNames = onlineDownloadRows.filter(row =>
+        settingNames.has(_normalizeDSPVideoLIName(row.liName))
+    );
+    if(matchedNames.length === 0){
+        return { determined:false, detail:'Setting LI と VIDEO LINE ITEMS の LI 名が交差一致しません' };
+    }
+    return {
+        determined:true,
+        system:'amazon_dsp_video',
+        evidence:`VIDEO LINE ITEMS / ONLINE_VIDEO / LI名交差一致 ${matchedNames.length}件`,
+    };
+}
+
+// ダウンロードデータからチェック対象（amazon_dsp / amazon_dsp_video / amazon_pva / amazon_ott）を自動判定する。
 // - DISPLAY LINE ITEMS に有効データ → amazon_dsp
 // - VIDEO LINE ITEMS に有効データ → PVA特徴のみなら amazon_pva、OTT特徴のみなら amazon_ott
 // - 複数種が混在する／特徴が判別できない場合は determined:false を返し、手動選択を促す
-function detectDownloadSystemAuto(wbsD){
+function detectDownloadSystemAuto(wbsD, wbsS){
+    if(Array.isArray(wbsS)){
+        const dspVideo = detectAmazonDSPVideoPair(wbsS, wbsD);
+        if(dspVideo.determined) return dspVideo;
+    }
     const signals = { dsp:0, pva:0, ott:0 };
     const found = { display:false, video:false };
 
@@ -5047,7 +5485,7 @@ function autoDetectAndApply(){
     // チェック対象：自動検出モードのときのみ判定値を更新する。
     // 選択肢（scSystem）は「自動検出」のまま変更せず、判定結果は scDetectedSystem に保持する
     if(!scSystemManual){
-        const sysRes = detectDownloadSystemAuto(scWbsD);
+        const sysRes = detectDownloadSystemAuto(scWbsD, scWbsS);
         if(sysRes.determined){
             scDetectedSystem = sysRes.system;
             msgs.push(SC_SYSTEMS[scDetectedSystem].label);
@@ -5099,10 +5537,14 @@ function checkAmazon(wbsS, wbsD, system, caseMode){
     }
     let allSettingData = [];
 
-    // ★ PVA/OTT は専用読み取り関数を使用
-    const readFn = (system === 'amazon_pva' || system === 'amazon_ott')
-        ? (wb) => readSettingTableVideo(wb, system)
-        : readSettingTableDSP;
+    const isVideoSystem = system === 'amazon_dsp_video' ||
+        system === 'amazon_pva' || system === 'amazon_ott';
+    // ★ DSP Video は専用adapter、PVA/OTT は既存 parser を使用
+    const readFn = system === 'amazon_dsp_video'
+        ? readSettingTableDSPVideo
+        : (system === 'amazon_pva' || system === 'amazon_ott')
+            ? (wb) => readSettingTableVideo(wb, system)
+            : readSettingTableDSP;
 
     wbsS.forEach(({ wb, fileName }) => {
         const rows = readFn(wb);
@@ -5113,7 +5555,7 @@ function checkAmazon(wbsS, wbsD, system, caseMode){
     const liSkipped = caseMode==='creative_addition';
     // CR追加案件ではLI設定値の比較は実行しないが、ダウンロードCRの日時が空白の場合に
     // 「LIに準ずる」継承解析を行うため、LIダウンロードデータは必ず読み込む
-    const downloadData = (system === 'amazon_pva' || system === 'amazon_ott')
+    const downloadData = isVideoSystem
         ? readDownloadDataVideoMulti(wbsD)
         : readDownloadDataDSPMulti(wbsD);
     // ★ 入稿物管理表のCRを今回設定表のLI名で絞り込み（複数入稿物管理表の取り違え防止）
@@ -5125,9 +5567,11 @@ function checkAmazon(wbsS, wbsD, system, caseMode){
         creativeSettingData, creativeDownloadData, allSettingData, caseMode, downloadData.liMap
     );
     const liItems = liSkipped ? [] :
-        (system === 'amazon_pva' || system === 'amazon_ott')
-            ? matchAndCompareVideo(allSettingData, downloadData.liMap, system)
-            : matchAndCompareDSP(allSettingData, downloadData.liMap, system);
+        system === 'amazon_dsp_video'
+            ? matchAndCompareDSPVideo(allSettingData, downloadData.liMap, system)
+            : (system === 'amazon_pva' || system === 'amazon_ott')
+                ? matchAndCompareVideo(allSettingData, downloadData.liMap, system)
+                : matchAndCompareDSP(allSettingData, downloadData.liMap, system);
 
     return {
         system,
@@ -6426,6 +6870,211 @@ const DL_COLUMNS = [
     { key:'Upload failure',           ja:'アップロードエラー',    checkFn:null, autoHide:true },
 ];
 
+function _dspVideoColumn(columns, key, overrides){
+    const source = columns.find(col => col.key === key);
+    if(!source) throw new Error(`DSP Video column source not found: ${key}`);
+    return Object.assign({}, source, overrides || {});
+}
+
+function _normalizeDSPVideoProductCategory(value){
+    return String(value ?? '')
+        .normalize('NFKC')
+        .trim()
+        .replace(/\s*[>:]\s*/g, '>')
+        .toLowerCase();
+}
+
+function _normalizeDSPVideoExplicitValue(value){
+    const normalized = String(value ?? '').normalize('NFKC').trim();
+    if(!normalized) return '';
+    if(['no targeting', '-', '—', '‐'].includes(normalized.toLowerCase())) return '';
+    return normalized.toLowerCase()
+        .replace(/\s+/g, ' ')
+        .replace(/\s*\+\s*/g, '+');
+}
+
+function _dspVideoExactValueCheck(field){
+    return (s, v) => {
+        const setting = _normalizeDSPVideoExplicitValue(s[field]);
+        const download = _normalizeDSPVideoExplicitValue(v);
+        if(!setting && !download) return null;
+        if(!setting || !download) return null;
+        return setting === download;
+    };
+}
+
+function _dspVideoPositionParts(value){
+    const normalized = String(value ?? '')
+        .normalize('NFKC')
+        .replace(/[，、]/g, ',')
+        .trim();
+    const low = normalized.toLowerCase();
+    if(!normalized || ['no targeting', '-', '—', '‐'].includes(low)){
+        return { tokens: new Set(), unknown: [] };
+    }
+    const known = new Set(['in-stream position', 'out-stream position', 'any']);
+    const tokens = new Set();
+    const unknown = [];
+    normalized.split(',').map(part => part.replace(/[\s\u3000]+/g, ' ').trim().toLowerCase())
+        .filter(Boolean)
+        .forEach(token => {
+            if(known.has(token)) tokens.add(token);
+            else unknown.push(token);
+        });
+    return { tokens, unknown };
+}
+
+function _checkDSPVideoPosition(s, v, expectedToken, expectedLabel){
+    const setting = _dspVideoPositionParts(s.video_position || s.position);
+    const download = _dspVideoPositionParts(v);
+    if(setting.unknown.length > 0){
+        s.__video_position_note__ =
+            `要確認：設定表のPosition値「${setting.unknown.join(', ')}」は判定ルール未確認です。`;
+        return null;
+    }
+    if(download.unknown.length > 0){
+        s.__video_position_note__ =
+            `要確認：ダウンロードデータの${expectedLabel}値「${String(v || '').trim()}」は未知のため自動判定しません。`;
+        return null;
+    }
+
+    const hasSetting = setting.tokens.has(expectedToken);
+    const hasDownload = download.tokens.has('any');
+    if(hasSetting === hasDownload) return true;
+
+    if(hasSetting){
+        s.__video_position_note__ =
+            `設定表では${expectedLabel}が指定されていますが、ダウンロードデータでは設定されていません。`;
+    } else {
+        s.__video_position_note__ =
+            `設定表に${expectedLabel}の指定がありませんが、ダウンロードデータではAnyが設定されています。`;
+    }
+    return false;
+}
+
+function _dspVideoPositionCheck(expectedToken, expectedLabel){
+    return (s, v) => _checkDSPVideoPosition(s, v, expectedToken, expectedLabel);
+}
+
+function _dspVideoDomainSettingSpecified(value){
+    const normalized = String(value ?? '').normalize('NFKC').trim().toLowerCase();
+    return !!normalized && !['no targeting', '-', '—', '‐', 'none', 'n/a'].includes(normalized);
+}
+
+function _checkDSPVideoDomain(s, v){
+    const settingRaw = String(s.domain_bl || '').trim();
+    const download = String(v || '').normalize('NFKC').trim().toLowerCase();
+    const hasSetting = _dspVideoDomainSettingSpecified(settingRaw);
+    const hasDownload = download === 'yes';
+    const downloadAbsent = !download || download === 'no';
+
+    if(hasSetting && hasDownload){
+        s.__domain_note__ =
+            `要確認：\nCSVではDomain Targeting「Yes」まで確認可能です。\n管理画面の設定内容と${settingRaw}が一致しているか確認してください。`;
+        return null;
+    }
+    if(hasSetting && downloadAbsent){
+        s.__domain_note__ =
+            '設定表ではDomain Targeting指定がありますが、ダウンロードデータでは設定を確認できません。';
+        return false;
+    }
+    if(!hasSetting && hasDownload){
+        s.__domain_note__ =
+            '要確認：\n設定表にDomain Targetingの記載はありませんが、\nダウンロードデータでは「Yes」が設定されています。\n管理画面の設定内容を確認してください。';
+        return null;
+    }
+    if(!hasSetting && downloadAbsent) return true;
+
+    s.__domain_note__ =
+        `要確認：ダウンロードデータのDomain Targeting値「${String(v || '').trim()}」は判定ルール未確認です。`;
+    return null;
+}
+
+function _dspVideoBrandSafetyNorm(value){
+    const normalized = String(value ?? '').normalize('NFKC').trim().toLowerCase();
+    if(normalized === 'standard') return 'standard';
+    if(normalized === 'select all' || normalized === 'select_all') return 'select_all';
+    return normalized;
+}
+
+function _checkDSPVideoBrandContent(s, v){
+    const brand = _dspVideoBrandSafetyNorm(s.brand_exclusions || s.brand_safety);
+    const displayCheck = DL_COLUMNS.find(col =>
+        col.key === 'Brand suitability content exclusion categories'
+    ).checkFn;
+    if(brand === 'select_all'){
+        return displayCheck(Object.assign({}, s, { ssp: 'Amazon外配信' }), v);
+    }
+    return displayCheck(s, v);
+}
+
+function _checkDSPVideoBrandTier(s, v){
+    const brand = _dspVideoBrandSafetyNorm(s.brand_inventory_tier || s.brand_safety);
+    if(brand === 'standard') return _dspVideoBrandSafetyNorm(v) === 'standard';
+    const displayCheck = DL_COLUMNS.find(col =>
+        col.key === 'Brand suitability inventory tier'
+    ).checkFn;
+    return displayCheck(s, v);
+}
+
+// 普通 Amazon DSP Online Video 用。PVA/OTT の専用列（DealID 等）は含めず、
+// Display DSP と共通の canonical ルールは既存 checkFn を再利用する。
+const DL_COLUMNS_DSP_VIDEO = [
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Line type*'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Line name*'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Video Ad Content Type*'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Line start date'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Line end date'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Active/Inactive'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Product categories*', {
+        checkFn: (s, v) => {
+            const setting = _normalizeDSPVideoProductCategory(s.product_small);
+            const download = _normalizeDSPVideoProductCategory(v);
+            if(!setting && !download) return null;
+            if(!setting || !download) return false;
+            return setting === download;
+        },
+    }),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Device type'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Mobile environment'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Supply source', {
+        checkFn: (s, v) => judgeSupplyD(
+            v,
+            normSupplyS(s.ssp || ''),
+            getTwitchS(s.twitch || ''),
+        ).ok,
+    }),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Location targeting by'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Location targeting 1 of 2'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Location excluding 1 of 2'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Reach similar audiences'),
+    _dspVideoColumn(DL_COLUMNS_VIDEO, 'Audience names'),
+    _dspVideoColumn(DL_COLUMNS, 'Language targeting'),
+    _dspVideoColumn(DL_COLUMNS, 'Domain Targeting - (READ ONLY)', {
+        checkFn: _checkDSPVideoDomain,
+    }),
+    _dspVideoColumn(DL_COLUMNS, 'Amazon viewability'),
+    _dspVideoColumn(DL_COLUMNS, 'Unmeasured viewability'),
+    _dspVideoColumn(DL_COLUMNS, 'Brand suitability content exclusion categories', {
+        checkFn: _checkDSPVideoBrandContent,
+    }),
+    _dspVideoColumn(DL_COLUMNS, 'Brand suitability inventory tier', {
+        checkFn: _checkDSPVideoBrandTier,
+    }),
+    _dspVideoColumn(DL_COLUMNS, 'Automated optimization'),
+    _dspVideoColumn(DL_COLUMNS, 'Line item budget'),
+    _dspVideoColumn(DL_COLUMNS, 'Budget cap'),
+    _dspVideoColumn(DL_COLUMNS, 'Pacing profile'),
+    _dspVideoColumn(DL_COLUMNS, 'Frequency Caps'),
+    _dspVideoColumn(DL_COLUMNS, 'Maximum average CPM'),
+    { key:'Video initiation type', ja:'Video開始方法', checkFn:_dspVideoExactValueCheck('video_init') },
+    { key:'Video ad format', ja:'Video広告フォーマット', checkFn:_dspVideoExactValueCheck('video_format') },
+    { key:'Video player size', ja:'Videoプレイヤーサイズ', checkFn:_dspVideoExactValueCheck('video_size') },
+    { key:'Video completion', ja:'Video完了条件', checkFn:_dspVideoExactValueCheck('video_comp') },
+    { key:'In-stream position', ja:'In-stream位置', checkFn:_dspVideoPositionCheck('in-stream position', 'In-stream position') },
+    { key:'Out-stream position', ja:'Out-stream位置', checkFn:_dspVideoPositionCheck('out-stream position', 'Out-stream position') },
+];
+
 const DL_COL_ALIASES = {
     'Base supply bid*':    ['Base supply bid'],
     'Product categories*': ['Product categories'],
@@ -6873,6 +7522,9 @@ function renderScResult(executionCase){
         'Targeting by Keywords': '__keyword_diff__',
         'Brand suitability content exclusion categories': '__brand_content_note__',
         'Brand suitability inventory tier': '__brand_tier_note__',
+        'Domain Targeting - (READ ONLY)': '__domain_note__',
+        'In-stream position': '__video_position_note__',
+        'Out-stream position': '__video_position_note__',
         'Daypart period': '__daypart_diff__',
     };
     function _colHasNote(item, colKey){
@@ -7049,8 +7701,10 @@ function renderScResult(executionCase){
     // 列定義
     const ALWAYS_HIDDEN=new Set(['Line ID','Advertiser ID*','Advertiser name','Order ID*','Order name - (READ ONLY)']);
     const LI_NAME_SKIP=new Set(['Line name*']);
-    const activeCols = (scResults && (scResults.system === 'amazon_pva' || scResults.system === 'amazon_ott'))
-    ? DL_COLUMNS_VIDEO : DL_COLUMNS;
+    const activeCols = (scResults && scResults.system === 'amazon_dsp_video')
+    ? DL_COLUMNS_DSP_VIDEO
+    : (scResults && (scResults.system === 'amazon_pva' || scResults.system === 'amazon_ott'))
+        ? DL_COLUMNS_VIDEO : DL_COLUMNS;
 const isPvaBaseCpmColumn = col => system === 'amazon_pva' && col.key === 'Base supply bid*';
 const visibleCols = activeCols.filter(col=>{
         if(ALWAYS_HIDDEN.has(col.key)) return false;
@@ -7417,6 +8071,10 @@ const visibleCols = activeCols.filter(col=>{
         ? '__brand_content_note__'
         : col.key === 'Brand suitability inventory tier'
         ? '__brand_tier_note__'
+        : col.key === 'Domain Targeting - (READ ONLY)'
+        ? '__domain_note__'
+        : col.key === 'In-stream position' || col.key === 'Out-stream position'
+        ? '__video_position_note__'
         : col.key === 'Targeting by Keywords'
         ? '__keyword_diff__'
         : col.key === 'Audience names'
