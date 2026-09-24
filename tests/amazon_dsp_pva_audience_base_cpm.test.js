@@ -170,42 +170,31 @@ function makeSettingRow(system, baseCpm) {
   };
 }
 
-function compareBase(system, setting, download) {
-  const result = api.matchAndCompareVideo(
-    [makeSettingRow(system, setting)],
-    { 'LI-TEST': { 'Base supply bid*': download == null ? '' : String(download) } },
-    system,
-  )[0];
-  return result.colResults.find(column => column.key === 'Base supply bid*');
-}
-
-test('PVA Base CPM is skipped for equal, mismatch, missing-DL, and missing-setting cases', () => {
+test('Base CPM is absent from PVA result models regardless of source values', () => {
   for (const [setting, download] of [[1550, 1550], [1550, 999], [1550, ''], ['', 1550]]) {
-    const column = compareBase('amazon_pva', setting, download);
-    assert.equal(column.result, null);
-    assert.equal(column.status, 'skip');
-    assert.match(column.skipReason, /Base CPM/);
-  }
-});
-
-test('PVA Base CPM has no mismatch or review impact in the item-level result', () => {
-  for (const [setting, download] of [[1550, 999], [1550, ''], ['', 1550]]) {
     const item = api.matchAndCompareVideo(
       [makeSettingRow('amazon_pva', setting)],
       { 'LI-TEST': { 'Base supply bid*': String(download) } },
       'amazon_pva',
     )[0];
-    const base = item.colResults.find(column => column.key === 'Base supply bid*');
-    assert.equal(base.status, 'skip');
-    const baseReviewImpact = item.colResults.filter(column =>
-      column.key === 'Base supply bid*' && column.result === null &&
-      !column.skipReason && String(column.dVal || '').trim(),
-    ).length;
-    assert.equal(baseReviewImpact, 0);
-    const nonBaseMismatchCount = item.colResults
-      .filter(column => column.key !== 'Base supply bid*' && column.result === false).length;
-    assert.equal(item.mismatchCount, nonBaseMismatchCount);
+    assert.equal(item.colResults.some(column => column.key === 'Base supply bid*'), false);
   }
+});
+
+test('Base CPM values do not change PVA mismatch or review counts', () => {
+  const equal = api.matchAndCompareVideo(
+    [makeSettingRow('amazon_pva', 1550)],
+    { 'LI-TEST': { 'Base supply bid*': '1550' } },
+    'amazon_pva',
+  )[0];
+  const different = api.matchAndCompareVideo(
+    [makeSettingRow('amazon_pva', 1550)],
+    { 'LI-TEST': { 'Base supply bid*': '999' } },
+    'amazon_pva',
+  )[0];
+  assert.equal(different.mismatchCount, equal.mismatchCount);
+  assert.equal(different.needsReview, equal.needsReview);
+  assert.equal(JSON.stringify(different.colResults), JSON.stringify(equal.colResults));
 });
 
 test('download parser continues to retain raw Base supply bid* input', () => {
@@ -221,13 +210,9 @@ test('download parser continues to retain raw Base supply bid* input', () => {
   assert.equal(parsed.liMap['LI-DL']['Base supply bid'], '1550');
 });
 
-test('OTT and Display Base CPM comparisons remain active', () => {
-  const ott = api.getVideoColumn('Base supply bid*').checkFn;
-  const display = api.getDisplayColumn('Base supply bid*').checkFn;
-  assert.equal(ott({ __SYSTEM__: 'amazon_ott', base_cpm: '1550' }, '999'), false);
-  assert.equal(display({ __SYSTEM__: 'amazon_display', base_cpm: '1550' }, '999'), false);
-  assert.equal(ott({ __SYSTEM__: 'amazon_ott', base_cpm: '1550' }, '1550'), true);
-  assert.equal(display({ __SYSTEM__: 'amazon_display', base_cpm: '1550' }, '1550'), true);
+test('Base CPM columns declare the shared Amazon QC exclusion', () => {
+  assert.equal(api.getVideoColumn('Base supply bid*').amazonQcExcluded, true);
+  assert.equal(api.getDisplayColumn('Base supply bid*').amazonQcExcluded, true);
 });
 
 test('PVA Base CPM is absent from normal columns and the toggle panel', () => {

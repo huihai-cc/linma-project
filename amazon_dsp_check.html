@@ -79,6 +79,12 @@ header h1 { font-size:1.2rem; letter-spacing:1px; }
     position: relative;
     min-width: 60px;
 }
+.sc-cr-resize-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #34495e;
+}
 .sc-cr-resizer {
     position: absolute;
     right: 0;
@@ -2657,7 +2663,7 @@ function _findSegmentForLI(audienceVal, segMap, liName) {
 //   標準形式：含む/除外行とセグメント名行が別行（セグメントシート系）
 //   直接参照形式：含む/除外とセグメント名が同一行の隣接列（セグメント①系）
 function _readSegmentSheetDynamic(rows) {
-    const result = { groups: [], groupOps: [] };
+    const result = { groups: [], groupOps: [], betweenGroupOps: [] };
     const MAX_SCAN = Math.min(15, rows.length);
     // 実テンプレートは1グループ5列（typeCol=1,6,11,16,21…）のため、5グループ目まで
     // スキャンできるよう 20→25 に拡大
@@ -2840,8 +2846,27 @@ function _readSegmentSheetDynamic(rows) {
         if (result.groupOps.length >= 2) break;
     }
 
+    // グループ内演算子とグループ間演算子は別セル・別階層として保持する。
+    const _sheetOp = value => {
+        const v = String(value || '').trim().toLowerCase();
+        if (v.includes('および') || v === 'and') return 'and';
+        if (v.includes('または') || v === 'or') return 'or';
+        return '';
+    };
+    const _opBelowLabel = (label, col) => {
+        for (let ri = 0; ri < Math.min(dataStart, MAX_SCAN); ri++) {
+            if (_normLabel((rows[ri] || [])[col]) === label) {
+                return label === 'グループ内演算子'
+                    ? _sheetOp((rows[ri] || [])[col + 1])
+                    : _sheetOp((rows[ri + 1] || [])[col]);
+            }
+        }
+        return '';
+    };
+
     // ── Step 5: 各ペアのデータ抽出 ──
-    for (const p of pairs) {
+    let lastPairIndex = -1;
+    for (const [pairIndex, p] of pairs.entries()) {
         const segments = [];
         // 表頭セルに「セグメント名＋Audience名」が連結していた場合、
         // その残り（例: 「セグメント名LS - Beauty Fans」→「LS - Beauty Fans」）を
@@ -2888,7 +2913,13 @@ function _readSegmentSheetDynamic(rows) {
         }
 
         if (segments.length > 0) {
-            result.groups.push({ type: groupType, segments });
+            if (result.groups.length > 0) {
+                // 空の中間グループを飛び越えた場合、接続演算子は推測しない。
+                result.betweenGroupOps.push(lastPairIndex === pairIndex - 1
+                    ? _opBelowLabel('グループ間演算子', pairs[lastPairIndex].typeCol + 3) : '');
+            }
+            result.groups.push({ type: groupType, segments, innerOp: _opBelowLabel('グループ内演算子', p.typeCol) });
+            lastPairIndex = pairIndex;
         }
     }
 
@@ -3840,6 +3871,8 @@ const DL_COLUMNS_VIDEO = [
         // グループ数カウント（Includeグループ = ()の数, Excludeグループ = []の数）
         const dIncludeGroupMatches = (arVal.match(/\([^)]+\)/g) || []);
         const dExcludeGroupMatches = (arVal.match(/\[[^\]]+\]/g) || []);
+        const dIncludeTokens = [...arVal.matchAll(/\([^)]+\)/g)];
+        const dExcludeTokens = [...arVal.matchAll(/\[[^\]]+\]/g)];
 
         const dIncludeIds = new Set();
         const dExcludeIds = new Set();
@@ -3873,6 +3906,20 @@ const DL_COLUMNS_VIDEO = [
         const dExcludeNames = [...dExcludeByName.keys()];   // 比較用（正規化済み・重複なし）
         const dIncludeRaw   = [...dIncludeByName.values()]; // 表示用（元の名前）
         const dExcludeRaw   = [...dExcludeByName.values()]; // 表示用（元の名前）
+
+        // SDF: 同一括弧内の「;」は OR、括弧間の明示 AND/OR はグループ間演算子。
+        // ID→名称を解決しても括弧の境界を失わない。
+        const dGroups = [...dIncludeTokens.map(token => ({ type: 'Include', token })),
+            ...dExcludeTokens.map(token => ({ type: 'Exclude', token }))].map(({ type, token }) => {
+            const ids = token[0].slice(1, -1).replace(/^NOT\s+/i, '').split(/[;；\s]+/).filter(Boolean);
+            const names = [...new Set(ids.map(id => idToName[id]?.norm || `(UnknownID:${id})`))];
+            return { type, segments: names, innerOp: ids.length > 1 ? 'or' : '' };
+        });
+        const dBetweenGroupOps = dIncludeTokens.slice(1).map((token, i) => {
+            const previous = dIncludeTokens[i];
+            const connector = arVal.slice(previous.index + previous[0].length, token.index).trim();
+            return /^(and|or)$/i.test(connector) ? connector.toLowerCase() : '';
+        });
 
         // ── 設定表側の解析 ──
         const sIncludeGroups = seg.groups.filter(g => g.type === 'Include');
@@ -3919,6 +3966,52 @@ const DL_COLUMNS_VIDEO = [
         }
         if(extraInDExclude.length > 0){
             diffs.push(`【Exclude：ダウンロードにあるが設定表にない】\n  → ${extraInDExclude.map(x => x.raw).join('\n  → ')}`);
+        }
+
+        // グループの順序ではなく、Include/Exclude と双方向の Audience 成員で対応づける。
+        const usedDownloadGroups = new Set();
+        const groupMatches = seg.groups.map((settingGroup, settingIndex) => {
+            const sameMembers = downloadGroup =>
+                settingGroup.segments.every(name => downloadGroup.segments.some(dn => _segmentNamesEquivalent(name, dn)))
+                && downloadGroup.segments.every(name => settingGroup.segments.some(sn => _segmentNamesEquivalent(sn, name)));
+            const downloadIndex = dGroups.findIndex((group, index) =>
+                !usedDownloadGroups.has(index) && group.type === settingGroup.type && sameMembers(group));
+            if(downloadIndex < 0){
+                diffs.push(`【グループ構成不一致】設定表グループ${settingIndex + 1}（${settingGroup.type}）のAudience構成に対応するダウンロードグループがありません`);
+                return -1;
+            }
+            usedDownloadGroups.add(downloadIndex);
+            const downloadGroup = dGroups[downloadIndex];
+            if(settingGroup.segments.length > 1 && settingGroup.innerOp && downloadGroup.innerOp
+                && settingGroup.innerOp !== downloadGroup.innerOp){
+                diffs.push(`【グループ${settingIndex + 1}：グループ内演算子不一致】\n設定表：${settingGroup.innerOp.toUpperCase()}\nダウンロード：${downloadGroup.innerOp.toUpperCase()}`);
+            }
+            return downloadIndex;
+        });
+        if(usedDownloadGroups.size !== dGroups.length){
+            diffs.push('【グループ構成不一致】ダウンロード側に対応しないグループがあります');
+        }
+
+        // 明示された括弧間演算子だけを比較する。空欄・連続括弧からは推測しない。
+        const settingBetween = seg.betweenGroupOps || [];
+        if(groupMatches.length === dIncludeTokens.length && groupMatches.every(index => index >= 0)
+            && settingBetween.length === dBetweenGroupOps.length
+            && settingBetween.every(Boolean) && dBetweenGroupOps.every(Boolean)){
+            const sameOperator = settingBetween.every(op => op === settingBetween[0])
+                && dBetweenGroupOps.every(op => op === dBetweenGroupOps[0]);
+            if(sameOperator){
+                if(settingBetween[0] !== dBetweenGroupOps[0]){
+                    diffs.push(`【グループ間演算子不一致】設定表：${settingBetween[0].toUpperCase()} / ダウンロード：${dBetweenGroupOps[0].toUpperCase()}`);
+                }
+            } else {
+                for(let i = 0; i < settingBetween.length; i++){
+                    const left = groupMatches[i], right = groupMatches[i + 1];
+                    const dlEdge = Math.min(left, right);
+                    if(Math.abs(left - right) !== 1 || settingBetween[i] !== dBetweenGroupOps[dlEdge]){
+                        diffs.push(`【グループ間演算子不一致】グループ${i + 1}とグループ${i + 2}：設定表：${settingBetween[i].toUpperCase()} / ダウンロード：${Math.abs(left - right) === 1 ? dBetweenGroupOps[dlEdge].toUpperCase() : '構成相違'}`);
+                    }
+                }
+            }
         }
 
         if(diffs.length > 0){
@@ -4124,12 +4217,8 @@ const DL_COLUMNS_VIDEO = [
       }
     },
     { key:'3P fees',                   ja:'3Pフィー',            checkFn:null, autoHide:true },
-    { key:'Base supply bid*',          ja:'ベースCPM',
+    { key:'Base supply bid*',          ja:'ベースCPM', amazonQcExcluded:true,
       checkFn:(s,v) => {
-        // ★ PVAではBase CPMをQC対象外（PG／非PG共通）
-        if(s.__SYSTEM__ === 'amazon_pva'){
-            return null;
-        }
         return normNum(s.base_cpm) === normNum(v);
       }
     },
@@ -4313,13 +4402,13 @@ function matchAndCompareVideo(settingData, downloadMap, system){
             return map[key] !== undefined ? String(map[key] || '') : '';
         }
 
-        const PG_SKIP_KEYS = ['Location targeting 1 of 2', 'Pacing profile', 'Base supply bid*', 'Maximum average CPM'];
+        const PG_SKIP_KEYS = ['Location targeting 1 of 2', 'Pacing profile', 'Maximum average CPM'];
         // ★ 双向フィールドカバレッジ監査（設定表側＋ダウンロード側）
         const coverageWarningsForLI = auditVideoFieldCoverage(sRow, dRow || {});
         if(coverageWarningsForLI.length > 0){
             console.warn('[Coverage] LI=' + sRow.__LI_NAME__ + ' 未カバー項目=' + coverageWarningsForLI.length + '件 ' + coverageWarningsForLI.map(w => w.side + ':' + w.field).join(', '));
         }
-        const colResults = DL_COLUMNS_VIDEO.map(col => {
+        const colResults = DL_COLUMNS_VIDEO.filter(col => !isAmazonQcExcludedColumn(col)).map(col => {
     const dVal = dGet(col.key);
     const sVal = sGetForCol(col.key);
     let result = null;
@@ -4328,14 +4417,10 @@ function matchAndCompareVideo(settingData, downloadMap, system){
         catch(e){ result = null; }
     }
     return { key:col.key, ja:col.ja, sVal, dVal, result,
-        skipReason: (system === 'amazon_pva' && col.key === 'Base supply bid*')
-            ? 'PVAではBase CPMをQC対象外'
-            : sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key)
+        skipReason: sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key)
                 ? sRow.__pg_skip__ : '',
         // ★ 字段状態の明示（match/mismatch/review/skip）
-        status: (system === 'amazon_pva' && col.key === 'Base supply bid*')
-            ? 'skip'
-            : (sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key))
+        status: (sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key))
             ? 'skip'
             : result === true ? 'match'
             : result === false ? 'mismatch'
@@ -4375,8 +4460,10 @@ function matchAndCompareVideo(settingData, downloadMap, system){
         excluded:     (sRow.__AREA_SHEET__ && sRow.__AREA_SHEET__.excluded) || [],
     },
     // ★ 双向フィールドカバレッジ監査結果（未登録の有値フィールド）
-    coverageWarnings: coverageWarningsForLI,
-    needsReview: coverageWarningsForLI.length > 0,
+            coverageWarnings: coverageWarningsForLI,
+            needsReview: coverageWarningsForLI.length > 0
+                || colResults.some(col => col.status === 'review'
+                    && !col.skipReason && _hasAmazonMeaningfulValue(col.dVal)),
 });
     }
     return results;
@@ -4467,7 +4554,7 @@ function matchAndCompareDSPVideo(settingData, downloadMap, system){
             return map[key] === undefined ? '' : String(map[key] || '');
         };
 
-        const colResults = DL_COLUMNS_DSP_VIDEO.map(col => {
+        const colResults = DL_COLUMNS_DSP_VIDEO.filter(col => !isAmazonQcExcludedColumn(col)).map(col => {
             const dVal = dGet(col.key);
             const sVal = sGet(col.key);
             let result = null;
@@ -4762,10 +4849,12 @@ function _creativeSettingHeaderInfo(rows){
         const cols = {};
         rows[r].forEach((v,c)=>{
             const h = _normalizeCreativeHeader(v);
+            const firstLineHeader = _normalizeCreativeHeader(String(v ?? '').split(/\r\n?|\n/)[0]);
             if(!h) return;
             if(h.includes('ラインアイテム名') && cols.liName===undefined) cols.liName=c;
             if(h.includes('設定クリエイティブ名') && h.includes('自動入力') && cols.creativeAuto===undefined) cols.creativeAuto=c;
             if(h.includes('設定クリエイティブ名') && h.includes('変更') && cols.creativeChanged===undefined) cols.creativeChanged=c;
+            if(firstLineHeader==='設定クリエイティブ名' && cols.creativeSingle===undefined) cols.creativeSingle=c;
             if(h==='ステータス' && cols.settingStatus===undefined) cols.settingStatus=c;
             if(h.includes('配信開始日') && cols.startDate===undefined) cols.startDate=c;
             if(h.includes('配信開始時間') && cols.startTime===undefined) cols.startTime=c;
@@ -4777,14 +4866,15 @@ function _creativeSettingHeaderInfo(rows){
         }
         const required = ['liName','startDate','startTime','endDate','endTime'];
         const score = required.filter(k=>cols[k]!==undefined).length
-            + ((cols.creativeAuto!==undefined || cols.creativeChanged!==undefined) ? 1 : 0)
+            + ((cols.creativeAuto!==undefined || cols.creativeChanged!==undefined || cols.creativeSingle!==undefined) ? 1 : 0)
             + (cols.settingStatus!==undefined ? 1 : 0);
         if(!best || score>best.score) best={ rowIdx:r, cols, score };
     }
     if(!best) return null;
     const missing = ['liName','startDate','startTime','endDate','endTime']
         .filter(k=>best.cols[k]===undefined);
-    if(best.cols.creativeAuto===undefined && best.cols.creativeChanged===undefined){
+    if(best.cols.creativeAuto===undefined && best.cols.creativeChanged===undefined
+       && best.cols.creativeSingle===undefined){
         missing.push('creativeName');
     }
     return { ...best, missing, complete:missing.length===0 };
@@ -4813,11 +4903,12 @@ function _creativeSheetNameAuxScore(sheetName){
 // 手順:
 //   1. 「入稿物管理表」を含む全候補Sheetのヘッダーを検出
 //   2. 有効ヘッダー（complete）を持つSheetをすべて解析
-//   3. 各CRは今回設定表のLI（settingLiNames）に紐づくものだけを採用
+//   3. 各CRは今回設定表のLI（settingLiNames）に紐づくものだけを通常対象に採用
 //      （設定表LIを渡せない場合は全CRを採用＝従来挙動）
+//      除外候補は別保持し、比較時に厳格な孤立CR条件を満たすものだけ要確認にする
 //   4. 同一ファイル内で同一（LI,CR）は先勝ちで重複しない
 function readCreativeSettingDataMulti(wbsS, caseMode, settingLiNames){
-    const rows = [], files = [], diagnostics = [];
+    const rows = [], filteredRows = [], files = [], diagnostics = [];
     const unrelated = /説明|注意|サンプル|sample|template|テンプレート|選択項目/i;
     let additionHeaderFound = false;
     const liNameSet = (settingLiNames && settingLiNames.length)
@@ -4875,6 +4966,7 @@ function readCreativeSettingDataMulti(wbsS, caseMode, settingLiNames){
         if(caseMode==='creative_addition') additionHeaderFound = true;
 
         const seenKeys = new Set();   // 同一ファイル内で同一（LI,CR）は先勝ち
+        const seenFilteredKeys = new Set();
         let count = 0;
         let firstHeaderRow = null;
         usable.forEach(x=>{
@@ -4885,8 +4977,6 @@ function readCreativeSettingDataMulti(wbsS, caseMode, settingLiNames){
                 if(_isCreativeExampleRow(row[1])) continue;
                 const liName = normalizeCreativeName(row[cols.liName]);
                 if(!liName) continue;
-                // 今回設定表のLIに紐づくCRだけを採用（入稿物管理表の取り違え防止）
-                if(liNameSet && !liNameSet.has(liName)) continue;
                 const settingStatus = cols.settingStatus!==undefined
                     ? normalizeCreativeName(row[cols.settingStatus]) : '';
                 if(caseMode==='creative_addition' && settingStatus!=='追加') continue;
@@ -4894,21 +4984,36 @@ function readCreativeSettingDataMulti(wbsS, caseMode, settingLiNames){
                     ? normalizeCreativeName(row[cols.creativeAuto]) : '';
                 const changedName = cols.creativeChanged!==undefined
                     ? normalizeCreativeName(row[cols.creativeChanged]) : '';
-                const creativeName = changedName || autoName;
+                const singleName = cols.creativeSingle!==undefined
+                    ? normalizeCreativeName(row[cols.creativeSingle]) : '';
+                const hasLegacyCreativeColumns = cols.creativeChanged!==undefined || cols.creativeAuto!==undefined;
+                const creativeName = hasLegacyCreativeColumns
+                    ? changedName || autoName : singleName;
                 const dedupeKey = _creativeKey(liName, creativeName);
-                if(seenKeys.has(dedupeKey)) continue;   // 同一CRの重複読み込み防止
-                seenKeys.add(dedupeKey);
-                rows.push({
+                const record = {
                     liName,
                     creativeName,
-                    creativeNameSource:changedName ? '変更した場合' : '自動入力',
+                    creativeNameSource:hasLegacyCreativeColumns
+                        ? (changedName ? '変更した場合' : '自動入力')
+                        : '設定クリエイティブ名',
                     settingStatus,
                     startDate:row[cols.startDate],
                     startTime:row[cols.startTime],
                     endDate:row[cols.endDate],
                     endTime:row[cols.endTime],
                     source:{fileName,sheetName:x.sheetName,rowNumber:r+1}
-                });
+                };
+                // LI安全フィルタは維持し、除外候補は厳格な孤立CR判定だけに渡す。
+                if(liNameSet && !liNameSet.has(liName)){
+                    if(!seenFilteredKeys.has(dedupeKey)){
+                        seenFilteredKeys.add(dedupeKey);
+                        filteredRows.push(record);
+                    }
+                    continue;
+                }
+                if(seenKeys.has(dedupeKey)) continue;   // 同一CRの重複読み込み防止
+                seenKeys.add(dedupeKey);
+                rows.push(record);
                 count++;
             }
         });
@@ -4920,13 +5025,13 @@ function readCreativeSettingDataMulti(wbsS, caseMode, settingLiNames){
             rowCount:count
         });
     });
-    if(caseMode==='creative_addition' && additionHeaderFound && rows.length===0){
+    if(caseMode==='creative_addition' && additionHeaderFound && rows.length===0 && filteredRows.length===0){
         diagnostics.push({
             level:'error', code:'NO_ADDITION_ROWS',
             message:'入稿物管理表にステータス＝追加の対象行が見つかりません'
         });
     }
-    return { rows, files, diagnostics };
+    return { rows, filteredRows, files, diagnostics };
 }
 
 function _creativeDownloadHeaderInfo(rows){
@@ -5083,6 +5188,7 @@ function compareCreativeData(settingData,downloadData,liSettingRows,caseMode,liD
         ...(downloadData?.diagnostics||[])
     ];
     const settingRows=settingData?.rows||[];
+    const filteredRows=settingData?.filteredRows||[];
     const downloadRows=downloadData?.rows||[];
     const expectedStatus=caseMode==='creative_addition' ? 'INACTIVE' : 'ACTIVE';
     const liMap=new Map();
@@ -5209,6 +5315,50 @@ function compareCreativeData(settingData,downloadData,liSettingRows,caseMode,liD
         });
     });
 
+    // LI安全フィルタで除外された行は、同一（LI,CR）のDL紐付けがあり、
+    // 両側の親LIが存在しない場合だけ「要確認」として結果に載せる。
+    filteredRows.forEach(sRow=>{
+        if(!sRow.liName || !sRow.creativeName) return;
+        const liKey=normalizeCreativeName(sRow.liName);
+        if(liMap.has(liKey) || dlLiMap.has(liKey)) return;
+        const queue=downloadMap.get(_creativeKey(sRow.liName,sRow.creativeName))||[];
+        const selected=queue.find(x=>!usedDownload.has(x.index));
+        if(!selected) return;
+        usedDownload.add(selected.index);
+        const dRow=selected.row;
+        const reason='設定表LineItem未発見 / ダウンロードLineItem未発見 / LIに準ずる日時を解決できない';
+        const fields={};
+        for(const field of ['startDate','startTime','endDate','endTime']){
+            fields[field]={
+                expected:'',actual:'',source:'',downloadSource:'',status:'review',
+                settingRaw:_creativeDisplayValue(sRow[field]),
+                downloadRaw:_creativeDisplayValue(field.startsWith('start')
+                    ? dRow.startDateTime : dRow.endDateTime),
+                error:reason
+            };
+        }
+        const parsedStatus=normalizeCreativeStatus(dRow.activeStatus);
+        fields.status={
+            expected:'',actual:parsedStatus.value||'',source:'',status:'not_compared',
+            settingRaw:'',downloadRaw:parsedStatus.raw||'',error:''
+        };
+        items.push({
+            liName:sRow.liName,
+            creativeName:sRow.creativeName,
+            creativeNameSource:sRow.creativeNameSource,
+            settingStatus:sRow.settingStatus||'',
+            settingSource:sRow.source,
+            downloadSource:dRow.source,
+            fields,
+            matchStatus:'review',
+            overallMatch:null,
+            unmatchedReason:reason,
+            settingLiMissing:true,
+            downloadLiMissing:true,
+            dateResolution:'unresolved'
+        });
+    });
+
     if(caseMode==='initial') downloadRows.forEach((dRow,index)=>{
         if(usedDownload.has(index)) return;
         const dlLiRow=dlLiMap.get(normalizeCreativeName(dRow.liName))||null;
@@ -5289,7 +5439,9 @@ function compareCreativeData(settingData,downloadData,liSettingRows,caseMode,liD
 
     return {
         caseMode,
-        settingCount:settingRows.length,
+        normalScopeCount:settingRows.length,
+        orphanReviewCount:items.filter(x=>x.matchStatus==='review').length,
+        settingCount:items.filter(x=>x.settingSource).length,
         downloadCount:downloadRows.length,
         settingFiles:settingData?.files||[],
         downloadFiles:downloadData?.files||[],
@@ -5297,6 +5449,7 @@ function compareCreativeData(settingData,downloadData,liSettingRows,caseMode,liD
         items,
         matchCount:items.filter(x=>x.matchStatus==='match').length,
         mismatchCount:items.filter(x=>x.matchStatus==='mismatch').length,
+        reviewCount:items.filter(x=>x.matchStatus==='review').length,
         settingOnlyCount:items.filter(x=>x.matchStatus==='setting_only').length,
         downloadOnlyCount:items.filter(x=>x.matchStatus==='download_only').length,
         errorCount:items.filter(x=>x.matchStatus==='error').length,
@@ -5328,6 +5481,7 @@ function renderCreativeResultSection(creative){
     const statusMeta={
         match:{label:'完全一致',color:'#1e8449',bg:'#d5f5e3'},
         mismatch:{label:'不一致',color:'#c0392b',bg:'#fde8e8'},
+        review:{label:'要確認',color:'#856404',bg:'#fff3cd'},
         setting_only:{label:'DL未発見',color:'#856404',bg:'#fff3cd'},
         download_only:{label:'設定表未発見',color:'#856404',bg:'#fff3cd'},
         error:{label:'解析エラー',color:'#922b21',bg:'#f5b7b1'}
@@ -5355,8 +5509,8 @@ function renderCreativeResultSection(creative){
         const fieldCells=Object.keys(fieldLabels).map(key=>{
             const f=item.fields?.[key]||{};
             const anomaly=item.__dateAnomaly?.[key];
-            const icon=f.status==='match'?'✅':f.status==='mismatch'?'❌':f.status==='error'?'⚠️':'—';
-            let bg=f.status==='match'?'#f0fff5':f.status==='mismatch'?'#fff1f0':f.status==='error'?'#fff3cd':'#fafafa';
+            const icon=f.status==='match'?'✅':f.status==='mismatch'?'❌':f.status==='error'||f.status==='review'?'⚠️':'—';
+            let bg=f.status==='match'?'#f0fff5':f.status==='mismatch'?'#fff1f0':f.status==='error'||f.status==='review'?'#fff3cd':'#fafafa';
             let border='1px solid #ddd';
             let anomalyHtml='';
             if (anomaly) {
@@ -5398,7 +5552,7 @@ function renderCreativeResultSection(creative){
             ${fieldCells}
             <td style="border:1px solid #ddd;padding:7px;vertical-align:top;background:${meta.bg};min-width:150px;">
                 <div style="font-weight:bold;color:${meta.color};font-size:0.74rem;">${meta.label}</div>
-                ${item.unmatchedReason?`<div style="font-size:0.66rem;color:#922b21;margin-top:4px;white-space:normal;">${esc(item.unmatchedReason)}</div>`:''}
+                ${item.unmatchedReason?`<div style="font-size:0.66rem;color:${meta.color};margin-top:4px;white-space:normal;">${esc(item.unmatchedReason)}</div>`:''}
                 ${sourceText?`<div style="font-size:0.62rem;color:#777;margin-top:5px;word-break:break-all;">設定：${esc(sourceText)}</div>`:''}
                 ${downloadText?`<div style="font-size:0.62rem;color:#777;margin-top:3px;word-break:break-all;">DL：${esc(downloadText)}</div>`:''}
             </td>
@@ -5409,7 +5563,10 @@ function renderCreativeResultSection(creative){
             <h2 style="font-size:1rem;color:#2c3e50;">🎨 Creative 配信日時チェック</h2>
             <span style="font-size:0.73rem;color:white;background:#8e44ad;border-radius:10px;padding:2px 9px;">案件区分：${esc(caseModeLabel)}</span>
             <span style="font-size:0.73rem;color:#555;">設定表 CR対象：${creative.settingCount}件</span>
-            <span style="font-size:0.73rem;color:#1e8449;">ダウンロードマッチ：${creative.downloadMatchedCount}件</span>
+            <span style="font-size:0.73rem;color:#555;">通常比較：${creative.normalScopeCount ?? creative.settingCount}件</span>
+            <span style="font-size:0.73rem;color:#1e8449;">LI＋CRペア確認：${creative.downloadMatchedCount}件</span>
+            ${creative.reviewCount>0
+                ? `<span style="font-size:0.73rem;color:#856404;">要確認：${creative.reviewCount}件</span>`:''}
             <span style="font-size:0.73rem;color:#856404;">未找到：${creative.notFoundCount}件</span>
             <span style="font-size:0.73rem;color:#c0392b;">日時不一致：${creative.dateTimeMismatchCount}項目</span>
             <span style="font-size:0.73rem;color:#922b21;">状態不一致：${creative.statusMismatchCount}件</span>
@@ -5421,11 +5578,12 @@ function renderCreativeResultSection(creative){
         <div style="margin-top:8px;padding:8px 10px;border-radius:5px;background:#f8f9fa;font-size:0.7rem;color:#555;">
             <span style="font-weight:bold;">凡例：</span>
             <span style="display:inline-block;margin-right:12px;padding:1px 6px;border-radius:3px;background:#fff3cd;color:#856404;border:1px solid #856404;">DL未発見</span>
+            <span style="display:inline-block;margin-right:12px;padding:1px 6px;border-radius:3px;background:#fff3cd;color:#856404;border:1px solid #856404;">親LIが両側にないCR：要確認</span>
             <span style="display:inline-block;margin-right:12px;padding:1px 6px;border-radius:3px;background:#ffebee;color:#c0392b;border:1px solid #c0392b;">DL未発見＋設定表内他CRと値が異なる（要確認）</span>
             <span style="display:inline-block;padding:1px 6px;border-radius:3px;background:#d5f5e3;color:#1e8449;border:1px solid #1e8449;">正式DL対比で一致</span>
         </div>
         ${diagnostics}
-        <div style="overflow:auto;margin-top:12px;max-height:620px;">
+        <div class="sc-cr-scroll" style="overflow:auto;margin-top:12px;max-height:620px;">
             <table class="sc-cr-resize-table" style="border-collapse:collapse;width:max-content;min-width:100%;font-size:0.75rem;">
                 <thead><tr style="background:#34495e;color:white;">
                     <th style="padding:7px;border:1px solid #566573;">LI名<div class="sc-cr-resizer"></div></th>
@@ -5716,7 +5874,8 @@ function detectCaseModeAuto(wbsS, wbsD){
             if(!header) return;
             const { cols, rowIdx } = header;
             if(cols.liName===undefined || cols.settingStatus===undefined) return;
-            if(cols.creativeAuto===undefined && cols.creativeChanged===undefined) return;
+            if(cols.creativeAuto===undefined && cols.creativeChanged===undefined
+               && cols.creativeSingle===undefined) return;
             foundUsable = true;
             for(let r=rowIdx+1; r<x.sheetRows.length; r++){
                 const row = x.sheetRows[r];
@@ -5726,11 +5885,14 @@ function detectCaseModeAuto(wbsS, wbsD){
                 const settingStatus = normalizeCreativeName(row[cols.settingStatus]);
                 const autoName = cols.creativeAuto!==undefined ? normalizeCreativeName(row[cols.creativeAuto]) : '';
                 const changedName = cols.creativeChanged!==undefined ? normalizeCreativeName(row[cols.creativeChanged]) : '';
-                if(!(changedName || autoName)) continue;
+                const singleName = cols.creativeSingle!==undefined ? normalizeCreativeName(row[cols.creativeSingle]) : '';
+                const hasLegacyCreativeColumns = cols.creativeChanged!==undefined || cols.creativeAuto!==undefined;
+                const creativeName = hasLegacyCreativeColumns ? changedName || autoName : singleName;
+                if(!creativeName) continue;
                 if(settingStatus==='追加'){
                     additionRows.push({
                         liName,
-                        creativeName: changedName || autoName,
+                        creativeName,
                         sheetName: x.sheetName,
                         rowNumber: r + 1,
                     });
@@ -6277,7 +6439,114 @@ function compareDSPSegment(block, dlRow) {
     return { matched: allMatch, diffs };
 }
 
-// ===== 設定表読み込み（変更なし） =====
+function _parseAmazonProductSetting(rawValue){
+    const raw = String(rawValue ?? '');
+    const lines = raw.split(/\r\n?|\n/).map(line => line.trim()).filter(Boolean);
+    const directiveLine = lines.find(line =>
+        line.normalize('NFKC').replace(/[\s\u3000]+/g, '') === '↓を除外で登録'
+    ) || '';
+    const directive = directiveLine || lines[0] || '';
+    const normalizedDirective = directive.normalize('NFKC').replace(/[\s\u3000]+/g, '');
+    const mode = normalizedDirective === '↓を除外で登録' ? 'exclude' : (raw.trim() ? 'unknown' : '');
+    const valueLines = directiveLine ? lines.filter(line => line !== directiveLine) : lines;
+    const tokens = valueLines.flatMap(line => line.split(/[,\s;；，|]+/).map(token => token.trim()).filter(Boolean));
+    const asins = [];
+    const seen = new Set();
+    const unparsed = [];
+    for(const token of tokens){
+        if(!/^[A-Z0-9]{10}$/i.test(token)){
+            unparsed.push(token);
+            continue;
+        }
+        const asin = token.toUpperCase();
+        if(!seen.has(asin)){
+            seen.add(asin);
+            asins.push(asin);
+        }
+    }
+    return { raw, directive, mode, asins, unparsed };
+}
+
+function _hasAmazonMeaningfulValue(value){
+    const text = String(value ?? '').normalize('NFKC').trim();
+    return !!text && !new Set(['-', '－', '—', '–', '―', '‐', 'ー', 'null', 'none', 'nan', 'n/a']).has(text.toLowerCase());
+}
+
+function _checkAmazonExcludedProducts(s, downloadValue){
+    const product = s.product && typeof s.product === 'object'
+        ? s.product
+        : _parseAmazonProductSetting(s.product && s.product.raw !== undefined ? s.product.raw : s.product);
+    const downloadRaw = String(downloadValue ?? '');
+    const settingHasValue = _hasAmazonMeaningfulValue(product.raw);
+    const downloadHasValue = _hasAmazonMeaningfulValue(downloadRaw);
+    s.__product_asin_note__ = '';
+    if(!settingHasValue && !downloadHasValue) return true;
+    if(!settingHasValue){
+        s.__product_asin_note__ = '要確認：設定表Productの指示がないため、DL列との対応を確定できません。';
+        return null;
+    }
+    if(product.mode !== 'exclude'){
+        s.__product_asin_note__ = '要確認：Productの指示「' + (product.directive || '（空）') + '」に対応するDL列を確定できません。';
+        return null;
+    }
+    if(product.unparsed && product.unparsed.length){
+        s.__product_asin_note__ = '要確認：ProductにASINとして解釈できない値があります。\n' + product.unparsed.join('\n');
+        return null;
+    }
+
+    const downloadAsins = [];
+    const downloadSeen = new Set();
+    for(const match of downloadRaw.matchAll(/(?:^|[^A-Z0-9])([A-Z0-9]{10})(?=$|[^A-Z0-9])/gi)){
+        const asin = match[1].toUpperCase();
+        if(!downloadSeen.has(asin)){
+            downloadSeen.add(asin);
+            downloadAsins.push(asin);
+        }
+    }
+    const residue = downloadRaw.replace(/[A-Z0-9]{10}/gi, '').replace(/[\s,;；，|:：()[\]{}]+/g, '').trim();
+    if(residue){
+        s.__product_asin_note__ = '要確認：DL商品値にASIN以外の内容があります。\n' + residue;
+        return null;
+    }
+
+    const settingSet = new Set(product.asins || []);
+    const downloadSet = new Set(downloadAsins);
+    const onlySetting = [...settingSet].filter(asin => !downloadSet.has(asin));
+    const onlyDownload = [...downloadSet].filter(asin => !settingSet.has(asin));
+    if(!onlySetting.length && !onlyDownload.length) return true;
+    s.__product_asin_note__ =
+        '【設定表にあるがDLにないASIN】\n' + (onlySetting.join('\n') || '（なし）') + '\n\n' +
+        '【DLにあるが設定表にないASIN】\n' + (onlyDownload.join('\n') || '（なし）');
+    return false;
+}
+
+function _checkAmazonInMarketCategory(s, downloadValue){
+    const setting = String(s.in_market_categories || '').trim();
+    const download = String(downloadValue ?? '').trim();
+    s.__in_market_categories_note__ = '';
+    const noSetting = ['', 'none', 'なし', '無し', '-'].includes(setting.normalize('NFKC').toLowerCase());
+    if(noSetting && !download) return true;
+    s.__in_market_categories_note__ =
+        'カテゴリ名とBrowse Node IDを自動照合する権威マッピングがないため要確認\n' +
+        '設定表：' + (setting || '（空）') + '\nダウンロード：' + (download || '（空）');
+    return null;
+}
+
+// Amazon QC の明示的な対象外列。比較・監査・表示はこのメタデータを共通参照する。
+function isAmazonQcExcludedColumn(column){
+    return !!(column && column.amazonQcExcluded === true);
+}
+
+function isAmazonQcExcludedKey(key){
+    const columns = [DL_COLUMNS, DL_COLUMNS_VIDEO, DL_COLUMNS_DSP_VIDEO].filter(Array.isArray);
+    return columns.some(list => list.some(column => {
+        if(!isAmazonQcExcludedColumn(column)) return false;
+        const aliases = DL_COL_ALIASES[column.key] || [];
+        return column.key === key || aliases.includes(key);
+    }));
+}
+
+// ===== 設定表読み込み =====
 function readSettingTableDSP(wb){
     // ★ セグメントsheetを事前解析（wb全体で1回）
     const _dspSegBlocks = readDSPSegmentSheet(wb);
@@ -6334,6 +6603,8 @@ function readSettingTableDSP(wb){
             pacing:['配信ペース','Pacing'],fee_3p:['3P Fee'],frequency:['Frequency'],
             base_cpm:['ベースCPM','Base supply bid'],max_cpm:['上限CPM','Maximum average CPM'],
             product_small:['商材カテゴリ','Product categories'],ssp:['SSP','Supply sources'],
+            product:['Product'],in_market_categories:['In-market categories'],
+            only_contextual:['Only use contextual signals'],
             ssp_owned:['Amazon Owned and Operated'],ssp_pub:['Amazon Publisher Direct'],
             ssp_third:['Third Party Exchanges'],mobile_os:['Mobile OS'],
             device_type:['Device type'],audience:['セグメント','Audience'],
@@ -6348,7 +6619,9 @@ function readSettingTableDSP(wb){
             const hs=hFull.split('\n')[0].replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim();
             for(const [key,keywords] of Object.entries(COL_KEYWORDS)){
                 if(!keywords) continue;
-                if(keywords.some(kw=>hs.includes(kw)||hFull.includes(kw))){
+                const exactProductHeader = key === 'product'
+                    && hs.normalize('NFKC').replace(/[\s\u3000]+/g, '').toLowerCase() === 'product';
+                if(exactProductHeader || (key !== 'product' && keywords.some(kw=>hs.includes(kw)||hFull.includes(kw)))){
                     if(!(key in colIdx)) colIdx[key]=i;
                 }
             }
@@ -6360,6 +6633,7 @@ function readSettingTableDSP(wb){
             const liName=row[colIdx.LI_NAME]?String(row[colIdx.LI_NAME]).trim():'';
             if(!liName||liName.includes('●●●')||liName.includes('例）')) continue;
             const g=(idx)=>idx!==undefined&&row[idx]!==undefined?String(row[idx]).trim():'';
+            const product = _parseAmazonProductSetting(g(colIdx.product));
             result.push({
                 __LI_NAME__:liName,__IO_NAME__:ioName,__SHEET__:sname,
                 __SEGMENT_SHEET_DSP__: _dspSegBlocks,  // ← この1行を追加
@@ -6371,6 +6645,8 @@ function readSettingTableDSP(wb){
                 fee_3p:g(colIdx.fee_3p),frequency:g(colIdx.frequency),
                 base_cpm:g(colIdx.base_cpm),max_cpm:g(colIdx.max_cpm),
                 product_big:'',product_small:g(colIdx.product_small),
+                product,contextual_product:product,in_market_categories:g(colIdx.in_market_categories),
+                only_contextual:g(colIdx.only_contextual),
                 ssp:g(colIdx.ssp),ssp_owned:g(colIdx.ssp_owned),
                 ssp_pub:g(colIdx.ssp_pub),ssp_third:g(colIdx.ssp_third),
                 twitch:g(colIdx.twitch),mobile_os:g(colIdx.mobile_os),
@@ -6547,17 +6823,31 @@ const DL_COLUMNS = [
     return null;
   }
 },
-    { key:'Contextual targeting by categories',    ja:'In-market categories（Contextual）',    checkFn:null, autoHide:true },
+    { key:'Contextual targeting by categories',    ja:'In-market categories（Contextual）',
+      checkFn:null, autoHide:false },
     { key:'Target Categories using only contextual signals?', ja:'Only use contextual',
   checkFn:(s,v)=>{
-    const dv = (v||'').trim().toLowerCase();
-    if(dv === 'yes') return true;    // ✅ 正常（大多数案件都是YES）
-    return null;                      // ☞ 開発者連絡（特殊案件，需确认）
+    const setting = String(s.only_contextual || '').trim();
+    const download = String(v || '').trim();
+    const sv = setting.toLowerCase(), dv = download.toLowerCase();
+    s.__contextual_signal_note__ = '';
+    if(sv==='n/a'||sv==='not applicable') return null; // 明示的な対象外指定はPG同様にskip
+    if(!sv && !dv) return true;
+    if(!sv && dv){
+        s.__contextual_signal_note__ =
+            `設定表に「Only use contextual signals」の指定がないため要確認\nDL：${download}`;
+        return null;
+    }
+    if((sv==='yes'||sv==='no') && (dv==='yes'||dv==='no')) return sv===dv;
+    s.__contextual_signal_note__ =
+        `Only use contextual signalsの指定を自動判定できないため要確認\n設定表：${setting||'（空）'}\nDL：${download||'（空）'}`;
+    return null;
   }
 },
     { key:'Contextual excluding by categories',    ja:'コンテキスト除外（カテゴリ）', checkFn:null, autoHide:true },
     { key:'Contextual targeting by products',      ja:'コンテキスト（商品）',         checkFn:null, autoHide:true },
-    { key:'Contextual excluding by products',      ja:'コンテキスト除外（商品）',     checkFn:null, autoHide:true },
+    { key:'Contextual excluding by products',      ja:'コンテキスト除外（商品）',
+      checkFn:_checkAmazonExcludedProducts, autoHide:false },
     { key:'Contextual targeting (on Amazon)',       ja:'コンテキスト（Amazon内）',
   checkFn:(s,v)=>{
     const dv = (v||'').trim().toLowerCase();
@@ -6842,7 +7132,7 @@ const DL_COLUMNS = [
     { key:'Location excluding 1 of 2', ja:'除外地域①',           checkFn:null, autoHide:true },
     { key:'Location excluding 2 of 2', ja:'除外地域②',           checkFn:null, autoHide:true },
     { key:'Location group ID targeting excluding', ja:'地域グループID（除外）', checkFn:null, autoHide:true },
-    { key:'Audiences - include',      ja:'オーディエンスID',      checkFn:null, autoHide:true },
+    { key:'Audiences - include',      ja:'オーディエンスID',      checkFn:null, internalOnly:true },
     { key:'Reach similar audiences', ja:'類似オーディエンス',
   checkFn:(s,v)=>{
     const dv = (v||'').trim().toUpperCase();
@@ -7037,7 +7327,7 @@ const DL_COLUMNS = [
       checkFn:(s,v)=>{ const sp=normPacing(s.pacing); return !sp||sp===normPacing(v); }
     },
     { key:'3P fees',                  ja:'3Pフィー',              checkFn:null, autoHide:true },
-    { key:'Base supply bid*',         ja:'ベースCPM',
+    { key:'Base supply bid*',         ja:'ベースCPM', amazonQcExcluded:true,
       checkFn:(s,v)=> normNum(s.base_cpm)===normNum(v)
     },
     { key:'Maximum average CPM', ja:'上限平均CPM',
@@ -7518,7 +7808,9 @@ function hasMeaningfulDownloadValue(field, value){
 // 戻り値: [{ side:'setting'|'download', field, label, value, reason }]
 function auditVideoFieldCoverage(sRow, dlRow){
     const warnings = [];
-    const dlKeys = new Set(DL_COLUMNS_VIDEO.map(c => c.key));
+    const dlKeys = new Set(DL_COLUMNS_VIDEO
+        .filter(c => !isAmazonQcExcludedColumn(c))
+        .map(c => c.key));
 
     // ── 設定表側 ──
     // ★ 明示的な監査対象フィールドのみ走査する（sRow 全体は走査しない）
@@ -7529,7 +7821,7 @@ function auditVideoFieldCoverage(sRow, dlRow){
         if(!hasMeaningfulSettingValue(field, value)) continue;
         if(VIDEO_SETTING_FIELD_IGNORE_RULES[field]) continue;
         const reg = VIDEO_SETTING_FIELD_REGISTRY[field];
-        if(reg && dlKeys.has(reg.dlKey)) continue;            // 正常に比較されている
+        if(reg && (dlKeys.has(reg.dlKey) || isAmazonQcExcludedKey(reg.dlKey))) continue;
         warnings.push({
             side: 'setting',
             field,
@@ -7546,6 +7838,7 @@ function auditVideoFieldCoverage(sRow, dlRow){
         if(field.startsWith('__')) continue;                  // 内部フィールド（__FILE_D__ 等）
         if(!hasMeaningfulDownloadValue(field, value)) continue;
         if(VIDEO_DOWNLOAD_FIELD_IGNORE_RULES[field]) continue;
+        if(isAmazonQcExcludedKey(field)) continue;
         if(dlKeys.has(field)) continue;
         // エイリアス（DL_COL_ALIASES）経由で登録済みか
         let aliased = false;
@@ -7581,6 +7874,9 @@ function _getSettingValForCol(key, sRow){
         'Third-party pre-bid targeting':'',
         'Supply source':[sRow.ssp,sRow.ssp_owned,sRow.ssp_pub,sRow.ssp_third].filter(Boolean).join(' / '),
         'Language targeting':sRow.language,
+        'Contextual targeting by categories':sRow.in_market_categories,
+        'Target Categories using only contextual signals?':sRow.only_contextual,
+        'Contextual excluding by products':sRow.product && sRow.product.raw || '',
         'Location targeting by':sRow.location,
         'Location targeting 1 of 2':sRow.location,
         'Location excluding 1 of 2':sRow.location,
@@ -7683,16 +7979,30 @@ function matchAndCompareDSP(settingData, downloadMap, system){
             for(const a of aliases){ if(dRow[a]!==undefined) return String(dRow[a]||''); }
             return '';
         }
-        const colResults = DL_COLUMNS.map(col => {
-    const dVal = dGet(col.key);
-    const sVal = _getSettingValForCol(col.key, sRow);
-    let result = null;
-    if(found && col.checkFn){
-        try{ result = col.checkFn(sRow, dVal, dRow); }  // ← 加第3个参数 dRow
-        catch(e){ result = null; }
-    }
-    return { key:col.key, ja:col.ja, sVal, dVal, result };
-});
+        const colResults = DL_COLUMNS.filter(col => !isAmazonQcExcludedColumn(col) && !col.internalOnly).map(col => {
+            const dVal = dGet(col.key);
+            const sVal = _getSettingValForCol(col.key, sRow);
+            let result = null;
+            if(found && col.key === 'Contextual targeting by categories'){
+                result = _checkAmazonInMarketCategory(sRow, dVal);
+            } else if(found && col.checkFn){
+                try{ result = col.checkFn(sRow, dVal, dRow); }  // ← 加第3个参数 dRow
+                catch(e){ result = null; }
+            }
+            const note = col.key === 'Contextual targeting by categories'
+                ? sRow.__in_market_categories_note__ || ''
+                : col.key === 'Target Categories using only contextual signals?'
+                    ? sRow.__contextual_signal_note__ || ''
+                : col.key === 'Contextual excluding by products'
+                    ? sRow.__product_asin_note__ || '' : '';
+            const skipReason = col.key === 'Target Categories using only contextual signals?'
+                && /^(n\/a|not applicable)$/i.test(String(sRow.only_contextual||'').trim())
+                ? '設定表がN/Aのため比較対象外' : '';
+            return {
+                key:col.key, ja:col.ja, sVal, dVal, result, note, skipReason,
+                status: skipReason ? 'skip' : result === true ? 'match' : result === false ? 'mismatch' : 'review',
+            };
+        });
         results.push({
     liName,
     __IO_NAME__:sRow.__IO_NAME__||'',
@@ -7706,6 +8016,8 @@ function matchAndCompareDSP(settingData, downloadMap, system){
     activeStatus:dRow?dRow['Active/Inactive']:'',
     colResults,
     mismatchCount:colResults.filter(c=>c.result===false).length,
+    needsReview:colResults.some(c=>c.result===null && !c.skipReason
+        && (_hasAmazonMeaningfulValue(c.dVal) || _hasAmazonMeaningfulValue(c.note))),
     // ★ sRowから差異情報を引き継ぐ
     __audience_diff__:      sRow.__audience_diff__      || '',
     __location_diff__:      sRow.__location_diff__      || '',
@@ -7809,12 +8121,11 @@ function renderScResult(executionCase){
     }
 
     // Location excluding列で「null結果かつ意味のある値がある」場合のみ黄色表示
-    function _isNullWithMeaningfulValue(colKey, dVal){
-        if(!dVal) return false;
+    function _isNullWithMeaningfulValue(colKey, dVal, reviewNote){
         if(LOCATION_EXCLUDING_KEYS.has(colKey)){
             return hasMeaningfulCellValue(dVal);
         }
-        return true;
+        return hasMeaningfulCellValue(dVal) || hasMeaningfulCellValue(reviewNote);
     }
 
     // 列に関連するアイテムレベルの差異注記・業務備考
@@ -7831,9 +8142,10 @@ function renderScResult(executionCase){
     };
     function _colHasNote(item, colKey){
         if(COL_NOTE_MAP[colKey] && item[COL_NOTE_MAP[colKey]]) return true;
+        const colResult = item.colResults?.find(c => c.key === colKey);
+        if(colResult && hasMeaningfulCellValue(colResult.note)) return true;
         if(LOCATION_EXCLUDING_KEYS.has(colKey)){
-            const cr = item.colResults?.find(c => c.key === colKey);
-            if(cr && hasMeaningfulCellValue(cr.dVal)) return true;
+            if(colResult && hasMeaningfulCellValue(colResult.dVal)) return true;
         }
         return false;
     }
@@ -7856,6 +8168,12 @@ function renderScResult(executionCase){
 
     // 列の初期表示判定（全経路の単一入口）
     function isColumnInitiallyVisible(col){
+        if(isAmazonQcExcludedColumn(col)) return false;
+        if(col.internalOnly) return false;
+        if(system === 'amazon_dsp' && col.checkFn === null && items.some(item => {
+            const value = item.colResults?.find(result => result.key === col.key)?.dVal;
+            return hasMeaningfulCellValue(value);
+        })) return true;
         if(!col.autoHide) return columnHasMeaningfulContent(col.key);
         return shouldAutoShowColumn(col.key);
     }
@@ -7997,7 +8315,8 @@ function renderScResult(executionCase){
     // ★ 要確認項目数（result=null かつ DL側に意味のある値がある列）
     const reviewCount=items.reduce((s,it)=>{
         if(!it.colResults) return s;
-        return s + it.colResults.filter(c => c.result === null && !c.skipReason && hasMeaningfulCellValue(c.dVal)).length;
+        return s + it.colResults.filter(c => c.result === null && !c.skipReason
+            && (hasMeaningfulCellValue(c.dVal) || hasMeaningfulCellValue(c.note))).length;
     },0);
 
     // 列定義
@@ -8007,11 +8326,11 @@ function renderScResult(executionCase){
     ? DL_COLUMNS_DSP_VIDEO
     : (scResults && (scResults.system === 'amazon_pva' || scResults.system === 'amazon_ott'))
         ? DL_COLUMNS_VIDEO : DL_COLUMNS;
-const isPvaBaseCpmColumn = col => system === 'amazon_pva' && col.key === 'Base supply bid*';
 const visibleCols = activeCols.filter(col=>{
         if(ALWAYS_HIDDEN.has(col.key)) return false;
         if(LI_NAME_SKIP.has(col.key)) return false;
-        if(isPvaBaseCpmColumn(col)) return false;
+        if(col.internalOnly) return false;
+        if(isAmazonQcExcludedColumn(col)) return false;
         return true;
     });
     function colHideStyle(col){ return isColumnInitiallyVisible(col)?'':'display:none;'; }
@@ -8108,7 +8427,7 @@ const visibleCols = activeCols.filter(col=>{
         <div id="sc-col-panel-body"
              style="padding:6px 16px 10px;display:flex;align-items:flex-start;
                     gap:6px;flex-wrap:wrap;border-top:1px dashed #dce3ea;">
-            ${activeCols.filter(c=>!ALWAYS_HIDDEN.has(c.key)&&!LI_NAME_SKIP.has(c.key)&&!isPvaBaseCpmColumn(c)).map(col=>`
+            ${activeCols.filter(c=>!ALWAYS_HIDDEN.has(c.key)&&!LI_NAME_SKIP.has(c.key)&&!c.internalOnly&&!isAmazonQcExcludedColumn(c)).map(col=>`
             <label style="display:flex;align-items:center;gap:4px;background:white;
                            border:1px solid #ccc;border-radius:4px;padding:3px 8px;
                            cursor:pointer;font-size:0.76rem;color:#555;user-select:none;"
@@ -8329,9 +8648,9 @@ const visibleCols = activeCols.filter(col=>{
                         ? ` data-qc-status="mismatch" data-qc-scope="${esc(ioName)}"` : '';
                     const bothEmpty=!dVal&&!sVal;
                     const effectiveResult=bothEmpty?true:result;
-                    const bg=skipReason?'#eaf2f8':result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&_isNullWithMeaningfulValue(col.key,dVal))?'#fef9e7':'white';
-                    const border=skipReason?'1px solid #5dade2':result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&_isNullWithMeaningfulValue(col.key,dVal))?'1px solid #f9ca24':'1px solid #e8e8e8';
-                    const color=skipReason?'#2c3e50':result===false?'#922b21':(result===null&&_isNullWithMeaningfulValue(col.key,dVal))?'#856404':'#333';
+                    const bg=skipReason?'#eaf2f8':result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&_isNullWithMeaningfulValue(col.key,dVal,cr&&cr.note))?'#fef9e7':'white';
+                    const border=skipReason?'1px solid #5dade2':result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&_isNullWithMeaningfulValue(col.key,dVal,cr&&cr.note))?'1px solid #f9ca24':'1px solid #e8e8e8';
+                    const color=skipReason?'#2c3e50':result===false?'#922b21':(result===null&&_isNullWithMeaningfulValue(col.key,dVal,cr&&cr.note))?'#856404':'#333';
                     const skipLabel=skipReason?`<span style="font-size:0.68rem;color:#2c3e50;margin-left:4px;background:#d4e6f1;padding:1px 6px;border-radius:3px;">対象外 / ${skipReason}</span>`:'';
                     const hideStyle=colHideStyle(col);
                     html+=`<td data-col-key="${col.key}"${qcMismatchAttr}
@@ -8359,10 +8678,10 @@ const visibleCols = activeCols.filter(col=>{
                     const skipReason=cr?cr.skipReason||'':'';
                     const bothEmpty=!dVal&&!sVal;
                     const effectiveResult=bothEmpty?true:result;
-                    const bg=skipReason?'#eaf2f8':result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&_isNullWithMeaningfulValue(col.key,dVal))?'#fef9e7':'white';
-                    const border=skipReason?'1px solid #5dade2':result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&_isNullWithMeaningfulValue(col.key,dVal))?'1px solid #f9ca24':'1px solid #e8e8e8';
+                    const bg=skipReason?'#eaf2f8':result===true&&!bothEmpty?'#d5f5e3':result===false?'#fde8e8':(result===null&&_isNullWithMeaningfulValue(col.key,dVal,cr&&cr.note))?'#fef9e7':'white';
+                    const border=skipReason?'1px solid #5dade2':result===true&&!bothEmpty?'1px solid #82e0aa':result===false?'1px solid #f5b7b1':(result===null&&_isNullWithMeaningfulValue(col.key,dVal,cr&&cr.note))?'1px solid #f9ca24':'1px solid #e8e8e8';
                     const skipLabel=skipReason?`<span style="font-size:0.68rem;color:#2c3e50;margin-left:4px;background:#d4e6f1;padding:1px 6px;border-radius:3px;">対象外 / ${skipReason}</span>`:'';
-                    const confirmLabel=!skipReason&&result===null&&_isNullWithMeaningfulValue(col.key,dVal)?'<span style="font-size:0.68rem;color:#856404;margin-left:4px;">要確認</span>':'';
+                    const confirmLabel=!skipReason&&result===null&&_isNullWithMeaningfulValue(col.key,dVal,cr&&cr.note)?'<span style="font-size:0.68rem;color:#856404;margin-left:4px;">要確認</span>':'';
                     const hideStyle=colHideStyle(col);
                     html+=`<td data-col-key="${col.key}"
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
@@ -8400,7 +8719,7 @@ const visibleCols = activeCols.filter(col=>{
         : LOCATION_EXCLUDING_KEYS.has(col.key) && hasMeaningfulCellValue(dVal)
         ? '__location_excl_note__'
         : null;
-    const note = noteKey === '__location_excl_note__'
+    const note = cr && cr.note ? cr.note : noteKey === '__location_excl_note__'
         ? _getLocationExcludingNote(item, col.key, dVal)
         : noteKey ? (item[noteKey]||'') : '';
     if(!note) return '';

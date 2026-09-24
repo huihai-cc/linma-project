@@ -248,6 +248,19 @@ test('Case 8: グループ間演算子（and/or）が抽出される', () => {
   assert.ok(result.groupOps.includes('or'), 'or が含まれる');
 });
 
+test('006形式: グループ内とグループ間の演算子を別々に保持する', () => {
+  const rows = makeSegmentSheet(
+    ['セグメント名', 'セグメント名'],
+    [['Audience A', 'Audience B'], ['Audience X', 'Audience Y']],
+    ['Include', 'Include']
+  );
+  rows[2][2] = 'および(and)';
+  rows[2][7] = 'または(or)';
+  const result = toJS(api._readSegmentSheetDynamic(rows));
+  assert.deepEqual(result.groups.map(g => g.innerOp), ['and', 'or']);
+  assert.deepEqual(result.betweenGroupOps, ['and']);
+});
+
 // ═══════════════════════════════════════════
 // Case 9: 普通のAudience名が「セグメント名」で始まっても表頭に誤認されない
 // ═══════════════════════════════════════════

@@ -75,7 +75,7 @@ function makeSegSheet(groups, liName) {
   return {
     audience: 'セグメントシート参照',
     __LI_NAME__: liName || 'TEST-LI',
-    __SEGMENT_SHEET__: { groups: groups.map(g => ({ type: g.type, segments: g.segments })) },
+    __SEGMENT_SHEET__: { groups: groups.map(g => ({ type: g.type, segments: g.segments, innerOp: g.innerOp })), betweenGroupOps: groups.betweenGroupOps || [] },
   };
 }
 function makeDl(ar, at) {
@@ -89,6 +89,61 @@ function namesAt(names, startId) {
 function arInclude(idSets) { return idSets.map(ids => `(${ids.join('; ')})`).join(''); }
 // ID 集合 → "[NOT id1; id2]" Exclude 構造
 function arExclude(idSets) { return idSets.map(ids => `[NOT ${ids.join('; ')}]`).join(''); }
+
+function operatorCase(group1Op, betweenOp, reversed = false) {
+  const groups = [
+    { type: 'Include', segments: ['Audience A', 'Audience B'], innerOp: group1Op },
+    { type: 'Include', segments: ['Audience X', 'Audience Y'], innerOp: 'or' },
+  ];
+  groups.betweenGroupOps = [betweenOp];
+  const ids = [['70001', '70002'], ['70003', '70004']];
+  const dlGroups = reversed ? [...ids].reverse() : ids;
+  return {
+    setting: makeSegSheet(groups),
+    download: makeDl(`(${dlGroups[0].join('; ')}) ${betweenOp.toUpperCase()} (${dlGroups[1].join('; ')})`,
+      'Audience A (70001); Audience B (70002); Audience X (70003); Audience Y (70004)'),
+  };
+}
+
+test('RED-1: Group1 AND と download OR の差を名称一致でも検出する', () => {
+  const { setting, download } = operatorCase('and', 'and');
+  assert.equal(checkFn(setting, download['Audience names'], download), false);
+  assert.match(setting.__audience_diff__, /グループ1：グループ内演算子不一致/);
+  assert.match(setting.__audience_diff__, /設定表：AND/);
+  assert.match(setting.__audience_diff__, /ダウンロード：OR/);
+  assert.doesNotMatch(setting.__audience_diff__, /設定表にあるがダウンロードにない|ダウンロードにあるが設定表にない/);
+});
+
+test('RED-2: 両 Group OR と Group 間 AND が一致する', () => {
+  const { setting, download } = operatorCase('or', 'and');
+  assert.equal(checkFn(setting, download['Audience names'], download), true);
+});
+
+test('RED-3: 演算子一致でも Audience 欠落は不一致のまま', () => {
+  const { setting, download } = operatorCase('or', 'and');
+  download['Audiences - include'] = '(70001) AND (70003; 70004)';
+  assert.equal(checkFn(setting, download['Audience names'], download), false);
+  assert.match(setting.__audience_diff__, /Audience B/);
+});
+
+test('RED-4: 明示された Group 間 AND/OR 差を検出する', () => {
+  const { setting, download } = operatorCase('or', 'and');
+  download['Audiences - include'] = download['Audiences - include'].replace(' AND ', ' OR ');
+  assert.equal(checkFn(setting, download['Audience names'], download), false);
+  assert.match(setting.__audience_diff__, /グループ間演算子不一致/);
+});
+
+test('RED-5: Group 順序が入れ替わっても成員と演算子で対応づける', () => {
+  const { setting, download } = operatorCase('or', 'and', true);
+  assert.equal(checkFn(setting, download['Audience names'], download), true, setting.__audience_diff__);
+});
+
+test('同じ Audience 集合でも Group の所属が違えば不一致', () => {
+  const { setting, download } = operatorCase('or', 'and');
+  download['Audiences - include'] = '(70001; 70003) AND (70002; 70004)';
+  assert.equal(checkFn(setting, download['Audience names'], download), false);
+  assert.match(setting.__audience_diff__, /グループ構成不一致/);
+});
 
 let idSeed = 40000;
 function idFor(names) { return names.map((_, i) => String(idSeed + i)); }
@@ -277,11 +332,10 @@ test('Case 9: 順序が違うだけで内容が同じ → true', () => {
     { type: 'Include', segments: G2 },
   ]);
   const all = [...G1, ...G2];
-  const rev = [...all].reverse();
   const ids = idFor(all);
   const dl = makeDl(
-    arInclude([ids.slice(0, 2), ids.slice(2, 7)]),
-    namesAt(rev, idSeed)
+    arInclude([ids.slice(2, 7), ids.slice(0, 2)]),
+    namesAt(all, idSeed)
   );
   const r = checkFn(s, dl['Audience names'], dl);
   assert.equal(r, true, JSON.stringify(s.__audience_diff__));
