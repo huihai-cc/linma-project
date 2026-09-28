@@ -15,6 +15,7 @@ const {
   makeStructuredSettingWorkbook,
   makeMinimalSettingWorkbookBuffer,
 } = require('./fixtures/tver-fixtures.js');
+const { makeNewFmtSettingWorkbook } = require('./fixtures/tver_new_fmt_fixtures.js');
 const tverVerify = require('./tver_real_file.verify.js');
 
 const projectRoot = path.join(__dirname, '..');
@@ -52,6 +53,7 @@ function loadTverApi() {
     `  getTverIdDictionaries: typeof getTverIdDictionaries === 'function' ? getTverIdDictionaries : undefined,\n` +
     `  validateIdDictionaries: typeof validateIdDictionaries === 'function' ? validateIdDictionaries : undefined,\n` +
     `  normalizeTverDevice: typeof normalizeTverDevice === 'function' ? normalizeTverDevice : undefined,\n` +
+    `  canonicalizeTverExplicitDevice: typeof canonicalizeTverExplicitDevice === 'function' ? canonicalizeTverExplicitDevice : undefined,\n` +
     `  normalizeTverVideoDuration: typeof normalizeTverVideoDuration === 'function' ? normalizeTverVideoDuration : undefined,\n` +
     `  resolveSettingAdGroupDevice: typeof resolveSettingAdGroupDevice === 'function' ? resolveSettingAdGroupDevice : undefined,\n` +
     `  resolveSettingTargetingField: typeof resolveSettingTargetingField === 'function' ? resolveSettingTargetingField : undefined,\n` +
@@ -1310,7 +1312,7 @@ test('C3-C4-4B Red: GP Age 支持 XX歳以上、保留原文，并按明确空�
 
   const parsed=api.parseTverAgeExpression('65歳以上');
   assert.deepEqual(JSON.parse(JSON.stringify(parsed)), {
-    canonicalValue:'65+', minAge:65, maxAge:null, upperOpen:true,
+    canonicalValue:'65-100', minAge:65, maxAge:100, upperOpen:true,
     ruleId:'TVER_C3_C4_4B_AGE_OPEN_UPPER_BOUND',
   });
   const closedParsed=api.parseTverAgeExpression('20歳〜34歳');
@@ -1320,16 +1322,16 @@ test('C3-C4-4B Red: GP Age 支持 XX歳以上、保留原文，并按明确空�
   });
   const setting=api.resolveSettingTargetingForComparison(settingFor('65歳以上'), 'age');
   assert.equal(setting.rawValue, '65歳以上');
-  assert.equal(setting.canonicalValue, '65+');
-  assert.deepEqual(JSON.parse(JSON.stringify(setting.ageShape)), { minAge:65, maxAge:null, upperOpen:true });
+  assert.equal(setting.canonicalValue, '65-100');
+  assert.deepEqual(JSON.parse(JSON.stringify(setting.ageShape)), { minAge:65, maxAge:100, upperOpen:true });
   assert.equal(setting.comparable, true);
   assert.equal(setting.ruleBasis, 'TVER_C3_C4_4B_AGE_OPEN_UPPER_BOUND');
 
   const equal=api.buildComparisonRun({ fields:[buildAge('65歳以上', '65', '')] }).entries[0];
   assert.equal(equal.settingRawValue, '65歳以上');
   assert.equal(equal.csvRawValue, '65 / ');
-  assert.equal(equal.canonicalValues.setting, '65+');
-  assert.equal(equal.canonicalValues.csv, '65+');
+  assert.equal(equal.canonicalValues.setting, '65-100');
+  assert.equal(equal.canonicalValues.csv, '65-100');
   assert.equal(equal.comparisonStatus, '表記ゆれ一致');
   assert.equal(api.projectTverDisplayStatus(equal.displayStatus), '一致');
   assert.deepEqual(JSON.parse(JSON.stringify(equal.sourceEvidence.setting.map(item => item.rawValue))), ['65歳以上']);
@@ -1339,6 +1341,7 @@ test('C3-C4-4B Red: GP Age 支持 XX歳以上、保留原文，并按明确空�
   assert.equal(lowerBoundMismatch.comparisonStatus, '不一致');
   assert.equal(api.projectTverDisplayStatus(lowerBoundMismatch.displayStatus), '不一致');
 
+  // 上限差異：open-upper の canonical 上限は 100 なので、閉区間 65-74 とは不一致のまま。
   const openVsClosedMismatch=api.buildComparisonRun({ fields:[buildAge('65歳以上', '65', '74')] }).entries[0];
   assert.equal(openVsClosedMismatch.comparisonStatus, '不一致');
 
@@ -1705,7 +1708,9 @@ test('Date match: 零填充差異的同一終了日時應作為同值參與 Camp
   assert.equal(cp.status, 'matched');
 });
 
-test('Date match: 真正不同的日時即使經過歸一化仍不匹配', () => {
+// CPN-DTMATCH-FIX：真正不同的日時不再阻断 Campaign 配对（datetime 已从实体识别中移除），
+// 但仍必须在既有字段比较中判定为「不一致」——绝不允许被归一化成「一致」。
+test('Date match: 真正不同的日時不再阻断Campaign配对，而是由既有字段比较判定不一致', () => {
   const settingModel = {
     campaigns: [{ key: 's-cp-1', level: 'Campaign', expectedName: 'CPN_Z_260820-0828', fields: { startDateTime: '2026/08/20 00:00', endDateTime: '2026/08/28 00:00' } }],
     adGroups: [], ads: [], diagnostics: [],
@@ -1716,8 +1721,18 @@ test('Date match: 真正不同的日時即使經過歸一化仍不匹配', () =>
   };
   const result = api.matchTverEntities(settingModel, csvTree, { schemaKind: 'edit-with-ids', conversionContext: makeStructuralConversionContext() });
   const cp = result.matches.find(m => m.level === 'Campaign');
-  assert.equal(cp.status, 'unmatched');
-  assert.equal(cp.reasonCode, 'NO_HARD_CANDIDATE');
+  assert.equal(cp.status, 'matched');
+  assert.equal(cp.reasonCode, 'UNIQUE_HARD_CANDIDATE');
+  const start = api.compareField({
+    level: 'Campaign', field: 'start_datetime', settingValue: '2026/08/20 00:00', csvValue: '2026/8/21 0:0', ruleBasis: 'strict',
+  });
+  assert.equal(start.comparisonStatus, '不一致');
+  assert.equal(start.displayStatus, '不一致');
+  const end = api.compareField({
+    level: 'Campaign', field: 'end_datetime', settingValue: '2026/08/28 00:00', csvValue: '2026/8/28 0:0', ruleBasis: 'strict',
+  });
+  assert.equal(end.comparisonStatus, '表記ゆれ一致');
+  assert.equal(api.projectTverDisplayStatus(end.displayStatus), '一致');
 });
 
 // 阶段 A5：Ad Group structural 匹配的 device / price / DMP 三维 canonical 解析。
@@ -6726,7 +6741,7 @@ test('A18-3C3-B Red: 详情层三Level均存在且不改变entries/statusCounts'
 test('A18-3C3-B-V2 Red: 三个Level只生成结果表自身的原生横向滚动容器', () => {
   const source = fs.readFileSync(htmlPath, 'utf8');
   assert.doesNotMatch(source, /tver-horizontal-floating-scrollbar|data-tver-floating-scrollbar/);
-  assert.doesNotMatch(source, /position:fixed/);
+  assert.match(source, /\.qc-mismatch-nav-floating\{[^}]*position:fixed/);
   assert.match(source, /\.tver-horizontal-scroll\{[^}]*overflow-x:auto/);
   assert.doesNotMatch(source, /\.tver-horizontal-scroll\{[^}]*overflow-x:scroll/);
   for (const level of ['Campaign', 'Ad Group', 'Ad']) {
@@ -8052,4 +8067,729 @@ test('C3-C4-UI-FIX1E-B2 Red B2-6: auction_type display不改变comparisonStatus'
   const before = entry.comparisonStatus;
   api.formatTverDisplayValue(entry, 'csv');
   assert.equal(entry.comparisonStatus, before);
+});
+
+// ============================================================
+// TVER-CPN-DTMATCH-FIX (bounded FIX)
+// 问题：Campaign 的 start/end datetime 同时被当作「实体识别条件」和「被比较字段」，
+//       导致 datetime 值不一致时 Campaign 本身无法配对，字段比较无法执行。
+// 修复方向：实体识别只用稳定身份（Campaign name / expectedName），
+//           datetime 仅保留为配对成功后的字段比较对象。
+// ============================================================
+
+const CAMPAIGN_DT_SETTING_START = '2026/07/01 00:00';
+const CAMPAIGN_DT_SETTING_END = '2026/08/31 23:30';
+// Setting 侧 buildCampaignExpectation(発注CPN名 + 開始YYMMDD + 終了MMDD + CPN訴求)
+const CAMPAIGN_DT_EXPECTED_NAME = 'Synthetic Campaign_260701-0831_Synthetic Appeal';
+
+function makeCampaignDatetimeRun({
+  settingStart = CAMPAIGN_DT_SETTING_START,
+  settingEnd = CAMPAIGN_DT_SETTING_END,
+  csvStart = settingStart,
+  csvEnd = settingEnd,
+  csvCampaignName = CAMPAIGN_DT_EXPECTED_NAME,
+  csvKind = 'register',
+  extraCsvRows = [],
+} = {}) {
+  const settingWorkbook = makeStructuredSettingWorkbook({
+    mainRows: [{
+      '発注CPN名': 'Synthetic Campaign', 'CPN訴求': 'Synthetic Appeal', 'CPN予算': '900',
+      '開始日時(yyyy/mm/dd hh:mm)': settingStart, '終了日時(yyyy/mm/dd hh:mm)': settingEnd,
+      'ターゲティング番号': 'TG-01',
+      'ADG開始日時(yyyy/mm/dd hh:mm)': settingStart, 'ADG終了日時(yyyy/mm/dd hh:mm)': settingEnd,
+      '素材名': 'synthetic-creative.mp4', 'LP名': 'Synthetic LP', 'タグ訴求': 'Synthetic_SPPC',
+      '初期設定日予算': '30', 'その他設定': 'Synthetic Other Setting', '変更履歴': 'Synthetic Change History',
+    }],
+    targetingBatches: [[{ number: 'TG-01', device: 'SP／PC／CTV', price: '11' }]],
+  });
+  const row = {
+    campaign_name: csvCampaignName, start_datetime: csvStart, end_datetime: csvEnd,
+    adgroup_name: 'Synthetic Group', adgroup_start_datetime: csvStart, adgroup_end_datetime: csvEnd,
+    device: 'android ios pc', price: '11', creative_name: 'synthetic-creative.mp4',
+    url: 'https://example.invalid/synthetic-lp',
+  };
+  const csvText = csvKind === 'edit'
+    ? makeEditCsv([{ campaign_id: '101', adgroup_id: '201', ad_id: '301', ...row }, ...extraCsvRows])
+    : makeRegisterCsv([row, ...extraCsvRows]);
+  const model = api.parseTverSettingWorkbook(settingWorkbook, { fileName: 'campaign-datetime-setting.xlsx' });
+  const parsed = api.parseCsvText(csvText, { fileName: `campaign-datetime-${csvKind}.csv` });
+  const tree = parsed.schema.kind === 'edit-with-ids' ? api.buildEditTree(parsed) : api.buildRegisterTree(parsed);
+  const matching = api.matchTverEntities(model, tree, {
+    schemaKind: parsed.schema.kind, conversionContext: api.createTverConversionContext(parsed.schema.kind, tree),
+  });
+  const run = api.buildRunFromModels(model, tree, matching, parsed);
+  return { model, parsed, tree, matching, run };
+}
+
+function campaignDatetimeMatch(matching) {
+  return matching.matches.find(match => match.level === 'Campaign');
+}
+
+function isolatedCampaignEntityEntries(run) {
+  return run.entries.filter(entry => entry.level === 'Campaign' && entry.field === 'entity');
+}
+
+test('CPN-DTMATCH-FIX Red: 同一Campaign名仅開始日時不同时Campaign必须配对且開始日時判定不一致', () => {
+  const { matching, run } = makeCampaignDatetimeRun({
+    settingStart: '2026/07/01 00:00', csvStart: '2026/07/01 10:00',
+  });
+  const campaign = campaignDatetimeMatch(matching);
+  assert.equal(campaign.status, 'matched');
+  assert.equal(campaign.reasonCode, 'UNIQUE_HARD_CANDIDATE');
+  // 不再产生 Setting 侧 / CSV 侧两条孤立的 要確認・未匹配 实体
+  assert.deepEqual(Array.from(isolatedCampaignEntityEntries(run)), []);
+  assert.equal(run.entries.some(entry => entry.field === 'entity' && entry.level === 'Campaign'), false);
+  const start = findCampaignEntry(run, 'start_datetime');
+  assert.ok(start);
+  assert.equal(start.settingRawValue, '2026/07/01 00:00');
+  assert.equal(start.csvRawValue, '2026/07/01 10:00');
+  assert.equal(start.comparisonStatus, '不一致');
+  assert.equal(start.displayStatus, '不一致');
+  // 终了日时一致，不被本次修复波及
+  assert.equal(findCampaignEntry(run, 'end_datetime').comparisonStatus, '一致');
+});
+
+test('CPN-DTMATCH-FIX Red: 同一Campaign名仅終了日時不同时Campaign必须配对且終了日時判定不一致', () => {
+  const { matching, run } = makeCampaignDatetimeRun({
+    settingEnd: '2026/08/31 23:30', csvEnd: '2026/09/01 00:00',
+  });
+  const campaign = campaignDatetimeMatch(matching);
+  assert.equal(campaign.status, 'matched');
+  assert.deepEqual(Array.from(isolatedCampaignEntityEntries(run)), []);
+  const end = findCampaignEntry(run, 'end_datetime');
+  assert.ok(end);
+  assert.equal(end.settingRawValue, '2026/08/31 23:30');
+  assert.equal(end.csvRawValue, '2026/09/01 00:00');
+  assert.equal(end.comparisonStatus, '不一致');
+  assert.equal(findCampaignEntry(run, 'start_datetime').comparisonStatus, '一致');
+});
+
+test('CPN-DTMATCH-FIX Red: 同一Campaign名且datetime完全一致时既有「一致」行为不变', () => {
+  const { matching, run } = makeCampaignDatetimeRun({});
+  const campaign = campaignDatetimeMatch(matching);
+  assert.equal(campaign.status, 'matched');
+  assert.equal(campaign.reasonCode, 'UNIQUE_HARD_CANDIDATE');
+  assert.deepEqual(Array.from(isolatedCampaignEntityEntries(run)), []);
+  assert.equal(findCampaignEntry(run, 'start_datetime').comparisonStatus, '一致');
+  assert.equal(findCampaignEntry(run, 'end_datetime').comparisonStatus, '一致');
+  // Ad Group / Ad 既有行为不变
+  assert.equal(matching.matches.filter(match => match.level === 'Ad Group' && match.status === 'matched').length, 1);
+  assert.equal(matching.matches.filter(match => match.level === 'Ad' && match.status === 'matched').length, 1);
+});
+
+test('CPN-DTMATCH-FIX Red: 同一稳定身份存在多个Campaign候选时保持ambiguous且不占用候选', () => {
+  const { matching } = makeCampaignDatetimeRun({
+    settingStart: '2026/07/01 00:00', settingEnd: '2026/08/31 23:30',
+    extraCsvRows: [{
+      campaign_name: CAMPAIGN_DT_EXPECTED_NAME, start_datetime: '2026/07/01 10:00', end_datetime: '2026/08/31 23:30',
+      adgroup_name: 'Synthetic Group B', adgroup_start_datetime: '2026/07/01 10:00', adgroup_end_datetime: '2026/08/31 23:30',
+      device: 'android ios pc', price: '11', creative_name: 'synthetic-creative-b.mp4',
+      url: 'https://example.invalid/synthetic-lp-b',
+    }],
+  });
+  const campaign = campaignDatetimeMatch(matching);
+  assert.equal(campaign.status, 'ambiguous');
+  assert.equal(campaign.reasonCode, 'MULTIPLE_HARD_CANDIDATES');
+  assert.equal(campaign.csvKey, null);
+  assert.equal(campaign.candidateKeys.length, 2);
+  assert.equal(Object.keys(matching.reservations.csvToSetting).length, 0);
+  // Campaign 层：Setting 侧 1 件 ambiguous，CSV 侧 2 件候选全部保留为 要確認，不做任何猜测。
+  assert.equal(matching.unassigned.setting.filter(entity => entity.level === 'Campaign').length, 1);
+  assert.equal(matching.unassigned.csv.filter(entity => entity.level === 'Campaign').length, 2);
+  assert.equal(matching.unmatched.setting.length, 0);
+});
+
+test('CPN-DTMATCH-FIX Red: Campaign名本身不同时不得因本次修复被配对', () => {
+  const { matching } = makeCampaignDatetimeRun({
+    csvCampaignName: 'Synthetic Campaign_260701-0831_Other Appeal',
+  });
+  const campaign = campaignDatetimeMatch(matching);
+  assert.equal(campaign.status, 'unmatched');
+  assert.equal(campaign.reasonCode, 'NO_HARD_CANDIDATE');
+  assert.equal(Object.keys(matching.reservations.csvToSetting).length, 0);
+});
+
+test('CPN-DTMATCH-FIX Red: 日付レベルで異なるCampaign名は依然として候補にならない', () => {
+  const { matching } = makeCampaignDatetimeRun({
+    csvCampaignName: 'Synthetic Campaign_260702-0831_Synthetic Appeal',
+  });
+  const campaign = campaignDatetimeMatch(matching);
+  assert.equal(campaign.status, 'unmatched');
+  assert.equal(campaign.reasonCode, 'NO_HARD_CANDIDATE');
+});
+
+test('CPN-DTMATCH-FIX Red: Edit-with-IDs schema 下datetime不一致同样配对并判定不一致', () => {
+  const { parsed, matching, run } = makeCampaignDatetimeRun({
+    settingStart: '2026/07/01 00:00', csvStart: '2026/07/01 10:00', csvKind: 'edit',
+  });
+  assert.equal(parsed.schema.kind, 'edit-with-ids');
+  const campaign = campaignDatetimeMatch(matching);
+  assert.equal(campaign.status, 'matched');
+  assert.equal(campaign.reasonCode, 'UNIQUE_HARD_CANDIDATE');
+  assert.deepEqual(Array.from(isolatedCampaignEntityEntries(run)), []);
+  const start = findCampaignEntry(run, 'start_datetime');
+  assert.ok(start);
+  assert.equal(start.settingRawValue, '2026/07/01 00:00');
+  assert.equal(start.csvRawValue, '2026/07/01 10:00');
+  assert.equal(start.comparisonStatus, '不一致');
+  assert.equal(findCampaignEntry(run, 'end_datetime').comparisonStatus, '一致');
+});
+
+test('CPN-DTMATCH-FIX Red: Edit-with-IDs schema 下Campaign名不同仍不配对', () => {
+  const { matching } = makeCampaignDatetimeRun({
+    csvKind: 'edit', csvCampaignName: 'Synthetic Campaign_260701-0831_Other Appeal',
+  });
+  const campaign = campaignDatetimeMatch(matching);
+  assert.equal(campaign.status, 'unmatched');
+  assert.equal(campaign.reasonCode, 'NO_HARD_CANDIDATE');
+});
+
+// ============================================================
+// TVER NEW FMT backward-compatible support (bounded FIX)
+// 新 FMT（2609 以降）実案件 4 案で確認した構造差分：
+//   1. 主業務表に「デバイス」列（row-level authoritative device）が追加。
+//   2. 主業務表の「タグ訴求」が「タグ訴求(0%)」「タグ訴求(100%)」に分割。
+//   3. ターゲティング block に「オークションタイプ」行が追加。
+// 旧 FMT（「デバイス」列なし）は従来経路のまま一切変わらないこと。
+// ============================================================
+
+const NEW_FMT_CAMPAIGN_NAME = 'Synthetic Campaign_260918-0927_Synthetic Appeal';
+
+function makeNewFmtCase({
+  mainRows, targetingBatches, csvRows, measurementTagBlocks,
+  csvCampaignName = NEW_FMT_CAMPAIGN_NAME,
+} = {}) {
+  const settingWorkbook = makeNewFmtSettingWorkbook({ mainRows, targetingBatches, measurementTagBlocks });
+  const model = api.parseTverSettingWorkbook(settingWorkbook, { fileName: 'new-fmt-setting.xlsx' });
+  const csvText = makeRegisterCsv(csvRows || [{
+    campaign_name: csvCampaignName, start_datetime: '2026/09/18 00:00', end_datetime: '2026/09/27 23:45',
+    adgroup_name: 'Synthetic Group SPPC', device: 'android ios pc', price: '1800', auction_type: '1',
+    creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+    tracking_url_complete: 'https://tracker.invalid/complete-sppc?x={adid}',
+  }]);
+  const parsed = api.parseCsvText(csvText, { fileName: 'new-fmt-register.csv' });
+  const tree = api.buildRegisterTree(parsed);
+  const matching = api.matchTverEntities(model, tree, {
+    schemaKind: parsed.schema.kind, conversionContext: api.createTverConversionContext(parsed.schema.kind, tree),
+  });
+  const run = api.buildRunFromModels(model, tree, matching, parsed);
+  return { model, parsed, tree, matching, run };
+}
+
+function newFmtEntry(run, level, field) {
+  return run.entries.find(entry => entry.level === level && entry.field === field);
+}
+
+function newFmtMatch(matching, level) {
+  return matching.matches.find(match => match.level === level);
+}
+
+function newFmtMainRow(overrides = {}) {
+  return {
+    '発注CPN名': 'Synthetic Campaign', 'CPN訴求': 'Synthetic Appeal', 'CPN予算': '900',
+    '開始日時(yyyy/mm/dd hh:mm)': '2026/09/18 00:00', '終了日時(yyyy/mm/dd hh:mm)': '2026/09/27 23:45',
+    'ターゲティング番号': '1', 'デバイス': 'ios, android, pc',
+    'ADG開始日時(yyyy/mm/dd hh:mm)': '', 'ADG終了日時(yyyy/mm/dd hh:mm)': '',
+    '素材名': 'synthetic-creative.mp4', 'LP名': 'Synthetic LP',
+    'タグ訴求(0%)': '', 'タグ訴求(100%)': 'SPPC',
+    '初期設定日予算': '30', 'その他設定': 'Synthetic Other Setting', '変更履歴': 'Synthetic Change History',
+    ...overrides,
+  };
+}
+
+test('NEW-FMT-DEVICE-1 Red: row-level デバイス ios, android, pc 与 CSV android ios pc 判定一致', () => {
+  const { model, matching, run } = makeNewFmtCase({});
+  assert.equal(model.diagnostics.filter(issue => issue.code === 'SETTING_BUSINESS_HEADER_MISSING').length, 0);
+  assert.equal(model.adGroups.length, 1);
+  assert.equal(newFmtMatch(matching, 'Campaign').status, 'matched');
+  assert.equal(newFmtMatch(matching, 'Ad Group').status, 'matched');
+  const device = newFmtEntry(run, 'Ad Group', 'device');
+  assert.ok(device);
+  assert.equal(device.settingRawValue, 'ios, android, pc');
+  assert.equal(device.csvRawValue, 'android ios pc');
+  assert.equal(device.comparisonStatus, '表記ゆれ一致');
+  assert.equal(api.projectTverDisplayStatus(device.displayStatus), '一致');
+  assert.equal(device.sourceRefs.setting.columnName, 'デバイス');
+});
+
+test('NEW-FMT-DEVICE-2 Red: row-level pc, ios, android 与 CSV android ios pc 判定一致', () => {
+  const { run } = makeNewFmtCase({ mainRows: [newFmtMainRow({ 'デバイス': 'pc, ios, android' })] });
+  const device = newFmtEntry(run, 'Ad Group', 'device');
+  assert.ok(device);
+  assert.equal(device.settingRawValue, 'pc, ios, android');
+  assert.equal(api.projectTverDisplayStatus(device.displayStatus), '一致');
+});
+
+test('NEW-FMT-DEVICE-3 Red: row-level ctv 与 CSV ctv 判定一致', () => {
+  const { run } = makeNewFmtCase({
+    mainRows: [newFmtMainRow({ 'デバイス': 'ctv', 'タグ訴求(100%)': 'CTV' })],
+    csvRows: [{
+      campaign_name: NEW_FMT_CAMPAIGN_NAME, start_datetime: '2026/09/18 00:00', end_datetime: '2026/09/27 23:45',
+      adgroup_name: 'Synthetic Group CTV', device: 'ctv', price: '1800', auction_type: '1',
+      creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+      tracking_url_complete: 'https://tracker.invalid/complete-ctv?x={adid}',
+    }],
+  });
+  const device = newFmtEntry(run, 'Ad Group', 'device');
+  assert.ok(device);
+  assert.equal(device.settingRawValue, 'ctv');
+  assert.equal(api.projectTverDisplayStatus(device.displayStatus), '一致');
+});
+
+test('NEW-FMT-DEVICE-4 Red: row-level ios, android, pc, ctv 与 CSV android ctv ios pc 判定一致', () => {
+  const { run } = makeNewFmtCase({
+    mainRows: [newFmtMainRow({ 'デバイス': 'ios, android, pc, ctv' })],
+    csvRows: [{
+      campaign_name: NEW_FMT_CAMPAIGN_NAME, start_datetime: '2026/09/18 00:00', end_datetime: '2026/09/27 23:45',
+      adgroup_name: 'Synthetic Group All', device: 'android ctv ios pc', price: '1800', auction_type: '1',
+      creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+      tracking_url_complete: 'https://tracker.invalid/complete-sppc?x={adid}',
+    }],
+  });
+  const device = newFmtEntry(run, 'Ad Group', 'device');
+  assert.ok(device);
+  assert.equal(device.settingRawValue, 'ios, android, pc, ctv');
+  assert.equal(device.csvRawValue, 'android ctv ios pc');
+  assert.equal(api.projectTverDisplayStatus(device.displayStatus), '一致');
+});
+
+test('NEW-FMT-DEVICE-5 Red: 同一 targetingNumber 下 row-level device 不同时必须形成并匹配两个 ADG', () => {
+  const { model, matching, run } = makeNewFmtCase({
+    mainRows: [
+      newFmtMainRow({ 'デバイス': 'ios, android, pc', 'タグ訴求(100%)': 'SPPC' }),
+      newFmtMainRow({ 'デバイス': 'ctv', 'タグ訴求(100%)': 'CTV' }),
+    ],
+    csvRows: [
+      {
+        campaign_name: NEW_FMT_CAMPAIGN_NAME, start_datetime: '2026/09/18 00:00', end_datetime: '2026/09/27 23:45',
+        adgroup_name: 'Synthetic Group SPPC', device: 'android ios pc', price: '1800', auction_type: '1',
+        creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+        tracking_url_complete: 'https://tracker.invalid/complete-sppc?x={adid}',
+      },
+      {
+        campaign_name: NEW_FMT_CAMPAIGN_NAME, start_datetime: '2026/09/18 00:00', end_datetime: '2026/09/27 23:45',
+        adgroup_name: 'Synthetic Group CTV', device: 'ctv', price: '1800', auction_type: '1',
+        creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+        tracking_url_complete: 'https://tracker.invalid/complete-ctv?x={adid}',
+      },
+    ],
+  });
+  // 総括 配信デバイス●（SP／PC／CTV）で 2 行が再統合されないこと。
+  assert.equal(model.adGroups.length, 2);
+  assert.deepEqual(
+    Array.from(model.adGroups, group => api.resolveSettingAdGroupDevice(group).device).sort(),
+    ['android ios pc', 'ctv']
+  );
+  const adGroupMatches = matching.matches.filter(match => match.level === 'Ad Group');
+  assert.equal(adGroupMatches.length, 2);
+  assert.equal(adGroupMatches.every(match => match.status === 'matched'), true);
+  assert.equal(new Set(adGroupMatches.map(match => match.csvKey)).size, 2);
+  const deviceEntries = run.entries.filter(entry => entry.level === 'Ad Group' && entry.field === 'device');
+  assert.equal(deviceEntries.length, 2);
+  assert.equal(deviceEntries.every(entry => api.projectTverDisplayStatus(entry.displayStatus) === '一致'), true);
+});
+
+test('NEW-FMT-DEVICE-6 Red: row-level device 有效时下方的配信デバイス●総括不得覆盖', () => {
+  // 総括が CTV のみでも、row-level が ios, android, pc なら CSV android ios pc と一致する。
+  const { model, run } = makeNewFmtCase({
+    mainRows: [newFmtMainRow({ 'デバイス': 'ios, android, pc' })],
+    targetingBatches: [[{ number: '1', device: 'CTV', price: '1,800', duration: '30秒(23-37秒)' }]],
+  });
+  const resolved = api.resolveSettingAdGroupDevice(model.adGroups[0]);
+  assert.equal(resolved.resolved, true);
+  assert.equal(resolved.device, 'android ios pc');
+  assert.equal(resolved.primarySource.columnName, 'デバイス');
+  const device = newFmtEntry(run, 'Ad Group', 'device');
+  assert.ok(device);
+  assert.equal(api.projectTverDisplayStatus(device.displayStatus), '一致');
+});
+
+test('NEW-FMT-DEVICE-7 Red: 未知 device token 不得猜测，必须 unresolved/要確認', () => {
+  const { model, matching } = makeNewFmtCase({
+    mainRows: [newFmtMainRow({ 'デバイス': 'ios, android, sp' })],
+  });
+  const resolved = api.resolveSettingAdGroupDevice(model.adGroups[0]);
+  assert.equal(resolved.resolved, false);
+  assert.equal(resolved.canonicalValue, null);
+  assert.equal(newFmtMatch(matching, 'Ad Group').status, 'ambiguous');
+  assert.equal(api.canonicalizeTverExplicitDevice('ios, android, sp').state, 'unknown');
+});
+
+test('NEW-FMT-DEVICE-8 Red: explicit device canonical 对 separator/order/duplicate 不敏感', () => {
+  assert.equal(api.canonicalizeTverExplicitDevice('ios, android, pc').value, 'android ios pc');
+  assert.equal(api.canonicalizeTverExplicitDevice('pc, ios, android').value, 'android ios pc');
+  assert.equal(api.canonicalizeTverExplicitDevice('android ios pc').value, 'android ios pc');
+  assert.equal(api.canonicalizeTverExplicitDevice('ios, android, pc, ctv').value, 'android ctv ios pc');
+  assert.equal(api.canonicalizeTverExplicitDevice('android ctv ios pc').value, 'android ctv ios pc');
+  assert.equal(api.canonicalizeTverExplicitDevice('ctv, ctv').value, 'ctv');
+  assert.equal(api.canonicalizeTverExplicitDevice('').state, 'empty');
+});
+
+test('NEW-FMT-DEVICE-9 Red: ターゲティング grid 右側の「▼デバイス変換」注記列を最終グループが吸収しない', () => {
+  const { model, matching } = makeNewFmtCase({
+    mainRows: [
+      newFmtMainRow({ 'ターゲティング番号': '1', 'デバイス': 'ios, android, pc', 'タグ訴求(100%)': 'SPPC' }),
+      newFmtMainRow({ 'ターゲティング番号': '2', 'デバイス': 'ctv', 'タグ訴求(100%)': 'CTV' }),
+    ],
+    targetingBatches: [[
+      { number: '1', device: 'SP／PC／CTV', price: '1,800', duration: '30秒(23-37秒)' },
+      { number: '2', device: 'SP／PC／CTV', price: '2,000', duration: '30秒(23-37秒)' },
+    ]],
+    csvRows: [
+      {
+        campaign_name: NEW_FMT_CAMPAIGN_NAME, start_datetime: '2026/09/18 00:00', end_datetime: '2026/09/27 23:45',
+        adgroup_name: 'Synthetic Group SPPC', device: 'android ios pc', price: '1800', auction_type: '1',
+        creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+        tracking_url_complete: 'https://tracker.invalid/complete-sppc?x={adid}',
+      },
+      {
+        campaign_name: NEW_FMT_CAMPAIGN_NAME, start_datetime: '2026/09/18 00:00', end_datetime: '2026/09/27 23:45',
+        adgroup_name: 'Synthetic Group CTV', device: 'ctv', price: '2000', auction_type: '1',
+        creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+        tracking_url_complete: 'https://tracker.invalid/complete-ctv?x={adid}',
+      },
+    ],
+  });
+  assert.equal(model.adGroups.length, 2);
+  const second = model.adGroups.find(group => group.fields.targetingNumber === '2');
+  assert.ok(second);
+  // 注記列（▼デバイス変換 ブロックの変換後デバイス表記）が業務値に混入しない。
+  assert.equal(second.fields.targeting.price.includes('Connected TV'), false);
+  assert.equal(second.fields.targeting.price.includes('SP／PC／CTV'), false);
+  assert.equal(second.fields.targeting.videoDuration.includes('Connected TV'), false);
+  assert.equal(api.normalizeTverPriceForMatching(second.fields.targeting.price).value, '2000');
+  // 最終グループの structural profile が price unknown で停止しない。
+  const adGroupMatches = matching.matches.filter(match => match.level === 'Ad Group');
+  assert.equal(adGroupMatches.length, 2);
+  assert.equal(adGroupMatches.every(match => match.status === 'matched'), true);
+});
+
+test('NEW-FMT-OLD-DEVICE-1 Red: 旧 FMT（デバイス列なし）は従来の tagAppeal + 配信デバイス● 経路のまま', () => {
+  const settingWorkbook = makeStructuredSettingWorkbook({
+    mainRows: [{
+      '発注CPN名': 'Synthetic Campaign', 'CPN訴求': 'Synthetic Appeal', 'CPN予算': '900',
+      '開始日時(yyyy/mm/dd hh:mm)': '2026/02/01 00:00', '終了日時(yyyy/mm/dd hh:mm)': '2026/02/28 23:30',
+      'ターゲティング番号': 'TG-01', 'ADG開始日時(yyyy/mm/dd hh:mm)': '2026/02/01 00:00',
+      'ADG終了日時(yyyy/mm/dd hh:mm)': '2026/02/28 23:30', '素材名': 'synthetic-creative.mp4',
+      'LP名': 'Synthetic LP', 'タグ訴求': 'Synthetic_SPPC', '初期設定日予算': '30',
+      'その他設定': 'Synthetic Other Setting', '変更履歴': 'Synthetic Change History',
+    }],
+    targetingBatches: [[{ number: 'TG-01', device: 'SP／PC／CTV', price: '11' }]],
+  });
+  const model = api.parseTverSettingWorkbook(settingWorkbook, { fileName: 'old-fmt-setting.xlsx' });
+  assert.equal(model.diagnostics.filter(issue => issue.code === 'SETTING_BUSINESS_HEADER_MISSING').length, 0);
+  assert.equal(model.campaigns.length, 1);
+  const resolved = api.resolveSettingAdGroupDevice(model.adGroups[0]);
+  assert.equal(resolved.resolved, true);
+  assert.equal(resolved.device, 'android ios pc');
+  assert.equal(resolved.ruleBasis, 'TVER_C3_C4_3_DEVICE_FROM_TAG_APPEAL_SP');
+  assert.equal(resolved.primarySource.columnName, 'タグ訴求');
+});
+
+test('NEW-FMT-AUCTION-1 Red: 新 FMT オークションタイプ为空时沿用既有 DEFAULT_1', () => {
+  const { model, run } = makeNewFmtCase({});
+  const auction = api.resolveSettingAdGroupAuctionType(model.adGroups[0]);
+  assert.equal(auction.rawValue, '1');
+  assert.equal(auction.canonicalValue, '1');
+  assert.equal(auction.ruleBasis, 'TVER_C3_C4_3_AUCTION_DEFAULT_1');
+  assert.equal(auction.primarySource.ruleId, 'TVER_C3_C4_3_AUCTION_DEFAULT_1');
+  // 新 FMT の row が存在して空である supporting evidence を保持（セル値 1 を偽造しない）。
+  assert.equal(auction.sourceEvidence.some(source => source.columnName === 'オークションタイプ' && String(source.rawValue) === ''), true);
+  const entry = newFmtEntry(run, 'Ad Group', 'auction_type');
+  assert.ok(entry);
+  assert.equal(entry.settingRawValue, '1');
+  assert.equal(entry.csvRawValue, '1');
+  assert.equal(entry.comparisonStatus, '一致');
+});
+
+test('NEW-FMT-AUCTION-2 Red: 新 FMT オークションタイプ explicit 1 优先且 source 指向该单元格', () => {
+  const { model, run } = makeNewFmtCase({
+    targetingBatches: [[{ number: '1', auction: '1', device: 'SP／PC／CTV', price: '1,800', duration: '30秒(23-37秒)' }]],
+  });
+  const auction = api.resolveSettingAdGroupAuctionType(model.adGroups[0]);
+  assert.equal(auction.rawValue, '1');
+  assert.equal(auction.canonicalValue, '1');
+  assert.equal(auction.ruleBasis, 'TVER_C3_C4_3_AUCTION_EXPLICIT');
+  assert.equal(auction.primarySource.columnName, 'オークションタイプ');
+  const entry = newFmtEntry(run, 'Ad Group', 'auction_type');
+  assert.ok(entry);
+  assert.equal(entry.comparisonStatus, '一致');
+  assert.equal(entry.sourceRefs.setting.columnName, 'オークションタイプ');
+});
+
+test('NEW-FMT-AUCTION-3 Red: 新 FMT オークションタイプ explicit 2 解析能力', () => {
+  const { model, run } = makeNewFmtCase({
+    targetingBatches: [[{ number: '1', auction: '2', device: 'SP／PC／CTV', price: '1,800', duration: '30秒(23-37秒)' }]],
+    csvRows: [{
+      campaign_name: NEW_FMT_CAMPAIGN_NAME, start_datetime: '2026/09/18 00:00', end_datetime: '2026/09/27 23:45',
+      adgroup_name: 'Synthetic Group SPPC', device: 'android ios pc', price: '1800', auction_type: '2',
+      creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+      tracking_url_complete: 'https://tracker.invalid/complete-sppc?x={adid}',
+    }],
+  });
+  const auction = api.resolveSettingAdGroupAuctionType(model.adGroups[0]);
+  assert.equal(auction.canonicalValue, '2');
+  assert.equal(auction.ruleBasis, 'TVER_C3_C4_3_AUCTION_EXPLICIT');
+  const entry = newFmtEntry(run, 'Ad Group', 'auction_type');
+  assert.ok(entry);
+  assert.equal(entry.comparisonStatus, '一致');
+});
+
+test('NEW-FMT-AUCTION-4 Red: 新 FMT オークションタイプ未知非空值必须 要確認，不得回退 1', () => {
+  const { model, run } = makeNewFmtCase({
+    targetingBatches: [[{ number: '1', auction: '9', device: 'SP／PC／CTV', price: '1,800', duration: '30秒(23-37秒)' }]],
+  });
+  const auction = api.resolveSettingAdGroupAuctionType(model.adGroups[0]);
+  assert.equal(auction.evidenceState, 'ambiguous');
+  assert.equal(auction.comparable, false);
+  assert.notEqual(auction.canonicalValue, '1');
+  const entry = newFmtEntry(run, 'Ad Group', 'auction_type');
+  assert.ok(entry);
+  assert.equal(entry.comparisonStatus, '需确认');
+  assert.equal(entry.displayStatus, '需确认');
+});
+
+test('NEW-FMT-AUCTION-5 Red: 新 FMT 模板 marker "-" 不得被当成 explicit auction 值', () => {
+  const { model } = makeNewFmtCase({
+    targetingBatches: [[{ number: '1', auctionMarker: '-', auction: '', device: 'SP／PC／CTV', price: '1,800', duration: '30秒(23-37秒)' }]],
+  });
+  const auction = api.resolveSettingAdGroupAuctionType(model.adGroups[0]);
+  assert.notEqual(auction.rawValue, '-');
+  assert.equal(auction.rawValue, '1');
+  assert.equal(auction.ruleBasis, 'TVER_C3_C4_3_AUCTION_DEFAULT_1');
+});
+
+test('NEW-FMT-AUCTION-6 Red: 旧 FMT（新 row なし）の default 1 は不変', () => {
+  const settingWorkbook = makeStructuredSettingWorkbook({
+    mainRows: [{
+      '発注CPN名': 'Synthetic Campaign', 'CPN訴求': 'Synthetic Appeal', 'CPN予算': '900',
+      '開始日時(yyyy/mm/dd hh:mm)': '2026/02/01 00:00', '終了日時(yyyy/mm/dd hh:mm)': '2026/02/28 23:30',
+      'ターゲティング番号': 'TG-01', 'ADG開始日時(yyyy/mm/dd hh:mm)': '2026/02/01 00:00',
+      'ADG終了日時(yyyy/mm/dd hh:mm)': '2026/02/28 23:30', '素材名': 'synthetic-creative.mp4',
+      'LP名': 'Synthetic LP', 'タグ訴求': 'Synthetic_SPPC', '初期設定日予算': '30',
+      'その他設定': 'Synthetic Other Setting', '変更履歴': 'Synthetic Change History',
+    }],
+    targetingBatches: [[{ number: 'TG-01', device: 'SP／PC／CTV', price: '11' }]],
+  });
+  const model = api.parseTverSettingWorkbook(settingWorkbook, { fileName: 'old-fmt-setting.xlsx' });
+  const auction = api.resolveSettingAdGroupAuctionType(model.adGroups[0]);
+  assert.equal(auction.rawValue, '1');
+  assert.equal(auction.ruleBasis, 'TVER_C3_C4_3_AUCTION_DEFAULT_1');
+  assert.equal(auction.sourceEvidence.some(source => source.columnName === 'オークションタイプ'), false);
+});
+
+test('NEW-FMT-SCHEMA-1 Red: 新 FMT 主業務表は構造能力検出で受理され、旧 FMT はそのまま', () => {
+  const { model } = makeNewFmtCase({});
+  assert.equal(api.settingParseBlockingIssue(model), undefined);
+  assert.equal(model.campaigns.length, 1);
+  // タグ訴求(100%) が旧 FMT の「タグ訴求」に相当する tag appeal として解決される。
+  assert.equal(model.adGroups[0].fields.tagAppeal, 'SPPC');
+  assert.equal(model.adGroups[0].sourceRefs.tagAppeal.columnName, 'タグ訴求(100%)');
+});
+
+// ============================================================
+// TVER AGE MAX 100 canonical bounded FIX
+// TVer 年齢 targeting のプラットフォーム最大年齢 = 100（業務確認済み）。
+// Setting「X歳以上」の compare canonical を [X, 100] の閉区間として表現し、
+// CSV start_age/end_age の閉区間と同一 canonical に揃える。
+// 比較語義の一致のみを扱い、生の来源値（raw）や業務 metadata は改変しない。
+// ============================================================
+
+const TVER_TARGETING_MAX_AGE_FOR_TEST = 100;
+
+function makeAgeSettingSource(columnName, rawValue, rowNumber = 80) {
+  return { fileName: 'age-setting.xlsx', sheetName: '設定', rowNumber, columnName, rawValue: String(rawValue ?? '') };
+}
+
+function makeAgeCsvSource(field, rawValue, rowNumber = 2) {
+  return { fileName: 'age-register.csv', sheetName: null, rowNumber, columnName: field, rawValue: String(rawValue ?? '') };
+}
+
+// CSV entity は schema ごとに構造が違う（register は fields=camelCase、
+// evidence は sourceEvidence.fields に snake_case で保持される）。
+function makeAgeCsvEntity(start, end, schemaKind) {
+  if (schemaKind === 'register-without-ids') {
+    const refs = {
+      start_age: makeAgeCsvSource('start_age', start),
+      end_age: makeAgeCsvSource('end_age', end),
+    };
+    return {
+      key: 'csv-age-adg', level: 'Ad Group',
+      fields: { startAge: start, endAge: end },
+      sourceEvidence: { fields: { start_age: [refs.start_age], end_age: [refs.end_age] } },
+      sourceRefs: refs,
+    };
+  }
+  return {
+    key: 'csv-age-adg', level: 'Ad Group',
+    fields: { start_age: start, end_age: end },
+    rawRows: [{ sourceRefs: { start_age: makeAgeCsvSource('start_age', start), end_age: makeAgeCsvSource('end_age', end) } }],
+  };
+}
+
+// Setting「年齢●」raw × CSV start_age/end_age → age compare entry。
+// 既定は実案件と同じ register-without-ids。
+function ageComparison(settingRaw, start, end, schemaKind = 'register-without-ids') {
+  const setting = { sourceEvidence: { targeting: { '年齢●': [makeAgeSettingSource('年齢●', settingRaw)] } } };
+  const csv = makeAgeCsvEntity(start, end, schemaKind);
+  const input = api.buildTverA17TargetingComparisonInputs(setting, csv, schemaKind, {
+    level: 'Ad Group', entityKey: 'setting-age-adg', csvEntityKey: 'csv-age-adg',
+  }).find(item => item.field === 'age');
+  assert.ok(input, `age input should exist for ${settingRaw} / ${start} / ${end} (${schemaKind})`);
+  return { input, entry: api.buildComparisonRun({ fields: [input] }).entries[0] };
+}
+
+test('AGE-MAX100 Red: MAX_AGE 常量与 open-upper canonical 契约', () => {
+  // 平台最大年齢 = 100 を単一の業務定数として扱う。
+  assert.equal(TVER_TARGETING_MAX_AGE_FOR_TEST, 100);
+  const openUpper = api.parseTverAgeExpression('20歳以上');
+  assert.deepEqual(JSON.parse(JSON.stringify(openUpper)), {
+    canonicalValue: '20-100', minAge: 20, maxAge: 100, upperOpen: true,
+    ruleId: 'TVER_C3_C4_4B_AGE_OPEN_UPPER_BOUND',
+  });
+  // 既存 closed range は不変。
+  const closed = api.parseTverAgeExpression('20歳〜60歳');
+  assert.deepEqual(JSON.parse(JSON.stringify(closed)), {
+    canonicalValue: '20-60', minAge: 20, maxAge: 60, upperOpen: false,
+    ruleId: 'TVER_A17_2_AGE_EXACT_RANGE',
+  });
+  // 上限ちょうど。
+  assert.equal(api.parseTverAgeExpression('100歳以上').canonicalValue, '100-100');
+  assert.equal(api.parseTverAgeExpression('99歳以上').canonicalValue, '99-100');
+  assert.equal(api.parseTverAgeExpression('30歳以上').canonicalValue, '30-100');
+  // 未知値は変換しない。
+  assert.equal(api.parseTverAgeExpression('abc歳以上'), null);
+  assert.equal(api.parseTverAgeExpression('65歳以下'), null);
+});
+
+test('AGE-MAX100 Red: AGE-1 Setting 20歳以上 ⇄ CSV 20 / 100 は一致', () => {
+  const { entry } = ageComparison('20歳以上', '20', '100');
+  assert.equal(entry.canonicalValues.setting, '20-100');
+  assert.equal(entry.canonicalValues.csv, '20-100');
+  assert.notEqual(entry.comparisonStatus, '不一致');
+  assert.equal(api.projectTverDisplayStatus(entry.displayStatus), '一致');
+});
+
+test('AGE-MAX100 Red: AGE-2 Setting 30歳以上 ⇄ CSV 30 / 100 は一致', () => {
+  const { entry } = ageComparison('30歳以上', '30', '100');
+  assert.equal(entry.canonicalValues.setting, '30-100');
+  assert.equal(entry.canonicalValues.csv, '30-100');
+  assert.notEqual(entry.comparisonStatus, '不一致');
+  assert.equal(api.projectTverDisplayStatus(entry.displayStatus), '一致');
+});
+
+test('AGE-MAX100 Red: AGE-3 Setting 20歳〜60歳 ⇄ CSV 20 / 60 は従来どおり一致', () => {
+  const { entry } = ageComparison('20歳〜60歳', '20', '60');
+  assert.equal(entry.canonicalValues.setting, '20-60');
+  assert.equal(entry.canonicalValues.csv, '20-60');
+  assert.notEqual(entry.comparisonStatus, '不一致');
+  assert.equal(api.projectTverDisplayStatus(entry.displayStatus), '一致');
+});
+
+test('AGE-MAX100 Red: AGE-4 Setting 20歳以上 ⇄ CSV 20 / 99 は不一致', () => {
+  const { entry } = ageComparison('20歳以上', '20', '99');
+  assert.equal(entry.canonicalValues.setting, '20-100');
+  assert.equal(entry.canonicalValues.csv, '20-99');
+  assert.equal(entry.comparisonStatus, '不一致');
+  assert.equal(api.projectTverDisplayStatus(entry.displayStatus), '不一致');
+});
+
+test('AGE-MAX100 Red: AGE-5 Setting 20歳以上 ⇄ CSV 21 / 100 は不一致', () => {
+  const { entry } = ageComparison('20歳以上', '21', '100');
+  assert.equal(entry.canonicalValues.setting, '20-100');
+  assert.equal(entry.canonicalValues.csv, '21-100');
+  assert.equal(entry.comparisonStatus, '不一致');
+  assert.equal(api.projectTverDisplayStatus(entry.displayStatus), '不一致');
+});
+
+test('AGE-MAX100 Red: AGE-6 Setting 20歳〜100歳 ⇄ CSV 20 / 100 は一致', () => {
+  const { entry } = ageComparison('20歳〜100歳', '20', '100');
+  assert.equal(entry.canonicalValues.setting, '20-100');
+  assert.equal(entry.canonicalValues.csv, '20-100');
+  assert.notEqual(entry.comparisonStatus, '不一致');
+  assert.equal(api.projectTverDisplayStatus(entry.displayStatus), '一致');
+});
+
+test('AGE-MAX100 Red: AGE-7 Setting 100歳以上 ⇄ CSV 100 / 100 は一致', () => {
+  const { entry } = ageComparison('100歳以上', '100', '100');
+  assert.equal(entry.canonicalValues.setting, '100-100');
+  assert.equal(entry.canonicalValues.csv, '100-100');
+  assert.notEqual(entry.comparisonStatus, '不一致');
+  assert.equal(api.projectTverDisplayStatus(entry.displayStatus), '一致');
+});
+
+test('AGE-MAX100 Red: AGE-8 Setting 側 未知値 abc歳以上 は保守的に要確認（100 に変換しない）', () => {
+  const resolved = api.resolveSettingTargetingForComparison(
+    { sourceEvidence: { targeting: { '年齢●': [makeAgeSettingSource('年齢●', 'abc歳以上')] } } }, 'age',
+  );
+  assert.equal(resolved.rawValue, 'abc歳以上');
+  assert.equal(resolved.canonicalValue, null);
+  assert.equal(resolved.comparable, false);
+  const { entry } = ageComparison('abc歳以上', '20', '100');
+  assert.equal(entry.comparisonStatus, '需确认');
+  assert.notEqual(entry.comparisonStatus, '一致');
+  assert.notEqual(api.projectTverDisplayStatus(entry.displayStatus), '一致');
+});
+
+test('AGE-MAX100 Red: AGE-8 CSV 側 未知値 20 / abc は保守的に要確認（100 に変換しない）', () => {
+  const { entry } = ageComparison('20歳以上', '20', 'abc');
+  assert.equal(entry.canonicalValues.csv, null);
+  assert.equal(entry.comparisonStatus, '需确认');
+  assert.notEqual(entry.comparisonStatus, '一致');
+  assert.notEqual(api.projectTverDisplayStatus(entry.displayStatus), '一致');
+});
+
+test('AGE-MAX100 Red: 業務 metadata（upperOpen / maxAge）を保持し raw を偽造しない', () => {
+  const openUpper = api.resolveSettingTargetingForComparison(
+    { sourceEvidence: { targeting: { '年齢●': [makeAgeSettingSource('年齢●', '20歳以上')] } } }, 'age',
+  );
+  assert.equal(openUpper.rawValue, '20歳以上');
+  assert.equal(openUpper.canonicalValue, '20-100');
+  assert.deepEqual(JSON.parse(JSON.stringify(openUpper.ageShape)), { minAge: 20, maxAge: 100, upperOpen: true });
+  assert.equal(openUpper.primarySource.rawValue, '20歳以上');
+  assert.equal(openUpper.ruleBasis, 'TVER_C3_C4_4B_AGE_OPEN_UPPER_BOUND');
+
+  // closed 100 歳は canonical が同じでも upperOpen は false（業務語義を失わない）。
+  const closed = api.resolveSettingTargetingForComparison(
+    { sourceEvidence: { targeting: { '年齢●': [makeAgeSettingSource('年齢●', '20歳〜100歳')] } } }, 'age',
+  );
+  assert.equal(closed.canonicalValue, '20-100');
+  assert.deepEqual(JSON.parse(JSON.stringify(closed.ageShape)), { minAge: 20, maxAge: 100, upperOpen: false });
+  assert.equal(closed.primarySource.rawValue, '20歳〜100歳');
+  assert.equal(closed.ruleBasis, 'TVER_A17_2_AGE_EXACT_RANGE');
+});
+
+test('AGE-MAX100 Red: CSV 側 canonical は closed/raw の区別を保持する', () => {
+  const openEnd = ageComparison('65歳以上', '65', '');
+  assert.equal(openEnd.entry.canonicalValues.csv, '65-100');
+  assert.equal(openEnd.entry.canonicalValues.setting, '65-100');
+  assert.notEqual(openEnd.entry.comparisonStatus, '不一致');
+
+  const closedEnd = ageComparison('65歳以上', '65', '74');
+  assert.equal(closedEnd.entry.canonicalValues.csv, '65-74');
+  assert.equal(closedEnd.entry.comparisonStatus, '不一致');
+
+  const lowerBound = ageComparison('65歳以上', '60', '');
+  assert.equal(lowerBound.entry.canonicalValues.csv, '60-100');
+  assert.equal(lowerBound.entry.comparisonStatus, '不一致');
+});
+
+test('AGE-MAX100 Red: register / edit 両 schema で同じ比較語義になる', () => {
+  const cases = [
+    ['20歳以上', '20', '100', '一致'],
+    ['30歳以上', '30', '100', '一致'],
+    ['20歳〜60歳', '20', '60', '一致'],
+    ['20歳以上', '20', '99', '不一致'],
+    ['20歳以上', '21', '100', '不一致'],
+    ['20歳〜100歳', '20', '100', '一致'],
+    ['100歳以上', '100', '100', '一致'],
+  ];
+  cases.forEach(([settingRaw, start, end, expected]) => {
+    const register = ageComparison(settingRaw, start, end, 'register-without-ids');
+    const edit = ageComparison(settingRaw, start, end, 'edit-with-ids');
+    assert.equal(api.projectTverDisplayStatus(register.entry.displayStatus), expected, `register ${settingRaw} / ${start} / ${end}`);
+    assert.equal(api.projectTverDisplayStatus(edit.entry.displayStatus), expected, `edit ${settingRaw} / ${start} / ${end}`);
+    assert.equal(register.entry.canonicalValues.setting, edit.entry.canonicalValues.setting);
+    assert.equal(register.entry.canonicalValues.csv, edit.entry.canonicalValues.csv);
+  });
 });

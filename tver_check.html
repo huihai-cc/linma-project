@@ -295,6 +295,38 @@
     '素材名', 'LP名', 'タグ訴求', '初期設定日予算', 'その他設定', '変更履歴',
   ];
 
+  // ===== NEW FMT（2609 以降のテンプレ）後方互換のための「構造能力検出」 =====
+  // 実案件（新FMT 4 案）で確認した差分のみを扱う。判定は列/行の構造だけで行い、
+  // ファイル名・日付・シート名・バージョン番号には一切依存しない。
+  //   1. 主業務表に「デバイス」列（row-level authoritative device）が追加（optional）。
+  //   2. 主業務表の「タグ訴求」が「タグ訴求(0%)」「タグ訴求(100%)」の 2 列に分割。
+  //   3. ターゲティング block に「オークションタイプ」行（label | '-' | 業務値）が追加。
+  // 旧 FMT はこれらの列/行が存在しないため、検出結果は常に従来経路へフォールバックする。
+  // 注：主業務表「デバイス」は NEW FMT のみ存在する optional 列であり、
+  // SETTING_BUSINESS_HEADERS（required 判定）には決して加えない。
+  const SETTING_TAG_APPEAL_LEGACY_HEADER = 'タグ訴求';
+  const SETTING_TAG_APPEAL_PRIMARY_HEADER = 'タグ訴求(100%)';
+  const SETTING_TAG_APPEAL_SECONDARY_HEADERS = ['タグ訴求(0%)'];
+
+  // ターゲティング block の「単一槽フィールド」：label | marker | 業務値 の 3 槽構造。
+  // 業務値は valueSlotIndex の槽のみ。marker 槽の '-' はテンプレ記号であり業務値ではない。
+  const TARGETING_SLOT_FIELD_NAMES = {
+    'オークションタイプ': { field:'auction_type', valueSlotIndex:1 },
+  };
+
+  // 主業務表の tag appeal 列を解決する。
+  // 旧 FMT に「タグ訴求」が存在すれば常にそちらを優先（旧 FMT の挙動は完全に不変）。
+  // 新 FMT は「タグ訴求(100%)」を tagAppeal の primary、「タグ訴求(0%)」を supporting evidence とする。
+  function resolveSettingTagAppealHeaders(headerIndex){
+    if(headerIndex[SETTING_TAG_APPEAL_LEGACY_HEADER]!==undefined){
+      return { variant:'legacy', primaryHeader:SETTING_TAG_APPEAL_LEGACY_HEADER, headers:[SETTING_TAG_APPEAL_LEGACY_HEADER] };
+    }
+    const available=[SETTING_TAG_APPEAL_PRIMARY_HEADER, ...SETTING_TAG_APPEAL_SECONDARY_HEADERS]
+      .filter(header => headerIndex[header]!==undefined);
+    if(!available.length) return null;
+    return { variant:'new-fmt', primaryHeader:available[0], headers:available };
+  }
+
   function isSectionBoundary(row){
     return (row || []).some(value => {
       const text=String(value ?? '').trim();
@@ -374,6 +406,9 @@
     '都道府県/市区町村●':'region', '興味関心●':'audience', '番組ジャンル●':'genre',
     '番組サブジャンル●':'subgenre', 'DMPセグメント':'segment', 'その他設定(ADG)':'otherSettings',
     'その他設定(AD)':'adOtherSettings',
+    // NEW FMT（2609 以降）：ターゲティング block に「オークションタイプ」行が追加。
+    // 値の採用槽は TARGETING_SLOT_FIELD_NAMES で別途制御する（marker 槽の '-' を業務値にしない）。
+    'オークションタイプ':'auction_type',
     // 阶段 A8：retarget 维度（通常=データ蓄積→store；リタゲ=入札セグメント→bid），独立于 DMP。
     'データ蓄積':'dataAccumulation', '入札セグメント':'bidSegment',
   };
@@ -446,6 +481,20 @@
         sourceRefs[field]=refs[0] || makeSettingSource(fileName, sheetName, rowIndex+1, label, '');
       }
     }
+    // NEW FMT：単一槽フィールド（オークションタイプ等）は marker 槽を除外し、業務値槽のみを採用する。
+    // 業務値槽が空でも「行が存在して空」である supporting evidence を保持する（セル値を偽造しない）。
+    Object.entries(TARGETING_SLOT_FIELD_NAMES).forEach(([label, spec]) => {
+      const rawField=rawFields[label];
+      if(!rawField) return;
+      const slot=rawField.slots[spec.valueSlotIndex];
+      const slotSource=(slot && slot.source) || makeSettingSource(fileName, sheetName, anchor.rowIndex+1, label, '');
+      const businessValue=String(slot ? slot.rawValue : '').trim();
+      const isTemplateMarker=!businessValue || businessValue==='-';
+      fields[spec.field]=isTemplateMarker ? '' : businessValue;
+      sourceRefs[spec.field]=slotSource;
+      // marker 槽（'-'）は証拠から除外し、業務値槽のみをこのフィールドの証拠とする。
+      rawField.sourceRefs=uniqueSourceRefs([slotSource]);
+    });
     const targetingNameField=rawFields['ターゲティング名'];
     // C3-C4-2：展示身份独立保存，不加入fields及既有semanticSignature。
     const identity={ targetingNumber:'', targetingName:'', statusHint:'', sourceRefs:{} };
@@ -526,7 +575,21 @@
     });
     anchorsByRow.forEach(rowAnchors => rowAnchors.sort((left, right) => left.columnIndex-right.columnIndex));
     const anchorRows=[...anchorsByRow.keys()].sort((left, right) => left-right);
-    const maxColumn=Math.max(0, ...section.rows.slice(section.rowIndex, section.endRowIndex).map(row => Math.max(0, (row || []).length-1)));
+    const rawMaxColumn=Math.max(0, ...section.rows.slice(section.rowIndex, section.endRowIndex).map(row => Math.max(0, (row || []).length-1)));
+    // NEW FMT：ターゲティング block の右側に「▼デバイス変換」注記列ブロックが追加された。
+    // これはターゲティング grid の一部ではないため、最後のグループの列範囲から除外する
+    // （除外しないと price / device 等が注記テキストを吸収して unresolved になる）。
+    // 旧 FMT のターゲティング block には '▼' 注記列が存在しないため、この補正は旧 FMT の挙動を一切変えない。
+    const lastAnchorColumn=Math.max(...anchors.map(anchor => anchor.columnIndex));
+    let annotationStartColumn=null;
+    section.rows.slice(section.rowIndex, section.endRowIndex).forEach(row => {
+      (row || []).forEach((value, columnIndex) => {
+        if(columnIndex<=lastAnchorColumn) return;
+        if(!String(value ?? '').trim().startsWith('▼')) return;
+        if(annotationStartColumn===null || columnIndex<annotationStartColumn) annotationStartColumn=columnIndex;
+      });
+    });
+    const maxColumn=annotationStartColumn===null ? rawMaxColumn : Math.min(rawMaxColumn, annotationStartColumn-1);
     anchors.forEach(anchor => {
       const rowAnchors=anchorsByRow.get(anchor.rowIndex);
       const indexInRow=rowAnchors.indexOf(anchor);
@@ -927,7 +990,14 @@
     });
     const duplicateBusinessHeaders=SETTING_BUSINESS_HEADERS.filter(header => headerCounts[header]>1);
     if(duplicateBusinessHeaders.length) return emptySettingModel([{ code:'SETTING_BUSINESS_HEADER_DUPLICATE', headers:duplicateBusinessHeaders, sheetName:candidate.sheetName }]);
-    const missingBusinessHeaders=SETTING_BUSINESS_HEADERS.filter(header => headerIndex[header]===undefined);
+    // NEW FMT：tag appeal 列は「タグ訴求」または「タグ訴求(0%)」「タグ訴求(100%)」のいずれかで満たす。
+    // 「デバイス」は NEW FMT のみ存在する optional 列（required にはしない＝旧 FMT を阻害しない）。
+    const tagAppealHeaders=resolveSettingTagAppealHeaders(headerIndex);
+    const rowDeviceHeader=headerIndex['デバイス']===undefined ? null : 'デバイス';
+    const missingBusinessHeaders=SETTING_BUSINESS_HEADERS.filter(header => {
+      if(header===SETTING_TAG_APPEAL_LEGACY_HEADER) return !tagAppealHeaders;
+      return headerIndex[header]===undefined;
+    });
     if(missingBusinessHeaders.length) return emptySettingModel([{ code:'SETTING_BUSINESS_HEADER_MISSING', headers:missingBusinessHeaders, sheetName:candidate.sheetName }]);
 
     const diagnostics=[];
@@ -994,25 +1064,32 @@
       const targetingEvidence=targeting && targeting.state==='unique' ? targetingSourceEvidence(targeting) : { fields:{}, rawFields:{} };
       if(!targeting) diagnostics.push({ code:'SETTING_TARGETING_REFERENCE_NOT_FOUND', targetingNumber, sheetName:candidate.sheetName, rowNumber });
       if(targeting && targeting.state!=='unique') diagnostics.push({ code:'SETTING_TARGETING_REFERENCE_AMBIGUOUS', targetingNumber, sheetName:candidate.sheetName, rowNumber });
+      // NEW FMT：主業務表 row-level「デバイス」列（存在かつ非空）が authoritative。
+      // 旧 FMT は列が無いため常に空 → 従来の targeting 配信デバイス● / tagAppeal 経路のまま。
+      const rowDeviceRaw=rowDeviceHeader ? String(row[headerIndex[rowDeviceHeader]] ?? '').trim() : '';
+      const tagAppealHeader=tagAppealHeaders.primaryHeader;
       const adGroupFields={
         targetingNumber,
-        tagAppeal:String(row[headerIndex['タグ訴求']] ?? ''),
+        tagAppeal:String(row[headerIndex[tagAppealHeader]] ?? ''),
         startDateTime:String(row[headerIndex['ADG開始日時(yyyy/mm/dd hh:mm)']] ?? ''),
         endDateTime:String(row[headerIndex['ADG終了日時(yyyy/mm/dd hh:mm)']] ?? ''),
-        device:targetingFields.device || '', targeting:targetingFields,
+        device:rowDeviceRaw || targetingFields.device || '',
+        rowDevice:rowDeviceRaw, targeting:targetingFields,
       };
       const adGroupSignature=signatureFor({ parentCampaign:campaign.semanticSignature, targetingNumber, tagAppeal:adGroupFields.tagAppeal, device:adGroupFields.device, targetingSignature:targeting && targeting.semanticSignature ? targeting.semanticSignature : null, startDateTime:adGroupFields.startDateTime, endDateTime:adGroupFields.endDateTime });
       let adGroup=adGroupBySignature.get(adGroupSignature);
       if(!adGroup){
         const adGroupSourceRefs={
           targetingNumber:makeSettingSource(fileName, candidate.sheetName, rowNumber, 'ターゲティング番号', row[headerIndex['ターゲティング番号']]),
-          tagAppeal:makeSettingSource(fileName, candidate.sheetName, rowNumber, 'タグ訴求', row[headerIndex['タグ訴求']]),
+          tagAppeal:makeSettingSource(fileName, candidate.sheetName, rowNumber, tagAppealHeader, row[headerIndex[tagAppealHeader]]),
           startDateTime:makeSettingSource(fileName, candidate.sheetName, rowNumber, 'ADG開始日時(yyyy/mm/dd hh:mm)', row[headerIndex['ADG開始日時(yyyy/mm/dd hh:mm)']]),
           endDateTime:makeSettingSource(fileName, candidate.sheetName, rowNumber, 'ADG終了日時(yyyy/mm/dd hh:mm)', row[headerIndex['ADG終了日時(yyyy/mm/dd hh:mm)']]),
           device:targetingSourceRefs.device || null,
+          rowDevice:rowDeviceHeader ? makeSettingSource(fileName, candidate.sheetName, rowNumber, rowDeviceHeader, row[headerIndex[rowDeviceHeader]]) : null,
+          auction_type:targetingSourceRefs.auction_type || null,
         };
         const adGroupFieldsEvidence={ targetingNumber:uniqueSourceRefs([adGroupSourceRefs.targetingNumber]), tagAppeal:uniqueSourceRefs([adGroupSourceRefs.tagAppeal]), startDateTime:uniqueSourceRefs([adGroupSourceRefs.startDateTime]), endDateTime:uniqueSourceRefs([adGroupSourceRefs.endDateTime]), ...targetingEvidence.fields };
-        const deviceDerivedFrom=uniqueSourceRefs([...(targetingEvidence.fields.device || []), adGroupSourceRefs.tagAppeal]);
+        const deviceDerivedFrom=uniqueSourceRefs([adGroupSourceRefs.rowDevice, ...(targetingEvidence.fields.device || []), adGroupSourceRefs.tagAppeal]);
         adGroup={
           key:`adgroup:${adGroupSignature}`, level:'Ad Group', parentKey:campaign.key, fields:adGroupFields,
           displayIdentity:targeting && targeting.state==='unique' ? targeting.identity || null : null,
@@ -1027,7 +1104,7 @@
       const adSourceRefs={
         materialName:makeSettingSource(fileName, candidate.sheetName, rowNumber, '素材名', row[headerIndex['素材名']]),
         landingPageName:makeSettingSource(fileName, candidate.sheetName, rowNumber, 'LP名', row[headerIndex['LP名']]),
-        tagAppeal:makeSettingSource(fileName, candidate.sheetName, rowNumber, 'タグ訴求', row[headerIndex['タグ訴求']]),
+        tagAppeal:makeSettingSource(fileName, candidate.sheetName, rowNumber, tagAppealHeader, row[headerIndex[tagAppealHeader]]),
         creativeFileName:creative && creative.state==='unique' ? creative.sourceRefs.fileName : null,
         landingPageUrl:creative && creative.state==='unique' ? creative.sourceRefs.landingPageUrl : null,
       };
@@ -1035,7 +1112,7 @@
       const landingPageDerivedFrom=creative && creative.state==='unique' ? uniqueSourceRefs([adSourceRefs.landingPageName, adSourceRefs.materialName, creative.sourceRefs.materialName, creative.sourceRefs.landingPageUrl]) : [];
       const ad={
         key:`${adGroup.key}|material:${materialName}|row:${rowNumber}`, level:'Ad', parentKey:adGroup.key,
-        fields:{ materialName, landingPageName, tagAppeal:String(row[headerIndex['タグ訴求']] ?? ''), creativeFileName:creative && creative.state==='unique' ? creative.fileName : null, landingPageUrl:creative && creative.state==='unique' ? creative.landingPageUrl : null },
+        fields:{ materialName, landingPageName, tagAppeal:String(row[headerIndex[tagAppealHeader]] ?? ''), creativeFileName:creative && creative.state==='unique' ? creative.fileName : null, landingPageUrl:creative && creative.state==='unique' ? creative.landingPageUrl : null },
         sourceRefs:adSourceRefs,
         sourceEvidence:{ fields:Object.fromEntries(Object.entries(adSourceRefs).map(([field, source]) => [field, uniqueSourceRefs([source])])), derived:{ creativeFileName:{ derivedFrom:creativeDerivedFrom, primarySource:adSourceRefs.creativeFileName || null }, landingPageUrl:{ derivedFrom:landingPageDerivedFrom, primarySource:adSourceRefs.landingPageUrl || null } } },
         expectedName:creative && creative.state==='unique' ? creative.fileName : null, nameRuleId:'TVER_260605_AD_CREATIVE_LINK', nameComponents:{ materialName, creativeFileName:creative && creative.state==='unique' ? creative.fileName : null },
@@ -1484,6 +1561,25 @@
     return { rawValue:value, value, transformed:false, ruleId:null };
   }
 
+  // NEW FMT：主業務表 row-level「デバイス」列の canonical 化。
+  // ios / android / pc / ctv のみを受理し、区切り・順序・重複に鈍感な canonical を返す。
+  // 未知 token は推測せず state='unknown'（＝要確認）、空は state='empty'。
+  // 既存の parseTverDeviceSet / normalizeTverDevice（SP／PC・CTV 表記）には一切手を入れない。
+  const TVER_EXPLICIT_DEVICE_TOKENS=Object.freeze(['android', 'ctv', 'ios', 'pc']);
+  function canonicalizeTverExplicitDevice(rawValue){
+    const raw=String(rawValue ?? '').trim();
+    if(!raw) return { rawValue:raw, value:null, state:'empty', tokens:[] };
+    const tokens=raw.split(/[\s,、，/／|｜;；・]+/).map(token => token.trim().toLowerCase()).filter(Boolean);
+    const seen=new Set();
+    for(const token of tokens){
+      if(!TVER_EXPLICIT_DEVICE_TOKENS.includes(token)) return { rawValue:raw, value:null, state:'unknown', tokens };
+      seen.add(token);
+    }
+    if(!seen.size) return { rawValue:raw, value:null, state:'empty', tokens:[] };
+    const ordered=TVER_EXPLICIT_DEVICE_TOKENS.filter(token => seen.has(token));
+    return { rawValue:raw, value:ordered.join(' '), state:'known', tokens:ordered };
+  }
+
   function normalizeTverVideoDuration(value){
     const seconds=typeof value==='number' ? value : Number(String(value ?? '').trim());
     if(!Number.isInteger(seconds)) return null;
@@ -1772,6 +1868,11 @@
   }
 
   const TVER_C4B_GP_AGE_FIELDS=new Set(['age']);
+
+  // TVer プラットフォームの年齢ターゲティング上限。単一の業務定数として集約し、
+  // 「X歳以上」の open-upper 表記を canonical 上は閉区間 X-100 として扱う。
+  // これは canonical（比較用）の話であり、生値・業務メタデータ（upperOpen）は保持する。
+  const TVER_TARGETING_MAX_AGE = 100;
 
   function resolveTverGpAgeGuard(input, settingRawValue, csvRawValue){
     const field=String(input && input.field || '');
@@ -2155,7 +2256,9 @@
     const openUpper=raw.match(/^(\d+)歳以上$/);
     if(openUpper){
       const minAge=Number(openUpper[1]);
-      return { canonicalValue:`${minAge}+`, minAge, maxAge:null, upperOpen:true, ruleId:'TVER_C3_C4_4B_AGE_OPEN_UPPER_BOUND' };
+      // canonical は閉区間 X-100 に揃える（TVer の年齢上限は 100）。
+      // upperOpen は業務メタデータとして true のまま保持し、生値も改変しない。
+      return { canonicalValue:`${minAge}-${TVER_TARGETING_MAX_AGE}`, minAge, maxAge:TVER_TARGETING_MAX_AGE, upperOpen:true, ruleId:'TVER_C3_C4_4B_AGE_OPEN_UPPER_BOUND' };
     }
     return null;
   }
@@ -2235,8 +2338,11 @@
     const auctionSources=business.filter(source => /auction_type|オークション|入札方式|入札タイプ/i.test(strictText(source.rawValue)));
     if(!auctionSources.length){
       const ruleSource=tverC343RuleSource('auction_type', '1', 'TVER_C3_C4_3_AUCTION_DEFAULT_1');
+      // NEW FMT：「オークションタイプ」行が存在して空の場合、その空セルを supporting evidence として保持する。
+      // 値 '1' は rule-derived であり、セル値 '1' を偽造しない（primary は rule source のまま）。
+      const blankAuctionEvidence=directSources.filter(source => source && source.columnName==='オークションタイプ' && strictText(source.rawValue).trim()==='');
       return tverA17TargetingResult({ rawValue:'1', canonicalValue:'1', evidenceState:'available', comparable:true,
-        primarySource:ruleSource, sourceEvidence:uniqueSourceRefs([...sources, ruleSource]), derivedFrom:uniqueSourceRefs([ruleSource]),
+        primarySource:ruleSource, sourceEvidence:uniqueSourceRefs([...sources, ...blankAuctionEvidence, ruleSource]), derivedFrom:uniqueSourceRefs([ruleSource]),
         ruleBasis:'TVER_C3_C4_3_AUCTION_DEFAULT_1', diagnostics:[], shouldGenerate:true });
     }
     const candidates=auctionSources.map(source => {
@@ -2779,7 +2885,10 @@
     }
     if(/^\d+$/.test(start) && end===''){
       const minAge=Number(start);
-      return { canonicalValue:`${minAge}+`, minAge, maxAge:null, upperOpen:true, ruleId:'TVER_C3_C4_4B_AGE_OPEN_UPPER_BOUND' };
+      // CSV 側 end_age 空欄（= 上限未指定）も canonical 上は X-100 に揃える。
+      // ただし end_age=100 の「閉区間 100」と区別できるよう upperOpen は true のまま保持し、
+      // raw（start/end）は一切書き換えない。
+      return { canonicalValue:`${minAge}-${TVER_TARGETING_MAX_AGE}`, minAge, maxAge:TVER_TARGETING_MAX_AGE, upperOpen:true, ruleId:'TVER_C3_C4_4B_AGE_OPEN_UPPER_BOUND' };
     }
     return null;
   }
@@ -3017,16 +3126,13 @@
     const campaignMatches=settingCampaigns.map(setting => {
       const expectedName=strictText(setting.expectedName || settingField(setting, 'campaignName'));
       if(!expectedName) return makeMatch('Campaign', setting, 'ambiguous', 'MISSING_CAMPAIGN_NAME', []);
-      const candidates=csvCampaigns.filter(csv => {
-        if(normalizeTverNameForMatching(csvField(csv, 'campaignName', 'campaign_name'))!==normalizeTverNameForMatching(expectedName)) return false;
-        // 日期时间：仅做零填充／分隔符归一（不影响名称严格匹配、不影响一对一占用）。
-        const settingStart=normalizeTverDateTimeForMatching(settingField(setting, 'startDateTime'));
-        const csvStart=normalizeTverDateTimeForMatching(csvField(csv, 'startDateTime', 'start_datetime'));
-        const settingEnd=normalizeTverDateTimeForMatching(settingField(setting, 'endDateTime'));
-        const csvEnd=normalizeTverDateTimeForMatching(csvField(csv, 'endDateTime', 'end_datetime'));
-        return optionalFieldMatches(settingStart, csvStart)
-          && optionalFieldMatches(settingEnd, csvEnd);
-      });
+      // TVER-CPN-DTMATCH-FIX：Campaign 的「实体识别」与「字段值校验」分离。
+      // 稳定身份仅为 Campaign 名（Setting expectedName ⇄ CSV campaign_name 归一后严格一致）。
+      // 開始日時／終了日時 不再参与实体识别：否则字段值不一致时反而无法配对，
+      // 导致 Setting 侧与 CSV 侧各自变成孤立的 要確認／未匹配 实体，字段比较根本不会执行。
+      // 配对成功后，datetime 仍由 buildRunFromModels 的既有字段比较判定 一致／不一致。
+      const candidates=csvCampaigns.filter(csv =>
+        normalizeTverNameForMatching(csvField(csv, 'campaignName', 'campaign_name'))===normalizeTverNameForMatching(expectedName));
       if(candidates.length===0) return makeMatch('Campaign', setting, 'unmatched', 'NO_HARD_CANDIDATE', candidates);
       if(candidates.length>1) return makeMatch('Campaign', setting, 'ambiguous', 'MULTIPLE_HARD_CANDIDATES', candidates);
       return makeMatch('Campaign', setting, 'matched', 'UNIQUE_HARD_CANDIDATE', candidates);
@@ -3606,6 +3712,29 @@
   function resolveSettingAdGroupDevice(entity){
     const fields=entity && entity.fields ? entity.fields : {};
     const targeting=fields.targeting || {};
+    // NEW FMT：主業務表 row-level「デバイス」列（存在かつ非空）が authoritative。
+    // 配信デバイス● 総括 / tagAppeal は supporting であり row-level を上書きしない。
+    // row-level が未知 token の場合は推測せず unresolved（要確認）とし、下の fallback へは降りない。
+    const explicitRaw=String(fields.rowDevice ?? '').trim();
+    if(explicitRaw){
+      const explicitSource=(entity && entity.sourceRefs && entity.sourceRefs.rowDevice)
+        || (entity && entity.sourceEvidence && entity.sourceEvidence.derived && entity.sourceEvidence.derived.device && entity.sourceEvidence.derived.device.primarySource)
+        || null;
+      const explicitEvidence=uniqueSourceRefs([explicitSource]);
+      const canonical=canonicalizeTverExplicitDevice(explicitRaw);
+      if(canonical.state==='known'){
+        return {
+          resolved:true, device:canonical.value, primarySource:explicitSource, sourceEvidence:explicitEvidence,
+          rawValue:explicitRaw, comparisonSource:explicitSource, canonicalValue:canonical.value,
+          ruleBasis:'TVER_NEW_FMT_DEVICE_ROW_LEVEL',
+        };
+      }
+      return {
+        resolved:false, device:null, primarySource:explicitSource, sourceEvidence:explicitEvidence,
+        rawValue:explicitRaw, comparisonSource:explicitSource, canonicalValue:null,
+        ruleBasis:'TVER_NEW_FMT_DEVICE_ROW_LEVEL_UNRESOLVED',
+      };
+    }
     const deviceRaw=targeting.device || fields.device || '';
     const deviceSet=parseTverDeviceSet(deviceRaw);
     const tagAppeal=String(fields.tagAppeal ?? '').trim();
