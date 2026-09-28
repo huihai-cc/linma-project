@@ -279,14 +279,14 @@ test('S10: 标准结果区域明确显示Sheet构成异常与两种语义标签'
   assert.match(html, /差异行：0/);
 });
 
-test('U1-U3: 顶部显示基本对比、五项附加对比与自动Sheet构成检查', () => {
-  assert.match(htmlSource, /基本对比/);
-  assert.match(htmlSource, /附加对比/);
+test('U1-U3: 顶部显示对比项目、五项附加对比与自动Sheet构成检查', () => {
+  assert.match(htmlSource, /对比项目/);
+  for (const name of ['单元格内容', '背景颜色', '字体颜色', '数字格式', '公式', '文本框', 'Sheet构成']) {
+    assert.match(htmlSource, new RegExp(name));
+  }
   for (const id of ['xlcomp-bgcolor', 'xlcomp-fontcolor', 'xlcomp-numfmt', 'xlcomp-formula', 'xlcomp-textbox']) {
     assert.match(htmlSource, new RegExp(`id=["']${id}["']`));
   }
-  assert.match(htmlSource, /单元格内容/);
-  assert.match(htmlSource, /Sheet构成：自动检查/);
   assert.doesNotMatch(htmlSource, /id=["']xlcomp-sheet-structure["']/);
 });
 
@@ -325,25 +325,35 @@ test('U6-U9: 五个附加View按钮按对应checkbox启用状态同步', () => {
   }
 });
 
-test('U10: resetCompareOptions使五个附加checkbox和状态全部恢复false', () => {
+test('U10: 手动取消可关闭；resetCompareOptions使五个附加checkbox和状态恢复默认全选(true)', () => {
   const { api } = makeHarness();
+  // 先全部手动取消，确认可关闭（MANUAL_DESELECT）
   api.setOptionIds({
-    'xlcomp-bgcolor': true,
-    'xlcomp-fontcolor': true,
-    'xlcomp-numfmt': true,
-    'xlcomp-formula': true,
-    'xlcomp-textbox': true,
+    'xlcomp-bgcolor': false,
+    'xlcomp-fontcolor': false,
+    'xlcomp-numfmt': false,
+    'xlcomp-formula': false,
+    'xlcomp-textbox': false,
   });
   api.onCompareOptChange();
-  api.resetCompareOptions();
   for (const id of ['xlcomp-bgcolor', 'xlcomp-fontcolor', 'xlcomp-numfmt', 'xlcomp-formula', 'xlcomp-textbox']) {
-    assert.equal(api.getElement(id).checked, false, `${id} 应取消勾选`);
+    assert.equal(api.getElement(id).checked, false, `${id} 手动取消应未勾选`);
   }
   assert.equal(api.cmpBg, false);
   assert.equal(api.cmpFont, false);
   assert.equal(api.cmpNumFmt, false);
   assert.equal(api.cmpFormula, false);
   assert.equal(api.cmpTextbox, false);
+  // 复位恢复默认全选（DEFAULT_ALL_SELECTED）
+  api.resetCompareOptions();
+  for (const id of ['xlcomp-bgcolor', 'xlcomp-fontcolor', 'xlcomp-numfmt', 'xlcomp-formula', 'xlcomp-textbox']) {
+    assert.equal(api.getElement(id).checked, true, `${id} 复位后应恢复默认选中`);
+  }
+  assert.equal(api.cmpBg, true);
+  assert.equal(api.cmpFont, true);
+  assert.equal(api.cmpNumFmt, true);
+  assert.equal(api.cmpFormula, true);
+  assert.equal(api.cmpTextbox, true);
 });
 
 test('F1-F3: 公式未勾选不解析，勾选后只比较一次并缓存，切View不重复扫描', async () => {
