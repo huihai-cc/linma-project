@@ -242,7 +242,7 @@ test('REOPEN5-FIX1-E5（保護）: setting URL + csv 異 URL は不一致', () =
 // E6-E8 — 真实案件（只读）
 // ===========================================================================
 
-const TVER_DIR = 'D:\\業務用\\開発用\\2課設定依頼\\Tver';
+const TVER_DIR = 'D:\\業務用\\開発用\\2課_設定依頼\\TVer';
 const REAL_CASES = { E6: '⑤', E7: '⑦', E8: '⑧' };
 
 function runRealCase(caseName) {

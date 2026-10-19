@@ -431,9 +431,14 @@
     return ['price', 'device', 'segment'].some(key => hasRealTargetingValue(fields && fields[key]));
   }
 
+  // ターゲティング番号の参照キー専用：全角数字だけを半角数字へ変換する。
+  function canonicalizeTverTargetingNumber(value){
+    return String(value ?? '').replace(/[０-９]/g, digit => String.fromCharCode(digit.charCodeAt(0)-0xFEE0));
+  }
+
   function addTargetingGroup(indexByNumber, group, diagnostics, sheetName){
-    const number=group.fields.targetingNumber;
-    if(!number){
+    const rawNumber=String(group.fields.targetingNumber ?? '').trim();
+    if(!rawNumber){
       // 空编号：若该 group 无实际业务值（纯空模板）→ 静默忽略，不产生 diagnostic；
       // 若仍有 price/device/segment 等真实业务值 → 保留 MISSING（真实输入缺值）。
       if(targetingGroupHasBusinessContent(group.fields)){
@@ -441,15 +446,17 @@
       }
       return;
     }
+    const number=canonicalizeTverTargetingNumber(rawNumber);
     const existing=indexByNumber[number];
     if(!existing){
-      indexByNumber[number]={ state:'unique', ...group, groups:[group] };
+      indexByNumber[number]={ state:'unique', canonicalNumber:number, originalNumbers:[rawNumber], ...group, groups:[group] };
       return;
     }
-    diagnostics.push({ code:'SETTING_TARGETING_NUMBER_DUPLICATE', targetingNumber:number, sheetName, rowNumber:group.anchor.rowIndex+1 });
+    existing.originalNumbers=[...new Set([...(existing.originalNumbers || []), rawNumber])];
+    diagnostics.push({ code:'SETTING_TARGETING_NUMBER_DUPLICATE', targetingNumber:rawNumber, canonicalNumber:number, originalNumbers:existing.originalNumbers, sheetName, rowNumber:group.anchor.rowIndex+1 });
     existing.groups.push(group);
     if(existing.semanticSignature!==group.semanticSignature){
-      diagnostics.push({ code:'SETTING_TARGETING_NUMBER_CONFLICT', targetingNumber:number, sheetName, rowNumber:group.anchor.rowIndex+1 });
+      diagnostics.push({ code:'SETTING_TARGETING_NUMBER_CONFLICT', targetingNumber:rawNumber, canonicalNumber:number, originalNumbers:existing.originalNumbers, sheetName, rowNumber:group.anchor.rowIndex+1 });
     }
     existing.state='ambiguous';
   }
@@ -1023,6 +1030,7 @@
       if(isSectionBoundary(row)) break;
       const campaignName=String(row[headerIndex['発注CPN名']] ?? '').trim();
       const targetingNumber=String(row[headerIndex['ターゲティング番号']] ?? '').trim();
+      const targetingNumberKey=canonicalizeTverTargetingNumber(targetingNumber);
       const materialName=String(row[headerIndex['素材名']] ?? '').trim();
       const landingPageName=String(row[headerIndex['LP名']] ?? '').trim();
       if(!campaignName && !targetingNumber && !materialName && !landingPageName) continue;
@@ -1058,7 +1066,7 @@
         campaignBySignature.set(campaignSignature, campaign);
         campaigns.push(campaign);
       }
-      const targeting=sourceIndex.targetingByNumber[targetingNumber];
+      const targeting=sourceIndex.targetingByNumber[targetingNumberKey];
       const targetingFields=targeting && targeting.state==='unique' ? targeting.fields : {};
       const targetingSourceRefs=targeting && targeting.state==='unique' ? targeting.sourceRefs : {};
       const targetingEvidence=targeting && targeting.state==='unique' ? targetingSourceEvidence(targeting) : { fields:{}, rawFields:{} };
@@ -3092,6 +3100,83 @@
     };
   }
 
+  function isUnknownStructuralValue(value){
+    return value===null || value===undefined || (typeof value==='object' && value.state==='unknown');
+  }
+
+  function structuralProfilesConflictOnKnownValues(settingProfile, csvProfile){
+    if(!settingProfile || !csvProfile || !settingProfile.fields || !csvProfile.fields) return false;
+    const requiredFields=Array.isArray(settingProfile.requiredFields) ? settingProfile.requiredFields : [];
+    for(const field of requiredFields){
+      const settingValue=settingProfile.fields[field];
+      const csvValue=csvProfile.fields[field];
+      if(settingValue==='unavailable' || csvValue==='unavailable' || isUnknownStructuralValue(settingValue) || isUnknownStructuralValue(csvValue)) continue;
+      if(strictText(settingValue)!==strictText(csvValue)) return true;
+    }
+    const optionalFields=Array.isArray(settingProfile.optionalFields) ? settingProfile.optionalFields : [];
+    for(const field of optionalFields){
+      const settingValue=settingProfile.fields[field];
+      const csvValue=csvProfile.fields[field];
+      if(isUnknownStructuralValue(settingValue) || isUnknownStructuralValue(csvValue)) continue;
+      if(strictText(settingValue)!==strictText(csvValue)) return true;
+    }
+    return false;
+  }
+
+  // C3-C4-FIX1：名前组成只适用于本次经真实案件确认的单Campaign／五Targeting／SPPC+CTV结构。
+  // 不把该命名关系提升为通用TVer模板规则；所有名称比较仍为原文严格相等。
+  function createTverFix1IdentityScope(settingCampaigns, settingAdGroups, csvCampaigns, csvAdGroups, campaignMatches, schemaKind){
+    const targetNames=['興味関心', '興味関心_DMP', '年齢', '年齢_DMP', '従業員規模'];
+    const branches=['SPPC', 'CTV'];
+    if(schemaKind!=='register-without-ids' || settingCampaigns.length!==1 || settingAdGroups.length!==10 || csvAdGroups.length!==10) return null;
+    const campaignMatch=campaignMatches.length===1 ? campaignMatches[0] : null;
+    if(!campaignMatch || campaignMatch.status!=='matched') return null;
+    const settingCampaign=settingCampaigns[0];
+    const csvCampaign=csvCampaigns.find(entity => entity.key===campaignMatch.csvKey);
+    if(!csvCampaign) return null;
+    const csvCampaignName=String(csvField(csvCampaign, 'campaignName', 'campaign_name') ?? '');
+    if(!csvCampaignName) return null;
+    if(settingAdGroups.some(group => group.parentKey!==settingCampaign.key)) return null;
+    if(csvAdGroups.some(group => group.parentKey!==csvCampaign.key)) return null;
+
+    const identityRows=[];
+    for(const group of settingAdGroups){
+      const identity=group && group.displayIdentity || {};
+      const identityName=String(identity.targetingName ?? '').trim();
+      const nameSource=identity.sourceRefs && identity.sourceRefs.targetingName;
+      const rawRowDevice=String((group && group.fields && group.fields.rowDevice) ?? '').trim();
+      const rowDeviceSource=group && group.sourceRefs && group.sourceRefs.rowDevice;
+      if(!targetNames.includes(identityName) || !nameSource || nameSource.rawValue!==identityName || !rawRowDevice || !rowDeviceSource || rowDeviceSource.rawValue!==rawRowDevice) return null;
+      const device=resolveSettingAdGroupDevice(group);
+      if(!device.resolved) return null;
+      const branch=device.device==='ctv' ? 'CTV' : device.device==='android ios pc' ? 'SPPC' : null;
+      if(!branch) return null;
+      const shortName=`${identityName}_${branch}`;
+      if(resolveAdGroupShortDisplayName(group).value!==shortName) return null;
+      identityRows.push({ settingKey:group.key, shortName, csvName:`${csvCampaignName}_${shortName}` });
+    }
+    const settingNameCounts=new Map();
+    identityRows.forEach(row => settingNameCounts.set(row.csvName, (settingNameCounts.get(row.csvName) || 0)+1));
+    if(identityRows.length!==10 || [...settingNameCounts.values()].some(count => count!==1)) return null;
+    const expectedNames=new Set(identityRows.map(row => row.csvName));
+    if(expectedNames.size!==10 || targetNames.some(name => branches.some(branch => !expectedNames.has(`${csvCampaignName}_${name}_${branch}`)))) return null;
+
+    const csvCandidatesByName=new Map();
+    csvAdGroups.forEach(group => {
+      const name=String(csvField(group, 'adGroupName', 'adgroup_name') ?? '');
+      if(!expectedNames.has(name)) return;
+      const candidates=csvCandidatesByName.get(name) || [];
+      candidates.push(group);
+      csvCandidatesByName.set(name, candidates);
+    });
+    if(csvAdGroups.some(group => !expectedNames.has(String(csvField(group, 'adGroupName', 'adgroup_name') ?? '')))) return null;
+
+    const bySettingKey=new Map(identityRows.map(row => [row.settingKey, row]));
+    const settingKeyByCsvName=new Map(identityRows.map(row => [row.csvName, row.settingKey]));
+    const duplicateCsvNames=new Set([...csvCandidatesByName.entries()].filter(([, candidates]) => candidates.length>1).map(([name]) => name));
+    return { bySettingKey, csvCandidatesByName, settingKeyByCsvName, duplicateCsvNames };
+  }
+
   function resolveCandidateContention(levelMatches){
     const owners=new Map();
     levelMatches.forEach(match => {
@@ -3140,6 +3225,7 @@
     resolveCandidateContention(campaignMatches);
     campaignMatches.forEach(match => { matches.push(match); bySettingKey.set(match.settingKey, match); });
 
+    const adGroupIdentityScope=createTverFix1IdentityScope(settingCampaigns, settingAdGroups, csvCampaigns, csvAdGroups, campaignMatches, config.schemaKind);
     const adGroupMatches=settingAdGroups.map(setting => {
       const parentMatch=bySettingKey.get(setting.parentKey);
       if(!parentMatch || parentMatch.status!=='matched') return makeMatch('Ad Group', setting, 'ambiguous', 'PARENT_NOT_UNIQUELY_MATCHED', []);
@@ -3149,20 +3235,47 @@
       if(expectedName){
         candidates=candidates.filter(csv => csvField(csv, 'adGroupName', 'adgroup_name')===expectedName);
       }else{
+        const identityRow=adGroupIdentityScope && adGroupIdentityScope.bySettingKey.get(setting.key);
+        let identityCandidates=[];
+        if(identityRow){
+          identityCandidates=adGroupIdentityScope.csvCandidatesByName.get(identityRow.csvName) || [];
+          if(identityCandidates.length>1) return makeMatch('Ad Group', setting, 'ambiguous', 'MULTIPLE_HARD_CANDIDATES', identityCandidates);
+          candidates=candidates.filter(csv => {
+            const csvName=String(csvField(csv, 'adGroupName', 'adgroup_name') ?? '');
+            if(adGroupIdentityScope.duplicateCsvNames.has(csvName)) return false;
+            const identityOwner=adGroupIdentityScope.settingKeyByCsvName.get(csvName);
+            return !identityOwner || identityOwner===setting.key;
+          });
+        }
         const settingProfile=conversionContext && typeof conversionContext.getSettingAdGroupProfile==='function'
           ? conversionContext.getSettingAdGroupProfile(setting) : null;
         const profileState=resolvedStructuralProfile(settingProfile);
-        if(!profileState.ok) return makeMatch('Ad Group', setting, 'ambiguous', 'MISSING_ADGROUP_STRUCTURAL_FIELD', []);
-        const unresolvedCsv=candidates.some(csv => {
+        const candidateProfiles=candidates.map(csv => {
           const profile=conversionContext && typeof conversionContext.getCsvAdGroupProfile==='function'
             ? conversionContext.getCsvAdGroupProfile(csv) : null;
-          return !resolvedStructuralProfile(profile).ok;
+          return { csv, profile };
         });
-        if(unresolvedCsv) return makeMatch('Ad Group', setting, 'ambiguous', 'MISSING_ADGROUP_STRUCTURAL_FIELD', []);
-        candidates=candidates.filter(csv => {
-          const csvProfile=conversionContext.getCsvAdGroupProfile(csv);
-          return structuralProfilesMatch(settingProfile, csvProfile);
-        });
+        const unknownPotential=candidateProfiles.filter(item => !resolvedStructuralProfile(item.profile).ok
+          && !structuralProfilesConflictOnKnownValues(settingProfile, item.profile)).map(item => item.csv);
+        const structuralCandidates=profileState.ok ? candidateProfiles.filter(item => resolvedStructuralProfile(item.profile).ok
+          && structuralProfilesMatch(settingProfile, item.profile)).map(item => item.csv) : [];
+        if(identityCandidates.length===1){
+          const identityCandidate=identityCandidates[0];
+          const otherStructural=structuralCandidates.filter(csv => csv.key!==identityCandidate.key);
+          const otherUnknown=unknownPotential.filter(csv => csv.key!==identityCandidate.key);
+          if(otherStructural.length || otherUnknown.length){
+            return makeMatch('Ad Group', setting, 'ambiguous', otherUnknown.length ? 'MISSING_ADGROUP_STRUCTURAL_FIELD' : 'MULTIPLE_HARD_CANDIDATES', [identityCandidate, ...otherStructural, ...otherUnknown]);
+          }
+          if(structuralCandidates.length===1 && structuralCandidates[0].key===identityCandidate.key){
+            return makeMatch('Ad Group', setting, 'matched', 'UNIQUE_HARD_CANDIDATE', [identityCandidate]);
+          }
+          return makeMatch('Ad Group', setting, 'matched', 'UNIQUE_STRICT_IDENTITY', [identityCandidate]);
+        }
+        candidates=[...new Map([...structuralCandidates, ...unknownPotential].map(csv => [csv.key, csv])).values()];
+        if(!profileState.ok || unknownPotential.length) return makeMatch('Ad Group', setting, 'ambiguous', 'MISSING_ADGROUP_STRUCTURAL_FIELD', candidates);
+        if(candidates.length===0) return makeMatch('Ad Group', setting, 'unmatched', 'NO_HARD_CANDIDATE', candidates);
+        if(candidates.length>1) return makeMatch('Ad Group', setting, 'ambiguous', 'MULTIPLE_HARD_CANDIDATES', candidates);
+        return makeMatch('Ad Group', setting, 'matched', 'UNIQUE_HARD_CANDIDATE', candidates);
       }
       if(candidates.length===0) return makeMatch('Ad Group', setting, 'unmatched', 'NO_HARD_CANDIDATE', candidates);
       if(candidates.length>1) return makeMatch('Ad Group', setting, 'ambiguous', 'MULTIPLE_HARD_CANDIDATES', candidates);
@@ -3599,6 +3712,14 @@
 
   function entityTargetName(entity){
     if(!entity) return '未特定';
+    if(entity.level==='Ad Group'){
+      const expectedName=strictText(entity.expectedName);
+      if(expectedName && expectedName!==entity.key && !/^adgroup:\s*\{/.test(expectedName)) return expectedName;
+      const fields=entity.fields || {};
+      const csvName=strictText(fields.adGroupName || fields.adgroupName || fields.adgroup_name);
+      if(csvName && !/^adgroup:\s*\{/.test(csvName)) return csvName;
+      return resolveAdGroupShortDisplayName(entity).value || '広告グループ';
+    }
     return entity.expectedName || entity.fields && (entity.fields.campaignName || entity.fields.materialName || entity.fields.adgroupName || entity.fields.campaign_name || entity.fields.creative_name) || entity.key;
   }
 
@@ -4192,17 +4313,6 @@
               settingEvidenceState:'not_provided', ruleBasis:'TVER_A16_STATUS_EVIDENCE', sourceEvidence:entrySourceEvidence(null, '', null, csv, 'adgroup_status', csv.sourceRefs && csv.sourceRefs.adgroup_status),
             });
           }
-          const auctionType=resolveSettingAdGroupAuctionType(setting);
-          const csvAuctionValue=csvField(csv, 'auctionType', 'auction_type');
-          addFieldResult(inputs, base, 'auction_type', auctionType.rawValue, csvAuctionValue, auctionType.primarySource, csv.sourceRefs && csv.sourceRefs.auction_type, {
-            schemaKind:parsedCsv.schema.kind, settingEvidenceState:auctionType.evidenceState, csvEvidenceState:'available', comparable:auctionType.comparable,
-            alwaysDisplay:true, ruleBasis:auctionType.ruleBasis,
-            settingCanonical:{ value:auctionType.canonicalValue, ruleId:auctionType.ruleBasis, evidenceState:auctionType.evidenceState },
-            csvCanonical:{ value:csvAuctionValue, ruleId:'TVER_C3_C4_3_AUCTION_CSV', evidenceState:'available' },
-            comparisonStatus:auctionType.evidenceState==='ambiguous' || csvAuctionValue==='' ? '需确认' : null,
-            conservativeReason:auctionType.evidenceState==='ambiguous' ? 'AUCTION_TYPE_SPECIAL_SETTING_UNCONFIRMED' : (csvAuctionValue==='' ? 'CSV_AUCTION_TYPE_VALUE_NOT_PROVIDED' : null),
-            sourceEvidence:{ setting:auctionType.sourceEvidence, csv:entityFieldEvidence(csv, 'auction_type', csv.sourceRefs && csv.sourceRefs.auction_type), derivedFrom:auctionType.derivedFrom },
-          });
           buildTverA17TargetingComparisonInputs(setting, csv, parsedCsv.schema.kind, base).forEach(input => inputs.push(input));
           buildTverA173OperationalComparisonInputs(setting, csv, parsedCsv.schema.kind, base).forEach(input => inputs.push(input));
           buildTverA173ExpansionComparisonInputs(setting, csv, parsedCsv.schema.kind, base).forEach(input => inputs.push(input));
@@ -4750,6 +4860,7 @@
     const raw=sourceKind==='setting' ? safe.settingRawValue : safe.csvRawValue;
     if(sourceKind==='setting') return formatTverHorizontalSettingValue(safe, sourceKind);
     const field=String(safe.field ?? '');
+    if(field==='device' && (raw==null || String(raw).trim()==='') && String(safe.settingRawValue ?? '').trim()!=='') return '（空欄）';
     const code=String(raw ?? '').trim();
     const labels=TVER_CSV_DISPLAY_CODE_LABELS[field];
     const label=labels && Object.prototype.hasOwnProperty.call(labels, code) ? labels[code] : '';

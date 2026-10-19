@@ -91,6 +91,7 @@ function loadTverApi() {
     `  buildTverDisplayTree: typeof buildTverDisplayTree === 'function' ? buildTverDisplayTree : undefined,\n` +
     `  buildTverDisplayLabel: typeof buildTverDisplayLabel === 'function' ? buildTverDisplayLabel : undefined,\n` +
     `  resolveAdGroupShortDisplayName: typeof resolveAdGroupShortDisplayName === 'function' ? resolveAdGroupShortDisplayName : undefined,\n` +
+    `  entityTargetName: typeof entityTargetName === 'function' ? entityTargetName : undefined,\n` +
     `  buildTverEntryDisplayLabelIndex: typeof buildTverEntryDisplayLabelIndex === 'function' ? buildTverEntryDisplayLabelIndex : undefined,\n` +
     `  buildTverEntityFieldTableHtml: typeof buildTverEntityFieldTableHtml === 'function' ? buildTverEntityFieldTableHtml : undefined,\n` +
     `  deriveDisplayStatus: typeof deriveDisplayStatus === 'function' ? deriveDisplayStatus : undefined,\n` +
@@ -4050,7 +4051,7 @@ test('A18-1C Red: Campaign与Ad的displayLabel保持displayName', () => {
   assert.equal(tree.roots[0].children[0].children[0].displayLabel, tree.roots[0].children[0].children[0].displayName);
 });
 
-test('A18-1C Red: displayLabel不改变原displayName、targetName和实体key', () => {
+test('A18-1C Red: Setting名投影可读且不改变来源实体、targetName或实体key', () => {
   const fixture = makeA181CFixture({ csvFields: { adgroup_name: 'CSV edit name' } });
   const before = JSON.stringify({
     setting: fixture.settingModel,
@@ -4066,7 +4067,8 @@ test('A18-1C Red: displayLabel不改变原displayName、targetName和实体key',
     matching: fixture.matching,
     entries: fixture.entries,
   }), before);
-  assert.equal(adGroup.displayName, fixture.setting.adGroup.key);
+  assert.equal(adGroup.displayName, '広告グループ');
+  assert.doesNotMatch(adGroup.displayName, /adgroup:\{/);
   assert.equal(adGroup.entityKey, fixture.setting.adGroup.key);
   assert.equal(adGroup.csvEntityKey, fixture.csv.adGroup.key);
   assert.equal(adGroup.nodeKey, `match:${fixture.setting.adGroup.key}::${fixture.csv.adGroup.key}`);
@@ -8495,11 +8497,7 @@ test('NEW-FMT-AUCTION-1 Red: 新 FMT オークションタイプ为空时沿用�
   assert.equal(auction.primarySource.ruleId, 'TVER_C3_C4_3_AUCTION_DEFAULT_1');
   // 新 FMT の row が存在して空である supporting evidence を保持（セル値 1 を偽造しない）。
   assert.equal(auction.sourceEvidence.some(source => source.columnName === 'オークションタイプ' && String(source.rawValue) === ''), true);
-  const entry = newFmtEntry(run, 'Ad Group', 'auction_type');
-  assert.ok(entry);
-  assert.equal(entry.settingRawValue, '1');
-  assert.equal(entry.csvRawValue, '1');
-  assert.equal(entry.comparisonStatus, '一致');
+  assert.equal(newFmtEntry(run, 'Ad Group', 'auction_type'), undefined);
 });
 
 test('NEW-FMT-AUCTION-2 Red: 新 FMT オークションタイプ explicit 1 优先且 source 指向该单元格', () => {
@@ -8511,10 +8509,7 @@ test('NEW-FMT-AUCTION-2 Red: 新 FMT オークションタイプ explicit 1 优�
   assert.equal(auction.canonicalValue, '1');
   assert.equal(auction.ruleBasis, 'TVER_C3_C4_3_AUCTION_EXPLICIT');
   assert.equal(auction.primarySource.columnName, 'オークションタイプ');
-  const entry = newFmtEntry(run, 'Ad Group', 'auction_type');
-  assert.ok(entry);
-  assert.equal(entry.comparisonStatus, '一致');
-  assert.equal(entry.sourceRefs.setting.columnName, 'オークションタイプ');
+  assert.equal(newFmtEntry(run, 'Ad Group', 'auction_type'), undefined);
 });
 
 test('NEW-FMT-AUCTION-3 Red: 新 FMT オークションタイプ explicit 2 解析能力', () => {
@@ -8530,9 +8525,7 @@ test('NEW-FMT-AUCTION-3 Red: 新 FMT オークションタイプ explicit 2 解�
   const auction = api.resolveSettingAdGroupAuctionType(model.adGroups[0]);
   assert.equal(auction.canonicalValue, '2');
   assert.equal(auction.ruleBasis, 'TVER_C3_C4_3_AUCTION_EXPLICIT');
-  const entry = newFmtEntry(run, 'Ad Group', 'auction_type');
-  assert.ok(entry);
-  assert.equal(entry.comparisonStatus, '一致');
+  assert.equal(newFmtEntry(run, 'Ad Group', 'auction_type'), undefined);
 });
 
 test('NEW-FMT-AUCTION-4 Red: 新 FMT オークションタイプ未知非空值必须 要確認，不得回退 1', () => {
@@ -8543,10 +8536,102 @@ test('NEW-FMT-AUCTION-4 Red: 新 FMT オークションタイプ未知非空值�
   assert.equal(auction.evidenceState, 'ambiguous');
   assert.equal(auction.comparable, false);
   assert.notEqual(auction.canonicalValue, '1');
-  const entry = newFmtEntry(run, 'Ad Group', 'auction_type');
-  assert.ok(entry);
-  assert.equal(entry.comparisonStatus, '需确认');
-  assert.equal(entry.displayStatus, '需确认');
+  assert.equal(newFmtEntry(run, 'Ad Group', 'auction_type'), undefined);
+});
+
+test('TVER_AUCTION_TYPE_QC_EXCLUSION_FIX2: 新FMT所有Setting/CSVオークション値均不生成比较结果', () => {
+  const cases = [
+    { settingAuction: '1', csvAuction: '1' },
+    { settingAuction: '1', csvAuction: '2' },
+    { settingAuction: '1', csvAuction: '' },
+    { settingAuction: '2', csvAuction: '1' },
+    { settingAuction: '9', csvAuction: 'other' },
+    { settingAuction: '', csvAuction: '2' },
+  ];
+  let baselineSurface = null;
+
+  cases.forEach(({ settingAuction, csvAuction }) => {
+    const { model, parsed, tree, matching, run } = makeNewFmtCase({
+      targetingBatches: [[{ number: '1', auction: settingAuction, device: 'SP／PC／CTV', price: '1,800', duration: '30秒(23-37秒)' }]],
+      csvRows: [{
+        campaign_name: NEW_FMT_CAMPAIGN_NAME, start_datetime: '2026/09/18 00:00', end_datetime: '2026/09/27 23:45',
+        adgroup_name: 'Synthetic Group SPPC', device: 'android ios pc', price: '1800', auction_type: csvAuction,
+        creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+        tracking_url_complete: 'https://tracker.invalid/complete-sppc?x={adid}',
+      }],
+    });
+    assert.equal(parsed.schema.kind, 'register-without-ids');
+    assert.equal(parsed.headers.length, 61);
+    assert.equal(tree.adGroups[0].fields.auction_type, csvAuction);
+    assert.equal(newFmtMatch(matching, 'Campaign').status, 'matched');
+    assert.equal(newFmtMatch(matching, 'Ad Group').status, 'matched');
+    assert.equal(run.entries.filter(entry => entry.level === 'Ad Group' && entry.field === 'auction_type').length, 0);
+    assert.doesNotMatch(api.buildExceptionCsv(run), /auction_type|オークション設定|オークションタイプ/);
+
+    const view = api.buildTverHorizontalViewModel(run, 'Ad Group');
+    const html = api.buildTverHorizontalTableHtml(view);
+    assert.equal(view.columns.some(column => column.key === 'auction_type'), false);
+    assert.doesNotMatch(html, /オークション設定|オークションタイプ/);
+    const surface = {
+      statusCounts: run.statusCounts,
+      groupStatuses: view.rows.map(row => row.entityDisplayStatus),
+      mismatchNavigatorTargets: (html.match(/data-qc-status="mismatch"/g) || []).length,
+    };
+    if (!baselineSurface) baselineSurface = surface;
+    else assert.deepEqual(surface, baselineSurface);
+
+    if (settingAuction === '' && csvAuction === '2') {
+      assert.equal(api.resolveSettingAdGroupAuctionType(model.adGroups[0]).rawValue, '1');
+      assert.equal(run.entries.some(entry => entry.field === 'auction_type'), false);
+    }
+  });
+});
+
+test('TVER_AUCTION_TYPE_QC_EXCLUSION_FIX2: 旧FMT Register与Edit CSV保留Schema/raw但不生成auction_type entry', () => {
+  const oldSetting = api.parseTverSettingWorkbook(makeStructuredSettingWorkbook({
+    mainRows: [{
+      '発注CPN名': 'Synthetic Campaign', 'CPN訴求': 'Synthetic Appeal', 'CPN予算': '900',
+      '開始日時(yyyy/mm/dd hh:mm)': '2026/02/01 00:00', '終了日時(yyyy/mm/dd hh:mm)': '2026/02/28 23:30',
+      'ターゲティング番号': 'TG-01', 'ADG開始日時(yyyy/mm/dd hh:mm)': '2026/02/01 00:00',
+      'ADG終了日時(yyyy/mm/dd hh:mm)': '2026/02/28 23:30', '素材名': 'synthetic-creative.mp4',
+      'LP名': 'Synthetic LP', 'タグ訴求': 'Synthetic_SPPC', '初期設定日予算': '30',
+      'その他設定': 'Synthetic Other Setting', '変更履歴': 'Synthetic Change History',
+    }],
+    targetingBatches: [[{ number: 'TG-01', device: 'SP／PC／CTV', price: '1,800' }]],
+  }), { fileName: 'old-fmt-setting.xlsx' });
+  const register = api.parseCsvText(makeRegisterCsv([{
+    campaign_name: oldSetting.campaigns[0].expectedName, adgroup_name: 'Synthetic_SPPC',
+    device: 'android ios pc', price: '1800', auction_type: '2',
+    creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+  }]));
+  const registerTree = api.buildRegisterTree(register);
+  const registerMatching = api.matchTverEntities(oldSetting, registerTree, {
+    schemaKind: register.schema.kind, conversionContext: api.createTverConversionContext(register.schema.kind, registerTree),
+  });
+  const registerRun = api.buildRunFromModels(oldSetting, registerTree, registerMatching, register);
+  assert.equal(register.schema.kind, 'register-without-ids');
+  assert.equal(register.headers.length, 61);
+  assert.equal(registerTree.adGroups[0].fields.auction_type, '2');
+  assert.equal(registerMatching.matches.find(match => match.level === 'Ad Group').status, 'matched');
+  assert.equal(registerRun.entries.some(entry => entry.field === 'auction_type'), false);
+
+  const newSetting = api.parseTverSettingWorkbook(makeNewFmtSettingWorkbook(), { fileName: 'new-fmt-setting.xlsx' });
+  const edit = api.parseCsvText(makeEditCsv([{
+    campaign_id: '101', adgroup_id: '201', ad_id: '301',
+    campaign_name: newSetting.campaigns[0].expectedName, adgroup_name: 'Synthetic Group SPPC',
+    device: 'android ios pc', price: '1800', auction_type: '2',
+    creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+  }]));
+  const editTree = api.buildEditTree(edit);
+  const editMatching = api.matchTverEntities(newSetting, editTree, {
+    schemaKind: edit.schema.kind, conversionContext: api.createTverConversionContext(edit.schema.kind, editTree),
+  });
+  const editRun = api.buildRunFromModels(newSetting, editTree, editMatching, edit);
+  assert.equal(edit.schema.kind, 'edit-with-ids');
+  assert.equal(edit.headers.length, 61);
+  assert.equal(editTree.adGroups[0].fields.auction_type, '2');
+  assert.equal(editMatching.matches.find(match => match.level === 'Ad Group').status, 'matched');
+  assert.equal(editRun.entries.some(entry => entry.field === 'auction_type'), false);
 });
 
 test('NEW-FMT-AUCTION-5 Red: 新 FMT 模板 marker "-" 不得被当成 explicit auction 值', () => {
@@ -8792,4 +8877,247 @@ test('AGE-MAX100 Red: register / edit 両 schema で同じ比較語義になる'
     assert.equal(register.entry.canonicalValues.setting, edit.entry.canonicalValues.setting);
     assert.equal(register.entry.canonicalValues.csv, edit.entry.canonicalValues.csv);
   });
+});
+
+const FIX1_TARGETING_NAMES = ['興味関心', '興味関心_DMP', '年齢', '年齢_DMP', '従業員規模'];
+
+function fix1IdentityCase({ csvDeviceOverrides = {}, csvNameOverrides = {}, csvPriceOverrides = {}, settingDeviceOverrides = {} } = {}) {
+  const mainRows = FIX1_TARGETING_NAMES.flatMap((targetingName, index) => {
+    const number = index + 1;
+    const rawNumber = number === 4 ? '４' : number === 5 ? '５' : String(number);
+    return ['SPPC', 'CTV'].map(branch => ({
+      '発注CPN名': 'Identity Campaign', 'CPN訴求': 'Synthetic Appeal', 'CPN予算': '900',
+      '開始日時(yyyy/mm/dd hh:mm)': '2026/02/01 00:00', '終了日時(yyyy/mm/dd hh:mm)': '2026/02/28 23:30',
+      'ターゲティング番号': rawNumber, 'ADG開始日時(yyyy/mm/dd hh:mm)': '2026/02/01 00:00',
+      'ADG終了日時(yyyy/mm/dd hh:mm)': '2026/02/28 23:30', '素材名': 'synthetic-creative.mp4',
+      'LP名': 'Synthetic LP', 'タグ訴求': `${branch === 'CTV' ? 'CTV' : 'SD/PC'}_${number}`,
+      '初期設定日予算': '30', 'その他設定': '', '変更履歴': '',
+      'デバイス': branch === 'CTV' ? 'ctv' : 'android ios pc',
+      _targetingName: targetingName, _number: String(number),
+    }));
+  });
+  const targetingBatches = [0, 2, 4].map(start => FIX1_TARGETING_NAMES.slice(start, start + 2).map((displayName, offset) => {
+    const number = start + offset + 1;
+    return { displayName, number: String(number), device: 'SP／PC／CTV', price: '11', segment: displayName.includes('_DMP') ? '68' : '' };
+  }));
+  const workbook = makeStructuredSettingWorkbook({
+    mainRows: mainRows.map(({ _targetingName, _number, ...row }) => row),
+    targetingBatches,
+  });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const headerIndex = sheet.findIndex(row => row.includes('発注CPN名'));
+  sheet[headerIndex].push('デバイス');
+  mainRows.forEach((row, index) => { sheet[headerIndex + index + 1].push(row['デバイス']); });
+  sheet.forEach(row => {
+    [1, 7].forEach(start => {
+      if(row[start] !== 'ターゲティング名') return;
+      const number = Number(row[start + 2]);
+      row[start + 1] = '';
+      row[start + 3] = FIX1_TARGETING_NAMES[number - 1];
+    });
+  });
+
+  const settingModel = api.parseTverSettingWorkbook(workbook, { fileName: 'identity-setting.xlsx' });
+  settingModel.adGroups.forEach((group, index) => {
+    if(Object.hasOwn(settingDeviceOverrides, index)){
+      const raw = settingDeviceOverrides[index];
+      group.fields.rowDevice = raw;
+      group.fields.device = raw;
+    }
+  });
+  const campaignName = settingModel.campaigns[0].expectedName;
+  const csvRows = settingModel.adGroups.map((group, index) => {
+    const shortName = api.resolveAdGroupShortDisplayName(group).value;
+    return {
+      campaign_name: campaignName,
+      adgroup_name: Object.hasOwn(csvNameOverrides, index)
+        ? (typeof csvNameOverrides[index] === 'function' ? csvNameOverrides[index](campaignName, shortName) : csvNameOverrides[index])
+        : `${campaignName}_${shortName}`,
+      adgroup_start_datetime: '2026/02/01 00:00', adgroup_end_datetime: '2026/02/28 23:30',
+      device: Object.hasOwn(csvDeviceOverrides, shortName) ? csvDeviceOverrides[shortName] : (shortName.endsWith('_CTV') ? 'ctv' : 'android ios pc'),
+      price: Object.hasOwn(csvPriceOverrides, index) ? csvPriceOverrides[index] : '11',
+      dmp_segment: shortName.includes('_DMP_') ? '68' : '',
+      creative_name: 'synthetic-creative.mp4', url: 'https://example.invalid/synthetic-lp',
+    };
+  });
+  const parsedCsv = api.parseCsvText(makeRegisterCsv(csvRows), { fileName: 'identity-register.csv' });
+  const csvTree = api.buildRegisterTree(parsedCsv);
+  const matching = api.matchTverEntities(settingModel, csvTree, {
+    schemaKind: parsedCsv.schema.kind,
+    conversionContext: api.createTverConversionContext(parsedCsv.schema.kind, csvTree),
+  });
+  const run = api.buildRunFromModels(settingModel, csvTree, matching, parsedCsv);
+  return { settingModel, parsedCsv, csvRows, csvTree, matching, run };
+}
+
+test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 全角４／５只用于Targeting关联，原始来源保留且1／2／3不变', () => {
+  const mainRows = ['1', '2', '3', '４', '５'].map((number, index) => ({
+    '発注CPN名': 'Synthetic Campaign', 'CPN訴求': 'Synthetic Appeal', 'CPN予算': '900',
+    '開始日時(yyyy/mm/dd hh:mm)': '2026/02/01 00:00', '終了日時(yyyy/mm/dd hh:mm)': '2026/02/28 23:30',
+    'ターゲティング番号': number, 'ADG開始日時(yyyy/mm/dd hh:mm)': '2026/02/01 00:00',
+    'ADG終了日時(yyyy/mm/dd hh:mm)': '2026/02/28 23:30', '素材名': `synthetic-${index}.mp4`,
+    'LP名': 'Synthetic LP', 'タグ訴求': `Synthetic Tag ${index}`, '初期設定日予算': '30',
+  }));
+  const targetingBatches = [
+    [1, 2].map(number => ({ number: String(number), device: `Synthetic Device ${number}` })),
+    [3, 4].map(number => ({ number: String(number), device: `Synthetic Device ${number}` })),
+    [5].map(number => ({ number: String(number), device: `Synthetic Device ${number}` })),
+  ];
+  const workbook = makeStructuredSettingWorkbook({ mainRows, targetingBatches });
+  const model = api.parseTverSettingWorkbook(workbook, { fileName: 'targeting-canonical.xlsx' });
+  const index = model.sourceIndex.targetingByNumber;
+
+  assert.deepEqual(Object.keys(index).sort(), ['1', '2', '3', '4', '5']);
+  assert.deepEqual(Array.from(model.adGroups, group => group.fields.device), [
+    'Synthetic Device 1', 'Synthetic Device 2', 'Synthetic Device 3', 'Synthetic Device 4', 'Synthetic Device 5',
+  ]);
+  assert.deepEqual(Array.from(model.adGroups, group => group.fields.targetingNumber), ['1', '2', '3', '４', '５']);
+  assert.deepEqual(Array.from(model.adGroups.slice(3), group => group.sourceRefs.targetingNumber.rawValue), ['４', '５']);
+  assert.ok(!model.diagnostics.some(issue => issue.code === 'SETTING_TARGETING_REFERENCE_NOT_FOUND'));
+
+  const collisionWorkbook = makeStructuredSettingWorkbook({
+    mainRows: [mainRows[3]],
+    targetingBatches: [[{ number: '4', device: 'Device ASCII' }], [{ number: '４', device: 'Device Fullwidth' }]],
+  });
+  const collision = api.parseTverSettingWorkbook(collisionWorkbook, { fileName: 'targeting-collision.xlsx' });
+  assert.equal(collision.sourceIndex.targetingByNumber['4'].state, 'ambiguous');
+  assert.deepEqual(Array.from(collision.sourceIndex.targetingByNumber['4'].groups, group => group.fields.targetingNumber), ['4', '４']);
+  assert.ok(collision.diagnostics.some(issue => issue.code === 'SETTING_TARGETING_NUMBER_CONFLICT'));
+});
+
+test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 一个CSV Group的空device不污染其余9组，身份匹配后字段仍需确认', () => {
+  const result = fix1IdentityCase({ csvDeviceOverrides: { '興味関心_DMP_CTV': '' } });
+  const groupMatches = result.matching.matches.filter(match => match.level === 'Ad Group');
+  const adMatches = result.matching.matches.filter(match => match.level === 'Ad');
+  assert.equal(groupMatches.filter(match => match.status === 'matched').length, 10);
+  assert.equal(new Set(groupMatches.map(match => match.csvKey)).size, 10);
+  assert.equal(adMatches.filter(match => match.status === 'matched').length, 10);
+  const targetGroup = result.settingModel.adGroups.find(group => api.resolveAdGroupShortDisplayName(group).value === '興味関心_DMP_CTV');
+  const deviceEntry = result.run.entries.find(entry => entry.entityKey === targetGroup.key && entry.field === 'device');
+  assert.equal(deviceEntry.csvRawValue, '');
+  assert.equal(api.formatTverDisplayValue(deviceEntry, 'csv'), '（空欄）');
+  assert.ok(['需确认', '不一致'].includes(deviceEntry.comparisonStatus));
+  assert.notEqual(deviceEntry.comparisonStatus, '一致');
+  const matchedGroups = new Map(groupMatches.filter(match => match.status === 'matched').map(match => [match.settingKey, match.csvKey]));
+  result.settingModel.adGroups.forEach(group => {
+    const csv = result.csvTree.adGroups.find(candidate => candidate.key === matchedGroups.get(group.key));
+    assert.equal(csv.fields.adgroup_name, `${result.settingModel.campaigns[0].expectedName}_${api.resolveAdGroupShortDisplayName(group).value}`);
+  });
+});
+
+test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 名称唯一确定年齢_CTV后仍比较真实device并报告不一致', () => {
+  const result = fix1IdentityCase({ csvDeviceOverrides: { '年齢_CTV': 'android ios pc' } });
+  const targetGroup = result.settingModel.adGroups.find(group => api.resolveAdGroupShortDisplayName(group).value === '年齢_CTV');
+  const match = result.matching.matches.find(item => item.level === 'Ad Group' && item.settingKey === targetGroup.key);
+  const csv = result.csvTree.adGroups.find(item => item.key === match.csvKey);
+  const deviceEntry = result.run.entries.find(entry => entry.entityKey === targetGroup.key && entry.field === 'device');
+  assert.equal(match.status, 'matched');
+  assert.equal(csv.fields.adgroup_name, `${result.settingModel.campaigns[0].expectedName}_年齢_CTV`);
+  assert.equal(csv.fields.device, 'android ios pc');
+  assert.equal(deviceEntry.csvRawValue, 'android ios pc');
+  assert.equal(deviceEntry.comparisonStatus, '不一致');
+});
+
+test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 同名CSV候補保留ambiguous且不得占用其一', () => {
+  const result = fix1IdentityCase({ csvNameOverrides: { 2: campaign => `${campaign}_興味関心_SPPC` }, csvPriceOverrides: { 2: '12' } });
+  const target = result.settingModel.adGroups[0];
+  const duplicateName = `${result.settingModel.campaigns[0].expectedName}_興味関心_SPPC`;
+  const duplicateCandidates = result.csvTree.adGroups.filter(group => group.fields.adgroup_name === duplicateName);
+  const match = result.matching.matches.find(item => item.level === 'Ad Group' && item.settingKey === target.key);
+  assert.equal(duplicateCandidates.length, 2);
+  assert.equal(match.status, 'ambiguous');
+  assert.equal(match.reasonCode, 'MULTIPLE_HARD_CANDIDATES');
+  assert.equal(match.candidateKeys.length, 2);
+  assert.ok(duplicateCandidates.every(group => !Object.hasOwn(result.matching.reservations.csvToSetting, group.key)));
+});
+
+test('TVER_ADGROUP_ENTITY_MATCH_FIX1: Setting重复短名称时保留Candidate Contention', () => {
+  const result = fix1IdentityCase({ settingDeviceOverrides: { 1: 'android ios pc' } });
+  const duplicated = result.settingModel.adGroups.filter(group => api.resolveAdGroupShortDisplayName(group).value === '興味関心_SPPC');
+  assert.equal(duplicated.length, 2);
+  const matches = duplicated.map(group => result.matching.matches.find(item => item.level === 'Ad Group' && item.settingKey === group.key));
+  assert.ok(matches.every(match => match.status === 'ambiguous'));
+  assert.ok(matches.every(match => ['CANDIDATE_CONTENTION', 'MULTIPLE_HARD_CANDIDATES'].includes(match.reasonCode)));
+  assert.ok(matches.every(match => !match.csvKey));
+});
+
+test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 未知CSV structural candidate只影响已知字段未排除它的Group', () => {
+  const campaign = { key: 'setting-campaign:partial', level: 'Campaign', expectedName: 'Synthetic Campaign', fields: {} };
+  const regularProfile = {
+    fields: { device: 'ctv', price: '11', dmpKind: 'regular', retargetKind: 'none' },
+    requiredFields: ['device', 'price', 'dmpKind', 'retargetKind'],
+  };
+  const dmpProfile = { ...regularProfile, fields: { ...regularProfile.fields, dmpKind: 'dmp' } };
+  const settings = {
+    campaigns: [campaign],
+    adGroups: [
+      { key: 'setting-adgroup:regular', level: 'Ad Group', parentKey: campaign.key, expectedName: null, fields: {}, displayIdentity: null },
+      { key: 'setting-adgroup:dmp', level: 'Ad Group', parentKey: campaign.key, expectedName: null, fields: {}, displayIdentity: null },
+    ],
+    ads: [],
+  };
+  const parsed = api.parseCsvText(makeRegisterCsv([
+    { campaign_name: 'Synthetic Campaign', adgroup_name: 'unresolved-device-group', device: '', price: '11' },
+  ]), { fileName: 'partial-unknown-register.csv' });
+  const tree = api.buildRegisterTree(parsed);
+  const unknownCsvProfile = { ...regularProfile, fields: { ...regularProfile.fields, device: { state: 'unknown' } } };
+  const matching = api.matchTverEntities(settings, tree, {
+    schemaKind: parsed.schema.kind,
+    conversionContext: {
+      getSettingAdGroupProfile(entity) { return entity.key.endsWith(':dmp') ? dmpProfile : regularProfile; },
+      getCsvAdGroupProfile() { return unknownCsvProfile; },
+    },
+  });
+  const regularMatch = matching.matches.find(match => match.settingKey === 'setting-adgroup:regular');
+  const dmpMatch = matching.matches.find(match => match.settingKey === 'setting-adgroup:dmp');
+  assert.equal(regularMatch.status, 'ambiguous');
+  assert.equal(regularMatch.reasonCode, 'MISSING_ADGROUP_STRUCTURAL_FIELD');
+  assert.deepEqual(Array.from(regularMatch.candidateKeys), [tree.adGroups[0].key]);
+  assert.equal(dmpMatch.status, 'unmatched');
+  assert.equal(dmpMatch.reasonCode, 'NO_HARD_CANDIDATE');
+  assert.equal(dmpMatch.candidateKeys.length, 0);
+});
+
+test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 旧FMT缺少可靠Group名称时仍按缺失结构字段保守处理', () => {
+  const model = makeMatchSettingModel();
+  model.adGroups[0].displayIdentity = null;
+  const parsed = api.parseCsvText(makeRegisterCsv([
+    { campaign_name: 'Synthetic Campaign', adgroup_name: 'Old FMT unnamed group', device: 'ctv', price: '11' },
+  ]), { fileName: 'old-fmt-no-identity.csv' });
+  const tree = api.buildRegisterTree(parsed);
+  const unknownProfile = {
+    fields: { device: { state: 'unknown' }, price: '11', dmpKind: 'regular', retargetKind: 'none' },
+    requiredFields: ['device', 'price', 'dmpKind', 'retargetKind'],
+  };
+  const matching = api.matchTverEntities(model, tree, {
+    schemaKind: parsed.schema.kind,
+    conversionContext: {
+      getSettingAdGroupProfile() { return unknownProfile; },
+      getCsvAdGroupProfile() { return { ...unknownProfile, fields: { ...unknownProfile.fields, device: 'ctv' } }; },
+    },
+  });
+  const groupMatch = matching.matches.find(match => match.level === 'Ad Group');
+  assert.equal(groupMatch.status, 'ambiguous');
+  assert.equal(groupMatch.reasonCode, 'MISSING_ADGROUP_STRUCTURAL_FIELD');
+});
+
+test('TVER_ADGROUP_ENTITY_MATCH_FIX1: ambiguous Group用Setting短名称显示，无证据时使用业务占位符', () => {
+  assert.equal(typeof api.entityTargetName, 'function');
+  const result = fix1IdentityCase();
+  const group = result.settingModel.adGroups[0];
+  const displayLabel = api.resolveAdGroupShortDisplayName(group).value;
+  const match = result.matching.matches.find(item => item.level === 'Ad Group' && item.settingKey === group.key);
+  match.status = 'ambiguous';
+  match.reasonCode = 'TEST_UNRESOLVED';
+  match.csvKey = null;
+  const unresolvedRun = api.buildRunFromModels(result.settingModel, result.csvTree, result.matching, result.parsedCsv);
+  const entry = unresolvedRun.entries.find(item => item.level === 'Ad Group' && item.entityKey === group.key);
+  assert.equal(entry.targetName, displayLabel);
+  assert.doesNotMatch(entry.targetName, /adgroup:\{/);
+  const noEvidence = api.entityTargetName({
+    key: 'adgroup:{"parentCampaign":"internal"}', level: 'Ad Group', fields: {}, sourceRefs: {}, displayIdentity: null,
+  });
+  assert.equal(noEvidence, '広告グループ');
+  assert.doesNotMatch(noEvidence, /[{}]/);
+  assert.equal(api.entityTargetName({ level: 'Ad Group', fields: { adGroupName: 'CSV-side readable name' }, key: 'csv-adgroup-key' }), 'CSV-side readable name');
 });

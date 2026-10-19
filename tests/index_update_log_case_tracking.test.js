@@ -18,9 +18,11 @@ function updateLogEntries(source) {
     .filter(line => line.startsWith('  {'));
 }
 
-const expectedEntry = "  {date:'2026/09/03',requester:'林琳',type:'add',tool:'Amazon DSP / DV360 設定チェック',title:'案件名统计与后台案件汇总功能追加',title_ja:'案件名記録・案件別集計機能を追加',detail:'Amazon DSP / DV360 設定チェック実行時に案件名を入力し、同一媒体・同一タイプでは10分間自動保持できるようにしました。案件変更にも対応し、利用者・媒体・案件ごとの実行履歴を后台 logs に記録。あわせて案件別の実行回数・差異件数・初回／最終利用時間を case_summary に自動集計します。',detail_ja:'Amazon DSP / DV360 設定チェック実行時に案件名を入力し、同一媒体・同一タイプでは10分間自動保持できるようにしました。案件変更にも対応し、利用者・媒体・案件ごとの実行履歴を logs に記録します。さらに案件別の実行回数・差異件数・初回／最終利用時間を case_summary に自動集計します。',summary:'Amazon DSP / DV360 校正新增案件名输入、10分钟保持、案件変更及后台案件级统计。',summary_ja:'Amazon DSP / DV360 に案件名入力・10分保持・案件変更・案件別集計を追加。',note:''},";
-
-test('首页 UPDATE_LOG 仅在最前面追加案件统计记录，历史记录保持不变', () => {
+const expectedEntries = [
+  "  {date:'2026/10/19',requester:'劉 麗偉',type:'improve',tool:'TVer',title:'TVer Ad Groupマッチング精度改善',title_ja:'TVer Ad Groupマッチング精度改善',detail:'AXA生命案件で発生したAd Groupの照合不具合を修正しました。ターゲティング番号の全角・半角数字に対応し、Ad GroupとAdの紐付け精度を改善しました。また、デバイス設定の実際の差異を正しく検出できるようにしました。',detail_ja:'AXA生命案件で発生したAd Groupの照合不具合を修正しました。ターゲティング番号の全角・半角数字に対応し、Ad GroupとAdの紐付け精度を改善しました。また、デバイス設定の実際の差異を正しく検出できるようにしました。',summary:'AXA生命案件のAd Group照合を修正し、全角・半角のターゲティング番号と実際のデバイス差異に対応。',summary_ja:'AXA生命案件のAd Group照合を修正し、全角・半角のターゲティング番号と実際のデバイス差異に対応。',note:''},",
+  "  {date:'2026/10/19',requester:'劉 麗偉',type:'improve',tool:'TVer',title:'TVer オークションタイプのチェック対象見直し',title_ja:'TVer オークションタイプのチェック対象見直し',detail:'現場および日本側の確認結果を踏まえ、システム側で自動決定されるオークションタイプをチェック対象外に変更しました。これにより、判定根拠のない不一致表示を解消しました。',detail_ja:'現場および日本側の確認結果を踏まえ、システム側で自動決定されるオークションタイプをチェック対象外に変更しました。これにより、判定根拠のない不一致表示を解消しました。',summary:'オークションタイプを校正対象外とし、判定根拠のない不一致表示を解消。',summary_ja:'オークションタイプを校正対象外とし、判定根拠のない不一致表示を解消。',note:''},",
+];
+test('首页 UPDATE_LOG 前部追加两条TVer更新记录且历史记录保持不变', () => {
   const currentSource = fs.readFileSync(indexPath, 'utf8');
   const baselineSource = childProcess.execFileSync('git', ['show', 'HEAD:index.html'], {
     cwd: projectRoot,
@@ -28,8 +30,12 @@ test('首页 UPDATE_LOG 仅在最前面追加案件统计记录，历史记录�
   });
   const currentEntries = updateLogEntries(currentSource);
   const baselineEntries = updateLogEntries(baselineSource);
+  const baselineIncludesTverEntries = expectedEntries.every((entry, index) => baselineEntries[index] === entry);
+  const historicalEntries = baselineIncludesTverEntries
+    ? baselineEntries.slice(expectedEntries.length)
+    : baselineEntries;
 
-  assert.equal(currentEntries[0], expectedEntry);
-  assert.deepEqual(currentEntries.slice(1), baselineEntries);
-  assert.equal(currentEntries.length, baselineEntries.length + 1);
+  assert.deepEqual(currentEntries.slice(0, expectedEntries.length), expectedEntries);
+  assert.deepEqual(currentEntries.slice(expectedEntries.length), historicalEntries);
+  assert.equal(currentEntries.length, historicalEntries.length + expectedEntries.length);
 });
