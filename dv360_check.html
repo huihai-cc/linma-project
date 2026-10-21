@@ -3308,9 +3308,24 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
     return score;
   };
   const rankedOperatorSheets=[...operatorCandidates].sort((a,b)=>scoreOperatorSheet(b)-scoreOperatorSheet(a));
-  const ioMap=new Map(),opLiDetails=[];
+  const ioMap=new Map(),opLiDetails=[],operatorBusinessNames=new Map();
   const findOpLiDetail=(liName,ioName)=>opLiDetails.find(detail=>normStr(detail.name)===normStr(liName)&&normStr(detail.ioName)===normStr(ioName))||
     opLiDetails.find(detail=>normStr(detail.name)===normStr(liName))||null;
+  const findOperatorBusinessName=rows=>{
+    const values=new Set();
+    for(let rowIndex=0;rowIndex<Math.min(25,rows.length);rowIndex++){
+      const row=rows[rowIndex]||[];
+      row.forEach((cell,labelColumn)=>{
+        if(!text(cell).replace(/\s+/g,'').includes('ビジネスの名前')) return;
+        for(const candidate of row.slice(labelColumn+1).map(text)){
+          if(!candidate||isPlaceholder(candidate)||/^\d+$/.test(candidate)||/※|半角|全角|文字|必須項目|基本的には|広告主階層|CR階層/.test(candidate)) continue;
+          values.add(candidate);
+          break;
+        }
+      });
+    }
+    return values.size===1?[...values][0]:'';
+  };
 
   for(const opSheet of rankedOperatorSheets){
     if(!opSheet||!sheets[opSheet]) continue;
@@ -3327,6 +3342,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
     const invalidCampaignName=isPlaceholder(cpName)||/^(?:テスト|test|例(?:示)?|サンプル)$/i.test(cpName);
     const exampleSheet=/(?:^|[（(])例(?:[）)]|$)|サンプル/i.test(opSheet);
     if(invalidCampaignName||exampleSheet) continue;
+    operatorBusinessNames.set(opSheet,findOperatorBusinessName(rows));
     cpList.push({name:cpName,sheet:opSheet,sourceSheet:opSheet,fileName,
       fields:{goal:cpGoal,kpi:cpKpi,kpiVal:cpKpiVal,startDate:cpStartDate,endDate:cpEndDate}});
 
@@ -3662,7 +3678,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
     // YTN の「T=備考」のような列構成が異なるテンプレートで他業務列を誤読するため、
     // sentinel -1 で初期化し Header で見つかった場合のみ上書き。存在しない列は空文字を返す。
     const readOptionalColumn=(row,index)=>index>=0?String(row[index]||'').trim():'';
-    const col={io:3,li:4,gp:5,cr:6,startDate:7,endDate:8,videoUrl:9,landingUrl:10,displayUrl:11,cta:15,headline:17,longHeadline:-1,description:-1,companion:-1,clickTracker:24};
+    const col={io:3,li:4,gp:5,cr:6,startDate:7,endDate:8,videoUrl:9,landingUrl:10,displayUrl:11,cta:15,businessName:-1,headline:17,longHeadline:-1,description:-1,companion:-1,clickTracker:24};
     const hasAdNameHeader=hdr.some(h=>String(h||'').includes('広告名'));
     hdr.forEach((h,i)=>{
       const hs=String(h||'');
@@ -3677,6 +3693,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
       if(hs.includes('入稿用URL')||hs.includes('ランディング')) col.landingUrl=i;
       if(hs.includes('表示URL')||hs.includes('第一ドメイン')) col.displayUrl=i;
       if(hs.includes('促すフレーズ')||hs.includes('CTA'))  col.cta=i;
+      if(hs.replace(/\s+/g,'').includes('ビジネスの名前')) col.businessName=i;
       if((hs.includes('見出し')||hs.includes('タイトル'))&&!hs.includes('長い')&&i>10) col.headline=i;
       if(hs.includes('長い見出し')) col.longHeadline=i;
       if(hs.includes('説明')) col.description=i;
@@ -3734,7 +3751,9 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
       const matchedLi=liList.find(l=>normStr(l.name)===normStr(matchedLiName)&&(!crIoName||normStr(l.ioName)===normStr(crIoName)))||
         liList.find(l=>normStr(l.name)===normStr(matchedLiName));
       const resolvedIoName=matchedLi?matchedLi.ioName:crIoName;
-      const opDetail=findOpLiDetail(matchedLiName,resolvedIoName)||{};
+      const opDetail=matchedLi&&matchedLi.sourceSheet
+        ?opLiDetails.find(detail=>detail.sourceSheet===matchedLi.sourceSheet&&normStr(detail.name)===normStr(matchedLiName)&&normStr(detail.ioName)===normStr(resolvedIoName))||{}
+        :findOpLiDetail(matchedLiName,resolvedIoName)||{};
       if(gpName&&matchedLiName){
         const gpKey=normStr(resolvedIoName)+'\u0000'+normStr(matchedLiName)+'\u0000'+normStr(gpName);
         if(!gpKeys.has(gpKey)){
@@ -3762,6 +3781,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
           landingUrl:String(r[col.landingUrl]||'').trim(),
           displayUrl:String(r[col.displayUrl]||'').trim(),
           cta       :String(r[col.cta]||'').trim(),
+          businessName:readOptionalColumn(r,col.businessName)||operatorBusinessNames.get(opDetail.sourceSheet)||'',
           headline  :String(r[col.headline]||'').trim(),
           longHeadline:readOptionalColumn(r,col.longHeadline),
           description:readOptionalColumn(r,col.description),
@@ -4065,7 +4085,8 @@ function resolveOttColumns(row31,row32){
   col.LI_FLIGHT_MODE   = findCol([],['掲載期間','日次'],[]);
   col.LI_PACE_MODE     = findCol([],['できるだけ早く','均等','前倒し'],[]);
   col.LI_BUDGET_100    = findCol([],['予算(100%)'],[]);
-  col.LI_BUDGET_98     = findCol([],['予算(98%)'],[]);
+  const liBudget99Col  = findCol([],['予算(99%)'],[]);
+  col.LI_BUDGET_98     = liBudget99Col>=0?liBudget99Col:findCol([],['予算(98%)'],[]);
   col.LI_BUDGET_DAILY  = findCol([],['設定日予算'],[]);
   col.LI_BID_STRATEGY  = findCol(['入札戦略'],[],[]);
   col.LI_BID_FORM      = findCol([],['入札形式'],[]);
@@ -6676,7 +6697,7 @@ function parseSettingGeography(value,referenceInfo){
   }
   const include=[],exclude=[],unknown=[];
   let mode='include';
-  const chunks=raw.split(/[\n\r;；、|/]+/).map(v=>v.trim()).filter(Boolean);
+  const chunks=raw.split(/[\n\r;；、|/・･]+/).map(v=>v.trim()).filter(Boolean);
   for(let chunk of chunks){
     if(/(?:配信|include)\s*[：:]/i.test(chunk)) mode='include';
     if(/(?:除外|exclude)\s*[：:]/i.test(chunk)) mode='exclude';
@@ -6689,7 +6710,9 @@ function parseSettingGeography(value,referenceInfo){
     chunk=chunk.replace(/(?:配信|include|除外|exclude)\s*[：:]?/ig,'')
       .replace(/[（(]?(?:国名|対象|指定)[）)]?/g,'').trim();
     if(!chunk) continue;
-    (mode==='exclude'?exclude:include).push(normalizeSettingGeoToken(chunk));
+    const normalized=normalizeSettingGeoToken(chunk);
+    (mode==='exclude'?exclude:include).push(normalized);
+    if(geoMasterLoaded&&!resolveGeoCanonicalId(normalized)) unknown.push(normalized);
   }
   if(!include.length&&!exclude.length) unknown.push(raw);
   if(!include.length&&exclude.length) include.push('Japan');
@@ -6748,6 +6771,32 @@ function formatGeographySides(parsed){
   const excludeValues=parsed.excludeDisplay||parsed.exclude;
   const include=includeValues&&includeValues.length?includeValues.join('、'):'なし';
   const exclude=excludeValues&&excludeValues.length?excludeValues.join('、'):'なし';
+  return `配信：${include} / 除外：${exclude}`;
+}
+
+function formatYoutubeLiGeographyDownloadDisplay(parsed,rawInclude,rawExclude){
+  const formatValues=(values,rawValue)=>{
+    const rawTokens=splitGeoValues(rawValue);
+    return (values||[]).map((value,index)=>{
+      const token=rawTokens[index]||String(value||'').trim();
+      const codeMatch=String(token).match(/[（(]\s*code\s*[:：]\s*(\d+)\s*[）)]/i);
+      const code=codeMatch?codeMatch[1]:(/^\d+$/.test(token)?token:'');
+      if(code){
+        const target=getDv360GeoTargetByCode(code);
+        if(target&&target.directJapaneseName) return target.directJapaneseName;
+        if(target) return token;
+        return `未登録地域Code：${code}`;
+      }
+      const id=resolveGeoCanonicalId(value);
+      const target=id?getDv360GeoTargetByCode(id):null;
+      if(target&&target.directJapaneseName) return target.directJapaneseName;
+      return token;
+    });
+  };
+  const includeValues=formatValues(parsed&&parsed.include,rawInclude);
+  const excludeValues=formatValues(parsed&&parsed.exclude,rawExclude);
+  const include=includeValues.length?includeValues.join('・'):'なし';
+  const exclude=excludeValues.length?excludeValues.join('・'):'なし';
   return `配信：${include} / 除外：${exclude}`;
 }
 
@@ -9691,6 +9740,7 @@ function compareLI(s,d){
   if(mediaType==='youtube'){
     const settingParsed=parseSettingGeography(sf.region||'',sf.regionReference);
     const downloadParsed=parseDownloadGeography(df.geographyTargeting||'',df.geographyExclude||'');
+    geographyComparison.dVal=formatYoutubeLiGeographyDownloadDisplay(downloadParsed,df.geographyTargeting||'',df.geographyExclude||'');
     console.log('[DV360][Geo Debug]',{
       liName:s.name,
       settingRaw:String(sf.region||'').trim(),
@@ -9905,6 +9955,11 @@ function compareCR(s,d){
 
   items.push({label:'LP URL',sVal:sf.landingUrl||'',dVal:df.landingPageUrl||'',result:compareField(sf.landingUrl,df.landingPageUrl)});
   items.push({label:'CTA',sVal:sf.cta||'',dVal:df.callToAction||'',result:compareField(sf.cta,df.callToAction)});
+  const settingBusinessName=String(sf.businessName||'').trim();
+  const downloadBusinessName=String(df.businessName||'').trim();
+  items.push({label:'ビジネス名',sVal:settingBusinessName||'要確認',dVal:downloadBusinessName||'(空欄)',
+    result:settingBusinessName?compareField(settingBusinessName,downloadBusinessName):'warning',
+    mpDetail:settingBusinessName?'':'設定表のビジネスの名前を特定できません',sourceSdfFields:['Business Name']});
   const sHeadline=String(sf.headline||'').trim();
   const dHeadline=String(df.headline||'').trim();
   items.push({
@@ -10658,6 +10713,7 @@ function getCoreLevelColumns(level,youtubeOnly){
       {key:'表示URL', label:'表示URL'},
       {key:'LP URL', label:'LP URL\nLanding Page URL'},
       {key:'CTA', label:'CTA\nCall to Action'},
+      {key:'ビジネス名', label:'ビジネス名'},
       {key:'見出し', label:'見出し'},
       {key:'長い見出し※', label:'長い見出し※'},
       {key:'説明※', label:'説明※'},
