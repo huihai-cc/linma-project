@@ -2566,21 +2566,93 @@ async function extractZip(fileBlob){
   return files;
 }
 
+function decodeWorkbookXmlAttribute(value){
+  return String(value||'')
+    .replace(/&quot;/g,'"').replace(/&apos;/g,"'")
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')
+    .replace(/&#(\d+);/g,(_,code)=>String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/ig,(_,code)=>String.fromCodePoint(parseInt(code,16)));
+}
+
+async function readWorkbookSheetMetadata(data){
+  try{
+    const archive=await JSZip.loadAsync(data);
+    const workbookXmlFile=archive.file('xl/workbook.xml');
+    if(!workbookXmlFile) return null;
+    const xml=await workbookXmlFile.async('string');
+    const sheetNames=[],sheetVisibility={};
+    const sheetTags=xml.matchAll(/<(?:[\w.-]+:)?sheet\b([^>]*?)\/?\s*>/g);
+    for(const match of sheetTags){
+      const attrs={};
+      for(const attrMatch of match[1].matchAll(/([\w:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)){
+        attrs[attrMatch[1]]=decodeWorkbookXmlAttribute(attrMatch[2]===undefined?attrMatch[3]:attrMatch[2]);
+      }
+      if(!attrs.name) continue;
+      sheetNames.push(attrs.name);
+      sheetVisibility[attrs.name]=attrs.state==='veryHidden'?2:attrs.state==='hidden'?1:0;
+    }
+    return sheetNames.length?{sheetNames,sheetVisibility}:null;
+  }catch(_error){
+    // XLS/非ZIPブック、または不正なworkbook.xmlは通常のXLSX.read経路にフォールバックする。
+    return null;
+  }
+}
+
+function getKnownUnusedHiddenSheets(sheetNames,sheetVisibility){
+  // YouTubeの参照/比較処理は「アフィニティカテゴリ」等を使うが、
+  // 「カテゴリターゲティング」は現行パーサーの入力ではない。未知Sheetは除外しない。
+  if(detectMediaType(sheetNames)!=='youtube') return [];
+  return (sheetNames||[]).filter(name=>name==='カテゴリターゲティング'&&Number(sheetVisibility[name]||0)>0);
+}
+
+function workbookReferencesSheetName(workbook,sheetName){
+  const escaped=String(sheetName||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  // トークン境界（識別子文字でない位置）から始まるシート参照を検出する。
+  // 'Name'! または Name! の形を、式の先頭だけでなく
+  // SUM(...) / IF(...) 等のネスト参照（括弧・カンマ等の直後）も含めて判定する。
+  // 検出時は呼び出し側で全Sheet読み直し（完全解析）を行うため、過検出は安全。
+  const formulaReference=new RegExp(`(?:^|[^A-Za-z0-9_.])(?:'${escaped}'|'${escaped}|${escaped})!`);
+  const definedNames=workbook&&workbook.Workbook&&workbook.Workbook.Names||[];
+  if(definedNames.some(item=>!/^_xlnm\._FilterDatabase$/i.test(String(item.Name||item.name||''))&&
+    formulaReference.test(String(item.Ref||item.ref||'')))) return true;
+  for(const ws of Object.values(workbook&&workbook.Sheets||{})){
+    if(!ws) continue;
+    for(const [cellRef,cell] of Object.entries(ws)){
+      if(cellRef.startsWith('!')||!cell||typeof cell!=='object') continue;
+      if(formulaReference.test(String(cell.f||''))) return true;
+    }
+  }
+  return false;
+}
+
 async function parseXlsx(blob){
   const data = await readAsArrayBuffer(blob);
   // Audience 解析需要 Excel 保存的筛选可见性（!rows.hidden）和单元格填充样式。
-  const wb   = XLSX.read(data,{type:'array',cellStyles:true,cellNF:false,cellDates:true});
+  const readOptions={type:'array',cellStyles:true,cellNF:false,cellDates:true};
+  const workbookMeta=await readWorkbookSheetMetadata(data);
+  const sheetNames=workbookMeta&&workbookMeta.sheetNames||[];
+  const hiddenByName=workbookMeta&&workbookMeta.sheetVisibility||{};
+  let skippedSheets=getKnownUnusedHiddenSheets(sheetNames,hiddenByName);
+  let wb=XLSX.read(data,skippedSheets.length
+    ?{...readOptions,sheets:sheetNames.filter(name=>!skippedSheets.includes(name))}
+    :readOptions);
+  if(skippedSheets.some(name=>workbookReferencesSheetName(wb,name))){
+    // 参照が見つかった場合は全Sheetを読み直し、参照解決の既存挙動を維持する。
+    wb=XLSX.read(data,readOptions);
+    skippedSheets=[];
+  }
   const sheets={};
   const sheetVisibility={};
   const workbookSheetMeta=wb.Workbook&&Array.isArray(wb.Workbook.Sheets)?wb.Workbook.Sheets:[];
-  const hiddenByName=new Map(workbookSheetMeta.map(meta=>[meta.name||meta.Name,Number(meta.Hidden||0)]));
+  const parsedVisibility=new Map(workbookSheetMeta.map(meta=>[meta.name||meta.Name,Number(meta.Hidden||0)]));
   wb.SheetNames.forEach(sname=>{
     const ws=wb.Sheets[sname];
-    sheetVisibility[sname]=hiddenByName.get(sname)||0;
+    sheetVisibility[sname]=parsedVisibility.has(sname)?parsedVisibility.get(sname):Number(hiddenByName[sname]||0);
+    if(skippedSheets.includes(sname)){sheets[sname]=[];return;}
     if(!ws||!ws['!ref']){sheets[sname]=[];return;}
     sheets[sname]=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
   });
-  return {sheetNames:wb.SheetNames, sheets, worksheets:wb.Sheets, sheetVisibility};
+  return {sheetNames:wb.SheetNames, sheets, worksheets:wb.Sheets, sheetVisibility, skippedSheets};
 }
 
 function hasJapanese(text){
@@ -5336,6 +5408,18 @@ function detectSdfSchema(csvFiles){
 
 function parseSdfData(csvFiles){
   const schema=detectSdfSchema(csvFiles);
+  const levelAvailability={Campaigns:'missing',InsertionOrders:'missing',LineItems:'missing',AdGroups:'missing',AdGroupAds:'missing'};
+  for(const csvFile of csvFiles||[]){
+    const level=getSdfFileTypeName(csvFile&&csvFile.name);
+    if(!Object.prototype.hasOwnProperty.call(levelAvailability,level)){
+      if(csvFile&&csvFile.unknownSdfStructure){
+        Object.keys(levelAvailability).forEach(key=>{levelAvailability[key]='failed';});
+      }
+      continue;
+    }
+    if(csvFile&&csvFile.parseError) levelAvailability[level]='failed';
+    else if(levelAvailability[level]!=='failed') levelAvailability[level]='present';
+  }
   const cpList=[],ioList=[],liList=[],gpList=[],crList=[];
   for(const csvFile of csvFiles){
     const {name,rows}=csvFile;
@@ -5474,7 +5558,7 @@ function parseSdfData(csvFiles){
   for(const io of ioList){
     io.resolvedLiDaypart=resolveIoLiDaypart(io,liList);
   }
-  return {cpList,ioList,liList,gpList,crList,schema};
+  return {cpList,ioList,liList,gpList,crList,schema,levelAvailability};
 }
 
 // ===== RUN CHECK =====
@@ -5547,7 +5631,10 @@ async function runCheck(){
           csvFiles.push({name:f.name,rows,path:f.path||'',parentZip:f.parentZip||''});
           csvCount++;
           console.log('[DV360] CSV解析:',f.name,'rows=',rows.length);
-        }catch(e){console.error('[DV360] CSV解析失敗:',f.name,e);}
+          }catch(e){
+            console.error('[DV360] CSV解析失敗:',f.name,e);
+            csvFiles.push({name:f.name,rows:null,path:f.path||'',parentZip:f.parentZip||'',parseError:true});
+          }
       } else if(f.type==='zip'){
         // 内側のZIP（SDF.zip等）
         try{
@@ -5561,10 +5648,16 @@ async function runCheck(){
                 csvFiles.push({name:sf.name,rows,path:f.path||'',parentZip:f.parentZip||''});
                 csvCount++;
                 console.log('[DV360]   CSV解析:',sf.name,'rows=',rows.length);
-              }catch(e){console.error('[DV360]   CSV解析失敗:',sf.name,e);}
+              }catch(e){
+                console.error('[DV360]   CSV解析失敗:',sf.name,e);
+                csvFiles.push({name:sf.name,rows:null,path:f.path||'',parentZip:f.parentZip||'',parseError:true});
+              }
             }
           }
-        }catch(e){console.error('[DV360] 内側ZIP解凍失敗:',f.name,e);}
+        }catch(e){
+          console.error('[DV360] 内側ZIP解凍失敗:',f.name,e);
+          csvFiles.push({name:f.name,rows:null,path:f.path||'',parentZip:f.parentZip||'',parseError:true,unknownSdfStructure:true});
+        }
       }
     }
 
@@ -5656,7 +5749,8 @@ async function runCheck(){
     log('マッチング・比較中...');
     const result=buildComparisonTree(
       {cp:allSettingCP,io:allSettingIO,li:allSettingLI,gp:allSettingGP,cr:allSettingCR,audience:allSettingAudience},
-      {cp:sdfData.cpList,io:sdfData.ioList,li:sdfData.liList,gp:sdfData.gpList,cr:sdfData.crList}
+      {cp:sdfData.cpList,io:sdfData.ioList,li:sdfData.liList,gp:sdfData.gpList,cr:sdfData.crList,
+       levelAvailability:sdfData.levelAvailability}
     );
     console.log('[DV360] Tree roots:',result.roots.length,' DL only:',result.dlOnly.length);
 
@@ -10042,6 +10136,8 @@ function buildComparisonTree(setting, download){
   const sCP=setting.cp,sIO=setting.io,sLI=setting.li,sGP=setting.gp,sCR=setting.cr;
   const settingAudienceCatalog=setting.audience||createEmptyYoutubeAudienceResult();
   const dCP=download.cp,dIO=download.io,dLI=download.li,dGP=download.gp,dCR=download.cr;
+  const levelAvailability=download.levelAvailability||{};
+  const isSdfLevelMissing=level=>levelAvailability[level]==='missing';
   const matchedDCP=new Set(),matchedDIO=new Set(),matchedDLI=new Set(),matchedDGP=new Set(),matchedDCR=new Set();
   // YouTube / OTT は比較項目の双空非表示を適用する（媒体別の空値規則は helper 内で分離）。
   const filterItems=(mediaType==='youtube'||mediaType==='ott')?filterVisibleComparisonItems:(items)=>items;
@@ -10145,6 +10241,58 @@ function buildComparisonTree(setting, download){
     return {...found,match:null,candidate:!found.ambiguous,diagnostic:true,
       candidates:diagnosticCandidates,reason};
   }
+  function findIndependentExact(name,settingRecord,candidates,used,level){
+    const nameKey=level==='IO'?scopedIoNameKey:scopedLiNameKey;
+    const key=nameKey(name);
+    if(!key) return null;
+    const available=(candidates||[]).filter(item=>!used.has(item));
+    const exact=available.filter(item=>nameKey(item.name)===key);
+    const hasParentConflict=candidate=>{
+      if(level==='IO'){
+        const settingParentId=String(settingRecord&&settingRecord.cpId||'').trim();
+        const downloadParentId=String(candidate&&candidate.cpId||'').trim();
+        const settingParentName=normStr(settingRecord&&settingRecord.cpName||'');
+        const downloadParentName=normStr(candidate&&candidate.cpName||'');
+        return !!((settingParentId&&downloadParentId&&settingParentId!==downloadParentId)||
+          (settingParentName&&downloadParentName&&settingParentName!==downloadParentName));
+      }
+      const settingIoId=String(settingRecord&&settingRecord.ioId||'').trim();
+      const downloadIoId=String(candidate&&candidate.ioId||'').trim();
+      const settingIoName=normStr(settingRecord&&settingRecord.ioName||'');
+      const downloadIoName=normStr(candidate&&candidate.ioName||'');
+      return !!((settingIoId&&downloadIoId&&settingIoId!==downloadIoId)||
+        (settingIoName&&downloadIoName&&settingIoName!==downloadIoName));
+    };
+    const identityScore=candidate=>{
+      if(level==='IO'){
+        const settingParentId=String(settingRecord&&settingRecord.cpId||'').trim();
+        const downloadParentId=String(candidate&&candidate.cpId||'').trim();
+        const settingParentName=normStr(settingRecord&&settingRecord.cpName||'');
+        const downloadParentName=normStr(candidate&&candidate.cpName||'');
+        return {score:Number(!!settingParentId&&settingParentId===downloadParentId)+
+          Number(!!settingParentName&&settingParentName===downloadParentName)};
+      }
+      const settingIoId=String(settingRecord&&settingRecord.ioId||'').trim();
+      const downloadIoId=String(candidate&&candidate.ioId||'').trim();
+      const settingIoName=normStr(settingRecord&&settingRecord.ioName||'');
+      const downloadIoName=normStr(candidate&&candidate.ioName||'');
+      return {score:Number(!!settingIoId&&settingIoId===downloadIoId)+
+        Number(!!settingIoName&&settingIoName===downloadIoName)};
+    };
+    if(exact.length){
+      const compatible=exact.filter(candidate=>!hasParentConflict(candidate));
+      if(!compatible.length){
+        return {match:null,candidate:true,parentConflict:true,matchType:'parent-conflict',candidates:exact};
+      }
+      return findBest(name,compatible,used,{nameKey,scoreCandidate:identityScore});
+    }
+    return findBest(name,available,used,{nameKey});
+  }
+  const sdfNotProvidedItems=level=>[{
+    label:`${level}校正状況`,key:`${level}校正状況`,sVal:'',dVal:'SDF未提供（未校正）',
+    result:'warning',alwaysDisplay:true,source:'sdf-level-missing',
+    detail:`SDFに${level} CSVが含まれないため、この階層は未校正です。`,
+  }];
   function promoteUniqueDisplayIoCandidate(matchResult,candidates,used){
     if(mediaType!=='display'||hasFormalMatch(matchResult)) return matchResult;
     const available=(candidates||[]).filter(candidate=>!used.has(candidate));
@@ -10181,7 +10329,8 @@ function buildComparisonTree(setting, download){
     const ambiguous=!!matchResult.ambiguous;
     return [{label:`${level}候補`,key:`${level}候補`,sVal:name||'',dVal:candidates.join(' / '),
       result:'warning',alwaysDisplay:true,
-      detail:ambiguous?'同名候補が複数あり、階層証拠で一意に判定できません。':'親階層未確定または名称が完全一致しないため、自動照合せず候補のみ表示します。'}];
+      detail:matchResult.parentConflict?'既知の親階層IDが一致しないため、自動照合せず候補のみ表示します。'
+        :ambiguous?'同名候補が複数あり、階層証拠で一意に判定できません。':'親階層未確定または名称が完全一致しないため、自動照合せず候補のみ表示します。'}];
   }
   const hasFormalMatch=result=>!!(result&&result.match);
   const underCP=cp=>cp?dIO.filter(io=>String(io.cpId||'').trim()===String(cp.id||'').trim()):[];
@@ -10212,7 +10361,8 @@ function buildComparisonTree(setting, download){
   };
   const roots=[];
   sCP.forEach((sCp,cpIndex)=>{
-    const dCpMatch=findBest(sCp.name,dCP,matchedDCP,{
+    const campaignMissing=isSdfLevelMissing('Campaigns');
+    const dCpMatch=campaignMissing?null:findBest(sCp.name,dCP,matchedDCP,{
       scoreCandidate:candidate=>scoreCpCandidate(sCp,candidate),allowHierarchyWithoutName:true});
     const cpMatched=hasFormalMatch(dCpMatch);
     const cpNode={level:'CP',id:nodeId('CP',sCp.name),name:sCp.name,
@@ -10222,7 +10372,7 @@ function buildComparisonTree(setting, download){
       ambiguous:!!(dCpMatch&&dCpMatch.ambiguous),candidate:!!(dCpMatch&&dCpMatch.candidate),
       ambiguousCandidates:dCpMatch&&dCpMatch.ambiguous?(dCpMatch.candidates||[]):[],
       compItems:cpMatched?filterItems(appendDownloadOnlyItems('CP',dCpMatch.match,
-        compareCP(sCp,dCpMatch.match))):matchWarningItems('CP',sCp.name,dCpMatch),children:[]};
+        compareCP(sCp,dCpMatch.match))):campaignMissing?sdfNotProvidedItems('CP'):matchWarningItems('CP',sCp.name,dCpMatch),children:[]};
     if(cpMatched) matchedDCP.add(dCpMatch.match);
 
     const cpIOs=settingIosForCp(sCp);
@@ -10242,7 +10392,9 @@ function buildComparisonTree(setting, download){
       const ioName=ioData.name;
       let dIoMatch=cpMatched
         ?findBest(ioName,underCP(dCpMatch.match),matchedDIO,{nameKey:scopedIoNameKey})
-        :diagnosticMatch(ioName,dIO,matchedDIO,'parent-cp-unmatched');
+        :campaignMissing
+          ?findIndependentExact(ioName,ioData.sIo,dIO,matchedDIO,'IO')
+          :diagnosticMatch(ioName,dIO,matchedDIO,'parent-cp-unmatched');
       if(cpMatched){
         dIoMatch=promoteUniqueDisplayIoCandidate(dIoMatch,underCP(dCpMatch.match),matchedDIO);
       }
@@ -10259,14 +10411,17 @@ function buildComparisonTree(setting, download){
         matchType:dIoMatch&&dIoMatch.matchType||'',
         compItems:ioMatched?(mediaType==='display'
           ?filterVisibleComparisonItems(ioComparisonItems)
-          :filterItems(ioComparisonItems)):matchWarningItems('IO',ioName,dIoMatch),children:[]};
+          :filterItems(ioComparisonItems)):isSdfLevelMissing('InsertionOrders')
+            ?sdfNotProvidedItems('IO'):matchWarningItems('IO',ioName,dIoMatch),children:[]};
       if(ioMatched) matchedDIO.add(dIoMatch.match);
 
       ioData.lis.forEach(sLi=>{
         const sequenceLi=isYoutubeAdSequenceLi(sLi);
         const dLiMatch=!sequenceLi&&ioMatched
           ?findBest(sLi.name,underIO(dIoMatch.match),matchedDLI,{nameKey:scopedLiNameKey})
-          :!sequenceLi?diagnosticMatch(sLi.name,dLI,matchedDLI,'parent-io-unmatched',{nameKey:scopedLiNameKey}):null;
+          :!sequenceLi&&isSdfLevelMissing('InsertionOrders')
+            ?findIndependentExact(sLi.name,sLi,dLI,matchedDLI,'LI')
+            :!sequenceLi?diagnosticMatch(sLi.name,dLI,matchedDLI,'parent-io-unmatched',{nameKey:scopedLiNameKey}):null;
         const liMatched=!sequenceLi&&hasFormalMatch(dLiMatch);
         const liComparisonItems=sequenceLi
           ?unsupportedComparisonItems()
