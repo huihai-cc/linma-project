@@ -383,7 +383,7 @@ function createQcMismatchNavigator(options = {}){
     const summarySelector = options.summarySelector || '[data-qc-mismatch-navigator]';
     const scopeAttribute = options.scopeAttribute || 'data-qc-scope';
     const focusClass = options.focusClass || 'qc-mismatch-focus';
-    const focusDurationMs = Number(options.focusDurationMs) || 1800;
+    const focusDurationMs = Number(options.focusDurationMs) || 5000;
     const indexes = new Map();
     const currentPositions = new Map();
     const focusTimers = new Map();
@@ -1706,7 +1706,13 @@ function normMobileEnv(v){
 }
 function normFrequency(v){
     if(!v) return '';
-    const s = String(v).trim();
+    // ★ 実案件009: 設定表に「３回／12日間」のような全角数字・全角スラッシュ表記がある。
+    //   半角へ統一してから判定する（NFKC は「３」→「3」「／」→「/」を変換する）。
+    //   変換できない環境では従来どおりの文字列で判定を継続する。
+    let s = String(v).trim();
+    if(typeof s.normalize === 'function'){
+        try { s = s.normalize('NFKC').trim(); } catch(e) { /* 変換不可時は原文のまま */ }
+    }
     // 空白、模板值、NaN → 空（無設定扱い）
     if(!s || /^●(回|times?)[\/／]●(日間|day)/i.test(s) || s.toLowerCase() === 'nan') return '';
     // 日文格式: 支持半角 / 和全角 ／
@@ -1834,17 +1840,31 @@ function _segmentNamesEquivalent(settingName, downloadName){
     return false;
 }
 
+// ★ 実案件012: 設定表の Audience 欄は 1行1件で
+//   「orIM - …」「andNOT nihoneiganet-PVCSubscribed」のように
+//   論理演算子と名前の間に空白が無い表記が使われている。
+//   - 空白あり表記（"OR xxx" / "And xxx"）は従来どおり大小文字を問わず除去
+//   - 空白なし表記は「小文字の or / and」のみ除去する
+//     （"OREO" や "Oriflame" のような正当な名称を壊さないため）
+//   - 直後が英小文字の場合は名称の一部（"orbit" 等）とみなし除去しない
+function _stripAudienceOperatorPrefix(text){
+    return String(text || '')
+        .replace(/^(or|and)\s+/i, '')
+        .replace(/^(or|and)(?![a-z])/, '');
+}
+
 function parseAudienceS(v){
     if(!v) return { groups:[], notItems:[], raw:'' };
     const raw = String(v).trim();
     if(!raw || raw==='無し' || raw==='なし') return { groups:[], notItems:[], raw:'' };
-    const notItems=[], notParts=raw.split(/\band\s+not\b/i);
+    // ★ 「AND NOT」だけでなく「andNOT」「AndNot」も NOT 区切りとして扱う（案件012）
+    const notItems=[], notParts=raw.split(/\band\s*not\b/i);
     const mainPart=notParts[0].trim();
     for(let i=1;i<notParts.length;i++){
         // ★ 末尾の数字IDのみ除去（_normalizeAudienceName と同ルール）
         const np=notParts[i].replace(/\s*[\(\[]\d{5,}[\)\]]\s*$/g,'').trim();
         for(const item of np.split(/[\n;；,，]/)){
-            const it=_normalizeAudienceName(item.trim().replace(/^(or|and)\s+/i, ''));
+            const it=_normalizeAudienceName(_stripAudienceOperatorPrefix(item.trim()));
             if(it && !['AND','NOT','OR',''].includes(it.toUpperCase())) notItems.push(it);
         }
     }
@@ -1862,7 +1882,7 @@ function parseAudienceS(v){
             for(const seg of line.split(/[,;；,，]/)){
     // ★ 数字IDのみ除去（英数字を含む(ALL)などは保持）
     const s=seg.replace(/\s*[\(\[]\d{5,}[\)\]]\s*/g,'').trim();
-    const name=_normalizeAudienceName(s.replace(/^(or|and)\s+/i, '').trim());
+    const name=_normalizeAudienceName(_stripAudienceOperatorPrefix(s.trim()));
     if(name&&!['AND','NOT','OR',''].includes(name.toUpperCase())) items.push(name);
 }
         }
@@ -2085,6 +2105,62 @@ function _readAreaSheetFromRows(rows){
     return result;
 }
 
+// ★ 実案件011: 1枚の「エリアシート」に 関東／関西／Bonus関東／Bonus関西 の
+//   4ブロックが横並びで配置されるテンプレートがある。
+//   従来は最初の「含む/除外」ヘッダーだけを見ていたため、全LIが先頭ブロック
+//   （関東）を参照してしまっていた。
+//   ここでは「含む/除外」ヘッダーを全走査し、ブロック単位に分解する。
+//   ブロック名はヘッダー行の上（最大3行）にある LI 名セルから取得する。
+function _readAreaBlocksFromRows(rows, sheetName){
+    const blocks = [];
+    if(!Array.isArray(rows)) return blocks;
+    const HEADER_KW = /エリア名|郵便番号/;
+    const NOISE_KW = /japan以外|合計設定数|行追加/;
+    const scanMax = Math.min(rows.length, 500);
+    for(let r = 0; r < scanMax; r++){
+        const row = rows[r] || [];
+        for(let c = 0; c < row.length; c++){
+            if(String(row[c] || '').trim() !== '含む/除外') continue;
+
+            // エリア名列：ヘッダー行の c+1 ～ c+3 で「エリア名(郵便番号可)」を含む列
+            // （テンプレートによっては 1列空いて配置されている）
+            let areaCol = -1;
+            for(let k = c + 1; k <= c + 3 && k < row.length; k++){
+                if(HEADER_KW.test(String(row[k] || ''))){ areaCol = k; break; }
+            }
+            if(areaCol < 0) areaCol = c + 1;
+
+            // ブロック名：ヘッダー行より上（最大3行）の同じ列にある LI 名
+            let name = '';
+            for(let up = r - 1; up >= Math.max(0, r - 3); up--){
+                const v = String((rows[up] || [])[c] || '').trim();
+                if(!v || v === '含む/除外' || HEADER_KW.test(v) || NOISE_KW.test(v)) continue;
+                name = v;
+                break;
+            }
+
+            const data = { targeted: [], excluded: [] };
+            for(let i = r + 1; i < rows.length; i++){
+                const rr = rows[i] || [];
+                const typeVal = String(rr[c] || '').trim();
+                const areaVal = String(rr[areaCol] || '').trim();
+                if(typeVal === '含む/除外') break;              // 次のブロックのヘッダー
+                if(!typeVal && !areaVal) break;                  // 空行でブロック終了
+                if(!areaVal) continue;
+                if(HEADER_KW.test(areaVal) || NOISE_KW.test(areaVal)) continue;
+                const enName = convertAreaNameToEn(areaVal);
+                if(typeVal.includes('含む') || typeVal.toLowerCase().includes('targeted')){
+                    data.targeted.push(enName);
+                } else if(typeVal.includes('除外') || typeVal.toLowerCase().includes('excluded')){
+                    data.excluded.push(enName);
+                }
+            }
+            blocks.push({ name: name || sheetName, data, sheet: sheetName });
+        }
+    }
+    return blocks;
+}
+
 function readAllAreaSheets(wb){
     const sheets = [];
     for(const sheetName of wb.SheetNames){
@@ -2092,7 +2168,13 @@ function readAllAreaSheets(wb){
         const ws = wb.Sheets[sheetName];
         if(!ws || !ws['!ref']) continue;
         const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:false });
-        sheets.push({ name: sheetName, data: _readAreaSheetFromRows(rows) });
+        const blocks = _readAreaBlocksFromRows(rows, sheetName);
+        if(blocks.length === 0){
+            // 「含む/除外」ヘッダーが無い旧形式は従来ロジックへフォールバック
+            sheets.push({ name: sheetName, data: _readAreaSheetFromRows(rows), sheet: sheetName });
+            continue;
+        }
+        for(const block of blocks) sheets.push(block);
     }
     return sheets;
 }
@@ -2120,6 +2202,21 @@ function findAreaSheetForLI(allSheets, liName, rawLocation){
 
     const ln = (liName || '').trim();
     const lnLower = ln.toLowerCase();
+
+    // ★ 完全一致（ブロック名＝LI名）を最優先で採用する。
+    //   実案件011では「Kanto_…」と「Bonus_Kanto_…」が併存するため、
+    //   部分一致だけだと2候補となり判定不能になる。完全一致は一意な証拠。
+    if(lnLower){
+        const exactMatches = allSheets.filter(s => String(s.name || '').trim().toLowerCase() === lnLower);
+        if(exactMatches.length === 1){
+            return { data: exactMatches[0].data, name: exactMatches[0].name,
+                     debug: exactMatches[0].name + ' (完全一致)', ambiguous: false };
+        }
+        if(exactMatches.length > 1){
+            console.warn('[AreaSheet] LI=' + liName + ' エリアシート名が完全一致で複数：' + exactMatches.map(s => s.name).join(', '));
+            return { data: null, name: '', debug: 'エリアシート名が完全一致で複数（' + exactMatches.map(s => s.name).join('、') + '）', ambiguous: true };
+        }
+    }
 
     // LI名完全一致優先
     let matches = allSheets.filter(s => s.name.toLowerCase().includes(lnLower));
@@ -2338,6 +2435,253 @@ function _compareAreasBidirectional(sNames, dlRaw){
     return { missing, extra, matched: missing.length === 0 && extra.length === 0 };
 }
 
+// ===== カスタム候補カタログシート解析（実案件014） =====
+// 「AMZDSP-Twich_想定セグメント」のように、
+//   ・左側：国別デモグラ候補（カテゴリー／名前／オーディエンスID／備考=国名）
+//   ・右側：第N希望ごとの候補グループ（見出し → カテゴリー名 → ヘッダー → データ）
+// という独自レイアウトの Sheet を解析する。
+// 既存の旧/新FMT（含む/除外）形式では groups が空になるため、
+// 既存パーサには手を入れず、独立した解析結果として保持する。
+function _readCandidateCatalogSheet(rows, sheetName){
+    if(!Array.isArray(rows) || rows.length < 5) return null;
+    const PREF_RE = /^第[一二三四五六七八九十]+希望$/;
+
+    // ── 1) 第N希望グループの検出 ──
+    const blocks = [];
+    for(let r = 0; r < rows.length; r++){
+        const row = rows[r] || [];
+        for(let c = 0; c < row.length; c++){
+            const cell = String(row[c] || '').trim();
+            if(!PREF_RE.test(cell)) continue;
+
+            // 見出し行の下 4 行以内に「オーディエンスID」ヘッダー行があるか
+            let headerRow = -1, idCol = -1;
+            for(let rr = r + 1; rr <= Math.min(r + 4, rows.length - 1); rr++){
+                const hr = rows[rr] || [];
+                for(let cc = c; cc <= c + 3 && cc < hr.length; cc++){
+                    if(String(hr[cc] || '').trim() === 'オーディエンスID'){
+                        headerRow = rr; idCol = cc; break;
+                    }
+                }
+                if(headerRow >= 0) break;
+            }
+            if(headerRow < 0 || idCol - 1 < c) continue;
+
+            // カテゴリー名：見出し行の直後～ヘッダー行の前
+            let category = '';
+            for(let rr = r + 1; rr < headerRow; rr++){
+                const v = String((rows[rr] || [])[c] || '').trim();
+                if(v){ category = v; break; }
+            }
+            blocks.push({
+                order: cell, category, titleRow: r, startCol: c,
+                headerRow, nameCol: idCol - 1, idCol,
+            });
+        }
+    }
+    if(blocks.length === 0) return null;
+
+    // ── 2) 国別デモグラカタログの検出（左端の 名前/オーディエンスID/備考 列） ──
+    let demoHeader = -1, demoNameCol = -1, demoIdCol = -1, demoCountryCol = -1;
+    for(let r = 0; r < Math.min(rows.length, 12); r++){
+        const row = rows[r] || [];
+        for(let c = 0; c < Math.min(6, row.length - 1); c++){
+            if(String(row[c] || '').trim() !== '名前') continue;
+            if(String(row[c + 1] || '').trim() !== 'オーディエンスID') continue;
+            demoHeader = r; demoNameCol = c; demoIdCol = c + 1;
+            const countryHeader = String(row[c + 2] || '').trim();
+            demoCountryCol = /備考|国/.test(countryHeader) ? c + 2 : -1;
+            break;
+        }
+        if(demoHeader >= 0) break;
+    }
+    if(demoHeader < 0 || demoCountryCol < 0) return null;
+
+    const countries = {};
+    for(let r = demoHeader + 1; r < rows.length; r++){
+        const row = rows[r] || [];
+        const name = String(row[demoNameCol] || '').trim();
+        if(!name || name === '名前' || name === '設定不可') continue;
+        const country = String(row[demoCountryCol] || '').trim();
+        if(!country || country === '備考') continue;
+        if(!countries[country]) countries[country] = [];
+        countries[country].push(name);
+    }
+    if(Object.keys(countries).length === 0) return null;
+
+    // ── 3) 各グループのデータ行取得（次の同列グループ見出しまで） ──
+    for(const block of blocks){
+        let end = rows.length;
+        for(const other of blocks){
+            if(other === block) continue;
+            if(other.startCol !== block.startCol) continue;
+            if(other.titleRow > block.titleRow && other.titleRow < end) end = other.titleRow;
+        }
+        const items = [];
+        for(let r = block.headerRow + 1; r < end; r++){
+            const row = rows[r] || [];
+            const name = String(row[block.nameCol] || '').trim();
+            if(!name || name === '名前' || name === '設定不可') continue;
+            const id = String(row[block.idCol] || '').trim();
+            items.push({ name, id });
+        }
+        block.items = items;
+    }
+
+    return { sheetName, blocks, countries };
+}
+
+// カタログ上の希望順表記（①②③…）を漢数字へ対応付ける
+const _CATALOG_MARK_TO_KANJI = { '①':'一', '②':'二', '③':'三', '④':'四', '⑤':'五', '⑥':'六', '⑦':'七', '⑧':'八', '⑨':'九', '⑩':'十' };
+
+// カタログの国名（日本語）と LI の配信地域（英語/日本語）の対応
+const _CATALOG_COUNTRY_ALIAS = {
+    japan: '日本', '日本': '日本',
+    us: 'アメリカ', usa: 'アメリカ', 'america': 'アメリカ', 'united states': 'アメリカ', 'アメリカ': 'アメリカ',
+    canada: 'カナダ', 'カナダ': 'カナダ',
+    brazil: 'ブラジル', 'ブラジル': 'ブラジル',
+    germany: 'ドイツ', 'ドイツ': 'ドイツ',
+    uk: 'イギリス', 'united kingdom': 'イギリス', 'england': 'イギリス', 'イギリス': 'イギリス',
+    france: 'フランス', 'フランス': 'フランス',
+    australia: 'オーストラリア', 'オーストラリア': 'オーストラリア',
+    india: 'インド', 'インド': 'インド',
+    mexico: 'メキシコ', 'メキシコ': 'メキシコ',
+    spain: 'スペイン', 'スペイン': 'スペイン',
+    italy: 'イタリア', 'イタリア': 'イタリア',
+    china: '中国', '中国': '中国',
+};
+
+function _catalogNormalizeText(value){
+    return String(value || '')
+        .replace(/[「」『』【】\[\]［］""'']/g, '')
+        .replace(/[\s　]+/g, ' ')
+        .trim();
+}
+
+// LI の配信地域セルからカタログの国名を解決する
+function _resolveCatalogCountry(rawLocation, countries){
+    const firstLine = String(rawLocation || '').split(/[\r\n]/)[0];
+    const cleaned = firstLine
+        .replace(/^※.*$/, '')
+        .replace(/[（(].*?[）)]/g, '')
+        .replace(/[「」『』]/g, '')
+        .trim();
+    if(!cleaned) return '';
+    const key = cleaned.toLowerCase().replace(/\s+/g, ' ');
+    const alias = _CATALOG_COUNTRY_ALIAS[key] || _CATALOG_COUNTRY_ALIAS[cleaned] || '';
+    if(alias && countries[alias]) return alias;
+    // 日本語表記がそのまま国名列と一致する場合
+    if(countries[cleaned]) return cleaned;
+    return '';
+}
+
+// LI の Audience セルから、参照先カタログ Sheet／希望順／カテゴリーを解決する
+function _resolveCandidateCatalogRef(audienceVal, segMap, liName, rawLocation){
+    if(!audienceVal || !segMap) return null;
+    const catalogEntries = Object.entries(segMap).filter(([, data]) => data && data.catalog);
+    if(catalogEntries.length === 0) return null;
+
+    const textNorm = _catalogNormalizeText(audienceVal);
+
+    // ① 参照先 Sheet の特定（Sheet名がセル本文に含まれるか）
+    const sheetMatches = catalogEntries.filter(([sheetName]) => {
+        const sn = _catalogNormalizeText(sheetName);
+        return sn && textNorm.includes(sn);
+    });
+    if(sheetMatches.length === 0) return null;   // カタログ参照ではない
+    if(sheetMatches.length > 1){
+        return { groups: [], groupOps: [], __directRef__: true, __ambiguous__: true,
+                 __catalogError__: '参照先カタログSheetが複数候補（' + sheetMatches.map(([n]) => n).join('、') + '）' };
+    }
+    const [sheetName, sheetData] = sheetMatches[0];
+    const catalog = sheetData.catalog;
+
+    // ② 希望順の特定（③ と［第三希望］が併存する場合は両方で確認する）
+    let orderMark = '';
+    for(const mark of Object.keys(_CATALOG_MARK_TO_KANJI)){
+        if(audienceVal.includes(mark)){
+            orderMark = '第' + _CATALOG_MARK_TO_KANJI[mark] + '希望';
+            break;
+        }
+    }
+    const orderLabel = (textNorm.match(/第[一二三四五六七八九十]+希望/) || [''])[0];
+    if(orderMark && orderLabel && orderMark !== orderLabel){
+        return { groups: [], groupOps: [], __directRef__: true, __ambiguous__: true,
+                 __sheetName__: sheetName,
+                 __catalogError__: `希望順の表記が矛盾（${orderMark} / ${orderLabel}）` };
+    }
+    const order = orderLabel || orderMark;
+    if(!order){
+        return { groups: [], groupOps: [], __directRef__: true, __ambiguous__: true,
+                 __sheetName__: sheetName, __catalogError__: '希望順（第N希望）を判別できません' };
+    }
+
+    // ③ カテゴリー名の特定：希望順マーカーと参照説明行を除去した残り
+    let categoryLabel = audienceVal
+        .split(/[\r\n]/)
+        .filter(line => !/^\s*[※*]/.test(line))
+        .join(' ');
+    categoryLabel = _catalogNormalizeText(categoryLabel)
+        .replace(/[①②③④⑤⑥⑦⑧⑨⑩]/g, ' ')
+        .replace(/［第[一二三四五六七八九十]+希望］/g, ' ')
+        .replace(/第[一二三四五六七八九十]+希望/g, ' ')
+        .replace(new RegExp(_catalogNormalizeText(sheetName).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), ' ')
+        .replace(/[\s　]+/g, ' ')
+        .trim();
+
+    const sameOrder = catalog.blocks.filter(b => b.order === order);
+    if(sameOrder.length === 0){
+        return { groups: [], groupOps: [], __directRef__: true, __ambiguous__: true,
+                 __sheetName__: sheetName, __catalogError__: `カタログに「${order}」の候補グループがありません` };
+    }
+    // 完全一致を優先し、次に「カテゴリー名＋重複語（例: …関心関心）」の前方一致を許容する
+    let matchedBlocks = sameOrder.filter(b => b.category && _catalogNormalizeText(b.category) === categoryLabel);
+    if(matchedBlocks.length === 0 && categoryLabel){
+        matchedBlocks = sameOrder.filter(b => {
+            const cat = _catalogNormalizeText(b.category);
+            return cat && categoryLabel.startsWith(cat);
+        });
+    }
+    if(matchedBlocks.length !== 1){
+        return { groups: [], groupOps: [], __directRef__: true, __ambiguous__: true,
+                 __sheetName__: sheetName,
+                 __catalogError__: matchedBlocks.length > 1
+                    ? `カテゴリー「${categoryLabel || '(空)'}」が複数候補（${matchedBlocks.map(b => b.category).join('、')}）`
+                    : `カテゴリー「${categoryLabel || '(空)'}」を「${order}」から特定できません` };
+    }
+    const block = matchedBlocks[0];
+
+    // ④ 国別デモグラの特定（LI の配信地域から）
+    const country = _resolveCatalogCountry(rawLocation, catalog.countries);
+    if(!country){
+        return { groups: [], groupOps: [], __directRef__: true, __ambiguous__: true,
+                 __sheetName__: sheetName,
+                 __catalogError__: `配信地域「${String(rawLocation || '').split(/[\r\n]/)[0] || '(空)'}」に対応する国別デモグラを特定できません` };
+    }
+    const demoItems = catalog.countries[country] || [];
+    if(demoItems.length === 0){
+        return { groups: [], groupOps: [], __directRef__: true, __ambiguous__: true,
+                 __sheetName__: sheetName, __catalogError__: `「${country}」のデモグラ候補が空です` };
+    }
+
+    const prefItems = block.items.map(item => item.name);
+    console.warn('[CatalogSheet] LI=' + liName + ' sheet=' + sheetName + ' ' + order + ' / ' + block.category +
+        ' / ' + country + ' demo=' + demoItems.length + ' pref=' + prefItems.length);
+
+    return {
+        // デモグラ（国）× 第N希望 の AND 構成をそのまま保持する
+        groups: [
+            { type: 'Include', segments: demoItems.slice(), innerOp: 'or' },
+            { type: 'Include', segments: prefItems.slice(), innerOp: 'or' },
+        ],
+        groupOps: ['and'],
+        betweenGroupOps: ['and'],
+        __sheetName__: sheetName,
+        __catalog__: true,
+        __catalogMeta__: { order, category: block.category, country, demoCount: demoItems.length, prefCount: prefItems.length },
+    };
+}
+
 // ===== セグメントシート読み込み（PVA用）=====
 function readAllSegmentSheets(wb) {
     const segMap = {};
@@ -2375,6 +2719,14 @@ function readAllSegmentSheets(wb) {
         const data = isNewFMT
             ? _readSegmentSheetDynamic(rows)
             : _readSegmentSheetOldFMT(rows);
+        // ★ 実案件014: 「第N希望」候補グループ＋国別デモグラのカタログ形式。
+        //   旧/新FMT解析では groups が空になるため、独立した解析結果を併記する。
+        //   （既存形式では null が返るので従来動作に影響しない）
+        const catalog = _readCandidateCatalogSheet(rows, sheetName);
+        if(catalog){
+            data.catalog = catalog;
+            data.__catalogSheetName__ = sheetName;
+        }
         segMap[sheetName] = data;
     }
     return segMap;
@@ -2500,7 +2852,19 @@ function _normalizeSheetName(name) {
         .replace(/[\r\n]+/g, '');  // 改行削除
 }
 
-function _findSegmentForLI(audienceVal, segMap, liName) {
+function _findSegmentForLI(audienceVal, segMap, liName, rawLocation) {
+    // ── カスタム候補カタログ形式（第N希望／国別デモグラ）の解決 ──
+    // 該当しない場合は null が返るため、既存の判定フローは一切変わらない。
+    try{
+        const catalogResolved = _resolveCandidateCatalogRef(audienceVal, segMap, liName, rawLocation);
+        if(catalogResolved){
+            console.warn('[SegmentSheet] LI=' + liName + ' -> ' + (catalogResolved.__sheetName__ || '(カタログ未解決)') + ' (カスタムカタログ)');
+            return catalogResolved;
+        }
+    }catch(e){
+        console.warn('[SegmentSheet] LI=' + liName + ' カスタムカタログ解析で例外:', e && e.message);
+    }
+
     // ── 明示的なSheet参照（例：「セグメントシート1」で指定） ──
     // 外側の引用符と明示的な指示語だけを除去し、Sheet名とは完全一致で解決する。
     const normalizedAudience = _normalizeSheetName(audienceVal);
@@ -3029,6 +3393,25 @@ function _readSegmentSheetOldFMT(rows){
     return result;
 }
 
+// ★ 実案件010/013: 「【運用者記入用】PVA設定シート」形式では
+//   C列「ラインアイテム名」＝社内略称（例: 15s）、
+//   D列「【管理画面設定用】ラインアイテム名（Line Item Name）」＝管理画面の実名
+//   （例: PD_15s_2610）という2列構成になっている。
+//   ダウンロードデータの Line name は管理画面の実名なので、
+//   「管理画面設定用」を明示した列が1つだけ存在する場合はそちらを優先する。
+//   0列（従来テンプレート）または複数候補の場合は既存挙動を変更しない。
+function _preferManagementLiNameColumn(headers, colIdx){
+    if(!Array.isArray(headers) || !colIdx) return colIdx;
+    const candidates = [];
+    headers.forEach((h, i) => {
+        const hs = String(h || '');
+        if(!/ラインアイテム名|Line Item Name/i.test(hs)) return;
+        if(/管理画面設定用/.test(hs)) candidates.push(i);
+    });
+    if(candidates.length === 1) colIdx.LI_NAME = candidates[0];
+    return colIdx;
+}
+
 function fixLiNameColumnFromPreviousHeader(allRows, headerRowIdx, colIdx){
     if('LI_NAME' in colIdx) return;
     for(let r=headerRowIdx-1; r>=Math.max(0, headerRowIdx-2); r--){
@@ -3205,6 +3588,8 @@ function readSettingTableVideo(wb, system){
             if(exactTypeIdx !== -1) colIdx.media = exactTypeIdx;
         }
 
+        // ★ 「【管理画面設定用】ラインアイテム名」列があればそちらを LI 名として採用（案件010/013）
+        _preferManagementLiNameColumn(headers, colIdx);
         fixLiNameColumnFromPreviousHeader(allRows, headerRowIdx, colIdx);
 
         for(let i=headerRowIdx+1; i<allRows.length; i++){
@@ -3223,7 +3608,7 @@ function readSettingTableVideo(wb, system){
                 ? String(row[idx]).trim() : '';
 
             const areaForLi = findAreaSheetForLI(allAreaSheets, liName, g(colIdx.location));
-            const segForLi = _findSegmentForLI(g(colIdx.audience), allSegmentSheets, liName);
+            const segForLi = _findSegmentForLI(g(colIdx.audience), allSegmentSheets, liName, g(colIdx.location));
 
             result.push({
                 __LI_NAME__:   liName,
