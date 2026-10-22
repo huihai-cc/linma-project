@@ -281,7 +281,7 @@
   function emptySettingModel(diagnostics){
     return {
       campaigns:[], adGroups:[], ads:[], diagnostics,
-      sourceIndex:{ targetingByNumber:{}, creativeByMaterial:{}, evidenceBlocks:{ changeHistory:[], operationMemo:[], otherSettings:[] } }, templateVersion:null,
+      sourceIndex:{ targetingByNumber:{}, creativeByMaterial:{}, uploadUrlByLandingPage:{ sectionPresent:false, byLandingPageName:{} }, evidenceBlocks:{ changeHistory:[], operationMemo:[], otherSettings:[] } }, templateVersion:null,
     };
   }
 
@@ -387,6 +387,34 @@
       };
     }
     return { value:'', source:null };
+  }
+
+  // FIX4-A：仅从主业务表之前的基本信息读取CV，不把报表开放指标区的CV列当作启用模式。
+  function findSettingCvValues(rows, fileName, sheetName, businessHeaderIndex){
+    const section=locateSection(rows, '基本情報');
+    const start=section ? section.rowIndex+1 : 0;
+    const end=Math.min(businessHeaderIndex, section ? section.endRowIndex : businessHeaderIndex);
+    const modeSources=[], pointSources=[];
+    for(let rowIndex=start; rowIndex<end; rowIndex+=1){
+      const row=rows[rowIndex] || [];
+      const first=row.findIndex(value => String(value ?? '').trim()!=='');
+      if(first<0) continue;
+      const label=String(row[first] ?? '').trim();
+      if(label!=='CV' && label!=='CVポイント') continue;
+      const add=(sources, column, name)=>sources.push({
+        ...makeSettingSource(fileName, sheetName, rowIndex+1, name, row[column+1]), columnNumber:column+2,
+      });
+      if(label==='CV') add(modeSources, first, 'CV');
+      row.forEach((value, column) => {
+        if(String(value ?? '').trim()==='CVポイント') add(pointSources, column, 'CVポイント');
+      });
+    }
+    const result=sources=>({
+      value:sources.length ? String(sources[0].rawValue) : '', source:sources[0] || null,
+      sources:uniqueSourceRefs(sources),
+      state:!sources.length ? 'not_provided' : new Set(sources.map(source=>String(source.rawValue).trim())).size>1 ? 'ambiguous' : 'available',
+    });
+    return { cvMode:result(modeSources), cvPoint:result(pointSources) };
   }
 
   function findTargetingGroupAnchors(section){
@@ -657,6 +685,44 @@
     return indexByMaterial;
   }
 
+  function buildUploadUrlIndex(rows, fileName, sheetName, diagnostics){
+    const section=locateSection(rows, 'URL');
+    const index={ sectionPresent:Boolean(section), byLandingPageName:{} };
+    if(!section) return index;
+    const required=['LP名', '入稿用URL'];
+    const headers=[];
+    for(let rowIndex=section.rowIndex+1; rowIndex<section.endRowIndex; rowIndex+=1){
+      const headerIndex=blockHeaderIndex(section.rows[rowIndex]);
+      if(required.every(header => headerIndex[header]!==undefined)) headers.push({ rowIndex, headerIndex });
+    }
+    if(headers.length!==1){
+      diagnostics.push({ code:headers.length ? 'SETTING_UPLOAD_URL_HEADER_AMBIGUOUS' : 'SETTING_UPLOAD_URL_HEADER_NOT_FOUND', sheetName, rowNumbers:headers.map(item => item.rowIndex+1) });
+      index.headerState=headers.length ? 'ambiguous' : 'missing';
+      return index;
+    }
+    const header=headers[0];
+    for(let rowIndex=header.rowIndex+1; rowIndex<section.endRowIndex; rowIndex+=1){
+      const row=section.rows[rowIndex] || [];
+      const landingPageName=String(row[header.headerIndex['LP名']] ?? '').trim();
+      if(!landingPageName) continue;
+      const uploadUrl=String(row[header.headerIndex['入稿用URL']] ?? '').trim();
+      const sourceRefs={
+        landingPageName:blockSource(fileName, sheetName, rowIndex+1, 'LP名', row, header.headerIndex),
+        uploadUrl:blockSource(fileName, sheetName, rowIndex+1, '入稿用URL', row, header.headerIndex),
+      };
+      const existing=index.byLandingPageName[landingPageName];
+      if(!existing){
+        index.byLandingPageName[landingPageName]={ state:uploadUrl ? 'unique' : 'missing', landingPageName, uploadUrl:uploadUrl || null, sourceRefs, mappings:[{ uploadUrl:uploadUrl || null, sourceRefs }] };
+        continue;
+      }
+      existing.mappings.push({ uploadUrl:uploadUrl || null, sourceRefs });
+      existing.state='ambiguous';
+      existing.uploadUrl=null;
+      diagnostics.push({ code:'SETTING_UPLOAD_URL_MAPPING_AMBIGUOUS', landingPageName, sheetName, rowNumber:rowIndex+1 });
+    }
+    return index;
+  }
+
   function measurementTagHeaderValue(headers, names){
     return names.find(name => headers[name]!==undefined) || null;
   }
@@ -880,7 +946,7 @@
     return point==='100%' || point==='100%視聴' || point==='100%地点';
   }
 
-  function resolveCreativeFields(ad, creativeIndex, measurementTagIndex){
+  function resolveCreativeFields(ad, creativeIndex, measurementTagIndex, uploadUrlIndex){
     const fields=ad && ad.fields || {};
     const sourceRefs=ad && ad.sourceRefs || {};
     const materialName=String(fields.materialName ?? '');
@@ -891,6 +957,15 @@
       ? uniqueSourceRefs([sourceRefs.materialName, creative.sourceRefs.materialName, creative.sourceRefs.fileName]) : uniqueSourceRefs([sourceRefs.materialName]);
     const landingPageDerivedFrom=creative && creative.state==='unique'
       ? uniqueSourceRefs([sourceRefs.landingPageName, sourceRefs.materialName, creative.sourceRefs.materialName, creative.sourceRefs.landingPageUrl]) : uniqueSourceRefs([sourceRefs.landingPageName, sourceRefs.materialName]);
+    const uploadIndex=uploadUrlIndex && uploadUrlIndex.byLandingPageName || {};
+    const uploadMapping=uploadIndex[String(fields.landingPageName ?? '').trim()];
+    const uploadUnresolved=uploadUrlIndex && uploadUrlIndex.sectionPresent
+      ? (!uploadMapping || uploadMapping.state!=='unique' || !uploadMapping.uploadUrl) : null;
+    const resolvedLandingPage=uploadUrlIndex && uploadUrlIndex.sectionPresent
+      ? (uploadUnresolved
+        ? { state:'ambiguous', url:null, reason:uploadMapping ? 'SETTING_UPLOAD_URL_MAPPING_AMBIGUOUS' : 'SETTING_UPLOAD_URL_MAPPING_NOT_FOUND', sourceRef:uploadMapping && uploadMapping.sourceRefs && uploadMapping.sourceRefs.uploadUrl || sourceRefs.landingPageName || null, sourceEvidence:uniqueSourceRefs((uploadMapping && uploadMapping.mappings || []).flatMap(mapping => [mapping.sourceRefs && mapping.sourceRefs.landingPageName, mapping.sourceRefs && mapping.sourceRefs.uploadUrl]).filter(Boolean)), derivedFrom:uniqueSourceRefs([sourceRefs.landingPageName]) }
+        : { state:'unique', url:uploadMapping.uploadUrl, sourceRef:uploadMapping.sourceRefs.uploadUrl, sourceEvidence:uniqueSourceRefs([uploadMapping.sourceRefs.landingPageName, uploadMapping.sourceRefs.uploadUrl]), derivedFrom:uniqueSourceRefs([sourceRefs.landingPageName, uploadMapping.sourceRefs.landingPageName, uploadMapping.sourceRefs.uploadUrl]) })
+      : (creative && creative.state==='unique' ? { state:'unique', url:creative.landingPageUrl, sourceRef:creative.sourceRefs.landingPageUrl, sourceEvidence:uniqueSourceRefs([creative.sourceRefs.landingPageUrl]), derivedFrom:landingPageDerivedFrom } : { state:creative && creative.state==='ambiguous' ? 'ambiguous' : 'missing', url:null, reason:creative && creative.state==='ambiguous' ? 'SETTING_CREATIVE_AMBIGUOUS' : 'SETTING_CREATIVE_NOT_FOUND', sourceRef:sourceRefs.landingPageName || null, sourceEvidence:[], derivedFrom:landingPageDerivedFrom });
     const missing=(reason, settingSource) => ({ state:'missing', value:null, reason, sourceRef:settingSource || null });
     const tracking={
       tracking_url_start:missing('SETTING_SOURCE_NOT_PROVIDED'),
@@ -923,7 +998,7 @@
     }
     return {
       creative:creative ? (creative.state==='ambiguous' ? { state:'ambiguous', value:null, mappings:creative.mappings, sourceRef:sourceRefs.materialName || null, derivedFrom:creativeDerivedFrom } : { state:'unique', fileName:creative.fileName, sourceRef:creative.sourceRefs.fileName, derivedFrom:creativeDerivedFrom }) : { ...missing('SETTING_CREATIVE_NOT_FOUND', sourceRefs.materialName), derivedFrom:creativeDerivedFrom },
-      landingPage:creative && creative.state==='unique' ? { state:'unique', url:creative.landingPageUrl, sourceRef:creative.sourceRefs.landingPageUrl, derivedFrom:landingPageDerivedFrom } : { ...missing(creative && creative.state==='ambiguous' ? 'SETTING_CREATIVE_AMBIGUOUS' : 'SETTING_CREATIVE_NOT_FOUND', sourceRefs.landingPageName), derivedFrom:landingPageDerivedFrom },
+      landingPage:resolvedLandingPage,
       tracking,
       creativeId:{ state:'setting-source-not-provided', value:null },
     };
@@ -975,6 +1050,199 @@
     return `${fields.campaignName}_${start}-${end}${fields.campaignAppeal ? `_${fields.campaignAppeal}` : ''}`;
   }
 
+  function addCampaignDailyBudgetSource(campaign, source){
+    if(!campaign || !source) return;
+    const fields=campaign.sourceEvidence && campaign.sourceEvidence.fields || (campaign.sourceEvidence={ fields:{} }).fields;
+    const evidence=Array.isArray(fields.initialDailyBudget) ? fields.initialDailyBudget : [];
+    if(!evidence.some(item => item.fileName===source.fileName && item.sheetName===source.sheetName && item.rowNumber===source.rowNumber && item.columnName===source.columnName)) evidence.push(source);
+    fields.initialDailyBudget=uniqueSourceRefs(evidence);
+    const values=[...new Set(fields.initialDailyBudget.map(item => String(item.rawValue ?? '').trim()).filter(Boolean))];
+    campaign.fieldStates={ ...(campaign.fieldStates || {}), initialDailyBudget:values.length===0 ? 'missing' : values.length===1 ? 'available' : 'ambiguous' };
+    if(values.length===1){
+      campaign.fields.initialDailyBudget=values[0];
+      campaign.sourceRefs.initialDailyBudget=fields.initialDailyBudget.find(item => String(item.rawValue ?? '').trim()===values[0]) || null;
+    }else if(values.length>1){
+      campaign.fields.initialDailyBudget=values.join(' / ');
+      campaign.sourceRefs.initialDailyBudget=null;
+    }else{
+      campaign.fields.initialDailyBudget='';
+      campaign.sourceRefs.initialDailyBudget=fields.initialDailyBudget[0] || null;
+    }
+  }
+
+  // FIX4-B：Surveyは通常配信と別の業務契約を持つ。同一モデル／既存の親優先matcherへ接続する。
+  function tverSurveyRuleSource(field, value, page){
+    return { fileName:'embedded:TVer管理画面マニュアル_20260827', sheetName:`P${page}`, rowNumber:page,
+      columnName:field, rawValue:String(value), ruleId:`TVER_SURVEY_SP_P${page}_${field}` };
+  }
+
+  function tverSurveyContract(rawValue, canonicalValue, sources, ruleBasis, reason){
+    return { rawValue:String(rawValue ?? ''), canonicalValue, sourceEvidence:uniqueSourceRefs(sources || []),
+      ruleBasis, comparable:canonicalValue!==null && !reason, reason:reason || null };
+  }
+
+  function appendTverSurveySpModel(model, rows, fileName, sheetName, businessHeaderIndex){
+    const section=locateSection(rows, 'TVerSurvey');
+    if(!section) return;
+    const issues=[];
+    model.surveyDiagnostics=issues;
+    const cell=(r,c,label)=>({ ...makeSettingSource(fileName,sheetName,r+1,label,(rows[r] || [])[c]), columnNumber:c+1 });
+    const scan=(label,start,end)=>{
+      const found=[];
+      for(let r=start;r<end;r+=1) (rows[r] || []).forEach((v,c)=>{ if(String(v ?? '').trim()===label) found.push({r,c}); });
+      return found;
+    };
+    const issue=(code,sources)=>{
+      const item={code,sheetName,sourceRefs:uniqueSourceRefs(sources || [])};
+      issues.push(item); model.diagnostics.push(item);
+    };
+    const pair=(label,start,end)=>{
+      const found=scan(label,start,end);
+      const sources=found.map(({r,c})=>cell(r,c+1,label));
+      const values=[...new Set(sources.map(s=>String(s.rawValue).trim()))];
+      return { value:values.length===1 ? values[0] : null, sources, found };
+    };
+    const basic=locateSection(rows,'基本情報');
+    const enabled=pair('TVerSurvey',basic ? basic.rowIndex+1 : 0,businessHeaderIndex);
+    const oldMarker=scan('旧システム',section.rowIndex+1,section.endRowIndex)[0];
+    const newEnd=oldMarker ? oldMarker.r : section.endRowIndex;
+    const tap=pair('新TAP',section.rowIndex+1,newEnd);
+    const oldEnabled=oldMarker && scan('SP',oldMarker.r+1,section.endRowIndex).some(({r,c})=>String((rows[r] || [])[c+1]).trim()==='あり');
+    const ctvEnabled=scan('CTV',section.rowIndex+1,section.endRowIndex).some(({r,c})=>String((rows[r] || [])[c+1]).trim()==='あり');
+    if(oldEnabled || ctvEnabled) issue('SURVEY_CTV_OR_LEGACY_DEFERRED',[]);
+    if(enabled.value!=='あり' || tap.value!=='あり'){
+      if(tap.value==='あり' || enabled.value==='あり') issue('SURVEY_ENABLE_OR_VERSION_UNCONFIRMED',[...enabled.sources,...tap.sources]);
+      return;
+    }
+    const tapRow=tap.found[0];
+    const sp=scan('SP',tapRow.r+1,newEnd).filter(({r,c})=>String((rows[r] || [])[c+1]).trim()==='接触者');
+    if(sp.length!==1){ issue('SURVEY_SP_DEVICE_OR_ROLE_UNCONFIRMED',tap.sources); return; }
+    const spSource=cell(sp[0].r,sp[0].c,'Survey Device');
+    const cpPlan=pair('CPN',section.rowIndex+1,newEnd);
+    const contactPlan=pair('接触者ADG',section.rowIndex+1,newEnd);
+    const noncontactPlan=pair('非接触者ADG',section.rowIndex+1,newEnd);
+    const count=p=>p.value && /^(\d+)本$/.test(p.value) ? Number(p.value.slice(0,-1)) : null;
+    if(count(cpPlan)!==1 || count(contactPlan)!==1 || !(count(noncontactPlan)>0)){
+      issue('SURVEY_PLAN_COUNTS_OR_MAPPING_UNCONFIRMED',[...cpPlan.sources,...contactPlan.sources,...noncontactPlan.sources]); return;
+    }
+    const start=pair('アンケート開始日',section.rowIndex+1,newEnd);
+    const date=start.value && start.value.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+    if(!date || !isValidCalendarDate(Number(date[1]),Number(date[2]),Number(date[3]))){ issue('SURVEY_START_DATE_UNCONFIRMED',start.sources); return; }
+    const y=Number(date[1]),m=Number(date[2]),d=Number(date[3]),pad=n=>String(n).padStart(2,'0');
+    const endYear=y+Math.floor((m+2)/12),endMonth=(m+2)%12+1;
+    if(!isValidCalendarDate(endYear,endMonth,d)){ issue('SURVEY_MONTH_END_POLICY_REQUIRED',start.sources); return; }
+    const startDate=`${y}/${pad(m)}/${pad(d)}`,endDate=`${endYear}/${pad(endMonth)}/${pad(d)}`;
+    const stamp=`${String(y).slice(-2)}${pad(m)}${pad(d)}`,endStamp=`${pad(endMonth)}${pad(d)}`;
+    const parentHint=pair('BLSキャンペーン名',section.rowIndex+1,newEnd);
+    const surveyName=pair('アンケート名',section.rowIndex+1,newEnd);
+    if((parentHint.found.length && parentHint.value===null) || (surveyName.found.length && surveyName.value===null)){
+      issue('SURVEY_NAME_OR_PARENT_SOURCE_CONFLICT',[...parentHint.sources,...surveyName.sources]); return;
+    }
+    const ordinary=model.campaigns.filter(e=>!e.businessType);
+    const parents=ordinary.filter(e=>!parentHint.value ? ordinary.length===1 :
+      parentHint.value===`${e.fields.campaignName}_${stamp}` || parentHint.value===`【BLS】${e.fields.campaignName}_SP_${stamp}-${endStamp}`);
+    if(parents.length!==1){ issue('SURVEY_PARENT_CAMPAIGN_NOT_UNIQUE',parentHint.sources); return; }
+    const parent=parents[0];
+    const cpName=`【BLS】${parent.fields.campaignName}${surveyName.value ? '_'+surveyName.value : ''}_SP_${stamp}-${endStamp}`;
+    const planSources=uniqueSourceRefs([...enabled.sources,...tap.sources,spSource,...start.sources,...cpPlan.sources,...parentHint.sources,parent.sourceRefs.campaignName]);
+    const nc=noncontactPlan.found[0],referenceSource=cell(nc.r,nc.c+2,'Survey Targeting references');
+    const references=String(referenceSource.rawValue).normalize('NFKC').split(/[,、，]/).map(s=>s.trim()).filter(Boolean).map(raw=>{
+      const parsed=raw.match(/^(?:ターゲ(?:ティング)?|Target)\s*([A-Za-z0-9_-]+)(?:\(拡張値\s*(\d+)\))?$/i);
+      return parsed ? {number:canonicalizeTverTargetingNumber(parsed[1]),expansion:parsed[2] || null} : null;
+    });
+    if(references.some(r=>!r) || references.length!==count(noncontactPlan) || new Set(references.map(r=>r.number)).size!==references.length){
+      issue('SURVEY_TARGETING_REFERENCE_OR_COUNT_UNCONFIRMED',[referenceSource,...noncontactPlan.sources]); return;
+    }
+    const branchRefs=references.map(ref=>{
+      const candidates=model.adGroups.filter(g=>g.parentKey===parent.key && canonicalizeTverTargetingNumber(g.fields.targetingNumber)===ref.number);
+      return { ...ref, gp:candidates.length===1 ? candidates[0] : null };
+    });
+    if(branchRefs.some(ref=>!ref.gp)) { issue('SURVEY_TARGETING_PARENT_REFERENCE_NOT_UNIQUE',[referenceSource]); return; }
+    const scenarioRows=scan('シナリオ',tapRow.r+1,newEnd);
+    const segmentSources=scenarioRows.map(({r,c})=>cell(r,c+2,'Survey contact segment ID'));
+    const segmentIds=[...new Set(segmentSources.map(s=>String(s.rawValue).trim()))];
+    if(segmentIds.length!==1 || !isValidTverId(segmentIds[0])) { issue('SURVEY_CONTACT_SEGMENT_UNCONFIRMED',segmentSources); return; }
+    const segmentId=segmentIds[0];
+    const rule=(field,value,page)=>tverSurveyContract(value,value,[tverSurveyRuleSource(field,value,page),...planSources],`TVER_SURVEY_SP_${field}`);
+    const contracts={
+      campaign_name:tverSurveyContract(cpName,normalizeTverNameForMatching(cpName),[parent.sourceRefs.campaignName,...planSources,...surveyName.sources,tverSurveyRuleSource('campaign_name','【BLS】発注キャンペーン名(_アンケート名)_SP_yymmdd-mmdd',57)],'TVER_SURVEY_SP_NAME'),
+      start_datetime:tverSurveyContract(startDate+' 00:00',normalizeTverDateTimeForComparison(startDate+' 00:00').value,[...start.sources,tverSurveyRuleSource('start_datetime','アンケート開始日0:00',57)],'TVER_SURVEY_SP_START'),
+      end_datetime:tverSurveyContract(endDate+' 23:45',normalizeTverDateTimeForComparison(endDate+' 23:45').value,[...start.sources,tverSurveyRuleSource('end_datetime','3ヶ月後23:45',57)],'TVER_SURVEY_SP_END'),
+      budget:rule('budget','90000',57),daily_budget:rule('daily_budget','1000',57),budget_type:rule('budget_type','2',57),
+      campaign_status:rule('campaign_status','0',57),consumption_type:rule('consumption_type','1',57),report_target_flag:rule('report_target_flag','0',57),
+    };
+    const cp={key:`survey-sp-campaign:${parent.key}|${stamp}`,level:'Campaign',businessType:'survey-sp',expectedName:cpName,
+      surveyContracts:contracts,fields:{campaignName:cpName,startDateTime:contracts.start_datetime.rawValue,endDateTime:contracts.end_datetime.rawValue,campaignBudget:'90000',initialDailyBudget:'1000'},
+      sourceRefs:{campaignName:parent.sourceRefs.campaignName},sourceEvidence:{fields:{}},surveyParentKey:parent.key,
+      applicability:{cv_point:'out-of-scope:TVER_FIX4_B_USER_DECISION'},nameRuleId:'TVER_SURVEY_SP_P57'};
+    model.campaigns.push(cp);
+    const roles=[{role:'contact',gp:null},...branchRefs.map(ref=>({...ref,role:'noncontact'}))];
+    roles.forEach((branch,index)=>{
+      const contact=branch.role==='contact',normal=branch.gp;
+      const demographic=!contact && resolveSettingTargetingForComparison(normal,'demography');
+      const label=contact ? '' : String(normal.displayIdentity && normal.displayIdentity.targetingName || '').trim()
+        || (demographic.comparable ? demographic.rawValue : '');
+      const suffix=contact ? '接触者' : '非接触者'+(branchRefs.length>1 ? '_'+label : '');
+      const gpName=cpName+'_'+suffix;
+      const sources=[...planSources,...(contact ? contactPlan.sources : [...noncontactPlan.sources,referenceSource]),...segmentSources];
+      const gpRule=(field,value,page)=>tverSurveyContract(value,value,[tverSurveyRuleSource(field,value,page),...sources],`TVER_SURVEY_SP_${branch.role}_${field}`);
+      const suffixDecision=!contact && branchRefs.length>1 ? [{fileName:'embedded:TVER_FIX4_B_USER_DECISION',sheetName:'GP suffix',rowNumber:0,columnName:'adgroup_name',rawValue:'允许按明确Targeting标签生成后缀',ruleId:'TVER_SURVEY_SP_BRANCH_LABEL_APPROVED'}] : [];
+      const fields={adgroup_name:tverSurveyContract(gpName,gpName,[tverSurveyRuleSource('adgroup_name',`アンケートCampaign名_${contact ? '接触者' : '非接触者'}`,contact ? 58 : 60),...suffixDecision,...sources,...(normal && normal.displayIdentity && normal.displayIdentity.sourceRefs ? Object.values(normal.displayIdentity.sourceRefs) : []),...(demographic && demographic.sourceEvidence || [])],'TVER_SURVEY_SP_GP_NAME'),
+        device:gpRule('device','android ios',contact ? 58 : 60),price:gpRule('price','100',contact ? 58 : 60),
+        tver_video_duration:gpRule('tver_video_duration','15',contact ? 58 : 60),adgroup_status:gpRule('adgroup_status','1',contact ? 58 : 60),
+        bid_segment:tverSurveyContract(contact ? segmentId : '',contact ? segmentId : '',[...segmentSources,tverSurveyRuleSource('bid_segment',contact ? '接触者セグメント' : '指定なし',contact ? 59 : 61)],'TVER_SURVEY_SP_BID_SEGMENT'),
+        bid_segment_exclude:tverSurveyContract(contact ? '' : segmentId,contact ? '' : segmentId,[...segmentSources,tverSurveyRuleSource('bid_segment_exclude',contact ? '指定なし' : '接触者セグメント',contact ? 59 : 61)],'TVER_SURVEY_SP_BID_SEGMENT_EXCLUDE'),
+        uid_suffix:contact ? tverSurveyContract('','',[{fileName:'embedded:TVER_FIX4_B_USER_DECISION',sheetName:'Contact ASR',rowNumber:0,columnName:'uid_suffix',rawValue:'',ruleId:'SURVEY_CONTACT_ASR_EMPTY'},...sources],'TVER_SURVEY_SP_CONTACT_ASR_EMPTY') : gpRule('uid_suffix','D E F',61),
+      };
+      ['gender','age','pref','annual_income','demography'].forEach(field=>{
+        if(contact){fields[field]=gpRule(field,'',59);return;}
+        const inherited=resolveSettingTargetingForComparison(normal,field);
+        const blank=inherited.rawValue==='' && ['not_provided','available'].includes(inherited.evidenceState);
+        fields[field]=tverSurveyContract(inherited.rawValue,blank ? '' : inherited.canonicalValue,
+          [...inherited.sourceEvidence,referenceSource,tverSurveyRuleSource(field,'広告配信と同じ',61)],'TVER_SURVEY_SP_TARGETING_'+field,
+          !blank && !inherited.comparable ? 'SURVEY_TARGETING_SOURCE_UNCONFIRMED' : null);
+      });
+      const dmp=normal && resolveSettingOperationalTargetingForComparison(normal,'dmp_segment');
+      const dmpBusiness=normal && tverA173SettingSources(normal,'dmp_segment').some(s=>{
+        const raw=String(s.rawValue).trim();return !['','○','-'].includes(raw) && !raw.startsWith('※');
+      });
+      const dmpBlank=contact || (!dmp.shouldGenerate && !dmpBusiness);
+      fields.dmp_segment=dmpBlank ? gpRule('dmp_segment','',contact ? 59 : 61) : tverSurveyContract(dmp.rawValue,dmp.canonicalValue,[...dmp.sourceEvidence,referenceSource,tverSurveyRuleSource('dmp_segment','広告配信と同じ',61)],'TVER_SURVEY_SP_DMP',dmp.comparable ? null : 'SURVEY_DMP_SOURCE_UNCONFIRMED');
+      const expansion=normal && resolveSettingDmpExpansionForComparison(normal);
+      fields.dmp_segment_expansion_threshold=dmpBlank ? gpRule('dmp_segment_expansion_threshold','',contact ? 59 : 61)
+        : tverSurveyContract(branch.expansion || expansion.rawValue,branch.expansion || expansion.canonicalValue,[referenceSource,...expansion.sourceEvidence,tverSurveyRuleSource('dmp_segment_expansion_threshold','広告配信と同じ',61)],'TVER_SURVEY_SP_DMP_EXPANSION',!branch.expansion && !expansion.comparable ? 'SURVEY_DMP_EXPANSION_UNCONFIRMED' : null);
+      // marker／业务值／ID槽与第4槽备注分离；业务文本无法取ID时必须保留需确认。
+      const targetRecord=normal && model.sourceIndex.targetingByNumber[branch.number];
+      const audienceField=targetRecord && targetRecord.rawFields['興味関心●'];
+      const audience=audienceField ? (audienceField.slots || []).slice(0,3).map(slot=>slot.source)
+        .filter(s=>!['','○','-'].includes(String(s.rawValue).trim()) && !String(s.rawValue).trim().startsWith('※')) : [];
+      fields.affinity=audience.length ? tverSurveyContract(tverA17BusinessRawValue(audience),null,[...audience,referenceSource],'TVER_SURVEY_SP_AFFINITY','SURVEY_AFFINITY_ID_RULE_REQUIRED') : gpRule('affinity','',contact ? 59 : 61);
+      const gp={key:`${cp.key}|${branch.role}:${branch.number || index}`,level:'Ad Group',parentKey:cp.key,businessType:'survey-sp',surveyRole:branch.role,
+        expectedName:gpName,fields:{targetingNumber:branch.number || '',device:'android ios'},surveyContracts:fields,
+        sourceRefs:{},sourceEvidence:{fields:{}},surveyIssue:!contact && branchRefs.length>1 && !label ? 'SURVEY_BRANCH_NAME_SOURCE_MISSING' : null};
+      if(gp.surveyIssue) issue(gp.surveyIssue,[referenceSource]);
+      model.adGroups.push(gp);
+      const creativeRows=scan('VAST(サードパーティ)',tapRow.r+1,newEnd);
+      const roleText=contact ? '接触者' : '非接触者';
+      const creatives=creativeRows.map(({r,c})=>cell(r,c+1,'Survey Creative')).filter(s=>String(s.rawValue).endsWith('_SP_'+roleText));
+      const creativeNames=[...new Set(creatives.map(s=>String(s.rawValue)))];
+      const creative=creativeNames.length===1 ? creativeNames[0] : null;
+      if(!creative) issue('SURVEY_CREATIVE_SOURCE_UNCONFIRMED',creatives);
+      const adDefault=(field,value,ruleId)=>tverSurveyContract(value,value,[{
+        fileName:'embedded:TVER_260605',sheetName:'Ad contract',rowNumber:0,columnName:field,rawValue:value,ruleId,
+      },...creatives],ruleId);
+      model.ads.push({key:`${gp.key}|ad:${branch.role}`,level:'Ad',parentKey:gp.key,businessType:'survey-sp',surveyRole:branch.role,
+        expectedName:creative,fields:{creativeFileName:creative},sourceRefs:{creativeFileName:creatives[0] || null},sourceEvidence:{fields:{}},
+        surveyIssue:creative ? null : 'SURVEY_CREATIVE_SOURCE_UNCONFIRMED',
+        applicability:{url:'not-required:P62',tracking:'not-required:P62'},
+        surveyContracts:{creative_name:tverSurveyContract(creative,creative===null ? null : normalizeTverNameForMatching(creative),creatives,'TVER_SURVEY_SP_CREATIVE',creative ? null : 'SURVEY_CREATIVE_SOURCE_UNCONFIRMED'),
+          status:adDefault('status','1','TVER_SURVEY_SP_REGISTER_AD_STATUS_DEFAULT_ON'),
+          start_time:adDefault('start_time','00:00','TVER_SURVEY_SP_AD_DEFAULT_START'),
+          end_time:adDefault('end_time','23:59','TVER_SURVEY_SP_AD_DEFAULT_END')},
+      });
+    });
+  }
+
   function parseTverSettingWorkbook(workbook, options){
     const fileName=options && options.fileName ? options.fileName : '';
     const found=findSettingHeaderCandidates(workbook, { maxRows:100 });
@@ -1016,14 +1284,12 @@
     const sourceIndex={
       targetingByNumber:buildTargetingIndex(rows, fileName, candidate.sheetName, diagnostics),
       creativeByMaterial:buildCreativeIndex(rows, fileName, candidate.sheetName, diagnostics),
+      uploadUrlByLandingPage:buildUploadUrlIndex(rows, fileName, candidate.sheetName, diagnostics),
       measurementTagByAppeal:buildMeasurementTagIndex(rows, fileName, candidate.sheetName, diagnostics),
       evidenceBlocks:buildEvidenceBlocks(rows, fileName, candidate.sheetName),
     };
      const fieldHeaders={ campaignName:'発注CPN名', campaignAppeal:'CPN訴求', campaignBudget:'CPN予算', startDateTime:'開始日時(yyyy/mm/dd hh:mm)', endDateTime:'終了日時(yyyy/mm/dd hh:mm)', initialDailyBudget:'初期設定日予算', otherSettings:'その他設定', changeHistory:'変更履歴' };
-     const campaignContractValues={
-       cvMode:findSettingPairValue(rows, 'CV', fileName, candidate.sheetName),
-       cvPoint:findSettingPairValue(rows, 'CVポイント', fileName, candidate.sheetName),
-     };
+     const campaignContractValues=findSettingCvValues(rows, fileName, candidate.sheetName, candidate.rowIndex);
 
     for(let rowIndex=candidate.rowIndex+1; rowIndex<rows.length; rowIndex+=1){
       const row=rows[rowIndex] || [];
@@ -1056,8 +1322,10 @@
         const expectedNameDerivedFrom=uniqueSourceRefs([campaignSourceRefs.campaignName, campaignSourceRefs.startDateTime, campaignSourceRefs.endDateTime, campaignSourceRefs.campaignAppeal]);
         campaign={
           key:`campaign:${campaignSignature}`, level:'Campaign', fields:campaignFields, sourceRefs:campaignSourceRefs,
+          fieldStates:{ cvMode:campaignContractValues.cvMode.state, cvPoint:campaignContractValues.cvPoint.state },
           sourceEvidence:{
-            fields:Object.fromEntries(Object.entries(campaignSourceRefs).map(([field, source]) => [field, uniqueSourceRefs([source])])),
+            fields:{ ...Object.fromEntries(Object.entries(campaignSourceRefs).map(([field, source]) => [field, uniqueSourceRefs([source])])),
+              cvMode:campaignContractValues.cvMode.sources, cvPoint:campaignContractValues.cvPoint.sources },
             derived:{ expectedName:{ derivedFrom:expectedNameDerivedFrom, primarySource:campaignSourceRefs.campaignName || null } },
           },
           semanticSignature:campaignSignature, expectedName:buildCampaignExpectation(campaignFields),
@@ -1066,6 +1334,7 @@
         campaignBySignature.set(campaignSignature, campaign);
         campaigns.push(campaign);
       }
+      addCampaignDailyBudgetSource(campaign, campaignSourceRefs.initialDailyBudget);
       const targeting=sourceIndex.targetingByNumber[targetingNumberKey];
       const targetingFields=targeting && targeting.state==='unique' ? targeting.fields : {};
       const targetingSourceRefs=targeting && targeting.state==='unique' ? targeting.sourceRefs : {};
@@ -1127,7 +1396,9 @@
       };
       ads.push(ad);
     }
-    return { campaigns, adGroups, ads, diagnostics, sourceIndex, templateVersion:'260605' };
+    const model={ campaigns, adGroups, ads, diagnostics, sourceIndex, templateVersion:'260605' };
+    appendTverSurveySpModel(model,rows,fileName,candidate.sheetName,candidate.rowIndex);
+    return model;
   }
 
   function isValidTverId(value){
@@ -1228,6 +1499,7 @@
     Ad:{
       creative_name:'creativeName', url:'landingPageUrl', tracking_url_start:'trackingUrlStart', tracking_url_first_quartile:'trackingUrlFirstQuartile',
       tracking_url_midpoint:'trackingUrlMidpoint', tracking_url_third_quartile:'trackingUrlThirdQuartile', tracking_url_complete:'trackingUrlComplete',
+      status:'status',
     },
   };
 
@@ -1456,7 +1728,7 @@
       occurrenceByFullRowSignature.set(fullRowSignature, occurrenceIndex);
       // C3-C5-CR-REOPEN-3 FIX D：register Ad entity 补齐 start/end time 字段供 Ad 层比较读取
       // （snake 命名与 edit tree 的 AD_FIELDS 对齐；不改变 candidateSignature / matchingFields / 聚合语义）。
-      const ad=makeCsvEntity(`register-ad:${row.rowNumber}`, 'Ad', { ...adMatchingFields, start_time:String(values.start_time ?? ''), end_time:String(values.end_time ?? '') }, row.source, adGroup.key);
+      const ad=makeCsvEntity(`register-ad:${row.rowNumber}`, 'Ad', { ...adMatchingFields, start_time:String(values.start_time ?? ''), end_time:String(values.end_time ?? ''), status:String(values.status ?? '') }, row.source, adGroup.key);
       ad.candidateSignature=candidateSignature;
       ad.matchingFields={ ...adMatchingFields };
       ad.occurrenceIndex=occurrenceIndex;
@@ -1719,12 +1991,12 @@
 
   const TVER_A16_COMPARE_FIELDS=new Set(['campaign_name', 'creative_name', 'start_datetime', 'end_datetime', 'adgroup_start_datetime', 'adgroup_end_datetime', 'budget', 'daily_budget', 'price', 'device', 'campaign_status', 'adgroup_status']);
   // A17-2：仅用于 ADG Targeting 的 Compare 输出；不参与 parser、实体匹配或既有 A16 字段。
-  const TVER_A17_TARGETING_COMPARE_FIELDS=new Set(['media', 'local_broadcaster', 'pref', 'gender', 'age', 'annual_income', 'demography', 'uid_suffix', 'subgenre_exclude']);
+  const TVER_A17_TARGETING_COMPARE_FIELDS=new Set(['media', 'local_broadcaster', 'pref', 'gender', 'age', 'annual_income', 'demography', 'uid_suffix', 'genre_exclude', 'subgenre_exclude']);
   const TVER_EVIDENCE_STATES=new Set(['available', 'unavailable', 'not_provided', 'ambiguous']);
   const TVER_COMPARE_FIELD_LABELS={
     campaign_name:'キャンペーン名', start_datetime:'開始日時', end_datetime:'終了日時', adgroup_start_datetime:'GP開始日時', adgroup_end_datetime:'GP終了日時', budget:'総予算', daily_budget:'日予算', budget_type:'予算タイプ', hourly_bid_weight:'時間毎予算割合', campaign_status:'キャンペーンステータス', consumption_type:'予算消化タイプ', cv_point:'CVポイント', report_target_flag:'レポート対象',
-    device:'デバイス', price:'入札単価', adgroup_status:'広告グループステータス',
-    media:'放送局', local_broadcaster:'ローカル局', pref:'都道府県', gender:'性別', age:'年齢', annual_income:'世帯年収', demography:'デモグラフィック', uid_suffix:'ASR', subgenre_exclude:'番組サブジャンル（除外）',
+    device:'デバイス', price:'入札単価', adgroup_status:'広告グループステータス', adgroup_name:'広告グループ名', bid_segment_exclude:'入札除外セグメント', affinity:'興味関心',
+    media:'放送局', local_broadcaster:'ローカル局', pref:'都道府県', gender:'性別', age:'年齢', annual_income:'世帯年収', demography:'デモグラフィック', uid_suffix:'ASR', genre_exclude:'番組ジャンル（除外）', subgenre_exclude:'番組サブジャンル（除外）', status:'広告ステータス',
     creative_name:'素材名', url:'遷移先URL', tracking_url_start:'計測URL（開始）', tracking_url_first_quartile:'計測URL（25%）', tracking_url_midpoint:'計測URL（50%）', tracking_url_third_quartile:'計測URL（75%）', tracking_url_complete:'計測URL（100%）', creative_id:'素材ID', start_time:'開始時間', end_time:'終了時間', entity:'エンティティ',
   };
 
@@ -2077,11 +2349,11 @@
   const TVER_A17_TARGETING_CSV_FIELD_MAP={
     'edit-with-ids':{
       media:'media', local_broadcaster:'local_broadcaster', pref:'pref', gender:'gender',
-      start_age:'start_age', end_age:'end_age', annual_income:'annual_income', demography:'demography', uid_suffix:'uid_suffix', subgenre_exclude:'subgenre_exclude',
+      start_age:'start_age', end_age:'end_age', annual_income:'annual_income', demography:'demography', uid_suffix:'uid_suffix', genre_exclude:'genre_exclude', subgenre_exclude:'subgenre_exclude',
     },
     'register-without-ids':{
       media:'media', local_broadcaster:'localBroadcaster', pref:'pref', gender:'gender',
-      start_age:'startAge', end_age:'endAge', annual_income:'annual_income', demography:'demography', uid_suffix:'uid_suffix', subgenre_exclude:'subgenreExclude',
+      start_age:'startAge', end_age:'endAge', annual_income:'annual_income', demography:'demography', uid_suffix:'uid_suffix', genre_exclude:'genreExclude', subgenre_exclude:'subgenreExclude',
     },
   };
   // Register 的 entity.fields 沿用 camelCase，而既有 sourceRefs / sourceEvidence.fields 保留 CSV 原始 snake_case。
@@ -2089,11 +2361,11 @@
   const TVER_A17_TARGETING_CSV_EVIDENCE_FIELD_MAP={
     'edit-with-ids':{
       media:'media', local_broadcaster:'local_broadcaster', pref:'pref', gender:'gender',
-      start_age:'start_age', end_age:'end_age', annual_income:'annual_income', demography:'demography', uid_suffix:'uid_suffix', subgenre_exclude:'subgenre_exclude',
+      start_age:'start_age', end_age:'end_age', annual_income:'annual_income', demography:'demography', uid_suffix:'uid_suffix', genre_exclude:'genre_exclude', subgenre_exclude:'subgenre_exclude',
     },
     'register-without-ids':{
       media:'media', local_broadcaster:'local_broadcaster', pref:'pref', gender:'gender',
-      start_age:'start_age', end_age:'end_age', annual_income:'annual_income', demography:'demography', uid_suffix:'uid_suffix', subgenre_exclude:'subgenre_exclude',
+      start_age:'start_age', end_age:'end_age', annual_income:'annual_income', demography:'demography', uid_suffix:'uid_suffix', genre_exclude:'genre_exclude', subgenre_exclude:'subgenre_exclude',
     },
   };
 
@@ -2153,6 +2425,18 @@
     return [...new Set(names.map(name => byName.get(name)))].sort().join(' ');
   }
 
+  function tverA17GenreCanonical(rawValue){
+    const raw=strictText(rawValue).trim();
+    if(!raw) return null;
+    const normalize=name=>String(name ?? '').normalize('NFKC').replace(/[・･/／\s]/g, '');
+    const dictionary=TVER_ID_DICTIONARIES.genre || [];
+    const byName=new Map(dictionary.map(entry => [normalize(entry.name), entry.id]));
+    const names=raw.split(/[、,，\s]+/).map(value => value.trim()).filter(Boolean);
+    if(!names.length) return null;
+    const ids=names.map(name => byName.get(normalize(name)) || (dictionary.some(entry => entry.id===name) ? name : null));
+    return ids.every(Boolean) ? [...new Set(ids)].sort().join(' ') : null;
+  }
+
   function tverA17PrefCanonicalValue(rawValue){
     const raw=strictText(rawValue).trim();
     if(!raw) return null;
@@ -2185,7 +2469,17 @@
     if(raw==='') return '';
     if(raw==='0~8') return '0 1 2 3 4 5 6 7 8';
     if(raw==='0のみ') return '0';
+    if(raw==='0~C') return '0 1 2 3 4 5 6 7 8 9 A B C';
     return null;
+  }
+
+  // FIX4-A：0~C专用；旧0~8/0のみ的数字集合与重复处理不变。
+  function tverAsr0CCollection(rawValue){
+    const raw=String(rawValue ?? '').trim();
+    if(!raw) return { value:'', duplicate:false };
+    const tokens=raw.split(/[\s,]+/);
+    if(tokens.some(token=>!/^[0-9A-F]$/.test(token))) return { value:null, duplicate:false };
+    return { value:[...new Set(tokens)].sort().join(' '), duplicate:new Set(tokens).size!==tokens.length };
   }
 
   function tverC344UidSuffixCsvCanonical(rawValue){
@@ -2479,6 +2773,17 @@
       return tverA17TargetingResult({ rawValue:strictText(selected.candidate.source.rawValue), canonicalValue:selected.candidate.canonicalValue, ageShape:selected.candidate.ageShape,
         evidenceState:'available', comparable:selected.candidate.canonicalValue!==null, primarySource:selected.candidate.source, sourceEvidence:sources,
         ruleBasis:selected.candidate.ruleId || 'TVER_A17_2_AGE_EXACT_RANGE', diagnostics:selected.candidate.canonicalValue!==null ? [] : [{ code:'AGE_EXACT_RANGE_UNRESOLVED' }], shouldGenerate:true });
+    }
+    if(field==='genre_exclude'){
+      const sources=tverA17TargetingSources(entity, '番組ジャンル●');
+      const markers=sources.filter(source => strictText(source.rawValue).trim()==='除外');
+      const lists=sources.filter(source => strictText(source.rawValue).trim()!=='' && strictText(source.rawValue).trim()!=='除外');
+      const sourceEvidence=uniqueSourceRefs([...markers, ...lists]);
+      if(!markers.length || !lists.length) return tverA17TargetingResult({ evidenceState:sources.length ? 'ambiguous' : 'not_provided', sourceEvidence, derivedFrom:sourceEvidence, ruleBasis:'TVER_A17_2_GENRE_EXCLUDE_MARKER', diagnostics:[{ code:'GENRE_EXCLUDE_MARKER_OR_LIST_NOT_PROVIDED' }], shouldGenerate:sources.length>0 });
+      const marker=tverA17UniqueBusinessCandidate(markers.map(source => ({ source, canonicalValue:'exclude-marker' })));
+      const list=tverA17UniqueBusinessCandidate(lists.map(source => ({ source, canonicalValue:tverA17GenreCanonical(source.rawValue) })));
+      if(!marker.unique || !list.unique) return tverA17TargetingResult({ rawValue:tverA17BusinessRawValue(lists), evidenceState:'ambiguous', sourceEvidence, derivedFrom:sourceEvidence, ruleBasis:'TVER_A17_2_GENRE_EXCLUDE_MARKER', diagnostics:[{ code:'GENRE_EXCLUDE_MULTIPLE_CONFLICTING_VALUES' }], shouldGenerate:true });
+      return tverA17TargetingResult({ rawValue:strictText(list.candidate.source.rawValue), canonicalValue:list.candidate.canonicalValue, evidenceState:list.candidate.canonicalValue===null ? 'ambiguous' : 'available', comparable:list.candidate.canonicalValue!==null, primarySource:list.candidate.source, sourceEvidence, derivedFrom:sourceEvidence, ruleBasis:'TVER_A17_2_GENRE_EXCLUDE_DICTIONARY', diagnostics:list.candidate.canonicalValue!==null ? [] : [{ code:'GENRE_EXCLUDE_ID_UNRESOLVED' }], shouldGenerate:true });
     }
     if(field==='subgenre_exclude'){
       const sources=tverA17TargetingSources(entity, '番組サブジャンル●');
@@ -2906,6 +3211,8 @@
       const parsed=tverA17CsvAgeParse(csvEntity, schemaKind);
       return parsed ? parsed.canonicalValue : null;
     }
+    if(field==='genre_exclude') return tverA17CsvEvidenceState(schemaKind, field, csvEntity)==='available'
+      ? tverA17CanonicalIdSet(csvValue, 'genre') : null;
     if(field==='pref') return tverA17CsvEvidenceState(schemaKind, 'pref', csvEntity)==='available'
       ? (strictText(csvValue).trim()==='' ? '' : tverA17CanonicalIdSet(csvValue, 'pref')) : null;
     if(field==='gender') return tverA17GenderCanonical(csvValue);
@@ -2946,7 +3253,8 @@
       const shouldGenerateWithAgeEvidence=shouldGenerate || ageEvidenceProvided;
       if(!shouldGenerateWithAgeEvidence) return;
       const csvAgeParsed=field==='age' ? tverA17CsvAgeParse(csv, schemaKind) : null;
-      const csvCanonical=tverA17CsvCanonical(field, csvValue, csv, schemaKind);
+      const asr0C=field==='uid_suffix' && resolved.rawValue==='0~C' ? tverAsr0CCollection(csvValue) : null;
+      const csvCanonical=asr0C ? asr0C.value : tverA17CsvCanonical(field, csvValue, csv, schemaKind);
       const csvEvidence=field==='age'
         ? uniqueSourceRefs([...tverA17CsvEvidence(csv, schemaKind, 'start_age'), ...tverA17CsvEvidence(csv, schemaKind, 'end_age')])
         : tverA17CsvEvidence(csv, schemaKind, field);
@@ -2974,6 +3282,9 @@
         }else if(settingUnknown || csvUnknown){
           comparisonStatus='需确认';
           conservativeReason='UID_SUFFIX_EXACT_KNOWN_RULE_REQUIRED';
+        }else if(asr0C && asr0C.duplicate){
+          comparisonStatus='需确认';
+          conservativeReason='UID_SUFFIX_DUPLICATE_MEMBERS';
         }else if(settingEmpty && csvEmpty){
           comparisonStatus='一致';
           conservativeReason=null;
@@ -3196,6 +3507,22 @@
     });
   }
 
+  // Exact, delimited targeting-appeal branch tokens are independent identity evidence.
+  // This deliberately reads Tag Appeal and the CSV name suffix, never the Device values.
+  function resolveTverSettingAdGroupBranchIdentity(setting){
+    const value=String(setting && setting.fields && setting.fields.tagAppeal || '').trim();
+    const tokens=[...value.matchAll(/(^|[^A-Z0-9])(SPPC|SP|CTV)(?=$|[^A-Z0-9])/gi)].map(match => match[2].toUpperCase());
+    if(tokens.length!==1) return null;
+    return tokens[0]==='CTV' ? 'CTV' : 'SP';
+  }
+
+  function resolveTverCsvAdGroupBranchIdentity(csv){
+    const value=String(csvField(csv, 'adGroupName', 'adgroup_name') || '').trim();
+    const match=value.match(/(?:^|[_\s-])(SPPC|SP|CTV)$/i);
+    if(!match) return null;
+    return match[1].toUpperCase()==='CTV' ? 'CTV' : 'SP';
+  }
+
   function matchTverEntities(settingModel, csvTree, options){
     const config=options || {};
     const conversionContext=config.conversionContext || null;
@@ -3209,6 +3536,7 @@
     const bySettingKey=new Map();
 
     const campaignMatches=settingCampaigns.map(setting => {
+      if(setting.businessType==='survey-sp' && setting.surveyIssue) return makeMatch('Campaign',setting,'ambiguous',setting.surveyIssue,[]);
       const expectedName=strictText(setting.expectedName || settingField(setting, 'campaignName'));
       if(!expectedName) return makeMatch('Campaign', setting, 'ambiguous', 'MISSING_CAMPAIGN_NAME', []);
       // TVER-CPN-DTMATCH-FIX：Campaign 的「实体识别」与「字段值校验」分离。
@@ -3227,6 +3555,7 @@
 
     const adGroupIdentityScope=createTverFix1IdentityScope(settingCampaigns, settingAdGroups, csvCampaigns, csvAdGroups, campaignMatches, config.schemaKind);
     const adGroupMatches=settingAdGroups.map(setting => {
+      if(setting.businessType==='survey-sp' && setting.surveyIssue) return makeMatch('Ad Group',setting,'ambiguous',setting.surveyIssue,[]);
       const parentMatch=bySettingKey.get(setting.parentKey);
       if(!parentMatch || parentMatch.status!=='matched') return makeMatch('Ad Group', setting, 'ambiguous', 'PARENT_NOT_UNIQUELY_MATCHED', []);
       const parentCsvKey=parentMatch.csvKey;
@@ -3259,12 +3588,21 @@
           && !structuralProfilesConflictOnKnownValues(settingProfile, item.profile)).map(item => item.csv);
         const structuralCandidates=profileState.ok ? candidateProfiles.filter(item => resolvedStructuralProfile(item.profile).ok
           && structuralProfilesMatch(settingProfile, item.profile)).map(item => item.csv) : [];
+        if(identityCandidates.length===0){
+          const settingBranch=resolveTverSettingAdGroupBranchIdentity(setting);
+          if(settingBranch){
+            const branchCandidates=structuralCandidates.filter(csv => resolveTverCsvAdGroupBranchIdentity(csv)===settingBranch);
+            const unknownBranchCandidates=unknownPotential.filter(csv => resolveTverCsvAdGroupBranchIdentity(csv)===settingBranch);
+            if(branchCandidates.length===1 && unknownBranchCandidates.length===0){
+              return makeMatch('Ad Group', setting, 'matched', 'UNIQUE_TARGETING_BRANCH_NAME', branchCandidates);
+            }
+          }
+        }
         if(identityCandidates.length===1){
           const identityCandidate=identityCandidates[0];
-          const otherStructural=structuralCandidates.filter(csv => csv.key!==identityCandidate.key);
           const otherUnknown=unknownPotential.filter(csv => csv.key!==identityCandidate.key);
-          if(otherStructural.length || otherUnknown.length){
-            return makeMatch('Ad Group', setting, 'ambiguous', otherUnknown.length ? 'MISSING_ADGROUP_STRUCTURAL_FIELD' : 'MULTIPLE_HARD_CANDIDATES', [identityCandidate, ...otherStructural, ...otherUnknown]);
+          if(otherUnknown.length){
+            return makeMatch('Ad Group', setting, 'ambiguous', 'MISSING_ADGROUP_STRUCTURAL_FIELD', [identityCandidate, ...otherUnknown]);
           }
           if(structuralCandidates.length===1 && structuralCandidates[0].key===identityCandidate.key){
             return makeMatch('Ad Group', setting, 'matched', 'UNIQUE_HARD_CANDIDATE', [identityCandidate]);
@@ -3285,14 +3623,23 @@
     adGroupMatches.forEach(match => { matches.push(match); bySettingKey.set(match.settingKey, match); });
 
     const adMatches=settingAds.map(setting => {
+      if(setting.businessType==='survey-sp' && setting.surveyIssue) return makeMatch('Ad',setting,'ambiguous',setting.surveyIssue,[]);
       const parentMatch=bySettingKey.get(setting.parentKey);
       if(!parentMatch || parentMatch.status!=='matched') return makeMatch('Ad', setting, 'ambiguous', 'PARENT_NOT_UNIQUELY_MATCHED', []);
       const creativeName=strictText(setting.expectedName || settingField(setting, 'creativeFileName'));
       if(!creativeName) return makeMatch('Ad', setting, 'ambiguous', 'MISSING_CREATIVE_FILE_NAME', []);
+      // Survey声明每个角色GP一个Ad：唯一父下唯一Ad身份不依赖待校正的Creative值。
+      if(setting.businessType==='survey-sp'){
+        const siblings=settingAds.filter(ad=>ad.parentKey===setting.parentKey);
+        const children=csvAds.filter(ad=>ad.parentKey===parentMatch.csvKey);
+        if(siblings.length===1){
+          if(children.length===1) return makeMatch('Ad',setting,'matched','UNIQUE_SURVEY_ROLE_AD',children);
+          return makeMatch('Ad',setting,children.length ? 'ambiguous' : 'unmatched',children.length ? 'MULTIPLE_HARD_CANDIDATES' : 'NO_HARD_CANDIDATE',children);
+        }
+      }
       const candidates=csvAds.filter(csv => {
         if(csv.parentKey!==parentMatch.csvKey || normalizeTverNameForMatching(csvField(csv, 'creativeName', 'creative_name'))!==normalizeTverNameForMatching(creativeName)) return false;
-        return optionalFieldMatches(settingField(setting, 'landingPageUrl') || settingField(setting, 'lpUrl'), csvField(csv, 'landingPageUrl', 'url'))
-          && optionalFieldMatches(settingField(setting, 'trackingUrlStart'), csvField(csv, 'trackingUrlStart', 'tracking_url_start'));
+        return true;
       });
       if(candidates.length===0) return makeMatch('Ad', setting, 'unmatched', 'NO_HARD_CANDIDATE', candidates);
       if(candidates.length>1) return makeMatch('Ad', setting, 'ambiguous', 'MULTIPLE_HARD_CANDIDATES', candidates);
@@ -3333,7 +3680,7 @@
   const TVER_HORIZONTAL_LEVELS=['Campaign', 'Ad Group', 'Ad'];
   const TVER_DISPLAY_STATUSES=['一致', '不一致', '要確認'];
   const TVER_DISPLAY_STATUS_MAP={ '一致':'一致', '表記ゆれ一致':'一致', '不一致':'不一致', '需确认':'要確認', '未匹配':'要確認', '要確認':'要確認' };
-  let tverPageState={ settingFile:null, csvFile:null, uploadFiles:[], recognition:null, recognitionToken:0, run:null, error:'', busy:false, activeLevel:'Campaign', filters:{ ...TVER_DEFAULT_FILTERS }, objectUrl:null };
+  let tverPageState={ settingFile:null, csvFile:null, uploadFiles:[], recognition:null, recognitionToken:0, runToken:0, run:null, error:'', busy:false, activeLevel:'Campaign', filters:{ ...TVER_DEFAULT_FILTERS }, objectUrl:null };
   let tverMismatchNavigator=null;
 
   // ===== Mismatch Navigator（只消费最终渲染的 data-qc-status） =====
@@ -4042,7 +4389,8 @@
           retargetKind:retarget.resolved ? retarget.retargetKind : { state:'unknown' },
           retargetSegmentId:retarget.retargetSegmentId || null,
         },
-        requiredFields:['device','price','dmpKind','retargetKind'],
+        // Device is compared after identity matching; it cannot be a structural identity gate.
+        requiredFields:['price','dmpKind','retargetKind'],
         optionalFields:['dmpSegmentId','retargetSegmentId'],
       };
     }
@@ -4060,7 +4408,7 @@
           retargetKind:retarget.resolved ? retarget.retargetKind : { state:'unknown' },
           retargetSegmentId:retarget.retargetSegmentId || null,
         },
-        requiredFields:['device','price','dmpKind','retargetKind'],
+        requiredFields:['price','dmpKind','retargetKind'],
         optionalFields:['dmpSegmentId','retargetSegmentId'],
       };
     }
@@ -4118,6 +4466,84 @@
     return null;
   }
 
+  // FIX4-A：CV业务值只接受纯ID列表或每行“说明：ID”，不从任意文本扫描数字。
+  function parseTverCvPointCollection(rawValue, settingSide){
+    const raw=String(rawValue ?? '').replace(/[０-９]/g, digit=>String.fromCharCode(digit.charCodeAt(0)-0xFEE0)).trim();
+    if(!raw) return { value:'', reason:null };
+    const tokens=[];
+    for(const line of raw.split(/\r?\n/).map(value=>value.trim()).filter(Boolean)){
+      let ids=line;
+      if(!/^\d+(?:[\s,，、]+\d+)*$/.test(ids)){
+        const named=settingSide && !/https?:\/\//i.test(line) && line.match(/^.+[:：]\s*(\d+)\s*$/);
+        if(!named) return { value:null, reason:'CV_POINT_INVALID_IDS' };
+        ids=named[1];
+      }
+      tokens.push(...ids.split(/[\s,，、]+/));
+    }
+    const unique=[...new Set(tokens)].sort((a,b)=>a.length-b.length || a.localeCompare(b));
+    return { value:unique.join(' '), reason:unique.length===tokens.length ? null : 'CV_POINT_DUPLICATE_IDS' };
+  }
+
+  function resolveTverSettingCvPoint(setting){
+    const point=tverSettingContractValue(setting, ['cvPoint', 'cv_point']);
+    const mode=tverSettingContractValue(setting, ['cvMode', 'cv_mode']);
+    const pointSources=entityFieldEvidence(setting, 'cvPoint', point && point.source);
+    const modeSources=entityFieldEvidence(setting, 'cvMode', mode && mode.source);
+    const sources=uniqueSourceRefs([...pointSources, ...modeSources]);
+    const parsed=parseTverCvPointCollection(point && point.value, true);
+    const modeValue=String(mode && mode.value || '').trim().toLowerCase();
+    const none=['なし', '無し', 'none'].includes(modeValue);
+    const enabled=['あり', '有り'].includes(modeValue);
+    let reason=null;
+    if(setting && setting.fieldStates && [setting.fieldStates.cvMode, setting.fieldStates.cvPoint].includes('ambiguous')) reason='SETTING_CV_POINT_AMBIGUOUS';
+    else if(!mode || !mode.source || (!none && !enabled)) reason='SETTING_CV_MODE_UNCONFIRMED';
+    else if(none && point && point.value.trim()!=='') reason='SETTING_CV_CONTRADICTION';
+    else if(enabled && (!point || !point.source || parsed.value==='')) reason='SETTING_CV_POINT_SOURCE_NOT_PROVIDED';
+    else if(parsed.reason) reason=parsed.reason;
+    const value=point ? point.value : '';
+    return { value, canonicalValue:parsed.value, reason, comparable:!reason,
+      primarySource:point && point.source || mode && mode.source || null,
+      sourceEvidence:sources, derivedFrom:sources, evidenceState:reason ? 'ambiguous' : 'available',
+      ruleBasis:none && !reason ? 'TVER_CAMPAIGN_CV_NONE_FROM_SETTING' : 'TVER_FIX4_CV_POINT_ID_SET' };
+  }
+
+  // 比较专用证据读取，不把CV加入Register campaignFields/signature，不更改实体聚合。
+  function readTverCsvCvPoint(entity, schemaKind){
+    const evidence=uniqueSourceRefs([
+      ...((entity && entity.sourceEvidence && entity.sourceEvidence.fields && entity.sourceEvidence.fields.cv_point) || []),
+      ...collectFieldEvidence(entity && entity.rawRows || [], 'cv_point'),
+    ]);
+    if(!['register-without-ids', 'edit-with-ids'].includes(schemaKind) || !evidence.length){
+      return { value:'', canonicalValue:null, primarySource:null, sourceEvidence:evidence, comparable:false, evidenceState:'unavailable', reason:'CSV_CV_POINT_SOURCE_NOT_PROVIDED' };
+    }
+    const candidates=evidence.map(source=>({ source, ...parseTverCvPointCollection(source.rawValue, false) }));
+    const selected=candidates.find(candidate=>candidate.reason) || candidates[0];
+    const conflict=new Set(candidates.map(candidate=>candidate.value)).size>1;
+    const reason=selected.reason || (conflict ? 'CSV_CV_POINT_CONFLICT' : null);
+    return { value:String(selected.source.rawValue), canonicalValue:conflict ? null : selected.value,
+      primarySource:selected.source, sourceEvidence:evidence, comparable:!reason, evidenceState:reason ? 'ambiguous' : 'available', reason };
+  }
+
+  // Targeting.rawFields已保留時間指定证据；只用于Ad比较，不加入GP的semanticSignature。
+  function resolveTverAdTimeContract(adGroup){
+    const sources=tverA17TargetingSources(adGroup, '時間指定');
+    const business=sources.filter(source=>!['', '○', '-'].includes(String(source.rawValue).trim()));
+    const base={ start:'00:00', end:'23:59', source:null, sourceEvidence:sources, explicit:false, comparable:true, reason:null };
+    if(!business.length && !sources.some(source=>String(source.rawValue).trim()==='○')) return base;
+    const candidates=business.map(source=>{
+      const range=String(source.rawValue).normalize('NFKC').trim().match(/^(\d{1,2}:\d{1,2}(?::00)?)\s*[~〜-]\s*(\d{1,2}:\d{1,2}(?::00)?)$/);
+      const start=range && normalizeTverAdTimeForComparison(range[1]);
+      const end=range && normalizeTverAdTimeForComparison(range[2]);
+      return { source, start:range && range[1], end:range && range[2], canonical:start && end && start<=end ? `${start}/${end}` : null };
+    });
+    if(!candidates.length || candidates.some(candidate=>candidate.canonical===null) || new Set(candidates.map(candidate=>candidate.canonical)).size!==1){
+      const source=business[0] || sources[0];
+      return { ...base, start:String(source && source.rawValue || ''), end:String(source && source.rawValue || ''), source,
+        explicit:true, comparable:false, reason:'SETTING_AD_TIME_UNCONFIRMED' };
+    }
+    return { ...base, start:candidates[0].start, end:candidates[0].end, source:candidates[0].source, explicit:true };
+  }
+
   function resolveTverCampaignContract(setting, field){
     const explicitFields={
       budget_type:['budgetType', 'budget_type'],
@@ -4137,15 +4563,7 @@
       return { value:TVER_CAMPAIGN_CONTRACT_RULES[field].value, primarySource:ruleSource, sourceEvidence:[ruleSource], derivedFrom:[ruleSource], evidenceState:'available', comparable:true, ruleBasis:TVER_CAMPAIGN_CONTRACT_RULES[field].ruleId };
     }
     if(field==='cv_point'){
-      const cvPoint=tverSettingContractValue(setting, ['cvPoint', 'cv_point']);
-      const cvMode=tverSettingContractValue(setting, ['cvMode', 'cv_mode']);
-      if(cvMode && /なし|none/i.test(cvMode.value)){
-        return { value:'', primarySource:cvMode.source || cvPoint && cvPoint.source, sourceEvidence:uniqueSourceRefs([cvMode.source, cvPoint && cvPoint.source]), derivedFrom:uniqueSourceRefs([cvMode.source]), evidenceState:cvMode.source ? 'available' : 'not_provided', comparable:Boolean(cvMode.source) && (!cvPoint || cvPoint.value===''), ruleBasis:'TVER_CAMPAIGN_CV_NONE_FROM_SETTING' };
-      }
-      if(cvPoint && cvPoint.source){
-        return { value:cvPoint.value, primarySource:cvPoint.source, sourceEvidence:[cvPoint.source], derivedFrom:[cvPoint.source], evidenceState:'available', comparable:true, ruleBasis:'TVER_CAMPAIGN_CV_POINT_FROM_SETTING' };
-      }
-      return { value:'', primarySource:null, sourceEvidence:[], derivedFrom:[], evidenceState:'not_provided', comparable:false, ruleBasis:'SETTING_CV_POINT_SOURCE_NOT_PROVIDED' };
+      return resolveTverSettingCvPoint(setting);
     }
     if(validExplicit){
       return { value:explicit.value, primarySource:explicit.source, sourceEvidence:uniqueSourceRefs([explicit.source]), derivedFrom:uniqueSourceRefs([explicit.source]), evidenceState:explicit.source ? 'available' : 'not_provided', comparable:Boolean(explicit.source), ruleBasis:`TVER_CAMPAIGN_${field.toUpperCase()}_SETTING_VALUE` };
@@ -4199,6 +4617,67 @@
       }));
   }
 
+  function normalizeTverSurveyCsvValue(field, rawValue){
+    const raw=String(rawValue ?? '').trim();
+    if(raw==='') return {value:'',reason:null};
+    if(field==='uid_suffix'){
+      const parsed=tverAsr0CCollection(raw);
+      return {value:parsed.value,reason:parsed.value===null ? 'SURVEY_ASR_TOKEN_UNCONFIRMED' : parsed.duplicate ? 'SURVEY_DUPLICATE_MEMBERS' : null};
+    }
+    if(['bid_segment','bid_segment_exclude','dmp_segment','affinity','demography','gender','pref','annual_income'].includes(field)){
+      const parsed=parseTverCvPointCollection(raw,false);
+      return {value:parsed.value,reason:parsed.reason ? 'SURVEY_ID_COLLECTION_UNCONFIRMED' : null};
+    }
+    if(['start_time','end_time'].includes(field)){
+      const value=normalizeTverAdTimeForComparison(raw);
+      return {value,reason:value===null ? 'SURVEY_AD_TIME_UNCONFIRMED' : null};
+    }
+    const normalized=normalizeComparisonValue(field,rawValue);
+    return {value:normalized.value,reason:normalized.state==='known' ? null : 'SURVEY_CSV_VALUE_UNCONFIRMED'};
+  }
+
+  function buildTverSurveyComparisonInputs(setting,csv,parsedCsv,base){
+    return Object.entries(setting.surveyContracts || {}).map(([field,originalContract])=>{
+      const editAdStatus=setting.level==='Ad' && field==='status' && parsedCsv.schema.kind==='edit-with-ids';
+      const contract=editAdStatus ? { ...originalContract,rawValue:'',canonicalValue:null,comparable:false,sourceEvidence:[],
+        ruleBasis:'TVER_SURVEY_SP_EDIT_AD_STATUS_DEFERRED',reason:'SURVEY_EDIT_AD_STATUS_NOT_CONFIRMED' } : originalContract;
+      const settingState=editAdStatus ? 'not_provided' : contract.comparable ? 'available' : 'ambiguous';
+      const csvFields=field==='age' ? ['start_age','end_age'] : [field];
+      const provided=csvFields.every(name=>tverCsvSchemaHasField(parsedCsv,name));
+      const evidence=uniqueSourceRefs(csvFields.flatMap(name=>collectFieldEvidence(csv.rawRows || [],name)));
+      let rawValue='',canonical=null,csvReason=null;
+      if(field==='age'){
+        const pairs=(csv.rawRows || []).map(row=>({start:String(row.values.start_age ?? ''),end:String(row.values.end_age ?? '')}));
+        const pair=pairs[0] || {start:'',end:''};
+        rawValue=pair.start==='' && pair.end==='' ? '' : `${pair.start} / ${pair.end}`;
+        const parsed=tverA17CsvAgeParse(csv,parsedCsv.schema.kind);
+        canonical=rawValue==='' ? '' : parsed && parsed.canonicalValue;
+        if(new Set(pairs.map(p=>JSON.stringify(p))).size>1 || (rawValue!=='' && !parsed)) csvReason='SURVEY_CSV_VALUE_CONFLICT';
+      }else{
+        const candidates=evidence.map(source=>({source,...normalizeTverSurveyCsvValue(field,source.rawValue)}));
+        const first=candidates[0];
+        rawValue=first ? String(first.source.rawValue) : '';
+        canonical=first ? first.value : null;
+        csvReason=(candidates.find(c=>c.reason) || {}).reason || (new Set(candidates.map(c=>c.value)).size>1 ? 'SURVEY_CSV_VALUE_CONFLICT' : null);
+      }
+      // Contact空ASR可比较，不代表所有案件非空ASR都是错误；非空保持业务规则待确认。
+      const contactAsrPending=setting.businessType==='survey-sp' && setting.level==='Ad Group' && setting.surveyRole==='contact' && field==='uid_suffix' && rawValue.trim()!=='';
+      const comparisonSettingState=contactAsrPending ? 'ambiguous' : settingState;
+      const reason=!provided || !evidence.length ? 'SURVEY_CSV_FIELD_UNAVAILABLE' : editAdStatus ? 'SURVEY_EDIT_AD_STATUS_NOT_CONFIRMED' : contract.reason || csvReason || (contactAsrPending ? 'SURVEY_CONTACT_ASR_RULE_PENDING' : null) || (!contract.comparable ? 'SURVEY_SETTING_SOURCE_UNCONFIRMED' : null);
+      const comparable=!reason && canonical!==null;
+      const comparisonStatus=!comparable ? '需确认' : String(contract.canonicalValue)===String(canonical) ? (contract.rawValue===rawValue ? '一致' : '表記ゆれ一致') : '不一致';
+      return { ...base,field,settingValue:contract.rawValue,csvValue:rawValue,
+        settingSource:contract.sourceEvidence[0] || null,csvSource:evidence[0] || null,
+        settingCanonical:{value:contract.canonicalValue,evidenceState:comparisonSettingState,ruleId:contract.ruleBasis},
+        csvCanonical:{value:canonical,evidenceState:provided ? 'available' : 'unavailable',ruleId:'TVER_SURVEY_SP_CSV'},
+        settingEvidenceState:comparisonSettingState,csvEvidenceState:provided ? 'available' : 'unavailable',
+        schemaKind:parsedCsv.schema.kind,currentStatusRequired:true,comparable,alwaysDisplay:true,comparisonStatus,
+        conservativeReason:reason,ruleBasis:contract.ruleBasis,
+        sourceEvidence:{setting:contract.sourceEvidence,csv:evidence,derivedFrom:contract.sourceEvidence},
+      };
+    });
+  }
+
   function buildRunFromModels(settingModel, csvTree, matching, parsedCsv){
     const inputs=[];
     const settingAll=[...(settingModel.campaigns || []), ...(settingModel.adGroups || []), ...(settingModel.ads || [])];
@@ -4209,6 +4688,10 @@
       const base={ level:match.level, entityKey:setting && setting.key || null, csvEntityKey:csv && csv.key || null, targetName:entityTargetName(setting), reason:match.reasonCode };
       const fallbackCsv=tverA173SingleAdGroupComparisonFallback(match, setting, settingModel, csvTree, parsedCsv.schema.kind);
       if(match.status==='matched'){
+        if(setting && setting.businessType==='survey-sp'){
+          buildTverSurveyComparisonInputs(setting,csv,parsedCsv,base).forEach(input=>inputs.push(input));
+          return;
+        }
         if(match.level==='Campaign'){
           const campaignNameSource=setting.sourceRefs && setting.sourceRefs.campaignName;
           const campaignStartSource=setting.sourceRefs && setting.sourceRefs.startDateTime;
@@ -4219,7 +4702,14 @@
            addFieldResult(inputs, base, 'start_datetime', settingField(setting, 'startDateTime'), csvField(csv, 'startDateTime', 'start_datetime'), campaignStartSource, csv.sourceRefs && csv.sourceRefs.start_datetime, { sourceEvidence:entrySourceEvidence(setting, 'startDateTime', campaignStartSource, csv, 'start_datetime', csv.sourceRefs && csv.sourceRefs.start_datetime) });
            addFieldResult(inputs, base, 'end_datetime', settingField(setting, 'endDateTime'), csvField(csv, 'endDateTime', 'end_datetime'), campaignEndSource, csv.sourceRefs && csv.sourceRefs.end_datetime, { sourceEvidence:entrySourceEvidence(setting, 'endDateTime', campaignEndSource, csv, 'end_datetime', csv.sourceRefs && csv.sourceRefs.end_datetime) });
            addFieldResult(inputs, base, 'budget', settingField(setting, 'campaignBudget'), csvField(csv, 'budget', 'budget'), campaignBudgetSource, csv.sourceRefs && csv.sourceRefs.budget, { sourceEvidence:entrySourceEvidence(setting, 'campaignBudget', campaignBudgetSource, csv, 'budget', csv.sourceRefs && csv.sourceRefs.budget) });
-           addFieldResult(inputs, base, 'daily_budget', settingField(setting, 'initialDailyBudget'), csvField(csv, 'dailyBudget', 'daily_budget'), campaignDailyBudgetSource, csv.sourceRefs && csv.sourceRefs.daily_budget, { sourceEvidence:entrySourceEvidence(setting, 'initialDailyBudget', campaignDailyBudgetSource, csv, 'daily_budget', csv.sourceRefs && csv.sourceRefs.daily_budget) });
+           const dailyBudgetState=setting.fieldStates && setting.fieldStates.initialDailyBudget || 'available';
+           const dailyBudgetEvidence=entityFieldEvidence(setting, 'initialDailyBudget', campaignDailyBudgetSource);
+           addFieldResult(inputs, base, 'daily_budget', settingField(setting, 'initialDailyBudget'), csvField(csv, 'dailyBudget', 'daily_budget'), campaignDailyBudgetSource, csv.sourceRefs && csv.sourceRefs.daily_budget, {
+             settingEvidenceState:dailyBudgetState==='ambiguous' ? 'ambiguous' : dailyBudgetState==='missing' ? 'not_provided' : 'available',
+             comparable:dailyBudgetState==='available',
+             settingCanonical:dailyBudgetState==='ambiguous' ? { value:null, evidenceState:'ambiguous' } : null,
+             sourceEvidence:{ setting:dailyBudgetEvidence, csv:entityFieldEvidence(csv, 'daily_budget', csv.sourceRefs && csv.sourceRefs.daily_budget), derivedFrom:[] },
+           });
            if(tverCsvSchemaHasField(parsedCsv, 'budget_type')){
              const budgetType=resolveTverCampaignContract(setting, 'budget_type');
              const budgetTypeCsvSource=csvFieldSource(csv, 'budget_type');
@@ -4252,11 +4742,14 @@
            }
            if(tverCsvSchemaHasField(parsedCsv, 'cv_point')){
              const cvPoint=resolveTverCampaignContract(setting, 'cv_point');
-             const cvPointCsvSource=csvFieldSource(csv, 'cv_point');
-             addFieldResult(inputs, base, 'cv_point', cvPoint.value, csvField(csv, 'cvPoint', 'cv_point'), cvPoint.primarySource, cvPointCsvSource, {
-               settingEvidenceState:cvPoint.evidenceState, csvEvidenceState:'available', comparable:cvPoint.comparable, alwaysDisplay:true,
-               comparisonStatus:cvPoint.comparable ? null : '需确认', ruleBasis:cvPoint.ruleBasis, conservativeReason:cvPoint.comparable ? null : cvPoint.ruleBasis,
-               sourceEvidence:entrySourceEvidence(setting, cvPoint.ruleBasis==='TVER_CAMPAIGN_CV_NONE_FROM_SETTING' ? 'cvMode' : 'cvPoint', cvPoint.primarySource, csv, 'cv_point', cvPointCsvSource, cvPoint.derivedFrom),
+             const cvCsv=readTverCsvCvPoint(csv, parsedCsv.schema.kind);
+             const comparable=cvPoint.comparable && cvCsv.comparable;
+             addFieldResult(inputs, base, 'cv_point', cvPoint.value, cvCsv.value, cvPoint.primarySource, cvCsv.primarySource, {
+               settingEvidenceState:cvPoint.evidenceState, csvEvidenceState:cvCsv.evidenceState, comparable, alwaysDisplay:true,
+               settingCanonical:{ value:cvPoint.canonicalValue, ruleId:cvPoint.ruleBasis, evidenceState:cvPoint.evidenceState },
+               csvCanonical:{ value:cvCsv.canonicalValue, ruleId:'TVER_FIX4_CV_POINT_ID_SET', evidenceState:cvCsv.evidenceState },
+               comparisonStatus:comparable ? null : '需确认', ruleBasis:cvPoint.ruleBasis, conservativeReason:comparable ? null : cvPoint.reason || cvCsv.reason,
+               sourceEvidence:{ setting:cvPoint.sourceEvidence, csv:cvCsv.sourceEvidence, derivedFrom:cvPoint.derivedFrom },
              });
            }
         }else if(match.level==='Ad Group'){
@@ -4318,9 +4811,14 @@
           buildTverA173ExpansionComparisonInputs(setting, csv, parsedCsv.schema.kind, base).forEach(input => inputs.push(input));
           buildTverA173RetargetComparisonInputs(setting, csv, parsedCsv.schema.kind, base).forEach(input => inputs.push(input));
         }else if(match.level==='Ad'){
-          const resolved=resolveCreativeFields(setting, settingModel.sourceIndex && settingModel.sourceIndex.creativeByMaterial, settingModel.sourceIndex && settingModel.sourceIndex.measurementTagByAppeal);
+          const resolved=resolveCreativeFields(setting, settingModel.sourceIndex && settingModel.sourceIndex.creativeByMaterial, settingModel.sourceIndex && settingModel.sourceIndex.measurementTagByAppeal, settingModel.sourceIndex && settingModel.sourceIndex.uploadUrlByLandingPage);
           addFieldResult(inputs, base, 'creative_name', resolved.creative.fileName || '', csvField(csv, 'creativeName', 'creative_name'), resolved.creative.sourceRef, csv.sourceRefs && csv.sourceRefs.creative_name, { settingSourceState:resolved.creative.state==='missing' ? 'missing' : null, sourceEvidence:entrySourceEvidence(setting, 'creativeFileName', resolved.creative.sourceRef, csv, 'creative_name', csv.sourceRefs && csv.sourceRefs.creative_name, resolved.creative.derivedFrom) });
-          addFieldResult(inputs, base, 'url', resolved.landingPage.url || '', csvField(csv, 'landingPageUrl', 'url'), resolved.landingPage.sourceRef, csv.sourceRefs && csv.sourceRefs.url, { settingSourceState:resolved.landingPage.state==='missing' ? 'missing' : null, sourceEvidence:entrySourceEvidence(setting, 'landingPageUrl', resolved.landingPage.sourceRef, csv, 'url', csv.sourceRefs && csv.sourceRefs.url, resolved.landingPage.derivedFrom) });
+          addFieldResult(inputs, base, 'url', resolved.landingPage.url || '', csvField(csv, 'landingPageUrl', 'url'), resolved.landingPage.sourceRef, csv.sourceRefs && csv.sourceRefs.url, {
+            settingSourceState:resolved.landingPage.state==='missing' ? 'missing' : null,
+            settingEvidenceState:resolved.landingPage.state==='ambiguous' ? 'ambiguous' : resolved.landingPage.state==='missing' ? 'not_provided' : 'available',
+            comparable:resolved.landingPage.state==='unique',
+            sourceEvidence:{ setting:resolved.landingPage.sourceEvidence && resolved.landingPage.sourceEvidence.length ? resolved.landingPage.sourceEvidence : entityFieldEvidence(setting, 'landingPageUrl', resolved.landingPage.sourceRef), csv:entityFieldEvidence(csv, 'url', csv.sourceRefs && csv.sourceRefs.url), derivedFrom:resolved.landingPage.derivedFrom || [] },
+          });
           // C3-C5-CR-REOPEN-3 FIX B：Tracking Start/25/50/75 的 Setting 来源未确认（comparison DEFER）。
           // CSV 有值才显示（显示 CSV 原值、不伪造 Setting 值、不判一致/不一致/要確認、不参与行聚合）；
           // CSV 空则不生成 entry（不显示）。
@@ -4340,21 +4838,42 @@
               sourceEvidence:entrySourceEvidence(setting, '', tracking.sourceRef, csv, field, csv.sourceRefs && csv.sourceRefs[field], tracking.derivedFrom),
             });
           });
-          // C3-C5-CR-REOPEN-3 FIX D：Ad start/end time 默认契约（start=00:00 / end=23:59）。
-          // Setting 表不提供该字段（业务默认值即期望值）；CSV 有值才比较，CSV 空不显示（defer）。
-          // canonical 兼容 H:MM / HH:MM / HH:MM:SS（真实 CSV 存在「0:00」形态）。
+          // FIX4-A：当前Ad所属Targeting的明确时间优先；无指定时保留既有默认与空CSV defer。
+          const settingGp=findEntityByKey(settingModel.adGroups || [], setting.parentKey);
+          const adTime=resolveTverAdTimeContract(settingGp);
           const addAdTimeField=(field, contractDefault)=>{
             const rawCsv=csvField(csv, field==='start_time' ? 'startTime' : 'endTime', field);
-            if(!String(rawCsv ?? '').trim()) return;
+            if(!String(rawCsv ?? '').trim() && !adTime.explicit) return;
             const canonical=normalizeTverAdTimeForComparison(rawCsv);
-            addFieldResult(inputs, base, field, contractDefault, rawCsv, null, csv.sourceRefs && csv.sourceRefs[field], {
+            const value=adTime.explicit ? (field==='start_time' ? adTime.start : adTime.end) : contractDefault;
+            const settingCanonical=normalizeTverAdTimeForComparison(value);
+            const reason=!adTime.comparable ? adTime.reason : adTime.explicit && !canonical ? 'CSV_AD_TIME_UNCONFIRMED' : null;
+            const csvTimeSource=csvFieldSource(csv, field);
+            addFieldResult(inputs, base, field, value, rawCsv, adTime.source, csvTimeSource, {
+              settingCanonical:adTime.explicit && settingCanonical ? { value:settingCanonical, ruleId:'TVER_FIX4_AD_TIME_EXPLICIT', evidenceState:'available' } : null,
               csvCanonical:canonical ? { value:canonical, ruleId:'TVER_260605_AD_TIME_CANONICAL', evidenceState:'available' } : null,
-              ruleBasis:'TVER_260605_AD_TIME_DEFAULT',
-              sourceEvidence:entrySourceEvidence(null, '', null, csv, field, csv.sourceRefs && csv.sourceRefs[field]),
+              comparisonStatus:reason ? '需确认' : null, conservativeReason:reason, comparable:!reason,
+              ruleBasis:adTime.explicit ? 'TVER_FIX4_AD_TIME_EXPLICIT' : 'TVER_260605_AD_TIME_DEFAULT',
+              sourceEvidence:{ setting:adTime.sourceEvidence, csv:entityFieldEvidence(csv, field, csvTimeSource),
+                derivedFrom:adTime.explicit ? uniqueSourceRefs([...adTime.sourceEvidence, settingGp && settingGp.sourceRefs && settingGp.sourceRefs.targetingNumber, setting.sourceRefs && setting.sourceRefs.materialName]) : [] },
             });
           };
           addAdTimeField('start_time', '00:00');
           addAdTimeField('end_time', '23:59');
+          if(parsedCsv.schema.kind==='register-without-ids'){
+            const statusValue=csvField(csv, 'status', 'status');
+            const statusSource=csv.sourceRefs && csv.sourceRefs.status;
+            addFieldResult(inputs, base, 'status', '1', statusValue, null, statusSource, {
+              schemaKind:parsedCsv.schema.kind, currentStatusRequired:true,
+              settingEvidenceState:'available', csvEvidenceState:'available', comparable:true,
+              settingCanonical:{ value:'1', ruleId:'TVER_REGISTER_AD_STATUS_DEFAULT_ON', evidenceState:'available' },
+              csvCanonical:{ value:statusValue, ruleId:'TVER_REGISTER_AD_STATUS_CSV', evidenceState:'available' },
+              comparisonStatus:statusValue==='' ? '需确认' : statusValue==='1' ? '一致' : null,
+              conservativeReason:statusValue==='' ? 'REGISTER_AD_STATUS_NOT_PROVIDED' : null,
+              ruleBasis:'TVER_REGISTER_AD_STATUS_DEFAULT_ON',
+              sourceEvidence:{ setting:[], csv:entityFieldEvidence(csv, 'status', statusSource), derivedFrom:[] },
+            });
+          }
           // C3-C5-CR-REOPEN-3 FIX C：Creative ID 为登记后产生，Setting 永不存在——
           // 不显示、不比较、不产生要確認（内部 creative_id / ad_id 全链保留于 CSV entity，见 buildEditTree / buildRegisterTree）。
         }
@@ -4578,15 +5097,15 @@
   // 不改变业务对象、树结构、entryIndexes或任何比较结果。
   const TVER_HORIZONTAL_FIELD_ORDER={
     Campaign:['campaign_name', 'start_datetime', 'end_datetime', 'budget', 'daily_budget', 'budget_type', 'hourly_bid_weight', 'campaign_status', 'consumption_type', 'cv_point'],
-    'Ad Group':['device', 'price', 'adgroup_start_datetime', 'adgroup_end_datetime', 'adgroup_status', 'media', 'local_broadcaster', 'gender', 'age', 'annual_income', 'demography', 'tver_video_duration', 'dmp_segment', 'pref', 'subgenre_exclude', 'store_segment', 'bid_segment'],
+    'Ad Group':['device', 'price', 'adgroup_start_datetime', 'adgroup_end_datetime', 'adgroup_status', 'media', 'local_broadcaster', 'gender', 'age', 'annual_income', 'demography', 'tver_video_duration', 'dmp_segment', 'pref', 'genre_exclude', 'subgenre_exclude', 'store_segment', 'bid_segment'],
     // C3-C5-CR-REOPEN-3 FIX C/D：creative_id 保留在固定顺序中（无 entry 即不显示列）；
     // start_time/end_time 为 FIX D 新增（CSV 有值才显示）。
-    Ad:['creative_name', 'url', 'tracking_url_start', 'tracking_url_first_quartile', 'tracking_url_midpoint', 'tracking_url_third_quartile', 'tracking_url_complete', 'creative_id', 'start_time', 'end_time'],
+    Ad:['creative_name', 'url', 'tracking_url_start', 'tracking_url_first_quartile', 'tracking_url_midpoint', 'tracking_url_third_quartile', 'tracking_url_complete', 'creative_id', 'start_time', 'end_time', 'status'],
   };
   const TVER_HORIZONTAL_FIELD_LABELS={
     Campaign:{ campaign_name:'キャンペーン名', start_datetime:'開始日時', end_datetime:'終了日時', budget:'予算', daily_budget:'日予算', budget_type:'予算タイプ', hourly_bid_weight:'時間毎予算割合', campaign_status:'キャンペーンステータス', consumption_type:'予算消化タイプ', cv_point:'CVポイント', report_target_flag:'レポート対象' },
-    'Ad Group':{ device:'デバイス', price:'単価', adgroup_start_datetime:'GP開始日時', adgroup_end_datetime:'GP終了日時', adgroup_status:'ステータス', media:'媒体', local_broadcaster:'ローカル局', gender:'性別', age:'年齢', annual_income:'世帯年収', demography:'デモグラフィック', tver_video_duration:'動画尺', dmp_segment:'DMPセグメント', pref:'都道府県', subgenre_exclude:'サブジャンル除外', store_segment:'店舗セグメント', bid_segment:'入札セグメント', auction_type:'オークション設定', dmp_segment_expansion_threshold:'DMPセグメントの拡張', uid_suffix:'ASR' },
-    Ad:{ creative_name:'クリエイティブ名', start_time:'開始時間', end_time:'終了時間' },
+    'Ad Group':{ adgroup_name:'広告グループ名', bid_segment_exclude:'入札除外セグメント', affinity:'興味関心', device:'デバイス', price:'単価', adgroup_start_datetime:'GP開始日時', adgroup_end_datetime:'GP終了日時', adgroup_status:'ステータス', media:'媒体', local_broadcaster:'ローカル局', gender:'性別', age:'年齢', annual_income:'世帯年収', demography:'デモグラフィック', tver_video_duration:'動画尺', dmp_segment:'DMPセグメント', pref:'都道府県', genre_exclude:'番組ジャンル除外', subgenre_exclude:'サブジャンル除外', store_segment:'店舗セグメント', bid_segment:'入札セグメント', auction_type:'オークション設定', dmp_segment_expansion_threshold:'DMPセグメントの拡張', uid_suffix:'ASR' },
+    Ad:{ creative_name:'クリエイティブ名', start_time:'開始時間', end_time:'終了時間', status:'広告ステータス' },
   };
   // FIX1C：既存の正式な英文表示名。field keyからの推測翻訳は行わない。
   const TVER_HORIZONTAL_FIELD_EN_LABELS={
@@ -4742,7 +5261,7 @@
         if(!entry || entry.hidden || entry.level!==level) return;
         const field=String(entry.field ?? '');
         if(!field) return;
-        if(level==='Campaign' && field==='report_target_flag') return;
+        if(level==='Campaign' && field==='report_target_flag' && !String(entry.ruleBasis || '').startsWith('TVER_SURVEY_SP_')) return;
         if(!fieldHasMeaningfulValue.has(field)){
           fieldHasMeaningfulValue.set(field, false);
           if(!fixedSet.has(field)) discoveredFields.push(field);
@@ -4910,6 +5429,25 @@
     SETTING_MEASUREMENT_TAG_AMBIGUOUS:'設定表の計測タグ候補が一意ではないため確認が必要です',
     HOURLY_BID_WEIGHT_RULE_PENDING:'時間毎予算割合の期待値ルールが未確定のため確認が必要です',
     SETTING_CV_POINT_SOURCE_NOT_PROVIDED:'設定表のCVポイント確認元がないため確認が必要です',
+    SETTING_CV_MODE_UNCONFIRMED:'基本情報のCVあり／なしを確認してください',
+    SETTING_CV_CONTRADICTION:'CVなしとCVポイント指定が矛盾しています',
+    SETTING_CV_POINT_AMBIGUOUS:'基本情報のCV指定に複数の異なる値があります',
+    CV_POINT_INVALID_IDS:'CVポイントのIDをすべて正確に読み取れません',
+    CV_POINT_DUPLICATE_IDS:'CVポイントのIDが重複しています',
+    CSV_CV_POINT_CONFLICT:'同一キャンペーンのCSV行間でCVポイントが異なります',
+    CSV_CV_POINT_SOURCE_NOT_PROVIDED:'CSVのCVポイント確認元がありません',
+    SETTING_AD_TIME_UNCONFIRMED:'ターゲティングの時間指定を一意に確定できません',
+    CSV_AD_TIME_UNCONFIRMED:'明示された配信時間に対応するCSV時刻を確認してください',
+    UID_SUFFIX_DUPLICATE_MEMBERS:'ASR 0~CのCSV指定に重複があります',
+    SURVEY_EDIT_AD_STATUS_NOT_CONFIRMED:'Survey広告の現在ステータスは設定根拠の確認が必要です（登録時の有効初期値は編集CSVに適用しません）',
+    SURVEY_CSV_FIELD_UNAVAILABLE:'このCSVにはSurvey比較に必要な項目または原文の証拠がありません',
+    SURVEY_CSV_VALUE_CONFLICT:'同一SurveyエンティティのCSV行で値が競合しています',
+    SURVEY_SETTING_SOURCE_UNCONFIRMED:'Survey設定値の根拠を一意に確認できません',
+    SURVEY_AFFINITY_ID_RULE_REQUIRED:'Survey興味関心の明示値をIDへ変換する根拠が未確認です',
+    SURVEY_DUPLICATE_MEMBERS:'Survey ASRのCSV指定に重複があります',
+    SURVEY_ASR_TOKEN_UNCONFIRMED:'Survey ASRに未対応の文字が含まれています',
+    SURVEY_CONTACT_ASR_RULE_PENDING:'接触者GPの非空ASRは業務ルール未確認のため要確認です',
+    SURVEY_ID_COLLECTION_UNCONFIRMED:'Surveyセグメント等のID指定に重複または解釈できない値があります',
     TVER_A17_3A_VALUE_UNAVAILABLE:'設定表側の確認値を利用できないため確認が必要です',
     TVER_A17_3B_VALUE_UNAVAILABLE:'設定表側の確認値を利用できないため確認が必要です',
   };
@@ -5880,6 +6418,7 @@
     tverPageState.settingFile=null;
     tverPageState.csvFile=null;
     tverPageState.run=null;
+    tverPageState.runToken=(Number(tverPageState.runToken) || 0)+1;
     tverPageState.recognition={ ok:false, files:tverPageState.uploadFiles, setting:null, csv:null, message:'ファイルを識別しています。' };
     const token=(Number(tverPageState.recognitionToken) || 0)+1;
     tverPageState.recognitionToken=token;
@@ -5926,6 +6465,8 @@
     if(config.settingWorkbook===undefined && !settingFile || config.csvText===undefined && !csvFile){
       const message='設定表とCSVの両方を選択してください。'; showPageNotice(message, true, doc); return { ok:false, message };
     }
+    const runToken=(Number(tverPageState.runToken) || 0)+1;
+    tverPageState.runToken=runToken;
     tverPageState.busy=true; updateActionButtons(doc); showPageNotice('チェックしています。しばらくお待ちください。', false, doc);
     try{
       const workbook=config.settingWorkbook || await readSettingWorkbook(settingFile);
@@ -5941,6 +6482,7 @@
       const csvTree=parsedCsv.schema.kind==='edit-with-ids' ? buildEditTree(parsedCsv) : buildRegisterTree(parsedCsv);
       const matching=matchTverEntities(settingModel, csvTree, { schemaKind:parsedCsv.schema.kind, conversionContext:createTverConversionContext(parsedCsv.schema.kind, csvTree) });
       const run=buildRunFromModels(settingModel, csvTree, matching, parsedCsv);
+      if(runToken!==tverPageState.runToken) return { ok:false, cancelled:true };
       tverPageState.run=run; tverPageState.activeLevel='Campaign'; tverPageState.filters=defaultFilters();
       renderTverRun(run, { document:doc, activeLevel:'Campaign', filters:tverPageState.filters, newLifecycle:true });
       recordTverUsage(run);
@@ -5948,7 +6490,7 @@
       return { ok:true, run };
     }catch(error){
       const message=error && error.message ? error.message : 'チェック中にエラーが発生しました。'; showPageNotice(message, true, doc); return { ok:false, message };
-    }finally{ tverPageState.busy=false; updateActionButtons(doc); }
+    }finally{ if(runToken===tverPageState.runToken){ tverPageState.busy=false; updateActionButtons(doc); } }
   }
 
   function makeSyntheticExampleRun(){
@@ -5994,7 +6536,7 @@
     const current=state || tverPageState;
     const config=options || {}; const revoke=config.revokeObjectUrl || (typeof URL!=='undefined' && URL.revokeObjectURL ? URL.revokeObjectURL.bind(URL) : null);
     if(current.objectUrl && revoke) revoke(current.objectUrl);
-    const cleared={ settingFile:null, csvFile:null, uploadFiles:[], recognition:null, recognitionToken:0, run:null, error:'', busy:false, activeLevel:'Campaign', filters:defaultFilters(), objectUrl:null };
+    const cleared={ settingFile:null, csvFile:null, uploadFiles:[], recognition:null, recognitionToken:(Number(current.recognitionToken) || 0)+1, runToken:(Number(current.runToken) || 0)+1, run:null, error:'', busy:false, activeLevel:'Campaign', filters:defaultFilters(), objectUrl:null };
     if(!state) tverPageState=cleared;
     const doc=config.document===undefined ? (typeof document!=='undefined' ? document : null) : config.document;
     if(doc){

@@ -1,0 +1,715 @@
+{
+  "originalCounts": {
+    "A": 15,
+    "B": 21,
+    "C": 28,
+    "D": 42,
+    "E": 7
+  },
+  "rawCounts": {
+    "A": 27,
+    "B": 22,
+    "C": 16,
+    "D": 42,
+    "E": 6
+  },
+  "excluded": {
+    "documentation": [
+      1,
+      2,
+      3,
+      4,
+      7,
+      8,
+      11,
+      22,
+      30,
+      55,
+      61,
+      64,
+      68,
+      72,
+      77,
+      81,
+      100
+    ],
+    "operations": [
+      6,
+      23,
+      69,
+      71,
+      74,
+      75,
+      76
+    ],
+    "overview": [
+      5
+    ],
+    "policy": [
+      36,
+      88,
+      90,
+      98
+    ]
+  },
+  "activeRecordCounts": {
+    "A": 23,
+    "B": 19,
+    "C": 16,
+    "D": 20,
+    "E": 6
+  },
+  "groupCounts": {
+    "A": 22,
+    "B": 18,
+    "C": 15,
+    "D": 19,
+    "E": 6
+  },
+  "groups": [
+    {
+      "id": "009",
+      "name": "广告会社ID/账户选择",
+      "members": [
+        "009"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "010",
+      "name": "广告主ID/账户选择",
+      "members": [
+        "010"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "018",
+      "name": "Creative注册/全账户重名",
+      "members": [
+        "012",
+        "018"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "013",
+      "name": "视频素材名、状态、VAST上传类型",
+      "members": [
+        "013"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "014",
+      "name": "入稿规格、分辨率与可投设备",
+      "members": [
+        "014"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "015",
+      "name": "Transcode完成状态",
+      "members": [
+        "015"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "016",
+      "name": "Companion素材库存/重复检查",
+      "members": [
+        "016"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "017",
+      "name": "Companion类型、文件、文本、CTA、状态",
+      "members": [
+        "017"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "056",
+      "name": "Ad Creative与父GP关联",
+      "members": [
+        "019",
+        "056"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "020",
+      "name": "Creative LP URL、Companion、ADCAS",
+      "members": [
+        "020"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "021",
+      "name": "Nonclick/CTV普通LP URL豁免",
+      "members": [
+        "021"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "024",
+      "name": "通常Campaign名称、期间、总预算",
+      "members": [
+        "024"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "025",
+      "name": "CVあり/なし及CVポイント集合",
+      "members": [
+        "025"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "026",
+      "name": "Campaign状态停止、期间预算类型、Flat/Full",
+      "members": [
+        "026"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "027",
+      "name": "初期日预算与自动日均预算",
+      "members": [
+        "027"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "028",
+      "name": "最終日残予算",
+      "members": [
+        "028"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "029",
+      "name": "時間毎予算割合",
+      "members": [
+        "029"
+      ],
+      "class": "E"
+    },
+    {
+      "id": "031",
+      "name": "Campaign→GP父子导航/唯一性",
+      "members": [
+        "031"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "032",
+      "name": "GP命名规则/SPPC/CTV/DMP后缀",
+      "members": [
+        "032"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "033",
+      "name": "GP独立配信期间/空值继承",
+      "members": [
+        "033"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "034",
+      "name": "GP每日FQ不使用默认",
+      "members": [
+        "034"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "035",
+      "name": "视频秒数带与CPM、GP状态",
+      "members": [
+        "035"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "037",
+      "name": "Device及拆GP规则",
+      "members": [
+        "037"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "038",
+      "name": "動画位置",
+      "members": [
+        "038"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "039",
+      "name": "放送局指定/除外/单个Local",
+      "members": [
+        "039",
+        "073"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "040",
+      "name": "データ蓄積/Scenario Segment",
+      "members": [
+        "040"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "041",
+      "name": "性别/年龄/都道府县",
+      "members": [
+        "041"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "042",
+      "name": "市区町村",
+      "members": [
+        "042",
+        "070"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "043",
+      "name": "兴趣关心",
+      "members": [
+        "043"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "044",
+      "name": "世帯年收/子あり",
+      "members": [
+        "044"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "045",
+      "name": "电视收视倾向/Carrier",
+      "members": [
+        "045"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "046",
+      "name": "ASR 0-F完整选择集",
+      "members": [
+        "046"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "047",
+      "name": "ジャンル/サブジャンル指定",
+      "members": [
+        "047"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "048",
+      "name": "ジャンル/サブジャンル除外",
+      "members": [
+        "048"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "049",
+      "name": "キッズ年龄段/トーク等别名",
+      "members": [
+        "049"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "050",
+      "name": "Contents Group",
+      "members": [
+        "050"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "051",
+      "name": "Bid Segment指定",
+      "members": [
+        "051"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "052",
+      "name": "Bid Segment Exclude",
+      "members": [
+        "052"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "053",
+      "name": "DMP ID与扩张阈值",
+      "members": [
+        "053"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "054",
+      "name": "DMP Exclude",
+      "members": [
+        "054"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "057",
+      "name": "Ad指定配信时间",
+      "members": [
+        "057"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "058",
+      "name": "Ad有效状态/停止例外",
+      "members": [
+        "058"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "059",
+      "name": "Ad入稿用URL",
+      "members": [
+        "059"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "060",
+      "name": "外部Tracking 100%与其他地点",
+      "members": [
+        "060"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "062",
+      "name": "Campaign期间FQ启用",
+      "members": [
+        "062"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "063",
+      "name": "FQ名称/状态/CP集合/任意周日小时期间",
+      "members": [
+        "063"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "065",
+      "name": "Dashboard创建",
+      "members": [
+        "065"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "066",
+      "name": "Dashboard名称/一订单全CP关系/状态",
+      "members": [
+        "066"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "067",
+      "name": "Dashboard开放指标/Click/CV与排序",
+      "members": [
+        "067"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "078",
+      "name": "Scheduler有无/section读取",
+      "members": [
+        "078"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "079",
+      "name": "Scheduler名称、对象、状态、执行日时、预算",
+      "members": [
+        "079"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "080",
+      "name": "Scheduler重复期间/星期/时刻",
+      "members": [
+        "080"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "082",
+      "name": "Survey启用/普通与BLS并存",
+      "members": [
+        "082"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "083",
+      "name": "普通SP包含GP的Scenario Segment",
+      "members": [
+        "083"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "084",
+      "name": "普通Survey ASR 0-C；CTV-only豁免",
+      "members": [
+        "084"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "085",
+      "name": "SP BLS CP名称与起止日期",
+      "members": [
+        "085"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "086",
+      "name": "BLS预算90000/日预算1000/状态0/预算类型2/Flat1",
+      "members": [
+        "086"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "087",
+      "name": "BLS report_target_flag=0",
+      "members": [
+        "087"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "089",
+      "name": "SP接触者GP基本字段",
+      "members": [
+        "089"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "091",
+      "name": "Contact bid_segment/无Audience、DMP",
+      "members": [
+        "091"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "092",
+      "name": "SP多非接触者GP/非固定2GP",
+      "members": [
+        "092"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "093",
+      "name": "多非接触者命名/消化用GP含义",
+      "members": [
+        "093"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "094",
+      "name": "SP非接触者Audience/DMP复制",
+      "members": [
+        "094"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "095",
+      "name": "非接触者ASR D-F/接触者排除",
+      "members": [
+        "095"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "096",
+      "name": "SP非接触者放送局/Contents不设置",
+      "members": [
+        "096"
+      ],
+      "class": "B"
+    },
+    {
+      "id": "097",
+      "name": "SP Survey专用Creative/三个Ad",
+      "members": [
+        "097"
+      ],
+      "class": "A"
+    },
+    {
+      "id": "099",
+      "name": "SP Survey FQ一回/110天/全部Survey CP",
+      "members": [
+        "099"
+      ],
+      "class": "D"
+    },
+    {
+      "id": "101",
+      "name": "CTV Survey CP共通字段",
+      "members": [
+        "101"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "102",
+      "name": "CTV章节文字与截图默认矛盾",
+      "members": [
+        "102"
+      ],
+      "class": "E"
+    },
+    {
+      "id": "103",
+      "name": "CTV Contact设备与名称分隔符",
+      "members": [
+        "103"
+      ],
+      "class": "E"
+    },
+    {
+      "id": "104",
+      "name": "CTV GP视频15/价格100/状态1",
+      "members": [
+        "104"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "105",
+      "name": "CTV Contact bid_segment与Audience/DMP空",
+      "members": [
+        "105"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "106",
+      "name": "CTV Noncontact设备矛盾",
+      "members": [
+        "106"
+      ],
+      "class": "E"
+    },
+    {
+      "id": "107",
+      "name": "CTV Noncontact GP基本字段",
+      "members": [
+        "107"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "108",
+      "name": "CTV非接触者include自身/Exclude接触者",
+      "members": [
+        "108"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "109",
+      "name": "CTV非接触者不继承Audience/DMP/媒体/Contents",
+      "members": [
+        "109"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "110",
+      "name": "CTV Survey Creative命名SP/CTV矛盾",
+      "members": [
+        "110"
+      ],
+      "class": "E"
+    },
+    {
+      "id": "111",
+      "name": "CTV Survey URL/Tracking免设置",
+      "members": [
+        "111"
+      ],
+      "class": "C"
+    },
+    {
+      "id": "112",
+      "name": "CTV Survey FQ命名SP/CTV矛盾",
+      "members": [
+        "112"
+      ],
+      "class": "E"
+    },
+    {
+      "id": "113",
+      "name": "CTV Survey FQ 110天/一次/CP集合",
+      "members": [
+        "113"
+      ],
+      "class": "D"
+    }
+  ]
+}

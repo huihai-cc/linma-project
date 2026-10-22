@@ -1,0 +1,3702 @@
+[
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 183,
+    "definition": "test('C3-C4-2: 四GP标签严格来自Setting名称和设备分支', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 189,
+    "definition": "test('C3-C4-2: slots名称与初動OFF分离且primary定位正确Setting单元格', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 204,
+    "definition": "test('C3-C4-2: 无targetingName时使用Setting业务tag标签', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 210,
+    "definition": "test('C3-C4-2: WRONG_CSV_NAME不新增名称QC，DMP身份足够时仍匹配且显示Setting対象名', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 231,
+    "definition": "test('C3-C4-2: 相同targetingName跨Campaign不串线，identity来源均为Setting', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 241,
+    "definition": "test('C3-C4-2: CSV-only明确标记且Setting缺身份不回退CSV', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 247,
+    "definition": "test('C3-C4-2: 新identity字段不改变旧targeting semanticSignature', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 256,
+    "definition": "test('C3-C4-2: GP対象名改变时Ad tab父组标题保持原有上下文', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 328,
+    "definition": "test('C3-C4-3-Fix1 Red: 2431 Device raw/source使用既有关联GP的タグ訴求且四GP canonical一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 353,
+    "definition": "test('C3-C4-3-Fix1 Red: Device不使用旧通用配信デバイス说明且Setting raw不替换为canonical', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 362,
+    "definition": "test('C3-C4-3-Fix1 Red: CPM Setting只返回一个真实值，排除placeholder与重复aggregate并与1500 canonical一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 387,
+    "definition": "test('C3-C4-3 Red: status 默认1、初動OFF为0，且不从targetingName误读状态', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 401,
+    "definition": "test('C3-C4-3 Red: 2431 status 1/1/0/0 与 CSV 原值逐条比较', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 417,
+    "definition": "test('C3-C4-4B-Fix2 Red: status display label不应触发canonical equal的要確認且真实不一致仍保留', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 449,
+    "definition": "test('C3-C4-4B-Fix2 Red: 2495 Device fallback选择CTV cell并忽略dash与模板说明', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 472,
+    "definition": "test('C3-C4-4B-Fix1 Red: GP Status Setting display使用业务标签且canonical与CSV raw保持不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 499,
+    "definition": "test('C3-C4-3 Red: auction 默认1，未知特殊入札设定只能需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 513,
+    "definition": "test('C3-C4-3 Red: 性別 男性/女性/その他 映射 1/2/3，双方空值不生成', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 526,
+    "definition": "test('C3-C4-3 Red: 放送局●的精确○表示139个local_broadcaster，其他字段○不得借用', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 536,
+    "definition": "test('C3-C4-3 Red: DMP 有则扩展默认10，明确DMP拡張値0覆盖；无DMP不生成', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 552,
+    "definition": "test('C3-C4-3 Red: DMP扩展 Edit schema仍可比较10/0，不受dmp_segment unavailable影响', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 574,
+    "definition": "test(`C3-C4-1: GP配置差异不得合并 ${field}`, () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 584,
+    "definition": "test(`C3-C4-1: Ad差异保持一个GP及两个Ad ${field}`, () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 592,
+    "definition": "test('C3-C4-1: 全GP原始字段及多Ad provenance保留，primary对应真实值', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 605,
+    "definition": "test('C3-C4-1: 拆分GP的全部scope evidence不得跨实体', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 621,
+    "definition": "test('C3-C4-1: aggregation identity独立于旧candidate及matchingFields', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 653,
+    "definition": "test('C3-C4-1: Register status comparison保留1/1/0/0，不派生Setting状态', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 662,
+    "definition": "test(`C3-C4-1: Register matcher与comparison读取同一Retarget ${field}`, () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 673,
+    "definition": "test('CSV: edit 的 61 列及三层 ID 被识别为 edit-with-ids', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 681,
+    "definition": "test('CSV: register 的 61 列且无三层 ID 被识别为 register-without-ids', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 688,
+    "definition": "test('CSV: BOM、引号内换行和末尾空列保留原始值与 CSV 行号', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 699,
+    "definition": "test('CSV: 61 列但缺关键字段或 ID 混合时拒绝 Schema', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 712,
+    "definition": "test('CSV: 完整 edit/register 字段集合分别被接受，列顺序不作为条件', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 723,
+    "definition": "test('CSV: 普通正式字段被虚构字段替换时拒绝，并返回缺失与意外字段', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 733,
+    "definition": "test('CSV: 重复表头导致正式字段缺失时拒绝，并返回 duplicateHeaders', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 743,
+    "definition": "test('CSV: 每个字段保留独立 SourceRef 与未规范化 rawValue', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 758,
+    "definition": "test('CSV: 未闭合引号和结束引号后的非法字符形成 parseIssues', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 765,
+    "definition": "test('Setting: 表头位于第 27 行时唯一定位并记录来源行', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 773,
+    "definition": "test('Setting: 表头移动到第 19 行时仍唯一定位并解析', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 780,
+    "definition": "test('Setting: 两个 Sheet 都有候选表头时需确认且不选择任何 Sheet', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 788,
+    "definition": "test('Setting: 零候选时返回诊断且不默认选择第一个 Sheet', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 795,
+    "definition": "test('Setting: 配信設計在第一个后续 ★ 区块前停止，不吞入辅助区块', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 802,
+    "definition": "test('Setting: 配信設計的诉求、预算、日期时间、标签、初期日预算和备注均被读取并保留来源', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 825,
+    "definition": "test('Setting: Targeting 与 Creative 辅助区块建立可追踪索引', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 837,
+    "definition": "test('Setting: 同一素材多个不同 Creative 映射时返回歧义诊断', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 843,
+    "definition": "test('Setting: 配信設計的 Targeting 编号在辅助区块缺失时返回诊断', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 849,
+    "definition": "test('Setting: 必需业务表头缺失或重复时返回表头诊断，不把数据行泛化为必填值缺失', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 858,
+    "definition": "test('Setting: 分列 ★ 与区块名仍能按语义定位', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 866,
+    "definition": "test('Setting: 单格 ★クリエイティブ 标记仍由语义定位器兼容', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 873,
+    "definition": "test('Setting: 合并单元格展开后仍由同一行语义定位区块', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 880,
+    "definition": "test('Setting: Creative 标记后的说明行不会被误当正式表头', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 886,
+    "definition": "test('Setting: Creative 正式表头零候选或多候选均返回诊断', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 893,
+    "definition": "test('Setting: 横向两个 Targeting group 分别建立编号索引', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 899,
+    "definition": "test('Setting: Targeting 编号取同组ターゲティング名锚点后的第2个组成单元', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 915,
+    "definition": "test('Setting: Targeting 名称后的第1个组成单元为空时仍从第2个单元取得编号', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 931,
+    "definition": "test('Setting: Targeting group 数量变化与起始列移动不改变解析', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 944,
+    "definition": "test('Setting: 空白、重复及内容冲突的 Targeting 编号均返回诊断', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 959,
+    "definition": "test('Setting: 主表変更履歴与その他設定进入证据索引', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 967,
+    "definition": "test('Setting: 主表上方 ▼運用メモ欄被定位并保留来源', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 974,
+    "definition": "test('Setting: 相同発注CPN名但不同CPN訴求形成独立 Campaign', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 991,
+    "definition": "test('Setting: 同一 Campaign 与 Targeting 编号下不同タグ訴求形成独立 Ad Group', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1009,
+    "definition": "test('Setting: 改变行号和区块位置不改变实体语义', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1018,
+    "definition": "test('Setting: 合成工作簿的解析结果不注入真实案件标识或业务值', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1026,
+    "definition": "test('Edit tree: 重复 campaign/adgroup ID 合并并保留全部来源行', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1040,
+    "definition": "test('Edit tree: 重复 ID 字段与父 campaign_id 冲突均可见', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1052,
+    "definition": "test('Edit tree: 空或无效 ID 行保留为 orphan，保存原始值、CSV 行号和格式问题', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1068,
+    "definition": "test('Edit tree: rowLedger 将每一 CSV 原始行恰好覆盖一次，不允许 diagnostics-only 丢行', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1079,
+    "definition": "test('Edit tree: orphan 在 comparisonInputs 的 CSV側未匹配输入中可见，绝不被丢弃', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1089,
+    "definition": "test('Edit tree: 相同 Campaign ID 的 budget 与 campaign_status 差异均记录字段冲突', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1100,
+    "definition": "test('Edit tree: 相同 Ad Group ID 的 price、device 与 media 差异均记录字段冲突', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1111,
+    "definition": "test('Edit tree: 相同 Ad ID 的 url 与 Tracking URL 差异均记录字段冲突', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1122,
+    "definition": "test('Edit tree: 空值与非空值冲突不覆盖先出现原始字段值', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1134,
+    "definition": "test('A17-1 Provenance: Register primary 只选择与当前 raw 值严格相同且最早的来源', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1148,
+    "definition": "test('A17-1 Provenance: Register evidence 保留空值但不改 fields、matchingFields 或 candidateSignature', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1165,
+    "definition": "test('A17-1C Provenance: Register evidence 严格按 Campaign／ADG／Ad 所有权分层且保留 owned 空值', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1204,
+    "definition": "test('A17-1 Provenance: 派生值由 resolver 指定 primary 并保存完整组成证据', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1219,
+    "definition": "test('A17-1 Provenance: Targeting 组合值由专用 resolver 选择实际值来源，不回退占位格', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1235,
+    "definition": "test('A17-2 Red: Targeting comparison resolver 按明确证据生成六字段，且 Register／Edit 不跨字段回退', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1300,
+    "definition": "test('C3-C4-4B Red: GP Age 支持 XX歳以上、保留原文，并按明确空值/不可用语义比较', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1394,
+    "definition": "test('A17-2D Red: Evidence State 独立于 conversion，六字段 CSV-only 必须保守生成', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1422,
+    "definition": "test('A17-2D Red: 多个不同业务来源不得取第一项，age 保留两个 CSV 端点 derivedFrom', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1448,
+    "definition": "test('A17-1 Provenance: Compare 结果透传来源证据但不改变既有比较结论', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1460,
+    "definition": "test('A17-1 Provenance: Register 运行结果使用严格匹配的 primary 与完整 CSV evidence', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1475,
+    "definition": "test('Register tree: 字段完全相同的两行仍是两个 Ad candidate，occurrenceIndex 为 1/2', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1489,
+    "definition": "test('Register tree: 相同 Campaign 候选聚合，不同 Ad Group 硬字段组合不合并', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1500,
+    "definition": "test('Register tree: 行号与 occurrenceIndex 只保留在追踪字段，改变输入顺序不改变候选语义', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1518,
+    "definition": "test('Register tree: rowLedger 为每个原始 CSV 行保留一个独立 Ad candidate', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1530,
+    "definition": "test('Register tree: 实例 key 仅标识原始行，完全相同行拥有不同 key 但相同 candidateSignature', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1542,
+    "definition": "test('Register tree: candidateSignature 只由严格语义字段构成，不含实例 key、行号或 occurrenceIndex', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1584,
+    "definition": "test('Match: register 的唯一三层语义候选一对一匹配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1599,
+    "definition": "test('Match: 两个设定对象争用同一 CSV entity 时双方均 ambiguous', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1615,
+    "definition": "test('Match: 多个硬条件候选、零候选、必要字段缺失和父级冲突分别不强配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1641,
+    "definition": "test('Match: edit 的无 ID 设定侧关联也遵守占用表，不能重复分配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1652,
+    "definition": "test('Match: 行号、occurrenceIndex、实例 key 与 CSV 输入顺序均不成为候选依据', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1667,
+    "definition": "test('Match: ambiguous 只进入 unassigned，不得与真正 unmatched 或 orphan 重复计数', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1686,
+    "definition": "test('Date match: 零填充差异的同一開始日時應作為同值參與 Campaign hard 匹配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1700,
+    "definition": "test('Date match: 零填充差異的同一終了日時應作為同值參與 Campaign hard 匹配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1716,
+    "definition": "test('Date match: 真正不同的日時不再阻断Campaign配对，而是由既有字段比较判定不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1743,
+    "definition": "test('Device: tagAppeal=SPPC 解析为 android ios pc', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1748,
+    "definition": "test('Device: tagAppeal=SD/PC_M1 解析为 android ios pc', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1753,
+    "definition": "test('Device: tagAppeal=CTV_M1 解析为 ctv', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1758,
+    "definition": "test('Device: tagAppeal 为空时回退 targeting 单设备 CTV → ctv', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1763,
+    "definition": "test('Device: tagAppeal 为空且 targeting 为 SP／PC／CTV 多设备时 unresolved，不猜', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1770,
+    "definition": "test('Device: tagAppeal=タグセット_SP 解析为 android ios pc', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1775,
+    "definition": "test('Device: tagAppeal=タグセット_CTV 解析为 ctv', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1780,
+    "definition": "test('Device: tagAppeal=タグセット_SPECIAL 不因含 SP 自动判 android（guard）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1785,
+    "definition": "test('Device: tagAppeal=ABCCTV 不含下划线边界 token 不自动识别（guard）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1792,
+    "definition": "test('Device: targeting=SP／CTV + tagAppeal=SPPC_汎用_set → android ios（无 PC）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1797,
+    "definition": "test('Device: targeting=SP／PC／CTV + tagAppeal=SPPC → android ios pc', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1802,
+    "definition": "test('Device: targeting=SP／CTV + tagAppeal=CTV_汎用 → ctv', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1807,
+    "definition": "test('Device: targeting=SP／CTV + tagAppeal=UNKNOWN → unresolved（guard）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1812,
+    "definition": "test('Device: targeting=SP／PC／CTV + tagAppeal=タグセット_SP → android ios pc（⑦ 不回归 guard）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1817,
+    "definition": "test('Device: targeting=SP／PC／CTV + tagAppeal=SD/PC_M1 → android ios pc（③④⑥ 不回归 guard）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1824,
+    "definition": "test('Device: tagAppeal=No1_特定_SPPC + SP／PC → android ios pc（后缀 token）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1829,
+    "definition": "test('Device: tagAppeal=No1_特定_CTV + SP／PC → ctv（后缀 token，清单无 CTV 仍解析）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1834,
+    "definition": "test('Device: tagAppeal=ABCSPPC 无下划线边界不自动识别（guard）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1839,
+    "definition": "test('Device: tagAppeal=CTVVALUE 无下划线边界不自动识别（guard，证明非 contains CTV）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1846,
+    "definition": "test('Retarget Setting: データ蓄積=6543 → store', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1852,
+    "definition": "test('Retarget Setting: 入札セグメント=6543 → bid', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1858,
+    "definition": "test('Retarget CSV: store_segment=6543 → store', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1864,
+    "definition": "test('Retarget CSV: bid_segment=6543 → bid', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1870,
+    "definition": "test('Retarget CSV: store_segment 与 bid_segment 同时有值 → ambiguous（guard）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1874,
+    "definition": "test('Retarget Setting: 数据蓄积与入札セグメント同时有值 → ambiguous（guard）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1885,
+    "definition": "test('Retarget match: store vs store 匹配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1888,
+    "definition": "test('Retarget match: bid vs bid 匹配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1891,
+    "definition": "test('Retarget match: store vs bid 不匹配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1896,
+    "definition": "test('Name: Campaign 全角/半角标点归一后匹配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1908,
+    "definition": "test('Name: Creative 全角/半角标点归一后匹配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1924,
+    "definition": "test('Name guard: 全角连字符 ー（ABC-A vs ABC－A）不自动一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1927,
+    "definition": "test('Name guard: 空格差异（ABC Test vs ABCTest）不自动一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1930,
+    "definition": "test('Name guard: 大小写差异（abc vs ABC）不自动一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1933,
+    "definition": "test('Name guard: 归一后两个 CSV 候选 → MULTIPLE_HARD_CANDIDATES', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1951,
+    "definition": "test('Name A14: 独立 Pre token 仅规范为 pre', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1955,
+    "definition": "test('Name A14 guard: Premium、PremiumRate 与 ABCPre 保持原样', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1960,
+    "definition": "test('Name A14 guard: 普通大小写差异仍不自动一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1963,
+    "definition": "test('Name A14: Pre→pre 后两个 Ad hard candidates 必须保持 ambiguous', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1985,
+    "definition": "test('Price: \"- ¥1,500 ¥1,500\" canonical 为 1500', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1990,
+    "definition": "test('Price: \"¥1,800/1,800\" canonical 为 1800', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 1995,
+    "definition": "test('Price: \"¥1,500 / ¥1,800\" 为 ambiguous，不自动取 1500', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2002,
+    "definition": "test('DMP Setting: 纯模板 segment 去 boilerplate 后为 regular', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2008,
+    "definition": "test('DMP Setting: 含真实段 ID 的 segment 为 DMP 且保留 segmentId=68', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2015,
+    "definition": "test('DMP register: dmp_segment=68 判 DMP', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2021,
+    "definition": "test('DMP register: dmp_segment 空判 regular', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2027,
+    "definition": "test('DMP edit: 名称含 _DMP_ token 判 DMP，且不伪造 segment ID', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2033,
+    "definition": "test('DMP edit: 普通名称与不含正式 _DMP_ token 的名称均判 regular', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2039,
+    "definition": "test('Profile: register 双方 segment ID 值级一致，edit 无 ID 仅比较 DMP/regular', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2052,
+    "definition": "test('DMP register: dmp_segment=68 判 dmp（G1）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2057,
+    "definition": "test('DMP register: dmp_segment 空判 regular（G2）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2061,
+    "definition": "test('DMP edit: 名称含 _DMP_ 判 dmp（G3）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2065,
+    "definition": "test('DMP edit: 名称无 _DMP_ 且 case 无 DMP 维度判 unavailable（G4）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2077,
+    "definition": "test('DMP match: Setting dmp vs CSV unavailable 不因 dmpKind 排除（G5）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2080,
+    "definition": "test('DMP match: Setting regular vs CSV unavailable 不因 dmpKind 排除（G6）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2083,
+    "definition": "test('DMP match: Setting dmp vs CSV 明确 regular 必须不匹配（G7）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2086,
+    "definition": "test('DMP match: Setting regular vs CSV 明确 dmp 必须不匹配（G8）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2092,
+    "definition": "test('MTag: 同一 section 内两个 header block 的 tagAppeal 均进入索引', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2105,
+    "definition": "test('MTag: 三个独立 block 全部可解析', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2118,
+    "definition": "test('MTag: 两个 block 相同 tagAppeal 相同 mapping 不误报冲突', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2131,
+    "definition": "test('MTag: 两个 block 相同 tagAppeal 不同 mapping 必须 ambiguous', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2142,
+    "definition": "test('Targeting: 空模板 group（无编号且无业务值）不产生 MISSING', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2150,
+    "definition": "test('Targeting: 空编号但存在 device 业务值仍必须 MISSING（guard）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2157,
+    "definition": "test('Verify: settingParseBlockingIssue 仅阻断 4 类主结构错误，非阻断诊断返回空', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2165,
+    "definition": "test('Verify: register schemaKind 使 conversionContext 走 dmp_segment 字段而非 edit 名称 fallback', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2174,
+    "definition": "test('Rules: 260605 固定 ID 主数据八类完整、唯一且具首尾 sentinel', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2188,
+    "definition": "test('Rules: 仅允许 SP／PC、CTV 与固定素材秒数的已确认转换', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2199,
+    "definition": "test('Rules: Include／Exclude 独立比较，未知 ID 不自动相等且 city 不在字典内', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2209,
+    "definition": "test('ID dictionary: ID 集合仅按已确认逗号与空白分隔，去重排序且保留原始值', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2222,
+    "definition": "test('ID dictionary: 结构化校验报告原始ID、规范化冲突、数量和 sentinel 错误', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2234,
+    "definition": "test('Rules: 固定模板素材秒数格式保留原文，未知或矛盾形态不宽松抽取', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2243,
+    "definition": "test('Rules: 固定模板素材秒数的五个已登记区间包含 6 秒区间', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2260,
+    "definition": "test('Status: 同值格式异常保留一致 comparisonStatus，但 displayStatus 为需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2269,
+    "definition": "test('Status: 格式正确但值不同为不一致，格式问题不覆盖不一致或未匹配', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2276,
+    "definition": "test('Status: URL、状态和 ID token 的格式异常不因字符相同而自动一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2283,
+    "definition": "test('Status: 固定模板仅接受 0/1 状态代码，任意其他数字仍是格式异常', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2291,
+    "definition": "test('Status: Tracking URL 的合法宏仅通过格式校验，不改写原文且内容仍严格比较', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2299,
+    "definition": "test('Status: 日期时间按层级校验，Ad 默认结束时间 23:59:00 合法且相同格式不同仍不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2311,
+    "definition": "test('Status: 只有登记的设备和素材秒数转换可为表記ゆれ一致，未登记名称变化必须需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2321,
+    "definition": "test('Status: Tracking 未知宏为格式问题，buildComparisonRun 只计一次每项状态', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2333,
+    "definition": "test('Creative: 計測タグ区块以タグ訴求建立索引，保留字段来源并兼容分列标记', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2343,
+    "definition": "test('Creative: 計測タグ表头零或多候选、不同标签映射重复必须诊断', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2356,
+    "definition": "test('Creative: 相同タグ訴求的相同计測标签不去重，完整保留全部来源', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2367,
+    "definition": "test('Creative: Creative、LP 与 100% complete Tracking 严格关联，缺失或歧义来源保守需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2387,
+    "definition": "test('Creative: 素材名不能代替文件名，LP 与 Tracking 的协议路径查询宏和末尾斜杠均严格比较，creative_id 仅保留 CSV 值', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2400,
+    "definition": "test('Conservative: edit 未提供的三个字段需确认，register 对同字段仍严格比较', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2410,
+    "definition": "test('Conservative: city 与期间 FQ 仅在可证明时显示，不能推导或自动相等', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2423,
+    "definition": "test('Conservative: Full 模式空 hourly_bid_weight 需确认，预算与 register 状态差异仍严格不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2433,
+    "definition": "test('Conservative: 无当前状态证据统一需确认，证据仅显示且白名单为空不覆盖预算', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2469,
+    "definition": "test('A18-3C2 Red: 页面只有统一上传区、保留Schema业务角色且Level入口可见', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2480,
+    "definition": "test('UI: 未选择两个文件时禁止检查并显示明确提示', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2487,
+    "definition": "test('UI: 未选择文件时检查按钮可显示提示但不会开始解析', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2495,
+    "definition": "test('UI: renderTverRun保留五状态统计并显示S/D原始值', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2510,
+    "definition": "test('UI: 仅异常和层级／状态筛选只影响展示，不修改原始run', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2519,
+    "definition": "test('UI: clear清除文件、结果、错误和筛选状态', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2529,
+    "definition": "test('UI: synthetic设定表与CSV能经过完整控制器产生结果', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2540,
+    "definition": "test('Export: 异常CSV以UTF-8 BOM开始并正确转义', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2550,
+    "definition": "test('Export: register第一行明确不代表后台登记成功', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2555,
+    "definition": "test('Export: 本地下载将链接连接到DOM，触发后才移除并延后释放Object URL', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2566,
+    "definition": "test('Export: 复制内容只包含当前显示的异常', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2575,
+    "definition": "test('Offline: 页面不存在CDN、fetch、XHR、WebSocket或外部上传', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2584,
+    "definition": "test('Batch summary: 输出 Schema、三层解析／匹配数、五类状态及代表性差异', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2626,
+    "definition": "test('Batch summary: register 的业务角色明确为入稿一致性，未声称后台已登记', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2643,
+    "definition": "test('Batch reader: 程序生成的最小 XLSX 经本地 SheetJS 二进制读取后可传给 parseTverSettingWorkbook', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2665,
+    "definition": "test('A16 Compare: Campaign 名称全角括号与＆仅作为表記ゆれ一致，保留 raw', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2674,
+    "definition": "test('A16 Compare: Creative 独立 Pre token 作为表記ゆれ一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2680,
+    "definition": "test('A16 Compare: ABC/abc、Premium 与非独立 Pre 不自动转换', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2687,
+    "definition": "test('A16 Compare: 合法日期的零填充、分隔符和 :00 秒为表記ゆれ一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2700,
+    "definition": "test('A16 Compare: 非法日期不 canonical 成一致，粒度不合法最终需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2712,
+    "definition": "test('A16 Compare: Campaign 金额的货币符号和千分位为表記ゆれ一致，不同金额仍不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2720,
+    "definition": "test('A16 Compare: Price 仅在唯一金额时为表記ゆれ一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2725,
+    "definition": "test('A16 Compare: Device 接收 Setting 派生 canonical 且保留说明文字 raw', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2735,
+    "definition": "test('A16 Compare: Device 无法唯一解析时为需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2743,
+    "definition": "test('A16 Compare: 无 Setting 当前状态证据时 Register/Edit 与 CSV 值无关，均需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2756,
+    "definition": "test('A16 Compare: not_provided、unavailable、ambiguous 不得作为空值一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2769,
+    "definition": "test('A16 Compare: 结果保留日文显示名称、Entity Key 与 canonical 元数据', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2781,
+    "definition": "test('A16 Compare: matcher 既有 Pre 规则与唯一候选结论保持不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2855,
+    "definition": "test('A17-3A Red: 视频 15 秒格式按 parseTverVideoDuration 规范为 15', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2863,
+    "definition": "test('A17-3A Red: 视频 30 秒格式按 parseTverVideoDuration 规范为 30', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2868,
+    "definition": "test('A17-3A Red: 视频 60 秒格式按 parseTverVideoDuration 规范为 60', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2873,
+    "definition": "test('A17-3A Red: 视频 raw 不同但 canonical 相同生成表記ゆれ一致', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2883,
+    "definition": "test('A17-3A Red: 视频 \"-\" 保留 evidence 但不得成为 primarySource', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2893,
+    "definition": "test('A17-3A Red: 多个不同有效视频秒数为 ambiguous 且不选第一项', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2901,
+    "definition": "test('A17-3A Red: Register DMP 纯数字 68 以明确数字来源作为 primarySource', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2911,
+    "definition": "test('A17-3A Red: 案件名含 _DMP_ 时不推导 dmp_segment 数字 ID', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2918,
+    "definition": "test('A17-3A Red: 多个不同 DMP ID 为 ambiguous 且不取首个 ID', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2928,
+    "definition": "test('A17-3A Red: Register 视频与 DMP 双方空值不生成 Compare entry', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2934,
+    "definition": "test('A17-3A Red: Edit 不生成视频或 DMP Compare', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2946,
+    "definition": "test('A17-3A Red: Register DMP 68 与 CSV 68 生成为一致', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2956,
+    "definition": "test('A17-3A-DMP-R2 Red: 68 被 IM、年龄说明与 ADG 说明包围时仍选唯一业务 ID', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2969,
+    "definition": "test('A17-3A-DMP-R2 Red: 仅模板文本保留 Evidence/derivedFrom 但不生成业务候选', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2979,
+    "definition": "test('A17-3A-DMP-R2 Red: Setting 模板来源与 CSV 空值不生成 dmp_segment entry', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2987,
+    "definition": "test('A17-3A-DMP-R2 Red: fields.segment 与 targeting DMP 别名同源时不重复计数且选 68', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 2999,
+    "definition": "test('A17-3A-DMP-R2 Red: 不同 ADG 的 DMP evidence 候选相互独立', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3309,
+    "definition": "test('A17-3B Red: データ蓄積の○・segment name・6543はstore_segmentだけに解析し数字をprimaryにする', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3322,
+    "definition": "test('A17-3B Red: 入札セグメントの○・segment name・6543はbid_segmentだけに解析し数字をprimaryにする', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3335,
+    "definition": "test('A17-3B Red: 6544のstore/bidも各列の数字IDを独立して解析する', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3344,
+    "definition": "test('A17-3B Red: store/bid字段严格隔离，单侧来源不得互相替代', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3357,
+    "definition": "test('A17-3B Red: store/bid模板与CSV空值保留Evidence但不生成entry', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3370,
+    "definition": "test('A17-3B Red: 同一字段的多个不同有效ID必须ambiguous而不取首项', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3379,
+    "definition": "test('A17-3B Red: 不同ADG的store evidence与候选相互独立', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3391,
+    "definition": "test('A17-3B Red: 单一明确ID集合按既有规则去重并排序', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3399,
+    "definition": "test('A17-3B Red: Register八条retarget Compare按store 4条、bid 4条且全部一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3411,
+    "definition": "test('A17-3B-E1 Red: edit-with-ids真实⑧形状生成store 4条与bid 4条且不读取retarget字段', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3438,
+    "definition": "assert.ok(entries.every(entry => entry.sourceRefs.setting && /^654[34]$/.test(entry.sourceRefs.setting.rawValue)));"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3439,
+    "definition": "assert.ok(entries.every(entry => entry.sourceRefs.csv && /^654[34]$/.test(entry.sourceRefs.csv.rawValue)));"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3442,
+    "definition": "test('A17-3B-E1 Red: edit-with-ids模板与空CSV不生成retarget、视频、DMP或schema notice', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3451,
+    "definition": "test('A17-3C Red: edit-with-ids多个ADG真实视频Setting合并为一个schema notice', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3471,
+    "definition": "test('A17-3C Red: edit-with-ids真实DMP值仅对业务ADG生成一个notice且不生成Compare', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3488,
+    "definition": "test('A17-3C Red: edit-with-ids模板-only与双方无业务值不生成schema notice', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3498,
+    "definition": "test('A17-3C Red: register-without-ids不生成schema notice且保留视频/DMP Compare', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3507,
+    "definition": "test('A17-3C 契约Red: register-without-ids无notice时仍明确持有空schemaNotices数组', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3516,
+    "definition": "test('A17-3C 契约Red: edit-with-ids模板-only无业务值时明确持有空schemaNotices数组', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3525,
+    "definition": "test('A17-3C Red: notice与entries隔离且不吞掉A17-3B八条store/bid Compare', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3550,
+    "definition": "test('A17-3A Red: Entity Matching 结果与 A17-2 基线保持不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3630,
+    "definition": "test('A18-1A Red: 通过明确 parentKey 建立 Campaign → Ad Group → Ad 三层树', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3646,
+    "definition": "test('A18-1A Red: 同名但 entityKey 与 parentKey 不同的实体保持独立', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3677,
+    "definition": "test('A18-1A Red: 没有明确 parentKey 时即使 key 看似有层级也进入 unattached', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3691,
+    "definition": "test('A18-1A Red: matched Setting/CSV 实体合并为一个展示节点', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3701,
+    "definition": "test('A18-1A Red: Setting-only、CSV-only 与明确父级的 CSV 节点均被保留', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3728,
+    "definition": "test('A18-1A Red: 每条 entry 只通过索引直接归属一个实体节点', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3743,
+    "definition": "test('A18-1A Red: directStatusCounts 与 subtreeStatusCounts 分层统计且五类状态不重分类', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3770,
+    "definition": "test('A18-1A Red: 构建展示树不改变原run业务对象内容', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3793,
+    "definition": "test('A18-1A Red: 展示树只保存entryIndexes，不复制Evidence', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3804,
+    "definition": "test('A18-1A Red: 空run返回稳定空结构', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3826,
+    "definition": "test('A18-1B: 层级渲染函数存在并生成Campaign→Ad Group→Ad嵌套结构', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3834,
+    "definition": "test('A18-1B: Campaign默认展开，Ad Group与Ad具有正确aria-expanded', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3843,
+    "definition": "test('A18-1B: 节点显示直接字段数与subtreeStatusCounts，零数量状态不显示', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3852,
+    "definition": "test('A18-1B: unattached节点显示在独立的未接続エンティティ区域', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3872,
+    "definition": "test('A18-1B: 空displayTree安全渲染', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3877,
+    "definition": "test('A18-1B: displayName与nodeKey中的HTML特殊字符被转义', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3892,
+    "definition": "test('A18-1B: 渲染前后run.displayTree与entries内容不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3899,
+    "definition": "test('A18-3C1: 横向结果默认不生成详细扁平表容器', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3908,
+    "definition": "test('A18-1B: schemaNotices不进入层级状态徽标', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3916,
+    "definition": "test('A18-1B: 全部展开/折叠与节点切换使用稳定data属性', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3928,
+    "definition": "test('A18-1B: 同名节点拥有不同nodeKey时DOM标识不冲突', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 3944,
+    "definition": "test('A18-3B: 重复调用横向结果渲染不会产生重复旧树容器', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4005,
+    "definition": "test('A18-1C Red: buildTverDisplayLabel函数存在并为每个节点生成displayLabel', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4013,
+    "definition": "test('A18-1C: matched edit Ad Group不使用CSV名称冒充Setting身份', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4018,
+    "definition": "test('A18-1C: matched register Ad Group不使用CSV名称冒充Setting身份', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4023,
+    "definition": "test('A18-1C: CSV两种名称字段均不能覆盖Setting身份', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4028,
+    "definition": "test('A18-1C Red: CSV名称为空时targetingNumber与tagAppeal组成Setting fallback', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4033,
+    "definition": "test('A18-1C Red: 仅targetingNumber存在时生成固定fallback', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4038,
+    "definition": "test('A18-1C Red: 仅tagAppeal存在时生成固定fallback', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4043,
+    "definition": "test('A18-1C Red: targetingNumber与tagAppeal都不存在时使用固定广告グループ', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4048,
+    "definition": "test('A18-1C Red: Campaign与Ad的displayLabel保持displayName', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4056,
+    "definition": "test('A18-1C Red: Setting名投影可读且不改变来源实体、targetName或实体key', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4080,
+    "definition": "test('A18-1C Red: 不解析entityKey中的JSON而只使用实体字段', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4089,
+    "definition": "test('A18-1C Red: UI节点标题使用displayLabel而不是Ad Group原displayName', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4101,
+    "definition": "test('A18-1C Red: displayLabel在UI中经过HTML转义', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4108,
+    "definition": "test('A18-1C Red: 相同displayLabel但不同nodeKey的节点保持独立', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4131,
+    "definition": "test('A18-1C Red: displayLabel不改变状态统计、entryIndexes、父子层级或节点字段', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4205,
+    "definition": "test('A18-2A Red: entry index展示索引函数存在且只由displayTree建立', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4214,
+    "definition": "test('A18-2A Red: 实体字段表只渲染节点自身entryIndexes', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4224,
+    "definition": "test('A18-2A Red: 子实体entry不进入父实体direct字段表', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4232,
+    "definition": "test('A18-2A Red: Campaign、Ad Group、Ad三层均生成字段表', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4241,
+    "definition": "test('A18-2A Red: 字段表严格使用五列结构', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4252,
+    "definition": "test('A18-2A Red: 状態、Setting raw、CSV raw、reason和ruleBasis均显示', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4262,
+    "definition": "test('A18-2A Red: 没有direct entry的节点不生成空表', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4268,
+    "definition": "test('A18-2A Red: 非连续且乱序entryIndexes仍按索引顺序渲染', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4275,
+    "definition": "test('A18-2A Red: 字段表所有动态内容经过HTML转义', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4286,
+    "definition": "test('A18-2A Red: 字段表渲染不把完整entry或Evidence写回节点', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4296,
+    "definition": "test('A18-2A Red: 横向表Ad Group対象名使用displayLabel而非长JSON', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4303,
+    "definition": "test('A18-2A Red: 展示修正不改变原targetName与所有实体key', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4317,
+    "definition": "test('A18-2A Red: 相同displayLabel的节点和entry不合并', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4331,
+    "definition": "test('A18-2A Red: schemaNotices保持run级且不进入实体字段表', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4339,
+    "definition": "test('A18-2A Red: statusCounts、matching和candidateSignature保持不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4347,
+    "definition": "test('A18-3B迁移: 状态筛选同步过滤横向单元格', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4355,
+    "definition": "test('A18-3B迁移: Level页签同步过滤横向字段行', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4363,
+    "definition": "test('A18-3B迁移: 异常筛选同步过滤当前Level横向单元格', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4375,
+    "definition": "test('A18-3B迁移: 关键词筛选同步过滤横向单元格', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4383,
+    "definition": "test('A18-3B迁移: 多个筛选条件遵循既有组合语义', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4392,
+    "definition": "test('A18-3B迁移: displayStatus为需确认时可由界面要確認条件筛选', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4400,
+    "definition": "test('A18-3B迁移: 子节点字段不得进入父阶层横向表', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4409,
+    "definition": "test('A18-3B迁移: 横向单元格保持节点原始entryIndexes顺序', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4419,
+    "definition": "test('A18-3B迁移: 没有匹配字段的实体不生成空横向行', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4426,
+    "definition": "test('A18-3B迁移: 筛选后没有匹配字段的实体行隐藏且空分组隐藏', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4433,
+    "definition": "test('A18-3B迁移: 筛选后横向分组保留父阶层关系', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4441,
+    "definition": "test('A18-3B迁移: 筛选不重新计算顶部三状态统计', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4450,
+    "definition": "test('A18-3B迁移: 筛选后的横向动态内容继续HTML转义', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4461,
+    "definition": "test('A18-3B迁移: 无筛选时三页横向字段行保持原样且不显示扁平表', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4468,
+    "definition": "test('A18-3B迁移: entries、displayTree、entryIndexes、matching、statusCounts、schemaNotices深度不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4475,
+    "definition": "test('A18-3B迁移: 横向单元格集合仍与既有筛选结果一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4547,
+    "definition": "test('A18-3A Red: Campaign、Ad Group、Ad节点分别正确收集', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4555,
+    "definition": "test('A18-3A Red: 父路径只来自displayTree，不解析entityKey', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4563,
+    "definition": "test('A18-3A Red: 同名节点不会合并', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4572,
+    "definition": "test('A18-3A Red: roots与children顺序保持', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4581,
+    "definition": "test('A18-3A Red: unattached按原始顺序追加且标记未接続', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4590,
+    "definition": "test('A18-3A Red: 三个Level使用固定字段顺序', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4606,
+    "definition": "test('A18-3A Red: 未知field按首次出现顺序追加到固定字段之后', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4612,
+    "definition": "test('A18-3A Red: 全实体为空的字段隐藏，部分为空字段保留', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4628,
+    "definition": "test('A18-3A Red: 数字0与布尔false不得判定为空', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4638,
+    "definition": "test('A18-3A Red: 字段显示标签使用映射，未知field回退原始key', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4644,
+    "definition": "test('A18-3A Red: 重复field全部保留且顺序与entryIndexes一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4656,
+    "definition": "test('A18-3A Red: rowKey稳定且包含节点与父路径身份', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4665,
+    "definition": "test('A18-3A Red: directStatusCounts保持原始摘要且不重新计算', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4673,
+    "definition": "test('A18-3A Red: 筛选无匹配entry时隐藏实体行且不生成空行', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4687,
+    "definition": "test('A18-3A Red: view model每个field cell只保留通过现有entry筛选语义的entry', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4698,
+    "definition": "test('A18-3A Red: view model不复制Evidence且不改变entries、displayTree、entryIndexes', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4724,
+    "definition": "test('A18-3B Red: 默认结果包含三个Level页签及ARIA，默认Campaign', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4733,
+    "definition": "test('A18-3B Red: 页签切换到Ad Group后保持当前Level且移除旧Level选择器', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4741,
+    "definition": "test('A18-3B Red: 新案件与清除操作将Level重置为Campaign', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4748,
+    "definition": "test('A18-3B Red: 每个实体生成S/D两条横向数据行', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4758,
+    "definition": "test('A18-3B Red: 同名实体在横向表中不合并', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4774,
+    "definition": "test('A18-3B Red: Ad Group按Campaign、Ad按Ad Group生成分组行', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4782,
+    "definition": "test('A18-3B Red: 无匹配实体行及空分组同时隐藏', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4800,
+    "definition": "test('A18-3B Red: 横向表具有三个固定列和Level动态列', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4809,
+    "definition": "test('A18-3B Red: 字段列基于未筛选数据，筛选前后列集合与顺序不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4816,
+    "definition": "test('A18-3B Red: 单元格上下显示設定表值与CSV值，且重复field按原序堆叠', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4828,
+    "definition": "test('A18-3B Red: 横向单元格全部动态文本HTML转义', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4837,
+    "definition": "test('A18-3B Red: 状态、异常、关键词及组合筛选投影到横向单元格', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4850,
+    "definition": "test('A18-3B Red: 界面要確認正确筛选displayStatus为需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4857,
+    "definition": "test('A18-3B Red: 筛选不重新计算顶部三状态统计', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4869,
+    "definition": "test('A18-3B Red: 默认横向结果不再生成旧树DOM但旧树纯函数仍存在', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4876,
+    "definition": "test('A18-3C1 Red: 详细扁平表数据仍保留在返回值但不进入默认DOM', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4884,
+    "definition": "test('A18-3B Red: 横向渲染前后entries、displayTree、entryIndexes不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4891,
+    "definition": "test('A18-3B Red: 横向滚动、sticky表头和固定列CSS存在且不会把页面撑宽', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4918,
+    "definition": "test('A18-3C1 Red: 五状态展示投影只输出三状态且案件②示例合计正确', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4928,
+    "definition": "test('C3-C1 Red: Campaign每个实体只生成一对来源行且字段格不再重复S-D标签', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4941,
+    "definition": "test('C3-C1 Red: No対象名比較結果在实体两行之间只出现一次', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4950,
+    "definition": "test('C3-C1 Red: 多个字段共享同一对設定表与CSV source row', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4967,
+    "definition": "test('C3-C1 Red: Campaign固定为兩条source row且欄位header只生成一份', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4974,
+    "definition": "test('C3-C1 Red: Ad Group保留父级group header并使用相同兩行结构', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4982,
+    "definition": "test('C3-C1 Red: Ad使用相同兩行结构且来源标签不随字段重复', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 4990,
+    "definition": "test('C3-C1 Red: 三状态判定badge只使用一致不一致要確認并强化语义class', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5007,
+    "definition": "test('C3-C1 Red: source列不加入可调宽字段且字段宽度由两条source row共同使用', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5019,
+    "definition": "test('C3-C1 Red: C3-B-V3横向source/access DOM与sticky header继续存在', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5030,
+    "definition": "test('C3-C1 Red: 结果表不引入内部纵向scrollbar', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5037,
+    "definition": "test('C3-C1 Red: 三个Level的动态文本继续HTML escape且不使用innerHTML注入值', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5049,
+    "definition": "test('C3-C2 Red: 业务值单元格取消内缩padding并保留无圆角无阴影的flat entry', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5059,
+    "definition": "test('C3-C2 Red: semantic背景直接覆盖业务值data cell的完整可用区域', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5065,
+    "definition": "test('C3-C2 Red: 一致颜色比不一致与要確認明显更淡且三状态颜色都存在', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5072,
+    "definition": "test('C3-C2 Red: 比較結果仍保留实体级badge与状态边框强调', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5081,
+    "definition": "test('C3-C2 Red: 来源列仍是設定表与CSV的稳定行标签', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5088,
+    "definition": "test('C3-C2 Red: No対象名比較結果仍在实体两行之间使用rowspan', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5093,
+    "definition": "test('C3-C2 Red: Campaign每个实体仍固定输出設定表与CSV两行', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5100,
+    "definition": "test('C3-C2 Red: Ad Group与Ad的父级group header仍保留', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5107,
+    "definition": "test('C3-C2 Red: horizontal scroll access与sticky header DOM仍保留', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5115,
+    "definition": "test('C3-C2 Red: 字段column resize结构仍保留且来源列不变成resize handle', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5121,
+    "definition": "test('C3-C2 Red: 业务结果区域不新增内部纵向scrollbar', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5128,
+    "definition": "test('C3-C2 Red: URL等长字段继续保留title与truncate/overflow保护', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5139,
+    "definition": "test('C3-C2-Fix1 Red: 一致semantic class直接落在完整业务字段td', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5145,
+    "definition": "test('C3-C2-Fix1 Red: 不一致semantic class直接落在完整业务字段td', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5151,
+    "definition": "test('C3-C2-Fix1 Red: 要確認semantic class直接落在完整业务字段td', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5159,
+    "definition": "test('C3-C2-Fix1 Red: 空字符串value的設定表与CSV cell仍保留要確認完整背景契约', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5169,
+    "definition": "test('C3-C2-Fix1 Red: semantic背景不再落在inner entry且旧card-like背景不回归', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5179,
+    "definition": "test('C3-C2-Fix1 Red: full-cell修正不退化C3-C1两行与rowspan结构', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5307,
+    "definition": "test('C3-C3-Fix1 Red: Campaign status default 0 must compare as 一致, not CSV-only 需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5319,
+    "definition": "test('C3-C3-Fix1 Red: consumption_type must generate an independent Setting-derived Entry', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5333,
+    "definition": "test('C3-C3-Fix1 Red: CVなし + CSV空值 must keep a comparable blank Entry', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5344,
+    "definition": "test('C3-C3-Fix5 Red: report_target_flag raw data保留但不生成Campaign QC Entry', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5354,
+    "definition": "test('C3-C3-Fix1 Red: hourly_bid_weight remains visible as non-comparable 需确认 while the rule is pending', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5364,
+    "definition": "test('C3-C3-Fix1 Red: register budget_type uses independent default 2 and edit schema omits it', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5381,
+    "definition": "test('C3-C3-Fix2 Red: hourly_bid_weight空值保留Entry但整列不显示，任一非空时显示整列', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5392,
+    "definition": "test('C3-C3-Fix2 Red: Campaign Setting行只显示业务label，CSV行保留原始值且comparison不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5411,
+    "definition": "test('C3-C3-Fix2 Red: Reset清空文件、结果、状态、滚动并允许下一组上传', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5479,
+    "definition": "test('C3-C3-Fix2 Red: sticky header下access scrollbar紧贴表头且不产生深色空白带', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5487,
+    "definition": "test('C3-C3-Fix3R Red: Campaign対象名恢复为CPN訴求短识别label', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5499,
+    "definition": "test('C3-C3-Fix3R Red: Campaign左侧使用短label且campaign_name比较Entry保持独立', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5516,
+    "definition": "test('C3-C3-Fix3R Red: 固定No/対象名/比較結果无内部separator且实体语义不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5529,
+    "definition": "test('C3-C3-Fix3R Red: fixed separator实现与生命周期调用完全移除', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5537,
+    "definition": "test('C3-C3-Fix3R Red: corrective revert不改变C3-C2-Fix1与C3-B-V3契约', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5549,
+    "definition": "test('C3-C3-Fix4 Red: Campaign fixed header改为CPN訴求且body短label与campaign_name QC不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5566,
+    "definition": "test('C3-C3-Fix4 Red: fixed与dynamic sticky header按真实高度max统一并可重新测量', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5601,
+    "definition": "test('C3-C3-Fix4 Red: header高度在初始render、sticky sync、overflow与column resize路径重新同步且body不加separator', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5616,
+    "definition": "test('C3-C3-Fix4 Red: hidden hourly双方空值保留需确认Entry但不污染Campaign entity status', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5626,
+    "definition": "test('C3-C3-Fix4 Red: hidden hourly不掩盖其他可见字段不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5637,
+    "definition": "test('C3-C3-Fix4 Red: hourly任一侧有值时列显示且需确认仍参与entity status', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5648,
+    "definition": "test('C3-C3-Fix5 Red: Campaign 23:45 canonical相同不因30分钟粒度变为要確認', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5659,
+    "definition": "test('C3-C3-Fix5 Red: Campaign 23:45与23:30仍判定真正时间不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5669,
+    "definition": "test('C3-C3-Fix5 Red: 非法Campaign日期与非法秒数仍保持需确认 validation', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5682,
+    "definition": "test('C3-C3-Fix5 Red: Ad Group 日期粒度也只保留证据、不覆盖canonical等值绿色投影', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5723,
+    "definition": "test('C3-C4-4A Red: GP Period source直接来自Setting ADG列与CSV adgroup列，不继承Campaign日期', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5749,
+    "definition": "test('C3-C4-4A Red: GP Period start/end的真实差异仍判定为不一致', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5762,
+    "definition": "test('C3-C4-4A Red: schema available时单侧空值是不一致，双方空值为neutral', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5785,
+    "definition": "test('C3-C4-4A Red: schema/source unavailable不当作empty或mismatch，也不污染GP entity status', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5804,
+    "definition": "test('C3-C4-4A Red: schema明确存在但日期格式无法解析时保持需确认 validation', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5814,
+    "definition": "test('C3-C3-Fix5 Red: 2431式Campaign全可见字段一致时entity status为一致且不含report_target_flag', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5829,
+    "definition": "test('C3-C3-Fix5 Red: 2549式budget差异仍为不一致，其他全一致Campaign不被误伤', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5838,
+    "definition": "test('C3-C3 Red: Campaign字段集合与优先顺序只包含Campaign字段', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5851,
+    "definition": "test('C3-C3 Red: Campaign主表不混入Ad Group或Ad字段', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5859,
+    "definition": "test('C3-C3 Red: schema或comparison contract缺失字段不生成错误列', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5868,
+    "definition": "test('C3-C3 Red: Campaign semantic full-cell background仍位于业务字段td', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5876,
+    "definition": "test('C3-C3 Red: Campaign继续保持Setting与CSV两行结构', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5884,
+    "definition": "test('C3-C3-Fix3R Red: CPN訴求作为Campaign displayLabel且仍只改变nameComponents', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5897,
+    "definition": "test('C3-C3 Red: short label不存在时保持当前Campaign対象名', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5903,
+    "definition": "test('C3-C3 Red: C3-B-V3 scrolling与resize结构继续保留', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5916,
+    "definition": "test('A18-3C1-V1 Red: 顶部只渲染三张卡片且默认DOM无筛选控件', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5926,
+    "definition": "test('A18-3C1 Red: 一致与要確認筛选分别聚合底层状态且不改变底层谓词', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5944,
+    "definition": "test('A18-3C1 Red: 一个实体输出S/D两条物理行且固定列rowspan为2', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5955,
+    "definition": "test('A18-3C1 Red: 设置值只进入S行、CSV值只进入D行且重复field顺序保持', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5973,
+    "definition": "test('A18-3C1 Red: 三状态颜色class、深色表头与No.数据列结构存在', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 5987,
+    "definition": "test('A18-3C1 Red: 列宽按Level保存、限制范围且No.不可调整', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6006,
+    "definition": "test('A18-3C1 Red: 表头拖动结构读取列宽且默认宽度重置不清理其他localStorage', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6025,
+    "definition": "test('A18-3C1 Red: 长文本只作预览但原始值保留且不生成默认详细表DOM', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6041,
+    "definition": "test('A18-3C1-V1 Red: 默认横向DOM移除整块筛选操作栏及其控件', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6052,
+    "definition": "test('A18-3C1-V1 Red: 三个Level的父分组行具备不遮住表头的sticky契约', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6068,
+    "definition": "test('A18-3C1-V1 Red: 页面取消1380px居中限制并保留横向表自身滚动', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6078,
+    "definition": "test('A18-3C1-V1 Red: 双击仅切换当前动态单元格展开状态且不修改entry', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6113,
+    "definition": "test('A18-3C1-V2 Red: 动态field cell不再输出重复的entry状态文字', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6118,
+    "definition": "test('A18-3C1-V2 Red: 实体展示状态按不一致大于要確認大于一致聚合', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6129,
+    "definition": "test('A18-3C1-V2 Red: 三个Level每实体只渲染一个比較結果且使用rowspan=2', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6144,
+    "definition": "test('A18-3C1-V2 Red: 比較結果只消费当前row entry投影且不改变entry与statusCounts', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6155,
+    "definition": "test('A18-3C1-V2 Red: 新固定列的sticky offset在No→対象名→比較結果后保持正确', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6167,
+    "definition": "test('A18-3C1-V2 Red: sticky group不再依赖纵向overflow:auto滚动祖先', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6178,
+    "definition": "test('A18-3C1-V2 Red: V1的S/D双行、双击、列宽记忆和三Level结构继续存在', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6194,
+    "definition": "test('A18-3C1-V2 Red: 列宽拖动同步固定/动态展示表并保持比較列偏移', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6252,
+    "definition": "test('A18-3C1-V3 Red: 横向固定列只保留No対象名比較結果且父数据仍用于group row', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6272,
+    "definition": "test('A18-3C1-V3 Red: 旧parent宽度被忽略且固定宽度只计算No対象名比較結果', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6288,
+    "definition": "test('A18-3C1-V3 Red: header和body所有同名列使用同一resolved width', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6303,
+    "definition": "test('A18-3C1-V3 Red: sticky current-group bar使用实际header高度并支持A到B切换', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6346,
+    "definition": "test('A18-3C1-V3 Red: Campaign没有sticky父级bar且sticky更新使用rAF节流契约', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6355,
+    "definition": "test('A18-3C1-V3 Red: 删除parent后resize仍同步header/body且不写parent宽度', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6394,
+    "definition": "test('A18-3C1-V3 Red: 三个Level使用同一显式总宽度且不依赖AG/Ad补偿', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6409,
+    "definition": "test('A18-3C1-V3 Red: 默认不生成可见floating group bar但静态group row仍保留', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6419,
+    "definition": "test('A18-3C1-V3 Red: 比較結果列可按Level独立调宽且固定总宽同步', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6435,
+    "definition": "test('A18-3C1-V3 Red: 三个Level动态值默认单行省略且双击展开仍可见完整多行', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6468,
+    "definition": "test('A18-3C2 Red: 默认只有一个multiple统一上传区且四个旧操作控件退出DOM', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6478,
+    "definition": "test('A18-3C2 Red: 扩展名加内容识别，批量与任意文件名均可唯一分工', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6492,
+    "definition": "test('A18-3C2 Red: CSV→xlsx与xlsx→CSV分次上传都合并后再启用检查且不自动运行', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6513,
+    "definition": "test('A18-3C2 Red: 重复角色、unsupported与内容不合规文件全部阻止执行并给出原因', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6534,
+    "definition": "test('A18-3C2 Red: 缺少任一类型时按钮disabled，唯一识别齐全时enabled且不改动其他控件契约', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6556,
+    "definition": "test('A18-3C2 Red: Level tabs恢复左对齐契约且不改变C1横向结果入口', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6568,
+    "definition": "test('A18-3C2-V1 Red: Level tabs恢复左对齐且仅固定列的rowspan单元格垂直居中', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6580,
+    "definition": "test('A18-3C2-V1 Red: 检查按钮与结果摘要使用同一紧凑操作区且默认摘要隐藏', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6589,
+    "definition": "test('A18-3C2-V1 Red: 结果摘要保留既有三状态投影值且不再生成大标题', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6601,
+    "definition": "test('A18-3C3-B Red: 详情展示只从现有entry生成并仅保留不一致与要確認', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6628,
+    "definition": "test('A18-3C3-B Red: 一致实体不生成详情行且比較結果不可展开', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6639,
+    "definition": "test('A18-3C3-B Red: 详情理由映射覆盖不一致、证据、状态、媒体、性别、都道府県、日予算和日期校验', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6663,
+    "definition": "test('A18-3C3-B Red: 详情保留可读sourceRefs，null来源不伪造primary且多Evidence全部可见', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6681,
+    "definition": "test('A18-3C3-B Red: null source和技术信息默认关闭，轻量详情默认不泄露原始技术代码', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6703,
+    "definition": "test('A18-3C3-B Red: 比較結果详情展开为单一实体且再次点击收起', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6731,
+    "definition": "test('A18-3C3-B Red: 详情层三Level均存在且不改变entries/statusCounts', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6745,
+    "definition": "test('A18-3C3-B-V2 Red: 三个Level只生成结果表自身的原生横向滚动容器', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6760,
+    "definition": "test('A18-3C3-B-V2 Red: Campaign存在横向溢出时由结果容器承载原生滚动', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6767,
+    "definition": "test('A18-3C3-B-V2 Red: Ad Group初次切换即可使用结果容器且不依赖window scroll', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6789,
+    "definition": "test('A18-3C3-B-V2 Red: Ad无横向溢出时仍使用auto而不是强制显示滚动条', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6798,
+    "definition": "test('A18-3C3-B-V2 Red: Level切换后每个当前结果只保留一个新的scroll容器且没有floating残留状态', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6807,
+    "definition": "test('A18-3C3-B-V2 Red: sticky header、group row和detail展开仍位于原生scroll容器内', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6891,
+    "definition": "test('A18-3C3-B-V3 Red: access scrollbar存在于sticky header内部且不引入独立定位层', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6909,
+    "definition": "test('A18-3C3-B-V3 Red: overflow时显示access并将真实scrollWidth写入track range', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6917,
+    "definition": "test('A18-3C3-B-V3 Red: 无overflow时access折叠且不留下空槽', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6928,
+    "definition": "test('A18-3C3-B-V3 Red: source与access双向scrollLeft同步且sticky header以source为基准', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6943,
+    "definition": "test('A18-3C3-B-V3 Red: Ad Group render后立即根据overflow显示access而不等待resize或页面滚动', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6961,
+    "definition": "test('A18-3C3-B-V3 Red: header高度自然包含access且body首行继续位于header之后', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6972,
+    "definition": "test('A18-3C3-B-V3 Red: 列宽或detail变化后重新测量access track且不生成第二个access', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 6984,
+    "definition": "test('A18-3C3-B-V3 Red: 三个Level render后均只有当前access且新source从scrollLeft 0开始', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7035,
+    "definition": "test('C3-C4-4D-B2 FIX1 Red: uid_suffix exposes only exact-known Setting rules and strict numeric CSV set canonicalization', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7051,
+    "definition": "test('C3-C4-4D-B2 FIX1 Red: uid_suffix is mapped through the existing ASR/sourceRefs/entity field path for both CSV schemas', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7064,
+    "definition": "test('C3-C4-4D-B2 FIX1 Red U1-U7: uid_suffix compares exact-known Setting and canonical CSV semantics conservatively', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7086,
+    "definition": "test('C3-C4-4D-B2 FIX1 Red U8-U9: uid_suffix single-side values are 不一致 while unknown values remain 要確認', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7100,
+    "definition": "test('C3-C4-4D-B2 FIX1 Red U10-U11: uid_suffix preserves raw display values and projects internal variant status to 一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7112,
+    "definition": "test('C3-C4-4D Red: annual_income only maps the three confirmed Setting buckets and keeps display/source raw', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7154,
+    "definition": "test('C3-C4-4D Red: annual_income rejects unproven buckets and separates explicit empty from unavailable', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7201,
+    "definition": "test('C3-C4-4D Fix1: unsupported targeting only reviews its own field and preserves unrelated field results', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7247,
+    "definition": "test('C3-C4-4D Red: demography only maps 子あり to 1 and compares CSV raw code while preserving Setting text', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7289,
+    "definition": "test('C3-C4-4D Red: demography keeps childless explicit empty neutral, guards unknown labels, and does not enable affinity or unopened fields', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7335,
+    "definition": "test('C3-C4-UI-FIX1A Red: pref 单侧显式空值不再进入需确认，双方空值保持 neutral', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7359,
+    "definition": "test('C3-C4-UI-FIX1A Red: pref 使用集合语义比较，不受顺序或集合增减影响', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7373,
+    "definition": "test('C3-C4-UI-FIX1A Red: pref 未知 Setting 名称与 CSV ID 继续保守为需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7389,
+    "definition": "test('C3-C4-UI-FIX1A Red: 非 pref targeting 的 null canonical 仍保持原有需确认行为', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7416,
+    "definition": "test('C3-C4-UI-FIX1B Red B1-B4: CP CSV code只在显示层追加业务label', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7433,
+    "definition": "test('C3-C4-UI-FIX1B Red B5-B6: GP confirmed code只在显示层追加业务label', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7441,
+    "definition": "test('C3-C4-UI-FIX1B Red B7-B8: unknown code原样保留且demography=0不猜测子なし', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7449,
+    "definition": "test('C3-C4-UI-FIX1B Red: 横向表、详情与字段表均使用display-only code label', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7479,
+    "definition": "test('C3-C4-UI-FIX1B Red B9-B10: display enhancement不改变comparisonStatus或canonicalValue', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7510,
+    "definition": "test('C3-C4-UI-FIX1C Red C1-C4: JA优先，权威label使用JA，未知字段保持raw key', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7518,
+    "definition": "test('C3-C4-4D-B2 FIX1A Red: uid_suffix header resolves to ASR while field key remains uid_suffix', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7540,
+    "definition": "test('C3-C4-UI-FIX1C Red C5-C6: 明确英文label次之，JA/EN均无时回退raw key', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7546,
+    "definition": "test('C3-C4-UI-FIX1C Red C7-C8: header label投影不改变comparison/raw/canonical', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7573,
+    "definition": "test('C3-C4-UI-FIX1C Red C9: FIX1B code→label value display保持', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7583,
+    "definition": "test('C3-C4-UI-FIX1C Red C10: CP header/display contract不受影响', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7592,
+    "definition": "test('C3-C4-UI-FIX1C-R2 Red R2-1: auction_type使用权威管理画面項目名', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7596,
+    "definition": "test('C3-C4-UI-FIX1C-R2 Red R2-2: DMP expansion使用权威管理画面項目名', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7600,
+    "definition": "test('C3-C4-UI-FIX1C-R2 Red R2-3: 未知字段继续raw field key fallback', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7604,
+    "definition": "test('C3-C4-UI-FIX1C-R2 Red R2-4: 已有JA label不受R2影响', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7610,
+    "definition": "test('C3-C4-UI-FIX1C-R2 Red R2-5: header label patch不改变value display或comparisonStatus', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7658,
+    "definition": "test('C3-C4-UI-FIX1D Red D1: CSV不足显示Setting中有而CSV没有的都道府県', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7669,
+    "definition": "test('C3-C4-UI-FIX1D Red D2: CSV多余显示CSV中有而Setting没有的都道府県', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7677,
+    "definition": "test('C3-C4-UI-FIX1D Red D3: 双方向差异同时显示CSV不足与CSV多余', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7685,
+    "definition": "test('C3-C4-UI-FIX1D Red D4: Setting有值且CSV empty时列出全部CSV不足', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7693,
+    "definition": "test('C3-C4-UI-FIX1D Red D5: Setting empty且CSV有值时列出全部CSV多余', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7701,
+    "definition": "test('C3-C4-UI-FIX1D Red D6: 相同canonical set的顺序变化不产生diff', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7708,
+    "definition": "test('C3-C4-UI-FIX1D Red D7: 双方empty为neutral且不产生diff', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7716,
+    "definition": "test('C3-C4-UI-FIX1D Red D8: Unknown Setting prefecture为要確認且不产生diff', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7724,
+    "definition": "test('C3-C4-UI-FIX1D Red D9: Unknown CSV ID为要確認且不产生diff', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7732,
+    "definition": "test('C3-C4-UI-FIX1D Red D10: 非pref mismatch不产生pref diff', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7739,
+    "definition": "test('C3-C4-UI-FIX1D Red D11: diff display前后comparisonStatus保持不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7746,
+    "definition": "test('C3-C4-UI-FIX1D Red D12: diff display前后canonicalValue保持不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7796,
+    "definition": "test('C3-C4-UI-FIX1E-A1 Red: 真实注记保留46个都道府県并可canonicalize', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7804,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red: 真实注记加CSV empty为不一致而非需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7812,
+    "definition": "test('C3-C4-UI-FIX1E-A3 Red: 仅该pref mismatch时entity为不一致而非要确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7818,
+    "definition": "test('C3-C4-UI-FIX1E-A4 Red: 未完成的除外变更继续ambiguous且显示明确理由', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7829,
+    "definition": "test('C3-C4-UI-FIX1E-A5 Red: 未知Setting都道府県不猜ID', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7836,
+    "definition": "test('C3-C4-UI-FIX1E-A6 Red: 未知CSV ID继续需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7843,
+    "definition": "test('C3-C4-UI-FIX1E-A7 Red: 双方已知且set相同为一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7850,
+    "definition": "test('C3-C4-UI-FIX1E-A8 Red: 都道府県顺序不同仍为一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7857,
+    "definition": "test('C3-C4-UI-FIX1E-A9 Red: 双方empty保持neutral', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7864,
+    "definition": "test('C3-C4-UI-FIX1E-A10 Red: 非pref targeting行为保持不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7895,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-1: pref missing diff显示在CSV行horizontal cell', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7902,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-2: pref extra diff显示在CSV行horizontal cell', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7907,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-3: pref双方向diff在同一CSV cell显示两条', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7914,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-4: CSV empty时列出全部Setting地域', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7919,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-5: Setting empty时列出全部CSV地域', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7924,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-6: pref一致时horizontal无diff文本', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7930,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-7: pref需确认时horizontal无diff文本', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7937,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-8: pref unknown ID时horizontal无diff文本', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7944,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-9: 非pref mismatch时horizontal无pref diff文本', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7952,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-10: main raw/display value与secondary diff分离', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7967,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-11: horizontal diff不改变comparisonStatus', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7974,
+    "definition": "test('C3-C4-UI-FIX1E-A2 Red A2-12: existing horizontal rows与rowspan结构保持', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7983,
+    "definition": "test('C3-C4-UI-FIX1E-B1 Red B1-1: adgroup_status 1显示通常', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7987,
+    "definition": "test('C3-C4-UI-FIX1E-B1 Red B1-2: adgroup_status 0显示初動OFF', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7991,
+    "definition": "test('C3-C4-UI-FIX1E-B1 Red B1-3: gender 1显示男性', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7995,
+    "definition": "test('C3-C4-UI-FIX1E-B1 Red B1-4: gender 2显示女性', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 7999,
+    "definition": "test('C3-C4-UI-FIX1E-B1 Red B1-5: gender 3显示その他', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8003,
+    "definition": "test('C3-C4-UI-FIX1E-B1 Red B1-6: unknown adgroup_status保留raw', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8007,
+    "definition": "test('C3-C4-UI-FIX1E-B1 Red B1-7: unknown gender保留raw', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8011,
+    "definition": "test('C3-C4-UI-FIX1E-B1 Red B1-8: Setting display保持业务文字', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8016,
+    "definition": "test('C3-C4-UI-FIX1E-B1 Red B1-9: code label display不改变canonicalValues', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8027,
+    "definition": "test('C3-C4-UI-FIX1E-B1 Red B1-10: code label display不改变comparisonStatus', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8039,
+    "definition": "test('C3-C4-UI-FIX1E-B2 Red B2-1: auction_type 1显示固定単価', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8043,
+    "definition": "test('C3-C4-UI-FIX1E-B2 Red B2-2: auction_type 2显示オークション', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8047,
+    "definition": "test('C3-C4-UI-FIX1E-B2 Red B2-3: auction_type未知code保留raw', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8051,
+    "definition": "test('C3-C4-UI-FIX1E-B2 Red B2-4: auction_type display不改变raw value', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8058,
+    "definition": "test('C3-C4-UI-FIX1E-B2 Red B2-5: auction_type display不改变canonical', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8067,
+    "definition": "test('C3-C4-UI-FIX1E-B2 Red B2-6: auction_type display不改变comparisonStatus', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8137,
+    "definition": "test('CPN-DTMATCH-FIX Red: 同一Campaign名仅開始日時不同时Campaign必须配对且開始日時判定不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8157,
+    "definition": "test('CPN-DTMATCH-FIX Red: 同一Campaign名仅終了日時不同时Campaign必须配对且終了日時判定不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8172,
+    "definition": "test('CPN-DTMATCH-FIX Red: 同一Campaign名且datetime完全一致时既有「一致」行为不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8185,
+    "definition": "test('CPN-DTMATCH-FIX Red: 同一稳定身份存在多个Campaign候选时保持ambiguous且不占用候选', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8207,
+    "definition": "test('CPN-DTMATCH-FIX Red: Campaign名本身不同时不得因本次修复被配对', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8217,
+    "definition": "test('CPN-DTMATCH-FIX Red: 日付レベルで異なるCampaign名は依然として候補にならない', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8226,
+    "definition": "test('CPN-DTMATCH-FIX Red: Edit-with-IDs schema 下datetime不一致同样配对并判定不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8243,
+    "definition": "test('CPN-DTMATCH-FIX Red: Edit-with-IDs schema 下Campaign名不同仍不配对', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8305,
+    "definition": "test('NEW-FMT-DEVICE-1 Red: row-level デバイス ios, android, pc 与 CSV android ios pc 判定一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8320,
+    "definition": "test('NEW-FMT-DEVICE-2 Red: row-level pc, ios, android 与 CSV android ios pc 判定一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8328,
+    "definition": "test('NEW-FMT-DEVICE-3 Red: row-level ctv 与 CSV ctv 判定一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8344,
+    "definition": "test('NEW-FMT-DEVICE-4 Red: row-level ios, android, pc, ctv 与 CSV android ctv ios pc 判定一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8361,
+    "definition": "test('NEW-FMT-DEVICE-5 FIX3: Tag Appeal 的唯一分支名称完成身份匹配后仍独立检出 Device 差异', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8397,
+    "definition": "test('NEW-FMT-DEVICE-6 Red: row-level device 有效时下方的配信デバイス●総括不得覆盖', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8412,
+    "definition": "test('NEW-FMT-DEVICE-7 FIX3: 唯一 GP 身份不受未知 Device 阻断，Device 字段仍需確認', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8424,
+    "definition": "test('NEW-FMT-DEVICE-8 Red: explicit device canonical 对 separator/order/duplicate 不敏感', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8434,
+    "definition": "test('NEW-FMT-DEVICE-9 Red: ターゲティング grid 右側の「▼デバイス変換」注記列を最終グループが吸収しない', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8473,
+    "definition": "test('NEW-FMT-OLD-DEVICE-1 Red: 旧 FMT（デバイス列なし）は従来の tagAppeal + 配信デバイス● 経路のまま', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8495,
+    "definition": "test('NEW-FMT-AUCTION-1 Red: 新 FMT オークションタイプ为空时沿用既有 DEFAULT_1', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8507,
+    "definition": "test('NEW-FMT-AUCTION-2 Red: 新 FMT オークションタイプ explicit 1 优先且 source 指向该单元格', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8519,
+    "definition": "test('NEW-FMT-AUCTION-3 Red: 新 FMT オークションタイプ explicit 2 解析能力', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8535,
+    "definition": "test('NEW-FMT-AUCTION-4 Red: 新 FMT オークションタイプ未知非空值必须 要確認，不得回退 1', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8546,
+    "definition": "test('TVER_AUCTION_TYPE_QC_EXCLUSION_FIX2: 新FMT所有Setting/CSVオークション値均不生成比较结果', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8594,
+    "definition": "test('TVER_AUCTION_TYPE_QC_EXCLUSION_FIX2: 旧FMT Register与Edit CSV保留Schema/raw但不生成auction_type entry', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8641,
+    "definition": "test('NEW-FMT-AUCTION-5 Red: 新 FMT 模板 marker \"-\" 不得被当成 explicit auction 值', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8651,
+    "definition": "test('NEW-FMT-AUCTION-6 Red: 旧 FMT（新 row なし）の default 1 は不変', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8670,
+    "definition": "test('NEW-FMT-SCHEMA-1 Red: 新 FMT 主業務表は構造能力検出で受理され、旧 FMT はそのまま', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8731,
+    "definition": "test('AGE-MAX100 Red: MAX_AGE 常量与 open-upper canonical 契约', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8754,
+    "definition": "test('AGE-MAX100 Red: AGE-1 Setting 20歳以上 ⇄ CSV 20 / 100 は一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8762,
+    "definition": "test('AGE-MAX100 Red: AGE-2 Setting 30歳以上 ⇄ CSV 30 / 100 は一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8770,
+    "definition": "test('AGE-MAX100 Red: AGE-3 Setting 20歳〜60歳 ⇄ CSV 20 / 60 は従来どおり一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8778,
+    "definition": "test('AGE-MAX100 Red: AGE-4 Setting 20歳以上 ⇄ CSV 20 / 99 は不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8786,
+    "definition": "test('AGE-MAX100 Red: AGE-5 Setting 20歳以上 ⇄ CSV 21 / 100 は不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8794,
+    "definition": "test('AGE-MAX100 Red: AGE-6 Setting 20歳〜100歳 ⇄ CSV 20 / 100 は一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8802,
+    "definition": "test('AGE-MAX100 Red: AGE-7 Setting 100歳以上 ⇄ CSV 100 / 100 は一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8810,
+    "definition": "test('AGE-MAX100 Red: AGE-8 Setting 側 未知値 abc歳以上 は保守的に要確認（100 に変換しない）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8823,
+    "definition": "test('AGE-MAX100 Red: AGE-8 CSV 側 未知値 20 / abc は保守的に要確認（100 に変換しない）', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8831,
+    "definition": "test('AGE-MAX100 Red: 業務 metadata（upperOpen / maxAge）を保持し raw を偽造しない', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8851,
+    "definition": "test('AGE-MAX100 Red: CSV 側 canonical は closed/raw の区別を保持する', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8866,
+    "definition": "test('AGE-MAX100 Red: register / edit 両 schema で同じ比較語義になる', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8957,
+    "definition": "test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 全角４／５只用于Targeting关联，原始来源保留且1／2／3不变', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 8992,
+    "definition": "test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 一个CSV Group的空device不污染其余9组，身份匹配后字段仍需确认', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9012,
+    "definition": "test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 名称唯一确定年齢_CTV后仍比较真实device并报告不一致', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9025,
+    "definition": "test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 同名CSV候補保留ambiguous且不得占用其一', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9038,
+    "definition": "test('TVER_ADGROUP_ENTITY_MATCH_FIX1: Setting重复短名称时保留Candidate Contention', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9048,
+    "definition": "test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 未知CSV structural candidate只影响已知字段未排除它的Group', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9127,
+    "definition": "test('FIX3 daily budget: 任一所属业务行有值时归集完整来源，冲突值转要確認', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9174,
+    "definition": "test('FIX3 identity: Device 差异不阻断 GP 身份；Ad URL 用入稿用 URL 独立比较', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9201,
+    "definition": "test('FIX3 upload URL: unique mapping, missing/duplicate safeguards, and legacy fallback', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9233,
+    "definition": "test('FIX3 Register Ad status: blank requires confirmation and invalid code carries validation issue', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9250,
+    "definition": "test('FIX3 genre exclude: Register/Edit 区分 genre 与 genre_exclude 并使用 Genre ID 字典', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9274,
+    "definition": "test('FIX3 reset: 清空期间旧识别任务不能覆盖后续新文件识别', async () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9295,
+    "definition": "test('TVER_ADGROUP_ENTITY_MATCH_FIX1: 旧FMT缺少可靠Group名称时仍按缺失结构字段保守处理', () => {"
+  },
+  {
+    "file": "tests/tver_check.test.js",
+    "line": 9318,
+    "definition": "test('TVER_ADGROUP_ENTITY_MATCH_FIX1: ambiguous Group用Setting短名称显示，无证据时使用业务占位符', () => {"
+  },
+  {
+    "file": "tests/tver_mismatch_navigator.test.js",
+    "line": 12,
+    "definition": "test('TV-N1: TVer horizontal final mismatch cells expose a stable mismatch marker', () => {"
+  },
+  {
+    "file": "tests/tver_mismatch_navigator.test.js",
+    "line": 19,
+    "definition": "test('TV-N2: TVer Navigator keeps Campaign/Ad or other table scopes isolated', () => {"
+  },
+  {
+    "file": "tests/tver_mismatch_navigator.test.js",
+    "line": 29,
+    "definition": "test('TV-N3: TVer review/要確認 cells are excluded from mismatch navigation', () => {"
+  },
+  {
+    "file": "tests/tver_mismatch_navigator.test.js",
+    "line": 38,
+    "definition": "test('TV-N4: TVer horizontal overflow uses inline centering and hidden columns remain safe', () => {"
+  },
+  {
+    "file": "tests/tver_mismatch_navigator.test.js",
+    "line": 51,
+    "definition": "test('TV-N5: TVer rerender/filter reset clears focus and restarts the cycle', () => {"
+  },
+  {
+    "file": "tests/tver_release_prep.test.js",
+    "line": 45,
+    "definition": "test('Release prep: 2課 导航只新增一个 TVer 入口并保留既有入口', () => {"
+  },
+  {
+    "file": "tests/tver_release_prep.test.js",
+    "line": 49,
+    "definition": "assert.ok(ka2Lines.some(line => /name:'TVer'/.test(line) && /href:'tver_check\\.html'/.test(line)));"
+  },
+  {
+    "file": "tests/tver_release_prep.test.js",
+    "line": 50,
+    "definition": "assert.ok(ka2Lines.some(line => /name:'ターゲット推薦ツール'/.test(line) && /href:'ターゲット推薦ツール 2\\.html'/.test(line)));"
+  },
+  {
+    "file": "tests/tver_release_prep.test.js",
+    "line": 53,
+    "definition": "test('Release prep: 既有返回导航在页面滚动时固定且不覆盖 TVer sticky header', () => {"
+  },
+  {
+    "file": "tests/tver_release_prep.test.js",
+    "line": 61,
+    "definition": "test('Release prep: TVer 只接入现有 qc-auth sendLog，不创建案件级统计', () => {"
+  },
+  {
+    "file": "tests/tver_release_prep.test.js",
+    "line": 70,
+    "definition": "test('Release prep: TVer usage payload 只按既有工具级日志字段汇总状态', async () => {"
+  },
+  {
+    "file": "tests/tver_release_prep.test.js",
+    "line": 96,
+    "definition": "test('Release prep: logs 写入失败不会让 TVer 统计接线抛出到 QC 主流程', async () => {"
+  },
+  {
+    "file": "tests/tver_release_prep.test.js",
+    "line": 102,
+    "definition": "test('UI-FIX1: 编辑 CSV 业务提示不再渲染且五状态统计值保持不变', () => {"
+  },
+  {
+    "file": "tests/tver_release_prep.test.js",
+    "line": 118,
+    "definition": "test('UI-FIX1: toolbar 通过既有 flex 布局保持控件同行并在小窗口允许换行', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 153,
+    "definition": "test('REOPEN3-A1 Red: vendor metadata行の「100%地点」はblock級計測地点として全appealへ伝播する', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 171,
+    "definition": "test('REOPEN3-A2 Red: 「100%地点」はComplete計測地点としてtracking_url_completeへ該当appealのtagUrlを反映する', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 185,
+    "definition": "test('REOPEN3-A3 Red: SPPC/CTVはtagAppealで一対一joinしURLを混線しない', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 201,
+    "definition": "test('REOPEN3-A4 Red: 端到端 Tracking Complete — Setting值命中CSV值で一致、不一致値で不一致', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 219,
+    "definition": "test('REOPEN3-A5: 既存の計測地点列（per-row値）はblock伝播より優先され挙動不変（回帰）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 228,
+    "definition": "test('REOPEN3-A6 Red: tagUrl空のappeal（タグセット未展開形態）はmissingを維持しfake判定しない', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 244,
+    "definition": "test('REOPEN3-A7 Red: 「100%地点」値を含むmetadata行（設定用タグセット形態）はappeal明細として扱わない', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 274,
+    "definition": "test('REOPEN3-T1 Red: CSV値が空のdeferred tracking字段はentryを生成しない（非表示）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 285,
+    "definition": "test('REOPEN3-T2 Red: CSV値ありのdeferred trackingは表示し判定状態は中立（要確認を出さない）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 300,
+    "definition": "test('REOPEN3-T3 Red: CSV値ありの25/50/75はそれぞれ表示し状態中立', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 316,
+    "definition": "test('REOPEN3-T4 Red: deferred tracking字段のみ値があってもAd行は要確認とならない（creative_id有値含む）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 328,
+    "definition": "test('REOPEN3-T5 Red: Tracking Complete真不一致はdeferに関係なくAd行を不一致にする', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 336,
+    "definition": "test('REOPEN3-T6 Red: deferred tracking字段は確認詳細（detail）に現れない', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 350,
+    "definition": "test('REOPEN3-C1 Red: creative_id有値でもGUI列・entryに出現しない', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 361,
+    "definition": "test('REOPEN3-C2 Red: creative_id有値でもAd行状態に影響しない', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 366,
+    "definition": "test('REOPEN3-C3 Red: 内部csv entity fields.creative_id/sourceRefs/rawRows証拠は保持される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 374,
+    "definition": "test('REOPEN3-C4 Red: ad_id identity全链保持（key/id/adById/parentKey/CSV schema識別）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 387,
+    "definition": "test('REOPEN3-C5 Red: Edit matching回归 — Ad層matched保持', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 398,
+    "definition": "test('REOPEN3-D1 Red: start_time 00:00 / 00:00:00 / 0:00 はいずれも一致', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 410,
+    "definition": "test('REOPEN3-D2 Red: start_time 00:01 は不一致', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 418,
+    "definition": "test('REOPEN3-D3 Red: end_time 23:59 / 23:59:00 は一致', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 430,
+    "definition": "test('REOPEN3-D4 Red: end_time 23:58 は不一致', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 438,
+    "definition": "test('REOPEN3-D5 Red: CSV time空はentryを生成しない（既存missing/defer語義）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 445,
+    "definition": "test('REOPEN3-D6 Red: Ad time既定値のvalidation互換 — 0:00/00:00/23:59 不产生格式issue', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 452,
+    "definition": "test('REOPEN3-D7: CP/GP datetime canonical 挙動不変（回帰・封板）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 460,
+    "definition": "test('REOPEN3-D8 Red: Ad time列ラベル表示（GUI投影）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 508,
+    "definition": "test('REOPEN3-G1 Red: Ad層で横溢出なしの時sticky headerにfit classを付与（深蓝bleed解消）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 516,
+    "definition": "test('REOPEN3-G2 Red: Ad層で横溢出ありの時fit classは無効', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 524,
+    "definition": "test('REOPEN3-G3 Red: sticky header構造は保持される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 535,
+    "definition": "test('REOPEN3-G4 Red: access scrollbar挙動は保持される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 546,
+    "definition": "test('REOPEN3-G5 Red: 手動列幅機能は保持される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 557,
+    "definition": "test('REOPEN3-G6 Red: Campaign層はfit class切替を行わない（CP不変）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 567,
+    "definition": "test('REOPEN3-G7 Red: Ad Group層はfit class切替を行わない（GP不変）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen3.test.js",
+    "line": 573,
+    "definition": "test('REOPEN3-G8 Red: 横版HTML静的出力にfit classは含まれない（runtime classのみ）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 218,
+    "definition": "test('REOPEN5-T1 Red: H:M 形態（0:0 / 00:0）は canonical 00:00 に正規化される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 227,
+    "definition": "test('REOPEN5-T2 Red: \"0:0\" は validation 上合法（INVALID_AD_TIME を出さない）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 236,
+    "definition": "test('REOPEN5-T3 Red: 端到端 \"0:0\" は默认契约 00:00 と一致（false mismatch 解消）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 248,
+    "definition": "test('REOPEN5-T3b Red: \"0:1\" は canonical 00:01（非默认）→ 不一致（真の差異は検出維持）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 258,
+    "definition": "test('REOPEN5-T4（保護）: 非法時間は拒否される（hour>23 / minute>59 / 3桁分）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 266,
+    "definition": "test('REOPEN5-T5（保護）: 既有形態（0:00 / 00:00 / 00:00:00 / 23:59）挙動不変', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 279,
+    "definition": "test('REOPEN5-S1 Red: ⑧ SPPC_汎用_set は [VendorA SPPC URL, VendorB SPPC URL] に展開される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 287,
+    "definition": "test('REOPEN5-S2 Red: ⑧ CTV_汎用_set は [VendorA CTV URL, VendorB CTV URL] に展開される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 294,
+    "definition": "test('REOPEN5-S3 Red: ⑧ SPPC_佐久間ファン_set は [楽天 SPPC_佐久間 URL, VendorB SPPC URL] に展開される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 301,
+    "definition": "test('REOPEN5-S4 Red: ⑧ CTV_佐久間ファン_set は [楽天 CTV_佐久間 URL, VendorB CTV URL] に展開される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 308,
+    "definition": "test('REOPEN5-S5 Red: SPPC/CTV 厳格隔離（SPPC set は CTV URL を含まず、逆も同様）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 321,
+    "definition": "test('REOPEN5-S6 Red: CSV URL 順序不同・空白差異は一致（ORDER_INSENSITIVE_MULTISET）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 332,
+    "definition": "test('REOPEN5-S6b Red: CSV URL 同順序は一致（raw 等価）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 341,
+    "definition": "test('REOPEN5-S7 Red: CSV 側 1 URL 欠落は不一致', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 348,
+    "definition": "test('REOPEN5-S8 Red: CSV 側余分 URL は不一致', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 355,
+    "definition": "test('REOPEN5-S9 Red: URL 重複回数の差異は不一致（multiset 計数语义）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 362,
+    "definition": "test('REOPEN5-S10 Red: ⑦ タグセット_SP は [VendorA SPPC URL, VendorB 単一appeal URL] に展開される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 369,
+    "definition": "test('REOPEN5-S11 Red: ⑦ タグセット_CTV は [VendorA CTV URL, VendorB 単一appeal URL] に展開される', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 376,
+    "definition": "test('REOPEN5-S12（保護）: 解決不能なタグセット構造は展開せず missing 維持（fake 判定しない）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5.test.js",
+    "line": 399,
+    "definition": "test('REOPEN5-V1（保護）: 無tracking源かつCSV空の Ad は neutral defer（fake 判定しない）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5_fix1.test.js",
+    "line": 171,
+    "definition": "test('REOPEN5-FIX1-E1 Red: setting missing + csv 空の tracking_url_complete は neutral defer（entry 不生成・状態無効・行集計不参加・列非表示）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5_fix1.test.js",
+    "line": 195,
+    "definition": "test('REOPEN5-FIX1-E2（保護）: setting URL + csv 空は mismatch 保持（隐藏しない）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5_fix1.test.js",
+    "line": 213,
+    "definition": "test('REOPEN5-FIX1-E3（保護）: setting missing + csv URL は保守「需确认」保持', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5_fix1.test.js",
+    "line": 226,
+    "definition": "test('REOPEN5-FIX1-E4（保護）: setting URL + csv 同 URL は一致', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5_fix1.test.js",
+    "line": 234,
+    "definition": "test('REOPEN5-FIX1-E5（保護）: setting URL + csv 異 URL は不一致', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5_fix1.test.js",
+    "line": 252,
+    "definition": "const xlsxName = files.find(n => /\\.xlsx$/i.test(n));"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5_fix1.test.js",
+    "line": 253,
+    "definition": "const csvName = files.find(n => /\\.csv$/i.test(n));"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5_fix1.test.js",
+    "line": 273,
+    "definition": "test('REOPEN5-FIX1-E6 Red: 真実⑤ tracking_url_complete は要確認原因とならない（CASE A defer）', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5_fix1.test.js",
+    "line": 295,
+    "definition": "test('REOPEN5-FIX1-E7（保護）: 真実⑦ Tag Set Tracking Complete は一致を保持', () => {"
+  },
+  {
+    "file": "tests/tver_c3c5_cr_reopen5_fix1.test.js",
+    "line": 303,
+    "definition": "test('REOPEN5-FIX1-E8（保護）: 真実⑧ Tag Set Tracking Complete は一致を保持', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 61,
+    "definition": "test('FIX4-A CV business source: SheetJS reads C18/E18 rather than report G8/H8', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 89,
+    "definition": "]) test('FIX4-A CV collection: ' + title, () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 96,
+    "definition": "test('FIX4-A CVなし: empty is comparable, IDs contradict none, unresolved mode remains review', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 105,
+    "definition": "test('FIX4-A CV: conflicting business sources cannot select the first CV mode', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 110,
+    "definition": "test('FIX4-A CV: Register raw-row conflict is review without splitting Campaign signature', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 120,
+    "definition": "test('FIX4-A CV: normalized raw-row order is compatible; mixed empty/nonempty is not', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 125,
+    "definition": "test('FIX4-A CV: Edit uses its own field; CSV-only Survey never inherits normal CV', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 134,
+    "definition": "test('FIX4-A Ad time: each Ad uses only its own Targeting time and retains source', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 150,
+    "definition": "test('FIX4-A Ad time: a mismatch is detected separately at start/end without changing identity', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 161,
+    "definition": "test('FIX4-A Ad time: no directive keeps 00:00/23:59 defaults and empty CSV stays deferred', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 168,
+    "definition": "test('FIX4-A Ad time: unknown/conflicting directives require review instead of defaulting', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 177,
+    "definition": "test('FIX4-A Ad time: explicit directive with missing CSV time is visible review', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 190,
+    "definition": "]) test('FIX4-A ASR 0~C: ' + title, () => {"
+  },
+  {
+    "file": "tests/tver_fix4_a.test.js",
+    "line": 198,
+    "definition": "test('FIX4-A ASR: unknown ranges stay review and historical 0~8/0のみ duplicate semantics survive', () => {"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 50,
+    "definition": "test('FIX4-B model: real SheetJS builds independent SP CP/3 GP/3 Ad with sources',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 59,
+    "definition": "for(const [field,value] of Object.entries({budget:'90000',daily_budget:'1000',budget_type:'2',campaign_status:'0',consumption_type:'1',report_target_flag:'0'}))test('FIX4-B CP contract '+field,()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 62,
+    "definition": "test('FIX4-B CV is out of scope only for Survey; normal CV remains',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 66,
+    "definition": "test('FIX4-B GP independent role contracts do not inherit normal price/device/CV/ASR',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 75,
+    "definition": "test('FIX4-B N branches: one noncontact produces 2 GPs, not fixed 3',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 80,
+    "definition": "for(const [title,opts] of [['Survey disabled',{enable:'なし'}],['new TAP disabled',{tap:'なし'}],['CTV deferred',{device:'CTV'}]])test('FIX4-B detection: '+title,()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 93,
+    "definition": "])test('FIX4-B evidence guard: '+title,()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 103,
+    "definition": "])test('FIX4-B negative field '+field+'='+value+' row '+row,()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 111,
+    "definition": "test('FIX4-B wrong segment column cannot pass by sharing an ID',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 115,
+    "definition": "test('FIX4-B ASR: order is a set, duplicates and illegal characters remain review',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 119,
+    "definition": "test('FIX4-B Creative: wrong name is compared using unique declared parent role, never hidden',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 123,
+    "definition": "test('FIX4-B same Creative under distinct parents matches independently; duplicate parent Ad is ambiguous',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 130,
+    "definition": "test('FIX4-B parent scope: wrong CP cannot steal GP/Ad or compare across Campaigns',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 135,
+    "definition": "test('FIX4-B URL/Tracking exclusion applies even with CSV values but only to actual Survey entities',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 140,
+    "definition": "test('FIX4-B Edit schema keeps missing columns review; provides explicit report/segments/ASR',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 146,
+    "definition": "test('FIX4-B CP source conflicts do not fall back to the only ordinary parent',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 151,
+    "definition": "test('FIX4-B selected Audience text is unresolved, never silently treated as an empty set',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 156,
+    "definition": "test('FIX4-B DMP description without a reliable ID is review, not an empty DMP PASS',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 162,
+    "definition": "test('FIX4-B Campaign evidence conflict across rows is visible review; no first-row report flag',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 166,
+    "definition": "test('FIX4-B name canonical: identical fullwidth names and approved Creative variants remain equal',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 174,
+    "definition": "test('FIX4-B Edit Ad status cannot apply a Register-only current-status default',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 181,
+    "definition": "test('FIX4-B N branches: three noncontact references produce four role GPs/Ads',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 190,
+    "definition": "test('FIX4-B suffix: explicit comparable demographic label works; absent label remains review',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 196,
+    "definition": "test('FIX4-B calendar: three calendar months cross year correctly; uncertain short-month boundary defers',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 200,
+    "definition": "test('FIX4-B duplicate Campaign identity blocks parent/child matching instead of stealing candidates',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 205,
+    "definition": "test('FIX4-B new comparison fields have explicit business labels',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 213,
+    "definition": "])test('CONTACT-ASR-FIX1 contact '+label,()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 226,
+    "definition": "test('CONTACT-ASR-FIX1 noncontact D E F stays equal',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 229,
+    "definition": "test('CONTACT-ASR-FIX1 noncontact wrong ASR stays mismatch',()=>{"
+  },
+  {
+    "file": "tests/tver_fix4_b.test.js",
+    "line": 232,
+    "definition": "test('CONTACT-ASR-FIX1 ordinary GP 0~C stays variant equal',()=>{"
+  }
+]

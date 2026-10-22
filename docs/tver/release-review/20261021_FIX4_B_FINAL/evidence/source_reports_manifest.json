@@ -1,0 +1,67 @@
+[
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_readonly/MANUAL_71P_COVERAGE_MATRIX.md",
+    "saved": "evidence/source_reports/tver_fix4_readonly/MANUAL_71P_COVERAGE_MATRIX.md",
+    "sha256": "BD375674536CA76A01737D3D5D3F89BADBCAE9424205F5F80FB512BB53FD6733"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_readonly/MANUAL_71P_COVERAGE_MATRIX.csv",
+    "saved": "evidence/source_reports/tver_fix4_readonly/MANUAL_71P_COVERAGE_MATRIX.csv",
+    "sha256": "EB4611F02C17450D0A3007E463FB458E6CB9A2D8BC91C693218B3B61DA7F6F0E"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_readonly/FIX4_DEVELOPMENT_SPEC.md",
+    "saved": "evidence/source_reports/tver_fix4_readonly/FIX4_DEVELOPMENT_SPEC.md",
+    "sha256": "DE7F49100681CDE1732F80EB72D376E5B4449DFFB2AA84177B211788D469971C"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_readonly/BUSINESS_CONFIRMATION_ITEMS.md",
+    "saved": "evidence/source_reports/tver_fix4_readonly/BUSINESS_CONFIRMATION_ITEMS.md",
+    "sha256": "52F3F53DF814EEA0B6865FF2AFAE55B4D0166102A8AE7F7FA63422A7CAB5A72A"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_a/IMPLEMENTATION_AND_REAL_CASE_REPORT.md",
+    "saved": "evidence/source_reports/tver_fix4_a/IMPLEMENTATION_AND_REAL_CASE_REPORT.md",
+    "sha256": "40C8F873FCD07695A4D0C3C67ED5728EDB7277FFC38F1FB6DB3AC51A821C7F43"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_a/FIX4_B_CONFIRMATION_CLASSIFICATION.md",
+    "saved": "evidence/source_reports/tver_fix4_a/FIX4_B_CONFIRMATION_CLASSIFICATION.md",
+    "sha256": "7EB6265307FC853F001686E64FE92C945A587DA714C29A7FA03B5C368E60985B"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_b/IMPLEMENTATION_REPORT.md",
+    "saved": "evidence/source_reports/tver_fix4_b/IMPLEMENTATION_REPORT.md",
+    "sha256": "25D3F6432E362C92C0EB63208673F504238C41EF49149939837EB8C34B90AAED"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_b/BENESSE_MATCH_AND_STATISTICS.md",
+    "saved": "evidence/source_reports/tver_fix4_b/BENESSE_MATCH_AND_STATISTICS.md",
+    "sha256": "82AFAF194D074CB7A2570D713523308B880FD7037AD641E6EB3D522BCBD0AFEA"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_b/BLS_ALL_COMPARISONS.md",
+    "saved": "evidence/source_reports/tver_fix4_b/BLS_ALL_COMPARISONS.md",
+    "sha256": "A2346533D27D6E8D1AF0B4719192559F74A1E711E7CC242F80226F49C35E8F89"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_b/NEGATIVE_TEST_RESULTS.md",
+    "saved": "evidence/source_reports/tver_fix4_b/NEGATIVE_TEST_RESULTS.md",
+    "sha256": "42A5C304EA7AF414B77E941CF40D1E5C21673EAFDB60A31CD9EB31170594A68B"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_b/BUSINESS_CONFIRMATION_REMAINING.md",
+    "saved": "evidence/source_reports/tver_fix4_b/BUSINESS_CONFIRMATION_REMAINING.md",
+    "sha256": "F24AB3C043C98F843E4ECECEB824198F80EDAAF5CB17274937B5C933F4960C5A"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_b_contact_asr_fix1/FIX_REPORT.md",
+    "saved": "evidence/source_reports/tver_fix4_b_contact_asr_fix1/FIX_REPORT.md",
+    "sha256": "D835407F7D4F329D29832E057DCAE331C3025B192E4E0FC46AAA206423DBDBA3"
+  },
+  {
+    "source": "C:/Users/BPO/.codex/visualizations/2026/10/19/01a15208-5b3d-7750-a13b-65d9bb604c3a/tver_fix4_b_contact_asr_fix1/TVER_FIX4_B_CONTACT_ASR_FIX1_GATE.md",
+    "saved": "evidence/source_reports/tver_fix4_b_contact_asr_fix1/TVER_FIX4_B_CONTACT_ASR_FIX1_GATE.md",
+    "sha256": "8A735E5EECC8EAD394EE0B677315EDCADF7ADE196B7DFB211748DCE1AA8A04B4"
+  }
+]

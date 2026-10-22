@@ -123,6 +123,7 @@ function buildAdRun(workbook, csvFieldOverrides, csvKind) {
     price: '11',
     creative_name: 'synthetic-creative.mp4',
     url: 'https://example.invalid/synthetic-lp',
+    status: '1',
     ...(csvFieldOverrides || {}),
   };
   const useEdit = csvKind === 'edit';
