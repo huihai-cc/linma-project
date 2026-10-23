@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>BPO定例会 · 馬 林 · 业务改善报告</title>
+<title>BPO定例会 · 馬 林 · 2026年10月工作报告</title>
 <style>
 /* ==========================================
    ROOT & RESET
@@ -790,6 +789,327 @@ body {
 .gap32 { margin-bottom: 32px; }
 
 .report-copy{font-size:13px;line-height:1.85;margin-top:12px}.report-note{font-size:12px;color:#64748b;line-height:1.8;margin:14px 0}.report-table{width:100%;border-collapse:collapse;font-size:12.5px;line-height:1.6}.report-table th,.report-table td{padding:12px 10px;text-align:left;border-bottom:1px solid #e2e8f0;vertical-align:top}.report-table th{background:#e8f0fe;color:#1a56db}.table-scroll{overflow:auto;margin-top:16px}.report-table td:first-child{white-space:nowrap}.report-metric{font-size:36px;color:#1a56db;font-weight:750;margin:18px 0}.report-summary{padding:20px;border-radius:18px;background:#e8f0fe;line-height:1.85;font-size:14px;margin-bottom:24px}.report-ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.report-ach-grid .card{padding:24px}.report-ach-grid .badge{display:inline-block;margin-bottom:12px}.mini-bar{height:12px;border-radius:8px;background:#e2e8f0;margin:10px 0 16px}.mini-bar span{display:block;height:100%;background:#1a56db;border-radius:8px}@media(max-width:720px){.report-ach-grid,.plan-grid{grid-template-columns:1fr}.hero{padding:12px 16px}.hero h1{font-size:16px;white-space:normal}.hero-meta-row{font-size:10px}.page{padding-top:145px}.container{padding:24px 16px}.report-table{min-width:570px}.ach-header h2{font-size:24px}}
+
+
+/* ===== OCTOBER 2026 EXECUTIVE DASHBOARD / additive, scoped ===== */
+#p0 {background:linear-gradient(180deg,#edf4ff 0%,#f8fbff 43%,#f9fafb 100%);}
+#p0 .oct-shell {max-width:1160px; margin:auto; padding:27px 28px 64px;}
+.oct-hero {position:relative;isolation:isolate;overflow:hidden; border-radius:28px; padding:32px 36px 31px; background:linear-gradient(118deg,#08162e 0%,#102c53 55%,#12355a 100%);color:white;box-shadow:0 15px 50px rgba(6,35,78,.16);}
+.oct-hero::before {content:"";position:absolute;inset:-90px -50px -90px 35%; z-index:-1; opacity:.6;background:radial-gradient(circle at 74% 34%,rgba(27,201,229,.39),transparent 26%),radial-gradient(circle at 32% 71%,rgba(52,119,255,.30),transparent 37%);animation:octFloat 10s ease-in-out infinite alternate;}
+.oct-hero::after {content:"";position:absolute;inset:0;z-index:-1;opacity:.20;background-image:linear-gradient(rgba(77,198,248,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(77,198,248,.2) 1px,transparent 1px);background-size:30px 30px;mask-image:linear-gradient(90deg, transparent, black);}
+@keyframes octFloat{to{transform:translate(-30px,17px) scale(1.12)}}
+.oct-eyebrow{display:flex;align-items:center;gap:9px;letter-spacing:1.7px;font-size:11px;color:#75e6fc;font-weight:900;margin-bottom:11px;}
+.oct-signal{height:8px;width:8px;border-radius:50%;background:#38e9c4;box-shadow:0 0 0 5px rgba(56,233,196,.11),0 0 15px #38e9c4;}
+.oct-hero h2{font-size:clamp(27px,3.1vw,37px);font-weight:900;letter-spacing:-.4px;line-height:1.24;max-width:820px;}
+.oct-hero-sub{font-size:13px;color:#bfd4ed;line-height:1.8;margin-top:11px;}
+.oct-hero-foot{display:flex;gap:9px;flex-wrap:wrap;margin-top:21px;}
+.oct-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(136,203,255,.35);color:#e3f7ff;background:rgba(255,255,255,.075);border-radius:30px;padding:7px 12px;font-size:11px;font-weight:700;}
+.oct-pill b{color:#73ecff;}
+.oct-section{margin-top:31px;scroll-margin-top:125px;}
+.oct-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:15px;}
+.oct-section-kicker{font-size:10px;font-weight:900;letter-spacing:1.55px;color:#167cd3;}
+.oct-section h3{font-size:21px;color:#0e2442;margin-top:5px;font-weight:900;}
+.oct-section-head p{font-size:11px;color:#62758f;max-width:450px;text-align:right;line-height:1.6;}
+.oct-scope{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.18fr);gap:14px;align-items:stretch;}
+.oct-role-card{border:1px solid #dce9f7;border-radius:20px;padding:20px 20px 18px;background:#fff;box-shadow:0 5px 18px rgba(30,64,112,.04);}
+.oct-role-label{color:#657896;font-size:11px;font-weight:800;}
+.oct-role-name{font-size:22px;color:#0c3269;font-weight:900;margin:7px 0;}
+.oct-role-detail{font-size:12px;line-height:1.75;color:#4d6079;}
+.oct-transition{display:flex;gap:9px;align-items:center;margin-top:14px;font-size:11px;font-weight:700;flex-wrap:wrap;}
+.oct-transition .prev{border-radius:9px;background:#f0f3f8;color:#67768a;padding:8px 10px;}
+.oct-transition .arr{font-size:20px;color:#0f9dc4;}
+.oct-transition .current{background:#e4f8ff;color:#096f99;border:1px solid #b4edfb;border-radius:9px;padding:8px 11px;}
+.oct-domain-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-content:stretch;}
+.oct-domain{border:1px solid #deebfa;border-radius:15px;background:#fff;padding:15px;display:flex;align-items:center;gap:10px;font-size:12px;font-weight:800;color:#1f466f;min-height:68px;}
+.oct-domain-icon{font-size:20px;line-height:1;width:37px;height:37px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#edf6ff;}
+.oct-life{position:relative;margin-top:14px;padding:17px 16px 19px;border:1px solid #d9e9fc;border-radius:18px;background:linear-gradient(135deg,#f7fbff,#fff);}
+.oct-life-title{font-size:11px;color:#537297;letter-spacing:1.1px;font-weight:900;margin-bottom:12px;}
+.oct-flow{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;}
+.oct-step{border:1px solid #d9e8f9;border-radius:11px;padding:11px 5px 10px;background:#fff;text-align:center;min-width:0;position:relative;transition:transform .2s,box-shadow .2s;}
+.oct-step:hover{transform:translateY(-3px);box-shadow:0 7px 16px rgba(33,124,226,.14)}
+.oct-step .num{font-family:Consolas,monospace;font-size:11px;font-weight:900;color:#06a2c8;letter-spacing:.5px;}
+.oct-step .label{font-weight:850;color:#16416e;font-size:11px;margin-top:5px;line-height:1.4;}
+.oct-step small{display:block;color:#7891a8;font-size:9px;margin-top:4px;line-height:1.35;}
+.oct-step:not(:last-child)::after{content:"›";font-size:18px;position:absolute;right:-10px;top:29px;color:#16a0e4;font-weight:900;z-index:2;}
+.oct-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+.oct-project{background:#fff;border:1px solid #dce8f6;border-radius:19px;padding:20px;display:flex;flex-direction:column;min-width:0;box-shadow:0 4px 20px rgba(33,80,140,.04);}
+.oct-project-head{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.oct-project-no{color:#0e79c4;letter-spacing:1.2px;font-weight:900;font-size:11px;}
+.oct-status{font-size:10px;font-weight:900;padding:5px 9px;border-radius:30px;background:#eafaf0;color:#147647;white-space:nowrap;}
+.oct-status.testing{background:#fff3db;color:#a46608;}
+.oct-status.info{background:#eaf3ff;color:#1762b1;}
+.oct-project h4{font-size:18px;font-weight:900;color:#173355;line-height:1.35;min-height:49px;}
+.oct-metric{font-size:30px;font-weight:900;color:#0778ca;letter-spacing:-.6px;margin:8px 0 2px;}
+.oct-metric .unit{font-size:12px;font-weight:750;color:#7690a9;letter-spacing:0;}
+.oct-compact-line{font-size:12px;line-height:1.72;color:#526781;margin-top:9px;}
+.oct-project-bottom{padding-top:11px;border-top:1px solid #e9f0f7;margin-top:auto;}
+.oct-tagrow{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
+.oct-tag{background:#eff6fd;color:#27648f;font-size:10px;font-weight:750;padding:5px 8px;border-radius:7px;}
+.oct-minor{background:#fff;border:1px solid #dde9f4;padding:17px 18px;border-radius:18px;margin-top:14px;}
+.oct-minor h4{font-size:13px;font-weight:900;color:#183956;margin-bottom:12px;}
+.oct-mini-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;}
+.oct-mini{text-align:center;padding:11px 5px 9px;background:#f4f8ff;border:1px solid #e4edf8;border-radius:12px;min-width:0;}
+.oct-mini strong{display:block;font-size:22px;color:#166ecc;font-weight:900;}
+.oct-mini strong.text-sm{font-size:13px;margin:5px 0;}
+.oct-mini span{font-size:10px;color:#687c93;line-height:1.4;display:block;}
+.oct-trend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.oct-trend-item{border:1px solid #d7e9f9;background:#fff;border-radius:15px;padding:16px 17px;}
+.oct-trend-item .symbol{font-size:20px;color:#169bc2;font-weight:900;margin-bottom:9px;}
+.oct-trend-item strong{font-size:14px;color:#214669;display:block;margin-bottom:7px;}
+.oct-trend-item p{font-size:11.5px;color:#60748b;line-height:1.7;}
+.oct-issue-list{background:#fff;border:1px solid #dce9f6;border-radius:18px;overflow:hidden;}
+.oct-issue{display:grid;grid-template-columns:1fr 36px 1.2fr 84px;gap:10px;align-items:center;padding:13px 17px;border-bottom:1px solid #e8eef7;}
+.oct-issue:last-child{border-bottom:none;}
+.oct-issue .problem{font-size:12px;font-weight:800;color:#394d65;}
+.oct-issue .arrow{font-size:18px;color:#19a5d1;text-align:center;font-weight:900;}
+.oct-issue .solution{font-size:12px;color:#1b5f8f;font-weight:750;}
+.oct-issue .state{color:#a66d10;background:#fff5e1;border-radius:9px;padding:5px;font-size:10px;text-align:center;font-weight:900;}
+.oct-issue .state.blue{background:#e8f4ff;color:#1474ae;}
+.oct-plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+.oct-plan{background:#fff;border:1px solid #dce8f6;border-radius:18px;overflow:hidden;box-shadow:0 3px 18px rgba(33,80,140,.035);}
+.oct-plan::before{content:"";display:block;height:4px;background:linear-gradient(90deg,#268bf2,#28d4d4);}
+.oct-plan:nth-child(2)::before{background:linear-gradient(90deg,#9a6df5,#43b4e9);}
+.oct-plan:nth-child(3)::before{background:linear-gradient(90deg,#15a77b,#42d8b6);}
+.oct-plan-body{padding:17px;}
+.oct-plan-top{font-family:Consolas,monospace;color:#197eb8;font-size:10px;letter-spacing:1px;font-weight:900;}
+.oct-plan h4{font-size:16px;line-height:1.42;color:#193858;margin-top:8px;min-height:49px;}
+.oct-plan p{font-size:11.5px;color:#587086;line-height:1.75;margin-top:10px;}
+.oct-phase{background:#f2f7ff;padding:9px 11px;border-radius:9px;font-size:10.5px;font-weight:800;color:#226b99;line-height:1.55;margin-top:12px;}
+.oct-footnote{font-size:10.5px;line-height:1.75;color:#60768c;margin-top:12px;}
+.oct-plan-stats{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap;}
+.oct-plan-stats span{background:#e6f8f6;color:#177e7b;border:1px solid #b7eee5;padding:6px 8px;border-radius:9px;font-weight:850;font-size:11px;}
+.oct-end{margin-top:30px;text-align:center;font-size:11px;color:#7188a0;}
+@media(max-width:1080px){.oct-flow{grid-template-columns:repeat(4,minmax(0,1fr))}.oct-step:nth-child(4)::after{display:none}.oct-mini-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){#p0 .oct-shell{padding:15px 15px 55px}.oct-hero{padding:25px 21px;border-radius:21px}.oct-scope,.oct-results,.oct-trend,.oct-plan-grid{grid-template-columns:1fr}.oct-section-head{display:block}.oct-section-head p{text-align:left;margin-top:7px}.oct-section{margin-top:26px}.oct-domain-grid{grid-template-columns:1fr 1fr}.oct-flow{grid-template-columns:repeat(4,minmax(0,1fr))}.oct-issue{grid-template-columns:1fr 24px 1.2fr;gap:5px}.oct-issue .state{grid-column:3;justify-self:start}.oct-project h4,.oct-plan h4{min-height:auto}}
+@media(max-width:390px){.oct-flow{grid-template-columns:repeat(2,minmax(0,1fr))}.oct-step:nth-child(2n)::after{display:none}.oct-mini-grid{grid-template-columns:repeat(2,1fr)}.oct-domain-grid{grid-template-columns:1fr}.oct-hero h2{font-size:26px}}
+@media(prefers-reduced-motion:reduce){.oct-hero::before{animation:none}.oct-step{transition:none}}
+
+@media(max-width:940px){#p4 .plan-grid{grid-template-columns:1fr 1fr!important}}
+@media(max-width:720px){#p4 .plan-grid{grid-template-columns:1fr!important}}
+
+/* ======================= V2: Compact project data visualisations ======================= */
+#p0 .oct-workstream{display:flex;flex-wrap:wrap;gap:8px;margin:-2px 0 14px}
+#p0 .oct-workstream span{display:inline-flex;align-items:center;gap:7px;border:1px solid #dbeaf9;background:#f5faff;color:#51708d;border-radius:999px;padding:6px 12px;font-size:10px;font-weight:830;letter-spacing:.1px}
+#p0 .oct-workstream i{height:6px;width:6px;display:inline-block;flex:none;background:#1688d0;border-radius:50%;box-shadow:0 0 0 3px #daedff}
+#p0 .oct-workstream span:nth-child(2) i{background:#13aa8a;box-shadow:0 0 0 3px #dbfbf2}
+#p0 .oct-workstream span:nth-child(3) i{background:#9a74db;box-shadow:0 0 0 3px #f1eaff}
+#p0 .oct-stage{margin:15px 0 6px;padding:11px 11px 10px;border:1px solid #e2eefd;border-radius:12px;background:linear-gradient(140deg,#f7fbff,#ffffff)}
+#p0 .oct-stage-caption{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 10px}
+#p0 .oct-stage-caption span{color:#839ab2;font-weight:850;letter-spacing:.7px;font-size:9px}
+#p0 .oct-stage-caption strong{color:#ad7014;font-size:10px;font-weight:900}
+#p0 .oct-stage[data-tone="success"] .oct-stage-caption strong{color:#0f9668}
+#p0 .oct-stage-track{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));margin:0;padding:0;list-style:none;gap:2px}
+#p0 .oct-stage-step{position:relative;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;color:#a0afbf;font-size:9px;font-weight:820;line-height:1.2}
+#p0 .oct-stage-step:not(:first-child):before{content:"";position:absolute;left:calc(-50% + 7px);right:calc(50% + 7px);top:5px;height:2px;background:#e3eaf3}
+#p0 .oct-stage-step.is-done:not(:first-child):before,#p0 .oct-stage-step.is-current:not(:first-child):before{background:#80bde0}
+#p0 .oct-stage-dot{position:relative;display:block;width:11px;height:11px;border-radius:50%;border:2px solid #d2dfec;background:#f7faff;z-index:1}
+#p0 .oct-stage-step.is-done .oct-stage-dot{background:#27a4d6;border-color:#27a4d6;box-shadow:0 0 0 3px #e8f6fb}
+#p0 .oct-stage-step.is-current .oct-stage-dot{background:#f6af42;border-color:#f6af42;box-shadow:0 0 0 4px #fff1d7}
+#p0 .oct-stage[data-tone="success"] .oct-stage-step.is-done .oct-stage-dot,#p0 .oct-stage[data-tone="success"] .oct-stage-step.is-current .oct-stage-dot{background:#19ab81;border-color:#19ab81;box-shadow:0 0 0 3px #e0f9ee}
+#p0 .oct-stage-step.is-done,#p0 .oct-stage-step.is-current{color:#355772}
+#p0 .oct-stage-clarity{font-size:9px;line-height:1.5;color:#7b8fa3;margin:8px 0 0;text-align:center}
+#p0 .oct-minor-layout{display:grid;grid-template-columns:1.42fr 1fr;gap:16px;align-items:stretch}
+#p0 .oct-mini-chart{padding:13px 15px 12px;border:1px solid #dceafa;border-radius:14px;background:linear-gradient(120deg,#f8fbff,#eff7ff)}
+#p0 .oct-mini-chart-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:13px}
+#p0 .oct-mini-chart-head strong{font-size:12px;color:#1c507d}
+#p0 .oct-mini-chart-head span{font-size:10px;color:#7c92a6}
+#p0 .oct-bar-row{display:grid;grid-template-columns:110px minmax(0,1fr) 28px;align-items:center;gap:12px;margin:9px 0}
+#p0 .oct-bar-name{font-size:11px;font-weight:750;color:#4e6885;white-space:nowrap}
+#p0 .oct-bar-track{height:13px;background:#e3edf9;border-radius:100px;overflow:hidden;position:relative}
+#p0 .oct-bar-fill{width:var(--bar);max-width:100%;height:100%;border-radius:100px;background:linear-gradient(90deg,#34b6e6,#2278d0);transform-origin:left center;transform:scaleX(1);box-shadow:0 0 12px rgba(27,137,220,.18)}
+#p0 .oct-bar-row:nth-of-type(3) .oct-bar-fill{background:linear-gradient(90deg,#22bfc9,#1a9cb7)}
+#p0 .oct-bar-row:nth-of-type(4) .oct-bar-fill{background:linear-gradient(90deg,#7baaf3,#467ce3)}
+#p0 .oct-bar-row:nth-of-type(5) .oct-bar-fill{background:linear-gradient(90deg,#8da7ea,#6e83d7)}
+#p0 .oct-bar-row b{color:#145b9d;font-weight:900;font-size:14px;font-variant-numeric:tabular-nums;text-align:right}
+#p0 .oct-chart-note{font-size:9px;color:#7d90a3;margin-top:12px;line-height:1.5}
+#p0 .oct-mini-continuing{display:flex;flex-direction:column;gap:9px}
+#p0 .oct-mini-cont-item{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e3edf9;background:#f6faff;border-radius:13px;min-height:66px}
+#p0 .oct-cont-icon{height:35px;width:35px;display:grid;place-items:center;flex:none;background:#e5f2ff;color:#1974b7;border-radius:10px;font-size:21px;font-weight:750}
+#p0 .oct-mini-cont-item>div{flex:1;min-width:0}
+#p0 .oct-cont-label{display:block;color:#2877b5;font-weight:900;font-size:10px;margin-bottom:4px}
+#p0 .oct-mini-cont-item strong{font-size:11px;color:#435e79;line-height:1.4;display:block}
+#p0 .oct-mini-cont-item em{flex:none;font-size:9px;color:#167e8c;background:#e5faf9;padding:5px 7px;border-radius:10px;font-style:normal;font-weight:800;white-space:nowrap}
+#p0 .oct-minor-caption{font-size:10px;color:#8095aa;line-height:1.65;padding:2px 3px}
+#p0 .oct-roadmap{background:linear-gradient(140deg,#08244b,#124166);border:1px solid #2b658e;border-radius:18px;padding:19px 21px 17px;box-shadow:0 10px 24px rgba(11,49,98,.12);color:#fff;margin-bottom:17px;position:relative;overflow:hidden}
+#p0 .oct-roadmap:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.25;background-image:linear-gradient(90deg,rgba(66,192,249,.18) 1px,transparent 1px);background-size:25% 100%}
+#p0 .oct-roadmap>*{position:relative;z-index:1}
+#p0 .oct-roadmap-heading{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:13px}
+#p0 .oct-roadmap-heading>div{display:flex;align-items:baseline;gap:11px}
+#p0 .oct-roadmap-eyebrow{font:850 10px Consolas,monospace;letter-spacing:1.3px;color:#73dded}
+#p0 .oct-roadmap-heading strong{font-size:15px;color:#eafaff}
+#p0 .oct-roadmap-disclaimer{font-size:10px;color:#a4c2db}
+#p0 .oct-roadmap-axis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-left:134px;gap:5px;position:relative;padding:8px 0 10px}
+#p0 .oct-roadmap-axis:before{content:"";height:1px;background:linear-gradient(90deg,rgba(70,218,241,.65),rgba(135,182,248,.5),rgba(255,255,255,.22));position:absolute;left:6%;right:6%;bottom:3px}
+#p0 .oct-roadmap-axis span{text-align:center;font-size:10px;color:#9dbddd;font-weight:850;position:relative}
+#p0 .oct-roadmap-axis span:after{content:"";position:absolute;bottom:-11px;left:50%;width:6px;height:6px;border-radius:50%;background:#39c0df;transform:translateX(-50%);border:1px solid #a7ebf3}
+#p0 .oct-roadmap-axis span:last-child:after{background:#9777d8;border-color:#cbb5ff}
+#p0 .oct-roadmap-row{display:grid;grid-template-columns:128px minmax(0,1fr);gap:6px;margin-top:11px;align-items:stretch}
+#p0 .oct-roadmap-label{border-right:1px solid rgba(197,225,248,.25);display:flex;align-items:center;gap:8px;padding-right:10px}
+#p0 .oct-roadmap-label b{font:900 13px Consolas,monospace;color:#43d3ed}
+#p0 .oct-roadmap-label span{font-size:10px;line-height:1.4;color:#cde6f4;font-weight:850}
+#p0 .oct-roadmap-track{min-width:0;min-height:48px;border-radius:9px;display:grid;align-items:stretch;gap:5px}
+#p0 .oct-rm-ongoing{border:1px dashed rgba(83,228,247,.45);background:linear-gradient(90deg,rgba(18,162,203,.19),rgba(50,131,217,.10));}
+#p0 .oct-roadmap-flow{display:flex;align-items:center;padding:10px 13px;gap:8px;color:#dcf8ff;font-size:11px;font-weight:750;line-height:1.5}
+#p0 .oct-roadmap-flow em{font-style:normal;font-size:9px;color:#50e1d2;border:1px solid rgba(80,225,210,.40);padding:4px 7px;margin-left:auto;white-space:nowrap;border-radius:7px}
+#p0 .oct-rm-cells{grid-template-columns:repeat(4,minmax(0,1fr))}
+#p0 .oct-rm-cell{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border-radius:8px;padding:6px 4px;background:rgba(173,207,240,.08);border:1px solid rgba(173,207,240,.19);font-size:10px;font-weight:800;color:#cae3f5;line-height:1.4}
+#p0 .oct-rm-cell small{font-size:9px;color:#49e0d1;margin-top:2px}
+#p0 .oct-rm-target{background:rgba(41,169,220,.23);border-color:rgba(64,212,243,.55);color:#f1fcff;box-shadow:inset 0 0 14px rgba(68,202,235,.08)}
+#p0 .oct-rm-later{background:rgba(138,110,217,.10);border:1px dashed rgba(168,160,233,.42);color:#c3b9e7}
+#p0 .oct-rm-longterm{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 13px;border:1px dashed rgba(179,151,241,.55);background:linear-gradient(90deg,rgba(118,103,194,.10),rgba(118,103,194,.21));color:#e0d7ff;font-size:11px;line-height:1.5}
+#p0 .oct-rm-longterm strong{font-size:10px;color:#d6b8ff;white-space:nowrap}
+#p0 .oct-roadmap-foot{display:flex;justify-content:end;gap:19px;margin-top:12px;font-size:9px;color:#9bbad7}
+#p0 .oct-rm-legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:#32d5ea}
+#p0 .oct-rm-legend-dash{display:inline-block;width:17px;vertical-align:middle;border-top:1px dashed #cbb1f1;margin-right:5px}
+#p0.active .oct-bar-fill{animation:octBarReveal .85s ease-out both}
+#p0.active .oct-rm-target{animation:octTimeReveal .68s ease-out both}
+@keyframes octBarReveal{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes octTimeReveal{from{opacity:.3;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:1040px){#p0 .oct-minor-layout{grid-template-columns:1.15fr 1fr}#p0 .oct-roadmap-axis{margin-left:120px}#p0 .oct-roadmap-row{grid-template-columns:115px minmax(0,1fr)}}
+@media(max-width:760px){#p0 .oct-minor-layout{grid-template-columns:1fr}#p0 .oct-mini-continuing{display:grid;grid-template-columns:1fr 1fr}#p0 .oct-mini-cont-item{flex-wrap:wrap}#p0 .oct-mini-cont-item em{margin-left:auto}#p0 .oct-minor-caption{grid-column:1/-1}#p0 .oct-roadmap-heading{display:block}#p0 .oct-roadmap-heading>div{flex-wrap:wrap}#p0 .oct-roadmap-disclaimer{display:block;margin-top:7px}#p0 .oct-roadmap{padding:17px 14px}#p0 .oct-roadmap-axis{margin:0 0 5px}#p0 .oct-roadmap-axis span{font-size:9px}#p0 .oct-roadmap-row{grid-template-columns:1fr;gap:7px;margin-top:16px}#p0 .oct-roadmap-label{border:0}#p0 .oct-roadmap-track{min-height:42px}}
+@media(max-width:480px){#p0 .oct-workstream{gap:6px}#p0 .oct-workstream span{font-size:9px;padding:5px 8px}#p0 .oct-mini-continuing{grid-template-columns:1fr}#p0 .oct-bar-row{grid-template-columns:93px minmax(0,1fr) 26px;gap:8px}#p0 .oct-bar-name{font-size:10px}#p0 .oct-roadmap-axis{grid-template-columns:repeat(4,minmax(0,1fr))}#p0 .oct-roadmap-axis span{font-size:8px;line-height:1.3}#p0 .oct-roadmap-flow{display:block}#p0 .oct-roadmap-flow em{display:inline-block;margin-left:6px;margin-top:4px}#p0 .oct-rm-cells{grid-template-columns:1fr 1fr}#p0 .oct-rm-cell{min-height:39px}#p0 .oct-rm-longterm{flex-direction:column;align-items:flex-start;gap:5px}#p0 .oct-roadmap-heading strong{font-size:14px}#p0 .oct-roadmap-foot{justify-content:start;flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){#p0.active .oct-bar-fill,#p0.active .oct-rm-target{animation:none!important}#p0 .oct-stage-dot{transition:none!important}}
+/* ======================= END V2 ======================= */
+
+ 
+/* ===== V3: Stage overview rings — inspired by the Workbuddy layout,
+         but deliberately WITHOUT invented completion percentages. ===== */
+#p0 .oct-results{align-items:stretch}
+#p0 .oct-project-column{display:flex;flex-direction:column;min-width:0}
+#p0 .oct-project-column>.oct-project{flex:1;min-height:0}
+#p0 .oct-quick{
+  --qc:#0a98dc;--ql:#e1f5ff;position:relative;display:flex;align-items:center;gap:15px;
+  min-height:100px;padding:14px 16px;overflow:hidden;background:linear-gradient(135deg,#fff,#f8fbff);
+  border:1px solid #d6e5f7;border-radius:18px;box-shadow:0 5px 20px rgba(28,86,151,.055);
+  transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;
+}
+#p0 .oct-quick:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(24,80,142,.10);border-color:color-mix(in srgb,var(--qc) 38%,#fff)}
+#p0 .oct-quick[data-tone=done]{--qc:#0bb788;--ql:#e1fbf1}
+#p0 .oct-quick[data-tone=shared]{--qc:#eea12a;--ql:#fff4df}
+#p0 .oct-quick::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--qc),transparent);opacity:.6}
+#p0 .oct-quick-ring{position:relative;display:grid;place-items:center;flex:0 0 62px;width:62px;height:62px;
+  border:6px solid var(--qc);border-radius:50%;background:#fff;
+  box-shadow:0 0 0 5px var(--ql),inset 0 0 0 1px #e6eff9;color:var(--qc)}
+#p0 .oct-quick-ring span{font-size:15px;font-weight:950;letter-spacing:.2px;color:var(--qc)}
+#p0 .oct-quick-info{min-width:0;flex:1}
+#p0 .oct-quick-no{font:800 9px/1.3 'Consolas',monospace;color:var(--qc);letter-spacing:1px;margin-bottom:3px}
+#p0 .oct-quick-info strong{display:block;font-weight:900;font-size:13px;color:#153656;line-height:1.36}
+#p0 .oct-quick-info p{margin:4px 0 0;font-size:10.5px;line-height:1.5;color:#627b98}
+#p0 .oct-quick-status{display:inline-flex;align-items:center;gap:5px;margin-top:6px;
+  font-size:10px;font-weight:850;color:color-mix(in srgb,var(--qc) 82%,#16375a)}
+#p0 .oct-quick-status i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--qc);
+  box-shadow:0 0 0 3px var(--ql)}
+#p0 .oct-quick-join{height:24px;position:relative;align-self:center;width:20px;display:flex;justify-content:center}
+#p0 .oct-quick-join::before{content:"";width:2px;height:16px;background:linear-gradient(#8acbef,#dcebf7);border-radius:4px}
+#p0 .oct-quick-join i{position:absolute;bottom:3px;width:7px;height:7px;background:#fff;border:2px solid #7fbae3;border-radius:50%}
+@media(max-width:760px){
+  #p0 .oct-quick{min-height:82px;padding:11px 14px;gap:13px}
+  #p0 .oct-quick-ring{width:52px;height:52px;flex-basis:52px;border-width:5px;box-shadow:0 0 0 4px var(--ql)}
+  #p0 .oct-quick-ring span{font-size:13px}
+  #p0 .oct-quick-join{height:14px}
+  #p0 .oct-quick-join::before{height:9px}
+  #p0 .oct-quick-join i{bottom:1px;width:6px;height:6px}
+}
+@media(prefers-reduced-motion:reduce){#p0 .oct-quick{transition:none}}
+
+/* ===== V4: 近期追加业务事项 / scoped; no external dependencies ===== */
+#p0 .oct-new-work,#p4 .oct-new-work{margin:18px 0 17px;padding:17px 19px 19px;border:1px solid #cfe4f7;border-radius:18px;background:linear-gradient(130deg,#edf7ff 0%,#f7fbff 57%,#fff 100%);box-shadow:0 5px 23px rgba(20,100,164,.045)}
+#p0 .oct-new-head,#p4 .oct-new-head{display:flex;align-items:center;justify-content:space-between;gap:13px;margin-bottom:12px}
+#p0 .oct-new-head strong,#p4 .oct-new-head strong{color:#17395e;font-size:14px;font-weight:900}
+#p0 .oct-new-head small,#p4 .oct-new-head small{display:block;font-size:10px;color:#6a84a0;line-height:1.55;margin-top:3px}
+#p0 .oct-new-flag,#p4 .oct-new-flag{flex-shrink:0;display:inline-block;background:#e1f0ff;border:1px solid #c5e1ff;color:#166ba8;border-radius:99px;padding:5px 10px;font:850 10px Consolas,'Microsoft YaHei',sans-serif;letter-spacing:.4px}
+#p0 .oct-new-grid,#p4 .oct-new-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#p0 .oct-new-card,#p4 .oct-new-card{min-width:0;background:#fff;border:1px solid #dae8f7;border-left:3px solid #249fda;border-radius:13px;padding:14px 15px 12px;box-shadow:0 3px 12px rgba(18,70,120,.025)}
+#p0 .oct-new-card.is-soon,#p4 .oct-new-card.is-soon{border-left-color:#f0a230}
+#p0 .oct-new-top,#p4 .oct-new-top{display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap;margin-bottom:8px}
+#p0 .oct-new-area,#p4 .oct-new-area{font:900 10px Consolas,'Microsoft YaHei',sans-serif;letter-spacing:.65px;color:#1677bc}
+#p0 .oct-new-date,#p4 .oct-new-date{font-size:10px;font-weight:800;background:#fff6e6;color:#a2690e;padding:4px 8px;border-radius:7px}
+#p0 .oct-new-card:not(.is-soon) .oct-new-date,#p4 .oct-new-card:not(.is-soon) .oct-new-date{background:#ebf4ff;color:#1a69a0}
+#p0 .oct-new-card h4,#p4 .oct-new-card h4{font-size:14px;line-height:1.45;color:#163b60;font-weight:900;overflow-wrap:anywhere;margin:0 0 7px}
+#p0 .oct-new-card p,#p4 .oct-new-card p{font-size:11.5px;color:#506981;line-height:1.7;margin:0}
+#p0 .oct-new-steps,#p4 .oct-new-steps{display:flex;gap:5px;flex-wrap:wrap;margin-top:11px}
+#p0 .oct-new-steps span,#p4 .oct-new-steps span{font-size:10px;font-weight:780;color:#28668b;background:#ecf5fd;border:1px solid #dfeefa;padding:4px 6px;border-radius:6px}
+#p0 .oct-new-steps span + span:before,#p4 .oct-new-steps span + span:before{content:'› ';color:#39a1d5}
+#p0 .oct-new-sub,#p4 .oct-new-sub{font-size:10px;color:#778ca3;line-height:1.6;margin-top:11px}
+@media(max-width:760px){#p0 .oct-new-grid,#p4 .oct-new-grid{grid-template-columns:1fr}#p0 .oct-new-work,#p4 .oct-new-work{padding:15px}}
+@media(max-width:390px){#p0 .oct-new-head,#p4 .oct-new-head{align-items:flex-start}#p0 .oct-new-head strong,#p4 .oct-new-head strong{font-size:13px}#p0 .oct-new-flag,#p4 .oct-new-flag{font-size:9px}}
+
+/* ===== V5: 月份降序 / 专属色系 / 核心成果阅读优化 ===== */
+#p3 { background:radial-gradient(ellipse at 18% 0%,#ecf5ff 0%,transparent 45%),#f7f9fd; }
+#p3 .container {max-width:1050px;padding-top:56px;}
+#p3 .ach-archive-intro{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:23px 25px;margin-bottom:20px;border:1px solid #d9e9fc;background:linear-gradient(112deg,#fff,#f1f7ff);border-radius:22px;position:relative;overflow:hidden;}
+#p3 .ach-archive-intro::after{content:'ARCHIVE';position:absolute;right:24px;top:-1px;font-size:82px;font-weight:1000;letter-spacing:-4px;color:rgba(33,100,177,.035);pointer-events:none;}
+#p3 .ach-archive-text{position:relative;z-index:1;}
+#p3 .ach-archive-eyebrow{display:inline-flex;gap:7px;align-items:center;font-size:10px;font-weight:900;letter-spacing:1.7px;color:#0a82bc;margin-bottom:8px;}
+#p3 .ach-archive-eyebrow::before{content:'';width:7px;height:7px;border-radius:50%;background:#11b5c7;box-shadow:0 0 0 4px #dbf7ff;}
+#p3 .ach-archive-intro h2{font-size:25px;line-height:1.3;color:#142f51;margin-bottom:5px;font-weight:900;}
+#p3 .ach-archive-intro p{font-size:12px;line-height:1.7;color:#6b7e97;}
+#p3 .ach-archive-count{display:grid;justify-items:center;gap:0;position:relative;z-index:1;min-width:78px;color:#296ab3;}
+#p3 .ach-archive-count strong{font:900 40px/1 Inter,'Segoe UI',sans-serif;letter-spacing:-2px;}
+#p3 .ach-archive-count span{font-size:10px;letter-spacing:.5px;color:#66829b;margin-top:6px;font-weight:850;}
+#p3 .ach-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:0 0 23px;}
+#p3 .ach-nav-btn{--month-tone:#2563eb;--month-wash:#eff6ff;display:flex;position:relative;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:13px 13px 12px;background:var(--month-wash);border:1px solid color-mix(in srgb,var(--month-tone) 18%,#fff);border-radius:16px;color:var(--month-tone);box-shadow:none;min-height:74px;min-width:0;transition:box-shadow .18s, transform .18s,background .18s;overflow:hidden;}
+#p3 .ach-nav-btn::before{content:'';position:absolute;inset:0 auto 0 0;width:3px;background:var(--month-tone);opacity:.53;}
+#p3 .ach-nav-btn:hover{transform:translateY(-2px);border-color:var(--month-tone);color:var(--month-tone);box-shadow:0 5px 15px rgba(24,61,100,.10);background:var(--month-wash);}
+#p3 .ach-nav-btn.active{color:#fff;background:linear-gradient(120deg,var(--month-tone),color-mix(in srgb,var(--month-tone) 74%,#172f5b));border-color:var(--month-tone);box-shadow:0 8px 18px color-mix(in srgb,var(--month-tone) 18%,transparent);}
+#p3 .ach-nav-btn.active::before{background:#fff;opacity:.65;}
+#p3 .ach-month-date{display:flex;align-items:baseline;gap:3px;font-weight:950;letter-spacing:-.3px;font-size:19px;line-height:1.1;white-space:nowrap;}
+#p3 .ach-month-date small{font-size:10px;font-weight:850;letter-spacing:0;}
+#p3 .ach-month-hint{font-size:10px;line-height:1.3;font-weight:700;color:color-mix(in srgb,var(--month-tone) 65%,#64748b);letter-spacing:.1px;white-space:nowrap;}
+#p3 .ach-nav-btn.active .ach-month-hint{color:rgba(255,255,255,.86);}
+#p3 .ach-dot{display:none;}
+#p3 #a6{--month-tone:#2463db;--month-soft:#edf4ff;}
+#p3 #a5{--month-tone:#07977a;--month-soft:#eaf9f4;}
+#p3 #a4{--month-tone:#7954c8;--month-soft:#f3effc;}
+#p3 #a3{--month-tone:#bc7a24;--month-soft:#fff7e8;}
+#p3 #a2{--month-tone:#1885be;--month-soft:#ebf8fe;}
+#p3 #a1{--month-tone:#b15c83;--month-soft:#fdf0f6;}
+#p3 .ach-page .ach-header{padding:21px 24px;margin-bottom:19px;border-radius:20px;background:linear-gradient(112deg,var(--month-soft),#fff 78%);border:1px solid color-mix(in srgb,var(--month-tone) 15%,#eaf0f8);border-left:5px solid var(--month-tone);}
+#p3 .ach-header::after{color:color-mix(in srgb,var(--month-tone) 7%,transparent);font-size:75px;right:20px;top:4px;}
+#p3 .ach-header h2{font-size:24px;color:#172d4a;}
+#p3 .ach-header p{font-size:12.5px;line-height:1.65;margin-bottom:0;max-width:780px;}
+#p3 .ach-header .kicker{font-size:10px;letter-spacing:.8px;margin-bottom:7px;border-color:color-mix(in srgb,var(--month-tone) 25%,white);color:var(--month-tone);background:#fff;}
+#p3 .ach-header .kicker::before{background:var(--month-tone);}
+#p3 .ach-month-focus{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;position:relative;z-index:1;}
+#p3 .ach-month-focus span{background:#fff;border:1px solid color-mix(in srgb,var(--month-tone) 18%,#e2e8f0);border-radius:999px;padding:5px 11px;font-size:10px;font-weight:750;line-height:1.45;color:#516a86;}
+#p3 .ach-month-focus span:first-child{background:var(--month-tone);color:#fff;border-color:var(--month-tone);}
+#p3 .report-ach-grid{gap:14px;}
+#p3 .report-ach-grid .card{border-left:3px solid var(--month-tone);border-radius:18px;padding:21px 23px;box-shadow:0 3px 14px rgba(25,65,110,.035);}
+#p3 .report-ach-grid .card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(25,65,110,.08);background:#fff;}
+#p3 .report-ach-grid h3{color:#233956;font-size:15px;line-height:1.5;}
+#p3 .report-ach-grid .report-copy{line-height:1.8;font-size:12.5px;margin-top:8px;}
+#p3 .report-ach-grid .badge{font-size:10.5px;font-weight:800;padding:4px 10px;}
+#p3 .ach-page:not(#a6):not(#a5) .ach-main{gap:15px;}
+#p3 .ach-page:not(#a6):not(#a5) .ach-left,#p3 .ach-page:not(#a6):not(#a5) .dc,#p3 .ach-page:not(#a6):not(#a5) .phase-card{border-radius:17px;}
+#p3 .month-module{border-left:3px solid var(--month-tone);border-radius:17px;}
+#p3 .month-module[open]{border-color:color-mix(in srgb,var(--month-tone) 35%,#dbeafe);box-shadow:0 6px 20px rgba(30,65,110,.07);}
+#p3 .month-module[open]>summary{background:var(--month-soft);}
+#p3 .month-module .module-no{color:var(--month-tone);background:var(--month-soft);}
+#p3 .month-module .module-toggle{color:var(--month-tone);}
+#p3 .ach-archive-footnote{margin:18px 0 0;font-size:10.5px;color:#72839b;line-height:1.75;}
+#p3 .dark-footer{background:transparent;color:#8190a5;border-top:0;}
+@media(max-width:860px){#p3 .ach-nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#p3 .ach-nav-btn{min-height:66px;padding:11px 12px;}}
+@media(max-width:450px){#p3 .container{padding-left:14px;padding-right:14px;padding-top:34px}#p3 .ach-archive-intro{padding:19px 17px;gap:8px;margin-bottom:15px}#p3 .ach-archive-intro h2{font-size:22px}#p3 .ach-archive-count{min-width:58px}#p3 .ach-archive-count strong{font-size:32px}#p3 .ach-nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}#p3 .ach-nav-btn{min-height:66px;padding:10px 10px;border-radius:13px}#p3 .ach-month-date{font-size:16px}#p3 .ach-month-hint{font-size:9px}#p3 .ach-page .ach-header{padding:17px 16px;border-radius:16px}#p3 .ach-header h2{font-size:21px}#p3 .ach-month-focus{gap:6px}#p3 .ach-month-focus span{font-size:9.5px;padding:5px 9px}#p3 .report-ach-grid .card{padding:17px}}
+/* ===== V5: Lifecycle workload / difficulty qualitative indicators ===== */
+#p0 .oct-flow{align-items:stretch;}
+#p0 .oct-step{display:flex;flex-direction:column;align-items:center;min-height:113px;justify-content:flex-start;gap:0;padding:11px 3px 9px;}
+#p0 .oct-step small{margin-top:4px;}
+#p0 .oct-work-tag{display:inline-flex;align-items:center;justify-content:center;max-width:100%;padding:4px 5px;margin-top:auto;border:1px solid #d7e7fa;border-radius:7px;font-size:9px;line-height:1.2;font-weight:850;white-space:nowrap;letter-spacing:0;color:#60738b;background:#f4f8ff;}
+#p0 .oct-work-tag.effort{border-color:#f8d9a7;background:#fff4e5;color:#ad690d;}
+#p0 .oct-work-tag.complex{border-color:#d9caf5;background:#f5efff;color:#7550bb;}
+#p0 .oct-work-tag.ongoing{border-color:#b9e7e6;background:#eafaF7;color:#087c77;}
+#p0 .oct-workload-summary{display:flex;gap:7px 14px;align-items:center;flex-wrap:wrap;margin-top:14px;border-top:1px dashed #cfe0f0;padding-top:12px;font-size:10.5px;line-height:1.5;color:#627b94;}
+#p0 .oct-workload-summary strong{font-weight:900;color:#1d4b77;}
+#p0 .oct-workload-summary b{font-weight:900;color:#194b78;}
+#p0 .oct-workload-summary .key{display:inline-flex;gap:6px;align-items:center;white-space:nowrap;}
+#p0 .oct-workload-summary .key::before{content:'';width:8px;height:8px;border-radius:3px;background:#ea9e35;}
+#p0 .oct-workload-summary .key.complexity::before{background:#9870d5;}
+#p0 .oct-workload-summary .key.ongoing::before{background:#1ba99a;}
+#p0 .oct-workload-note{margin-top:7px;font-size:10px;line-height:1.6;color:#72869d;}
+@media(max-width:450px){#p0 .oct-step{min-height:108px;padding:10px 3px}#p0 .oct-work-tag{font-size:8.6px}#p0 .oct-workload-summary{align-items:flex-start;gap:6px 11px}#p0 .oct-workload-summary .key{white-space:normal}}
+@media(prefers-reduced-motion:reduce){#p3 .ach-nav-btn,#p3 .report-ach-grid .card{transition:none}}
+
 </style>
 </head>
 <body>
@@ -841,7 +1161,7 @@ body {
 <h1>【1课】BPO定例会 · 馬 林 · <span class="today-date"></span></h1>
 <div class="hero-meta">
 <div class="hero-meta-row">报告周期：2025.12 — <span class="current-year-month"></span> | 内容更新截至：<span class="report-updated-at"></span> | 汇报人：馬 林 | 职务：チームリーダー</div>
-<div class="hero-meta-row hero-meta-tools">AI辅助开发：ChatGPT · Codex · WorkBuddy | 自动化：GAS · Python · HTML/JS</div>
+<div class="hero-meta-row hero-meta-tools">开发协作：AI辅助开发与独立审核　｜　技术：Chrome扩展 · HTML/JS · GAS · VBA · Python</div>
 </div>
 </div>
 </div>
@@ -849,8 +1169,8 @@ body {
 </div>
 <!-- ========== NAV ========== -->
 <div class="nav-wrap">
-<div class="nav-inner">
-<button class="nav-btn active" onclick="showPage('p1',this)">
+<div class="nav-inner"><button class="nav-btn active" onclick="showPage('p0',this)"><span class="nav-num">★</span> 本期汇报</button>
+<button class="nav-btn" onclick="showPage('p1',this)">
 <span class="nav-num">1</span> 年度目标
     </button>
 <button class="nav-btn" onclick="showPage('p2',this)">
@@ -871,7 +1191,158 @@ body {
 <!-- ==========================================
      PAGE 1 · 年度目标
 ========================================== -->
-<div class="page active" id="p1">
+<div class="page active" id="p0">
+<div class="oct-shell">
+<header class="oct-hero">
+<div class="oct-eyebrow"><span class="oct-signal"></span> MONTHLY AUTOMATION REPORT / 2026.10</div>
+<h2>自动化开发统筹<br/>与业务品质改善</h2>
+<div class="oct-hero-sub">定例会统计：上次定例会后 ～ 2026.10.23（包含9月下半旬）<br/>汇报人：馬 林　｜　<strong style="color:#fff">职务：チームリーダー</strong></div>
+<div class="oct-hero-foot">
+<span class="oct-pill">统筹范围：<b>跨课室</b>自动化改善</span>
+<span class="oct-pill">重点成果：<b>3</b>项＋持续改善</span>
+<span class="oct-pill">下期安排：<b>3</b>项主线＋<b>2</b>项新增</span>
+</div>
+</header>
+<section class="oct-section" id="oct-work">
+<div class="oct-section-head"><div><div class="oct-section-kicker">01 / RESPONSIBILITY</div><h3>主要工作内容</h3></div><p>正式职务保持「チームリーダー」；新增明确的工作职责是统一统筹后续自动化开发。</p></div>
+<div class="oct-scope">
+<div class="oct-role-card"><div class="oct-role-label">工作职责 / ROLE</div><div class="oct-role-name">自动化开发统筹・全流程管理</div>
+<p class="oct-role-detail">统一承接各课室诉求，协调开发及测试资源，管理交付、版本和后续维护；历史工具的原开发者保持不变。</p>
+<div class="oct-transition"><span class="prev">以前 · 各人员分散开发</span><span class="arr">→</span><span class="current">现在 · 后续开发统一统筹</span></div>
+</div>
+<div class="oct-domain-grid">
+<div class="oct-domain"><span class="oct-domain-icon">▦</span>报表与表格加工</div>
+<div class="oct-domain"><span class="oct-domain-icon">◉</span>媒体设定品质校正</div>
+<div class="oct-domain"><span class="oct-domain-icon">↗</span>邮件／Teams自动转记</div>
+<div class="oct-domain"><span class="oct-domain-icon">⚙</span>工具发布与统一运维</div>
+</div>
+</div>
+<div class="oct-life"><div class="oct-life-title">PROJECT LIFECYCLE · 从立项到持续改善 <span style="float:right;color:#728ca7;font-size:9px;letter-spacing:0">工作强度 / 复杂度提示</span></div>
+<div class="oct-flow">
+<div class="oct-step"><div class="num">01</div><div class="label">需求收集</div><small>业务诉求</small></div>
+<div class="oct-step"><div class="num">02</div><div class="label">立项评估</div><small>优先级／效益</small></div>
+<div class="oct-step"><div class="num">03</div><div class="label">方案设计</div><small>业务规则</small><span class="oct-work-tag complex" title="跨系统数据结构、权限限制与技术路线选择，方案复杂度较高">高复杂度</span></div>
+<div class="oct-step"><div class="num">04</div><div class="label">开发统筹</div><small>分工／进度</small><span class="oct-work-tag effort" title="多项目并行组织开发、需求变更与版本协调，管理投入较多">高投入</span></div>
+<div class="oct-step"><div class="num">05</div><div class="label">测试验证</div><small>回归／实案QA</small><span class="oct-work-tag effort" title="自动回归、真实业务验收、问题复测与发布Gate通常需要大量时间">高投入</span></div>
+<div class="oct-step"><div class="num">06</div><div class="label">交付上线</div><small>版本／说明</small></div>
+<div class="oct-step"><div class="num">07</div><div class="label">运行维护</div><small>反馈／修复</small><span class="oct-work-tag ongoing" title="各课室真实业务反馈、修复和版本同步会形成长期工作量">持续投入</span></div>
+<div class="oct-step"><div class="num">08</div><div class="label">持续改善</div><small>数据／推广</small></div>
+</div>
+<div class="oct-workload-summary"><strong>重点工作特征</strong><span class="key">开发统筹／实案QA：<b>投入较多</b></span><span class="key complexity">方案设计：<b>技术复杂</b></span><span class="key ongoing">上线维护：<b>持续投入</b></span></div>
+<div class="oct-workload-note">基于当前跨课室项目实践的定性判断；非工时占比或绩效评分，其余环节同样需要管理与确认。</div>
+</div>
+</section>
+<section class="oct-section" id="oct-results">
+<div class="oct-section-head"><div><div class="oct-section-kicker">02 / ACHIEVEMENTS</div><h3>本期成果 · 3项重点＋其他改善</h3></div><p>按定例会周期统计；圆环仅标识项目阶段，不代表完成比例。</p></div>
+<div class="oct-results">
+<div class="oct-project-column">
+<div aria-label="TL Report：正在进行Python真实业务验证，尚未正式交付。" class="oct-quick" data-tone="test" role="group">
+<div aria-hidden="true" class="oct-quick-ring"><span>验证</span></div>
+<div class="oct-quick-info"><div class="oct-quick-no">PROJECT 01</div>
+<strong>TL Report</strong><p>Python单CP真实FMT验收推进中</p>
+<span class="oct-quick-status"><i aria-hidden="true"></i>开发／测试中</span>
+</div>
+</div>
+<div aria-hidden="true" class="oct-quick-join"><i></i></div>
+<article class="oct-project"><div class="oct-project-head"><span class="oct-project-no">PROJECT 01</span><span class="oct-status testing">Python开发／测试中</span></div><h4>TL Report 自动加工</h4><div class="oct-metric">NO06 <span class="unit">VBA普通案件宏</span></div><p class="oct-compact-line">已完成普通案件宏的阶段成果；针对VBA维护复杂、Excel易卡顿，推进<strong>Python化与便携EXE</strong>。</p><div class="oct-project-bottom"><div class="oct-compact-line">单CP及通用引擎已取得阶段进展；真实FMT加工、现场验收仍在推进。</div><div aria-label="TL Report 当前阶段：测试验证" class="oct-stage" data-tone="warning" role="group"><div class="oct-stage-caption"><span>PROJECT PHASE</span><strong>测试验证</strong></div><ol class="oct-stage-track"><li class="oct-stage-step is-done"><span aria-hidden="true" class="oct-stage-dot"></span><span>需求</span></li><li class="oct-stage-step is-done"><span aria-hidden="true" class="oct-stage-dot"></span><span>开发</span></li><li class="oct-stage-step is-current"><span aria-hidden="true" class="oct-stage-dot"></span><span>测试</span></li><li class="oct-stage-step is-next"><span aria-hidden="true" class="oct-stage-dot"></span><span>交付</span></li><li class="oct-stage-step is-next"><span aria-hidden="true" class="oct-stage-dot"></span><span>运维</span></li></ol><p class="oct-stage-clarity">开发与实案验证迭代推进；尚未正式交付</p></div><div class="oct-tagrow"><span class="oct-tag">11月上旬：争取单CP实案验收</span><span class="oct-tag">11月内：争取现场试用</span></div></div></article></div>
+<div class="oct-project-column">
+<div aria-label="Outlook邮件校正：既有3个版本完成。Domain功能仍待权限确认。" class="oct-quick" data-tone="done" role="group">
+<div aria-hidden="true" class="oct-quick-ring"><span>交付</span></div>
+<div class="oct-quick-info"><div class="oct-quick-no">PROJECT 02</div>
+<strong>Outlook 邮件校正</strong><p>3版本封板并完成对日展示</p>
+<span class="oct-quick-status"><i aria-hidden="true"></i>既有版本完成</span>
+</div>
+</div>
+<div aria-hidden="true" class="oct-quick-join"><i></i></div>
+<article class="oct-project"><div class="oct-project-head"><span class="oct-project-no">PROJECT 02</span><span class="oct-status">3版本完成</span></div><h4>Outlook 邮件校正</h4><div class="oct-metric">03 <span class="unit">版本</span></div><p class="oct-compact-line">5課、4課、共通使用的3个版本完成，<strong>已向日方展示</strong>，推动送信前标准化检查。</p><div class="oct-project-bottom"><div class="oct-compact-line">收件人及Domain自动显示的完整方案涉及追加企业权限；已向各課長反映，待与日方确认申请条件。</div><div aria-label="Outlook邮件校正 当前阶段：运行维护" class="oct-stage" data-tone="success" role="group"><div class="oct-stage-caption"><span>PROJECT PHASE</span><strong>运行维护</strong></div><ol class="oct-stage-track"><li class="oct-stage-step is-done"><span aria-hidden="true" class="oct-stage-dot"></span><span>需求</span></li><li class="oct-stage-step is-done"><span aria-hidden="true" class="oct-stage-dot"></span><span>开发</span></li><li class="oct-stage-step is-done"><span aria-hidden="true" class="oct-stage-dot"></span><span>测试</span></li><li class="oct-stage-step is-done"><span aria-hidden="true" class="oct-stage-dot"></span><span>交付</span></li><li class="oct-stage-step is-current"><span aria-hidden="true" class="oct-stage-dot"></span><span>运维</span></li></ol><p class="oct-stage-clarity">已完成的既有版本，后续新需求仍单独评估</p></div><div class="oct-tagrow"><span class="oct-tag">既有版本完成</span><span class="oct-tag">高权限方案待协调</span></div></div></article></div>
+<div class="oct-project-column">
+<div aria-label="Backlog至Outlook：已向日方提交资料，4课专用版仍在测试。" class="oct-quick" data-tone="shared" role="group">
+<div aria-hidden="true" class="oct-quick-ring"><span>共有</span></div>
+<div class="oct-quick-info"><div class="oct-quick-no">PROJECT 03</div>
+<strong>Backlog → Outlook</strong><p>4課专用版处于测试阶段</p>
+<span class="oct-quick-status"><i aria-hidden="true"></i>对日资料已提交</span>
+</div>
+</div>
+<div aria-hidden="true" class="oct-quick-join"><i></i></div>
+<article class="oct-project"><div class="oct-project-head"><span class="oct-project-no">PROJECT 03</span><span class="oct-status info">日方共有资料已提交</span></div><h4>Backlog → Outlook</h4><div class="oct-metric">JP <span class="unit">对日展示完成</span></div><p class="oct-compact-line">日方展示完成，共有资料已提交；<strong>4課专用版完成开发、测试中</strong>。</p><div class="oct-project-bottom"><div class="oct-compact-line">针对ZIP逐人安装／维护不便，计划评估Chrome扩展指定人员发布与后续集中更新。</div><div aria-label="Backlog→Outlook（4課版） 当前阶段：测试验证" class="oct-stage" data-tone="warning" role="group"><div class="oct-stage-caption"><span>PROJECT PHASE</span><strong>测试验证</strong></div><ol class="oct-stage-track"><li class="oct-stage-step is-done"><span aria-hidden="true" class="oct-stage-dot"></span><span>需求</span></li><li class="oct-stage-step is-done"><span aria-hidden="true" class="oct-stage-dot"></span><span>开发</span></li><li class="oct-stage-step is-current"><span aria-hidden="true" class="oct-stage-dot"></span><span>测试</span></li><li class="oct-stage-step is-next"><span aria-hidden="true" class="oct-stage-dot"></span><span>交付</span></li><li class="oct-stage-step is-next"><span aria-hidden="true" class="oct-stage-dot"></span><span>运维</span></li></ol><p class="oct-stage-clarity">当前以4課版开发验证阶段为准；对日资料已提交</p></div><div class="oct-tagrow"><span class="oct-tag">V0.4.3交付候选</span><span class="oct-tag">4課版测试中</span></div></div></article></div>
+</div>
+<div class="oct-minor"><h4>04 / 其他业务工具持续改善　<span style="font-weight:500;color:#75879b;font-size:11px">（含9月下半旬）</span></h4>
+<div class="oct-minor-layout">
+<div aria-label="本期其他业务改善：已确认的问题和诉求数量对比" class="oct-mini-chart" role="group">
+<div class="oct-mini-chart-head"><strong>修复与诉求处理件数</strong><span>本期定例会周期</span></div>
+<div aria-label="Amazon DSP：9项问题修复" class="oct-bar-row"><span class="oct-bar-name">Amazon DSP</span><div class="oct-bar-track"><div class="oct-bar-fill" style="--bar:100%"></div></div><b>09</b></div>
+<div aria-label="DV360：3项问题修复" class="oct-bar-row"><span class="oct-bar-name">DV360</span><div class="oct-bar-track"><div class="oct-bar-fill" style="--bar:33.33%"></div></div><b>03</b></div>
+<div aria-label="3課自动转记：2项问题修复" class="oct-bar-row"><span class="oct-bar-name">3課自动转记</span><div class="oct-bar-track"><div class="oct-bar-fill" style="--bar:22.22%"></div></div><b>02</b></div>
+<div aria-label="5課TODO：1项诉求追加" class="oct-bar-row"><span class="oct-bar-name">5課TODO</span><div class="oct-bar-track"><div class="oct-bar-fill" style="--bar:11.11%"></div></div><b>01</b></div>
+<p class="oct-chart-note">仅比较本期处理件数，不代表开发工时、复杂度或品质效果。</p>
+</div>
+<div class="oct-mini-continuing">
+<div class="oct-mini-cont-item"><span class="oct-cont-icon">↗</span><div><span class="oct-cont-label">TVer</span><strong>持续与刘丽伟对接修正</strong></div><em>进行中</em></div>
+<div class="oct-mini-cont-item"><span class="oct-cont-icon">ƒ</span><div><span class="oct-cont-label">部门数据表</span><strong>函数追加与整理维护</strong></div><em>持续改善</em></div>
+<div class="oct-minor-caption">媒体设定校正、自动转记与部门管理数据同步改善。</div>
+</div>
+</div>
+</div>
+</section>
+<section class="oct-section" id="oct-trends"><div class="oct-section-head"><div><div class="oct-section-kicker">03 / BUSINESS TRENDS</div><h3>业务动向</h3></div><p>来自当前现场管理与开发实践的变化。</p></div>
+<div class="oct-trend">
+<div class="oct-trend-item"><div class="symbol">01 →</div><strong>分散开发 → 统一统筹</strong><p>将后续开发纳入统一流程，明确版本、质量与维护责任。</p></div>
+<div class="oct-trend-item"><div class="symbol">02 →</div><strong>个人工具 → 共通使用</strong><p>整合重复功能，推动统一上线、分发与使用日志管理。</p></div>
+<div class="oct-trend-item"><div class="symbol">03 →</div><strong>单点自动化 → 复杂业务流程</strong><p>报表Python化、Teams大规模转记扩展需求增加。</p></div>
+</div>
+</section>
+<section class="oct-section" id="oct-issues"><div class="oct-section-head"><div><div class="oct-section-kicker">04 / ISSUES &amp; ACTIONS</div><h3>痛点、对策与待解决事项</h3></div><p>区分已提出的改善方案与仍需协调的事项。</p></div>
+<div class="oct-issue-list">
+<div class="oct-issue"><span class="problem">VBA维护复杂／Excel易卡顿</span><span class="arrow">→</span><span class="solution">Python加工＋便携EXE</span><span class="state">开发中</span></div>
+<div class="oct-issue"><span class="problem">Outlook自动显示Domain有权限限制</span><span class="arrow">→</span><span class="solution">与日方确认Microsoft 365权限／部署条件</span><span class="state">待协调</span></div>
+<div class="oct-issue"><span class="problem">扩展ZIP逐人安装／维护不便</span><span class="arrow">→</span><span class="solution">研究指定人员发布与版本集中更新</span><span class="state blue">计划中</span></div>
+<div class="oct-issue"><span class="problem">现有工具分散／功能重叠</span><span class="arrow">→</span><span class="solution">分类盘点、功能统合、统一入口管理</span><span class="state blue">下期重点</span></div>
+</div>
+</section>
+<section class="oct-section" id="oct-next"><div class="oct-section-head"><div><div class="oct-section-kicker">05 / NEXT MONTH</div><h3>下个月重点计划</h3></div><p>3项重点主线＋2项近期新增业务対応。</p></div>
+<div aria-label="下期重点工作推进时间线" class="oct-roadmap">
+<div class="oct-roadmap-heading"><div><span class="oct-roadmap-eyebrow">DELIVERY ROADMAP</span><strong>预计推进节点</strong></div><span class="oct-roadmap-disclaimer">工期仅为目标或规划，不代表交付承诺</span></div>
+<div aria-hidden="true" class="oct-roadmap-axis"><span>10月末～当前</span><span>11月上旬</span><span>11月内</span><span>中长期 / 待评估</span></div>
+<div class="oct-roadmap-row">
+<div class="oct-roadmap-label"><b>01</b><span>工具统一整合</span></div>
+<div class="oct-roadmap-track oct-rm-ongoing"><span class="oct-roadmap-flow">分类盘点 → 功能整合／统一发布 → 使用分析 <em>持续推进</em></span></div>
+</div>
+<div class="oct-roadmap-row">
+<div class="oct-roadmap-label"><b>02</b><span>TL Python化</span></div>
+<div class="oct-roadmap-track oct-rm-cells"><span class="oct-rm-cell">真实FMT验证</span><span class="oct-rm-cell oct-rm-target">单CP验收<small>预计</small></span><span class="oct-rm-cell oct-rm-target">现场试用版<small>争取</small></span><span class="oct-rm-cell oct-rm-later">多CP／横向扩展</span></div>
+</div>
+<div class="oct-roadmap-row">
+<div class="oct-roadmap-label"><b>03</b><span>3課 Teams总TODO</span></div>
+<div class="oct-roadmap-track oct-rm-longterm"><span>来源／权限调查 → Flow与GAS联动 → 分批验证</span><strong>完成时间待评估</strong></div>
+</div>
+<div class="oct-roadmap-foot"><span><i class="oct-rm-legend-dot"></i>预计节点</span><span><i class="oct-rm-legend-dash"></i>持续性／未确定周期</span></div>
+</div>
+<div class="oct-plan-grid">
+<article class="oct-plan"><div class="oct-plan-body"><div class="oct-plan-top">PRIORITY 01 · 统合管理</div><h4>自動化・创新成果分类整合</h4><p>盘点Chrome扩展、HTML、VBA、GAS、Python和个人工具；按功能整合类似工具，推动共通利用。</p><div class="oct-phase">扩展指定人员发布 · QC门户统一上线／更新 · 使用日志及频率分析</div></div></article>
+<article class="oct-plan"><div class="oct-plan-body"><div class="oct-plan-top">PRIORITY 02 · 业务实用化</div><h4>TL Report Python化</h4><p>优先打通单CP真实案件加工与验收，完善无需安装Python的EXE；后续拓展多CP及其他课室报表业务。</p><div class="oct-phase">预计：11月上旬单CP验收 → 11月内争取试用版（非承诺工期）</div></div></article>
+<article class="oct-plan"><div class="oct-plan-body"><div class="oct-plan-top">PRIORITY 03 · LONG-TERM</div><h4>3課 Teams総TODO自动转记范围扩展</h4><p>基于现有 <strong>Section3_AutoTransfer</strong>，盘点数据来源，研究Power Automate流程复用／追加，并联动扩展GAS解析、分类、转记规则。</p><div class="oct-plan-stats"><span>原稿业务 70+</span><span>Teams群组／聊天 约110</span></div><div class="oct-phase">调查映射 → Flow扩展 → GAS联动 → 分批QA／导入<br/>预计周期较长；完成日期待调查后评估</div></div></article>
+</div>
+<div class="oct-new-work" aria-label="近期新增业务应对计划">
+  <div class="oct-new-head"><div><strong>近期新增业务対応 <span style="color:#1286c4">/ NEW REQUESTS</span></strong><small>在既定3项主线外，新增两项跨课室业务联动需求</small></div><span class="oct-new-flag">ADDED 02</span></div>
+  <div class="oct-new-grid">
+    <article class="oct-new-card is-soon"><div class="oct-new-top"><span class="oct-new-area">5課 · AUTO TRANSFER</span><span class="oct-new-date">10/26 依赖样例预定</span></div>
+      <h4>設定管理シート联动调整</h4>
+      <p>「高知/東京/長春_設定管理シート」计划自<strong>11/1</strong>起使用。日方预计<strong>10/26（周一）</strong>经Backlog向长春发出1件依赖，Outlook也将收到通知；取得样例后，核对邮件信息提取及自动转记逻辑，按实际格式调整。</p>
+      <div class="oct-new-steps"><span>样例取得</span><span>字段确认</span><span>逻辑修正</span><span>回归测试</span></div>
+    </article>
+    <article class="oct-new-card"><div class="oct-new-top"><span class="oct-new-area">1課 · REPORT MANAGEMENT</span><span class="oct-new-date">需求整理 / 待排期</span></div>
+      <h4>博報堂Gravityレポート作成 · 自动总表追加</h4>
+      <p>将Gravity报表制作相关业务纳入既有自动总表管理范围；先确认业务字段、汇总口径及现有转记规则，再推进总表项目追加和验证。</p>
+      <div class="oct-new-steps"><span>业务确认</span><span>字段映射</span><span>总表追加</span><span>验证</span></div>
+    </article>
+  </div>
+  <p class="oct-new-sub">注：5課变更内容需以10/26实际收到的Backlog／Outlook样例为准；1課Gravity的详细范围与工期待确认，不将计划写作已完成。</p>
+</div>
+<div class="oct-footnote">注：修复数量按本次定例会周期统计。历史工具不全部归为本人原创；后续新开发由本人统一统筹。工期与发布方式均为预计或规划，最终以权限、测试及业务验收结果为准。</div>
+</section>
+<div class="oct-end">長春恵海 · BPO定例会　/　2026.10.23　/　チームリーダー</div>
+</div>
+</div><div class="page" id="p1">
 <div class="container">
 <div class="sec-hd">
 <div class="sec-divider"></div>
@@ -953,221 +1424,22 @@ body {
 ========================================== -->
 <div class="page dark-page" id="p3">
 <div class="container">
-<div class="ach-nav"><button class="ach-nav-btn active" onclick="showAch('a6',this)"><span class="ach-dot"></span> 2026年10月</button>
-<button class="ach-nav-btn" onclick="showAch('a5',this)"><span class="ach-dot"></span> 2026年9月</button>
-<button class="ach-nav-btn" onclick="showAch('a1',this)"><span class="ach-dot"></span> 2026年5月</button>
-<button class="ach-nav-btn" onclick="showAch('a2',this)"><span class="ach-dot"></span> 2026年6月</button>
-<button class="ach-nav-btn" onclick="showAch('a3',this)"><span class="ach-dot"></span> 2026年7月</button>
-<button class="ach-nav-btn" onclick="showAch('a4',this)"><span class="ach-dot"></span> 2026年8月</button>
+<div class="ach-archive-intro"><div class="ach-archive-text"><div class="ach-archive-eyebrow">MONTHLY HIGHLIGHTS / 2026</div><h2>核心成果 · 月度归档</h2><p>按月份降序查看成果 · 各月色彩标识不同 · 历史内容保留</p></div><div class="ach-archive-count"><strong>06</strong><span>MONTHS</span></div></div><div class="ach-nav"><button aria-pressed="true" class="ach-nav-btn active" onclick="showAch('a6',this)" style="--month-tone:#2463db;--month-wash:#edf4ff" type="button"><span class="ach-month-date"><small>2026</small>10月</span><span class="ach-month-hint">本期最新</span></button><button aria-pressed="false" class="ach-nav-btn" onclick="showAch('a5',this)" style="--month-tone:#07977a;--month-wash:#eaf9f4" type="button"><span class="ach-month-date"><small>2026</small>09月</span><span class="ach-month-hint">工具交付</span></button><button aria-pressed="false" class="ach-nav-btn" onclick="showAch('a4',this)" style="--month-tone:#7954c8;--month-wash:#f3effc" type="button"><span class="ach-month-date"><small>2026</small>08月</span><span class="ach-month-hint">稳定运行</span></button><button aria-pressed="false" class="ach-nav-btn" onclick="showAch('a3',this)" style="--month-tone:#bc7a24;--month-wash:#fff7e8" type="button"><span class="ach-month-date"><small>2026</small>07月</span><span class="ach-month-hint">能力扩展</span></button><button aria-pressed="false" class="ach-nav-btn" onclick="showAch('a2',this)" style="--month-tone:#1885be;--month-wash:#ebf8fe" type="button"><span class="ach-month-date"><small>2026</small>06月</span><span class="ach-month-hint">品质校正</span></button><button aria-pressed="false" class="ach-nav-btn" onclick="showAch('a1',this)" style="--month-tone:#b15c83;--month-wash:#fdf0f6" type="button"><span class="ach-month-date"><small>2026</small>05月</span><span class="ach-month-hint">自动汇总</span></button></div><div class="ach-page active" id="a6">
+<div class="ach-header"><div class="kicker green">2026.09中旬—10.23 · 定例会统计周期</div><h2>本期核心成果</h2><p>三项重点业务成果＋其他现场改善，详细概览见「本期汇报」。</p><div aria-label="本月重点速览" class="ach-month-focus"><span>3项重点项目</span><span>现场改善持续推进</span><span>开发／交付状态分明</span></div></div>
+<div class="report-ach-grid">
+<div class="card"><h3>01　TL Report VBA→Python</h3><p class="report-copy"><span class="badge b-progress">开发／测试中</span><br/>普通案件NO06宏取得阶段成果；因VBA维护复杂及Excel稳定性风险，转向Python加工和便携EXE。单CP、通用引擎完成阶段开发，真实FMT加工及现场验收持续推进。预计11月上旬争取单CP验收、11月内争取试用。</p></div>
+<div class="card"><h3>02　Outlook邮件校正</h3><p class="report-copy"><span class="badge b-done">三个版本完成</span><br/>5課、4課及共通版完成，并已向日方展示。收件人／Domain自动显示的完整方案涉及企业权限，已向各課長反馈，待与日方确认申请及部署条件。</p></div>
+<div class="card"><h3>03　Backlog→Outlook</h3><p class="report-copy"><span class="badge b-progress">对日共有资料已提交</span><br/>完成对日展示、资料提交；4課专用版开发完成并处于测试。V0.4.3为交付候选，计划研究Chrome扩展指定人员发布，降低ZIP逐人安装和更新成本。</p></div>
+<div class="card"><h3>04　其他业务改善</h3><p class="report-copy"><span class="badge b-progress">持续改善</span><br/>TVer与刘丽伟对接修正；DV360修复3项、Amazon DSP修复9项；5課TODO新增诉求1项、3課自动转记修复2项，部门数据表完成相关函数追加整理。以上计数包含9月下半旬。</p></div>
 </div>
-<!-- ====== 2026年10月：截至10月20日的阶段成果 ====== -->
-<div class="ach-page active" id="a6">
-  <div class="ach-header">
-    <div class="kicker green">2026.10.01—10.20 · 阶段进展</div>
-    <h2>2026年10月核心成果</h2>
-    <p>三项重点项目单独报告，媒体校正及其他日常优化合并汇总；开发与正式交付状态明确区分。</p>
-  </div>
-  <div class="report-ach-grid">
-    <div class="card">
-      <h3>01　TL Report Python化</h3>
-      <p class="report-copy"><span class="badge b-progress">开发及测试中</span><br/>
-      完成VBA加工规则向Python方案迁移的阶段开发；单CP便携EXE／BAT候选已制作并通过相关自动测试，通用引擎正在推进。真实FMT及多CP完整业务验收尚未完成，暂未上线。</p>
-    </div>
-    <div class="card">
-      <h3>02　Outlook邮件校正工具</h3>
-      <p class="report-copy"><span class="badge b-done">三个版本正式封板</span><br/>
-      通用版、社内简化版、5課SNS专用版分别完成正式封板；社内版及SNS版通过关键真人Outlook测试。附件提醒等新需求作为独立候选继续优化，不影响既有封板版本。</p>
-    </div>
-    <div class="card">
-      <h3>03　Backlog → Outlook对日交付</h3>
-      <p class="report-copy"><span class="badge b-progress">独立交付包准备完成</span><br/>
-      整理V0.4.3独立ZIP、日文安装／使用说明，并完成无关通知／API代码清理及独立安全审查。当前为Candidate，待最终确认后封板。</p>
-    </div>
-    <div class="card">
-      <h3>04　其他业务工具持续改善</h3>
-      <p class="report-copy"><span class="badge b-done">阶段修正完成／持续维护</span><br/>
-      TVer修复AXA实际案件问题并完成733／733项回归；DV360、Amazon DSP及Excel／自动转记工具持续根据现场反馈优化，扩大设定校正与日常辅助的稳定使用范围。</p>
-    </div>
-  </div>
-  <p class="report-note">进度截至2026.10.20。已封板、候选交付与开发测试并列展示，但不混同为正式上线；本期未新增未经核实的节省工时。</p>
-</div>
-<div class="ach-page" id="a5"><div class="ach-header"><div class="kicker">2026.09.01—09.28</div><h2>2026年9月核心成果</h2><p>聚焦媒体校正、邮件辅助、自动转记与TL报表加工自动化，持续推进工具统一与现场工时削减。</p></div><div class="report-ach-grid"><div class="card"><h3>01　TVer設定校正工具完成</h3><p class="report-copy"><span class="badge b-done">已完成</span><br/>完成Campaign／Group／Creative各层级的设定比对、真实案件验证和入口整合。将设定差异集中展示，辅助2課担当优先确认异常项目；后续继续结合使用数据与现场反馈评估实际削减效果。</p></div><div class="card"><h3>02　Outlook邮件校正工具完成</h3><p class="report-copy"><span class="badge b-done">已投入使用</span><br/>发送前集中检查宛先、CC、件名及附件，提示需要确认的内容，减少漏填和错误发送风险。现场已开始使用，后续继续按实际反馈优化规则与操作体验。</p></div><div class="card"><h3>03　Backlog→Outlook草稿自动生成</h3><p class="report-copy"><span class="badge b-done">已投入使用</span><br/>提取案件信息，按对应模板整理件名和正文，预览后生成Outlook草稿，减少重复复制与编辑。优秀统计登记月间节省80.5分钟；邮件仍由作业者确认后发送。</p></div><div class="card"><h3>04　Backlog桌面通知与三线路监控</h3><p class="report-copy"><span class="badge b-done">已完成</span><br/>支持三条Backlog线路同时监控，切换当前线路不影响其他线路通知。新通知通过桌面提醒展示，并提供案件打开和确认操作，减少反复查看页面。</p></div><div class="card"><h3>05　DV360／Amazon DSP校正工具完善</h3><p class="report-copy"><span class="badge b-done">本轮改善完成</span><br/>DV360完成CSV读取、合并单元格及YouTube等设定规则修复；Amazon DSP／PVA完善受众Sheet读取和判定。持续将真实案件反馈转化为自动判定规则，提高校正准确性与稳定性。</p></div><div class="card"><h3>06　TL普通案件报表加工宏完成</h3><p class="report-copy"><span class="badge b-done">开发完成 · 待现场效果确认</span><br/>面向TL普通案件完成RAW整理、FMT自动填充、日期与行列动态扩展、非函数版清理、排序、金额／格式保持等自动加工。普通案件约占TL业务量90%。预计单件作业时间可由20～25分钟缩短至10～15分钟。下一步与相关负责人共有并用真实案件确认实际削减工时；若效果确认无问题，希望尽快向日方共有。此前日方已针对该业务联络长春侧，希望推进作业优化，本次改善与现场需求方向一致，可作为长春侧自主改善的代表案例。</p></div></div></div>
-<div class="ach-page" id="a1">
-<div class="ach-header">
-<div class="kicker purple">2026.05 · DEPLOYED</div>
-<div class="sec-divider"></div>
-<h2>跨平台自动汇总与全中心数据分发落地</h2>
-<p>邮件监控、Teams联络汇总与全中心合计表分发形成稳定运行的自动化基础</p>
-</div>
-<div class="ach-main gap20">
-<div class="ach-left"><div class="dark-grid"></div>
-<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge blue">已落地</span><span class="status-date">2026.05 · 稳定运行</span></div>
-<p class="ach-desc" style="position:relative;z-index:1;">完成跨平台邮件自动监控与同步机制，覆盖Xone、Outlook、OneDrive、SharePoint及Teams等信息来源。Python负责采集和加工，GAS负责去重、解析及写入团队总表，减少人工每日巡查、逐条确认和重复转记。</p>
-<p class="ach-desc" style="position:relative;z-index:1;">同期完成<strong class="green">全中心合计表自动分发</strong>，将一份合计表按中心自动筛选并写入10个中心，同时联动收益别、团队别、HDY本部别及月次Summary等多个Sheet。</p>
-<div class="flow-row" style="position:relative;z-index:1;"><div class="flow-node purple-n">多平台采集</div><div class="flow-arr">→</div><div class="flow-node purple-n">Python加工</div><div class="flow-arr">→</div><div class="flow-node green-n">GAS写入</div><div class="flow-arr">→</div><div class="flow-node green-n">总表与中心表联动</div></div>
-</div>
-<div class="ach-right">
-<div class="dc purple-dc"><div class="dc-label">自动汇总线路</div><div class="dc-val">3条</div><div class="dc-sub">Xone · Outlook/OneDrive · Teams</div></div>
-<div class="dc green-dc"><div class="dc-label">中心覆盖</div><div class="dc-val">10</div><div class="dc-sub">＋第一WEB本部汇总</div></div>
-<div class="dc purple-dc"><div class="dc-label">巡查间隔</div><div class="dc-val">5 min</div><div class="dc-sub">自动获取新增信息</div></div>
-<div class="dc green-dc"><div class="dc-label">执行方式</div><div class="dc-val sm">自动／一键</div><div class="dc-sub">复合键去重</div></div>
-</div>
-</div>
-<div class="principle-grid">
-<div class="pc"><div class="pc-title purple">📡 自动信息汇总</div><ul class="pc-list"><li><span class="ic">✓</span>Xone邮件自动巡查与纳期提取</li><li><span class="ic">✓</span>Outlook／OneDrive新增邮件同步</li><li><span class="ic">✓</span>Teams联络自动采集并写入总表</li><li><span class="ic">✓</span>持久化去重与异常重试</li></ul></div>
-<div class="pc"><div class="pc-title green">📊 全中心自动分发</div><ul class="pc-list"><li><span class="ic">✓</span>10中心数据自动筛选分发</li><li><span class="ic">✓</span>5种中心模板自动适配</li><li><span class="ic">✓</span>6个以上汇总维度联动</li><li><span class="ic">✓</span>样式、公式及新增编码标识自动处理</li></ul></div>
-</div>
-</div>
-<div class="ach-page" id="a2">
-<div class="ach-header">
-<div class="kicker">2026.06 · DEPLOYED</div>
-<div class="sec-divider"></div>
-<h2>Amazon DSP设定自动对比工具正式落地</h2>
-<p>6月完成Amazon DSP／PVA设定自动对比工具落地，支援现场校正作业。</p>
-</div>
-<div class="ach-main gap20">
-<div class="ach-left"><div class="dark-grid"></div>
-<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">已落地</span><span class="status-date">2026.06.15</span></div>
-<p class="ach-desc" style="position:relative;z-index:1;">完成Amazon DSP／Amazon PVA后台数据与设定表的自动对比。系统自动读取可下载项目并生成差异结果，将原本依赖人工逐项检索的确认方式，转变为优先查看异常项目的辅助校正方式。</p>
-<p class="ach-desc" style="position:relative;z-index:1;">第一阶段用于自我校正及W校正支援，重点覆盖配信条件、金额、频次、Audience等项目，帮助担当在较短时间内锁定高风险差异。</p>
-<div class="flow-row" style="position:relative;z-index:1;"><div class="flow-node">后台数据</div><div class="flow-arr">→</div><div class="flow-node">设定表解析</div><div class="flow-arr">→</div><div class="flow-node">规则比对</div><div class="flow-arr">→</div><div class="flow-node">差异报告</div></div>
-</div>
-<div class="ach-right">
-<div class="dc"><div class="dc-label">适用媒体</div><div class="dc-val sm">Amazon DSP<br/>Amazon PVA</div></div>
-<div class="dc"><div class="dc-label">异常确认</div><div class="dc-val sm">差异集中展示</div><div class="dc-sub">聚焦差异项目</div></div>
-<div class="dc"><div class="dc-label">目标</div><div class="dc-val sm">减少人为遗漏</div></div>
-<div class="dc"><div class="dc-label">阶段</div><div class="dc-val sm">辅助校正</div><div class="dc-sub">持续吸收现场反馈</div></div>
-</div>
-</div>
-<div class="phase-row"><div class="phase-card ph-active"><div class="phase-tag">6月成果</div><div class="phase-title">从人工逐项确认转为系统差异提示</div><div class="phase-desc">建立后台数据与设定表的结构化对比基础，为7月持续追加案件规则、CR检查及PVA修复提供统一架构。</div></div><div class="phase-card"><div class="phase-tag">运用方式</div><div class="phase-title">工具辅助与人工确认结合</div><div class="phase-desc">由系统先展示差异，担当结合案件指示确认异常及工具覆盖范围外的项目。</div></div></div>
-</div>
-<div class="ach-page" id="a3">
-<div class="ach-header">
-<div class="kicker purple">2026.07 · MONTHLY</div>
-<div class="sec-divider"></div>
-<h2>2026年7月核心成果</h2>
-<p>将7月上下半月成果合并归档，聚焦自动化落地、品质防错与现场效率改善。</p>
-</div>
-<div class="month-modules">
-<details class="month-module" open="">
-<summary>
-<span class="module-no">01</span>
-<span class="module-copy"><strong>2课 Outlook 邮件自动转记</strong><small>175项测试通过 · 远程部署 · 无人值守运行</small></span>
-<span class="module-toggle">展开详情</span>
-</summary>
-<div class="module-body">
-<div class="ach-main gap20">
-<div class="ach-left"><div class="dark-grid"></div>
-<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">阶段完成</span><span class="status-date">2026.07</span></div>
-<p class="ach-desc" style="position:relative;z-index:1;">完成从 Outlook／OneDrive 邮件取得、Python 读取、GAS 解析、案件判定到 Google Sheet 写入的自动化链路，并通过 <strong class="green">175项自动测试</strong>。</p>
-<p class="ach-desc" style="position:relative;z-index:1;">同步完成远程电脑部署、开机自启动及无人值守运行环境，为后续正式案件持续验证和稳定化奠定基础。</p>
-</div>
-<div class="ach-right">
-<div class="dc green-dc"><div class="dc-label">自动测试</div><div class="dc-val">175/175</div><div class="dc-sub">全部通过</div></div>
-<div class="dc green-dc"><div class="dc-label">处理链路</div><div class="dc-val sm">取得 · 解析<br/>判定 · 写入</div></div>
-<div class="dc green-dc"><div class="dc-label">运行方式</div><div class="dc-val sm">远程部署<br/>无人值守</div></div>
-<div class="dc green-dc"><div class="dc-label">阶段</div><div class="dc-val sm">上线验证</div></div>
-</div>
-</div>
-</div>
-</details>
-<details class="month-module">
-<summary>
-<span class="module-no">02</span>
-<span class="module-copy"><strong>DV360設定チェック 第一阶段</strong><small>YouTube／TrueView 五层解析完成</small></span>
-<span class="module-toggle">展开详情</span>
-</summary>
-<div class="module-body">
-<div class="ach-main gap20">
-<div class="ach-left"><div class="dark-grid"></div>
-<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge blue">第一阶段完成</span><span class="status-date">2026.07</span></div>
-<p class="ach-desc" style="position:relative;z-index:1;">完成 YouTube／TrueView 的 <strong class="purple">CP／IO／LI／GP／CR 五层解析</strong>，逐步补充 Frequency、预算、时间、地域、Audience 等主要业务规则。</p>
-<p class="ach-desc" style="position:relative;z-index:1;">建立后续扩展 OTT、Display 等媒体类型所需的统一解析和对比框架。</p>
-</div>
-<div class="ach-right">
-<div class="dc purple-dc"><div class="dc-label">解析层级</div><div class="dc-val">5层</div></div>
-<div class="dc purple-dc"><div class="dc-label">覆盖类型</div><div class="dc-val sm">YouTube<br/>TrueView</div></div>
-<div class="dc purple-dc"><div class="dc-label">重点规则</div><div class="dc-val sm">地域 · Audience<br/>预算 · 时间</div></div>
-<div class="dc purple-dc"><div class="dc-label">阶段</div><div class="dc-val sm">框架完成</div></div>
-</div>
-</div>
-</div>
-</details>
-<details class="month-module">
-<summary>
-<span class="module-no">03</span>
-<span class="module-copy"><strong>Amazon DSP設定チェック 持续升级</strong><small>Creative／CR防错规则与PVA稳定性改善</small></span>
-<span class="module-toggle">展开详情</span>
-</summary>
-<div class="module-body">
-<div class="ach-main gap20">
-<div class="ach-left"><div class="dark-grid"></div>
-<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">规则升级完成</span><span class="status-date">2026.07</span></div>
-<p class="ach-desc" style="position:relative;z-index:1;">追加 Creative 层日期、时间带、状态检查，并区分初期案件／CR追加案件两种模式；同步修复 PVA Sheet、Segment 等读取问题。</p>
-<p class="ach-desc" style="position:relative;z-index:1;">持续把现场实际错误转化为自动判定规则，降低误报、漏报和人工确认负担。</p>
-</div>
-<div class="ach-right">
-<div class="dc"><div class="dc-label">新增检查</div><div class="dc-val sm">日期 · 时间带<br/>CR状态</div></div>
-<div class="dc"><div class="dc-label">案件模式</div><div class="dc-val">2种</div><div class="dc-sub">初期／CR追加</div></div>
-<div class="dc"><div class="dc-label">覆盖</div><div class="dc-val sm">DSP · PVA</div></div>
-<div class="dc"><div class="dc-label">目标</div><div class="dc-val sm">减少误报漏报</div></div>
-</div>
-</div>
-</div>
-</details>
-<details class="month-module">
-<summary>
-<span class="module-no">04</span>
-<span class="module-copy"><strong>QC门户与现场品质工具升级</strong><small>登录权限 · 使用日志 · Summary · 清洗／对比工具</small></span>
-<span class="module-toggle">展开详情</span>
-</summary>
-<div class="module-body">
-<div class="ach-main gap20">
-<div class="ach-left"><div class="dark-grid"></div>
-<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge blue">平台能力升级</span><span class="status-date">2026.07</span></div>
-<p class="ach-desc" style="position:relative;z-index:1;">QC门户追加个人登录、权限控制、Token处理、使用日志与 Summary 统计能力，同时持续完善地域转换、Excel不可见字符清洗及对比工具等现场品质功能。</p>
-<p class="ach-desc" style="position:relative;z-index:1;">将零散工具逐步纳入统一入口和统一管理口径，提高可追踪性和复用性。</p>
-</div>
-<div class="ach-right">
-<div class="dc purple-dc"><div class="dc-label">管理能力</div><div class="dc-val sm">认证 · 权限<br/>日志 · 统计</div></div>
-<div class="dc purple-dc"><div class="dc-label">地域主数据</div><div class="dc-val">47/47</div></div>
-<div class="dc purple-dc"><div class="dc-label">现场工具</div><div class="dc-val sm">清洗 · 对比<br/>转换</div></div>
-<div class="dc purple-dc"><div class="dc-label">方向</div><div class="dc-val sm">统一管理</div></div>
-</div>
-</div>
-</div>
-</details>
-<details class="month-module">
-<summary>
-<span class="module-no">05</span>
-<span class="module-copy"><strong>现场效率与远程运行环境改善</strong><small>Excel 40秒→7秒 · 自动开机／启动／关机</small></span>
-<span class="module-toggle">展开详情</span>
-</summary>
-<div class="module-body">
-<div class="ach-main gap20">
-<div class="ach-left"><div class="dark-grid"></div>
-<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">效率改善完成</span><span class="status-date">2026.07</span></div>
-<p class="ach-desc" style="position:relative;z-index:1;">针对大型 Excel 文件完成轻量化处理，样本打开时间由约 <strong class="green">40秒缩短至约7秒</strong>，并录制操作视频向现场共享。</p>
-<p class="ach-desc" style="position:relative;z-index:1;">同时完善远程电脑自动开机、程序启动及定点关机机制，减少每日人工环境准备。</p>
-</div>
-<div class="ach-right">
-<div class="dc green-dc"><div class="dc-label">Excel打开时间</div><div class="dc-val">40s→7s</div></div>
-<div class="dc green-dc"><div class="dc-label">缩短比例</div><div class="dc-val">82.5%</div></div>
-<div class="dc green-dc"><div class="dc-label">推广</div><div class="dc-val sm">视频共享</div></div>
-<div class="dc green-dc"><div class="dc-label">远程运行</div><div class="dc-val sm">自动开机<br/>启动 · 关机</div></div>
-</div>
-</div>
-</div>
-</details>
-</div>
-</div>
-<div class="ach-page" id="a4">
+<p class="report-note">统计口径：上次定例会后至2026.10.23（包含9月下半旬）。技术验证、测试中与正式完成分别标示，不将预估效益计作实际成果。</p>
+</div><div class="ach-page" id="a5"><div class="ach-header"><div class="kicker">2026.09.01—09.28</div><h2>2026年9月核心成果</h2><p>聚焦媒体校正、邮件辅助、自动转记与TL报表加工自动化，持续推进工具统一与现场工时削减。</p><div aria-label="本月重点速览" class="ach-month-focus"><span>媒体校正</span><span>邮件及Backlog辅助</span><span>TL普通案件宏</span></div></div><div class="report-ach-grid"><div class="card"><h3>01　TVer設定校正工具完成</h3><p class="report-copy"><span class="badge b-done">已完成</span><br/>完成Campaign／Group／Creative各层级的设定比对、真实案件验证和入口整合。将设定差异集中展示，辅助2課担当优先确认异常项目；后续继续结合使用数据与现场反馈评估实际削减效果。</p></div><div class="card"><h3>02　Outlook邮件校正工具完成</h3><p class="report-copy"><span class="badge b-done">已投入使用</span><br/>发送前集中检查宛先、CC、件名及附件，提示需要确认的内容，减少漏填和错误发送风险。现场已开始使用，后续继续按实际反馈优化规则与操作体验。</p></div><div class="card"><h3>03　Backlog→Outlook草稿自动生成</h3><p class="report-copy"><span class="badge b-done">已投入使用</span><br/>提取案件信息，按对应模板整理件名和正文，预览后生成Outlook草稿，减少重复复制与编辑。优秀统计登记月间节省80.5分钟；邮件仍由作业者确认后发送。</p></div><div class="card"><h3>04　Backlog桌面通知与三线路监控</h3><p class="report-copy"><span class="badge b-done">已完成</span><br/>支持三条Backlog线路同时监控，切换当前线路不影响其他线路通知。新通知通过桌面提醒展示，并提供案件打开和确认操作，减少反复查看页面。</p></div><div class="card"><h3>05　DV360／Amazon DSP校正工具完善</h3><p class="report-copy"><span class="badge b-done">本轮改善完成</span><br/>DV360完成CSV读取、合并单元格及YouTube等设定规则修复；Amazon DSP／PVA完善受众Sheet读取和判定。持续将真实案件反馈转化为自动判定规则，提高校正准确性与稳定性。</p></div><div class="card"><h3>06　TL普通案件报表加工宏完成</h3><p class="report-copy"><span class="badge b-done">开发完成 · 待现场效果确认</span><br/>面向TL普通案件完成RAW整理、FMT自动填充、日期与行列动态扩展、非函数版清理、排序、金额／格式保持等自动加工。普通案件约占TL业务量90%。预计单件作业时间可由20～25分钟缩短至10～15分钟。下一步与相关负责人共有并用真实案件确认实际削减工时；若效果确认无问题，希望尽快向日方共有。此前日方已针对该业务联络长春侧，希望推进作业优化，本次改善与现场需求方向一致，可作为长春侧自主改善的代表案例。</p></div></div></div><div class="ach-page" id="a4">
 <div class="ach-header">
 <div class="kicker green">2026.08 · MONTHLY</div>
 <div class="sec-divider"></div>
 <h2>2026年8月核心成果</h2>
 <p>围绕设定校正、自动转记稳定化和业务报表工具持续推进，重点项目进入实用化阶段。</p>
-</div>
+<div aria-label="本月重点速览" class="ach-month-focus"><span>5项成果归档</span><span>自动转记运行</span><span>媒体规则扩展</span></div></div>
 <div class="month-modules">
 <details class="month-module" open="">
 <summary>
@@ -1280,7 +1552,180 @@ body {
 </div>
 </details>
 </div>
+</div><div class="ach-page" id="a3">
+<div class="ach-header">
+<div class="kicker purple">2026.07 · MONTHLY</div>
+<div class="sec-divider"></div>
+<h2>2026年7月核心成果</h2>
+<p>将7月上下半月成果合并归档，聚焦自动化落地、品质防错与现场效率改善。</p>
+<div aria-label="本月重点速览" class="ach-month-focus"><span>5项成果模块</span><span>QC门户与自动化</span><span>远程运行环境</span></div></div>
+<div class="month-modules">
+<details class="month-module" open="">
+<summary>
+<span class="module-no">01</span>
+<span class="module-copy"><strong>2课 Outlook 邮件自动转记</strong><small>175项测试通过 · 远程部署 · 无人值守运行</small></span>
+<span class="module-toggle">展开详情</span>
+</summary>
+<div class="module-body">
+<div class="ach-main gap20">
+<div class="ach-left"><div class="dark-grid"></div>
+<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">阶段完成</span><span class="status-date">2026.07</span></div>
+<p class="ach-desc" style="position:relative;z-index:1;">完成从 Outlook／OneDrive 邮件取得、Python 读取、GAS 解析、案件判定到 Google Sheet 写入的自动化链路，并通过 <strong class="green">175项自动测试</strong>。</p>
+<p class="ach-desc" style="position:relative;z-index:1;">同步完成远程电脑部署、开机自启动及无人值守运行环境，为后续正式案件持续验证和稳定化奠定基础。</p>
 </div>
+<div class="ach-right">
+<div class="dc green-dc"><div class="dc-label">自动测试</div><div class="dc-val">175/175</div><div class="dc-sub">全部通过</div></div>
+<div class="dc green-dc"><div class="dc-label">处理链路</div><div class="dc-val sm">取得 · 解析<br/>判定 · 写入</div></div>
+<div class="dc green-dc"><div class="dc-label">运行方式</div><div class="dc-val sm">远程部署<br/>无人值守</div></div>
+<div class="dc green-dc"><div class="dc-label">阶段</div><div class="dc-val sm">上线验证</div></div>
+</div>
+</div>
+</div>
+</details>
+<details class="month-module">
+<summary>
+<span class="module-no">02</span>
+<span class="module-copy"><strong>DV360設定チェック 第一阶段</strong><small>YouTube／TrueView 五层解析完成</small></span>
+<span class="module-toggle">展开详情</span>
+</summary>
+<div class="module-body">
+<div class="ach-main gap20">
+<div class="ach-left"><div class="dark-grid"></div>
+<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge blue">第一阶段完成</span><span class="status-date">2026.07</span></div>
+<p class="ach-desc" style="position:relative;z-index:1;">完成 YouTube／TrueView 的 <strong class="purple">CP／IO／LI／GP／CR 五层解析</strong>，逐步补充 Frequency、预算、时间、地域、Audience 等主要业务规则。</p>
+<p class="ach-desc" style="position:relative;z-index:1;">建立后续扩展 OTT、Display 等媒体类型所需的统一解析和对比框架。</p>
+</div>
+<div class="ach-right">
+<div class="dc purple-dc"><div class="dc-label">解析层级</div><div class="dc-val">5层</div></div>
+<div class="dc purple-dc"><div class="dc-label">覆盖类型</div><div class="dc-val sm">YouTube<br/>TrueView</div></div>
+<div class="dc purple-dc"><div class="dc-label">重点规则</div><div class="dc-val sm">地域 · Audience<br/>预算 · 时间</div></div>
+<div class="dc purple-dc"><div class="dc-label">阶段</div><div class="dc-val sm">框架完成</div></div>
+</div>
+</div>
+</div>
+</details>
+<details class="month-module">
+<summary>
+<span class="module-no">03</span>
+<span class="module-copy"><strong>Amazon DSP設定チェック 持续升级</strong><small>Creative／CR防错规则与PVA稳定性改善</small></span>
+<span class="module-toggle">展开详情</span>
+</summary>
+<div class="module-body">
+<div class="ach-main gap20">
+<div class="ach-left"><div class="dark-grid"></div>
+<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">规则升级完成</span><span class="status-date">2026.07</span></div>
+<p class="ach-desc" style="position:relative;z-index:1;">追加 Creative 层日期、时间带、状态检查，并区分初期案件／CR追加案件两种模式；同步修复 PVA Sheet、Segment 等读取问题。</p>
+<p class="ach-desc" style="position:relative;z-index:1;">持续把现场实际错误转化为自动判定规则，降低误报、漏报和人工确认负担。</p>
+</div>
+<div class="ach-right">
+<div class="dc"><div class="dc-label">新增检查</div><div class="dc-val sm">日期 · 时间带<br/>CR状态</div></div>
+<div class="dc"><div class="dc-label">案件模式</div><div class="dc-val">2种</div><div class="dc-sub">初期／CR追加</div></div>
+<div class="dc"><div class="dc-label">覆盖</div><div class="dc-val sm">DSP · PVA</div></div>
+<div class="dc"><div class="dc-label">目标</div><div class="dc-val sm">减少误报漏报</div></div>
+</div>
+</div>
+</div>
+</details>
+<details class="month-module">
+<summary>
+<span class="module-no">04</span>
+<span class="module-copy"><strong>QC门户与现场品质工具升级</strong><small>登录权限 · 使用日志 · Summary · 清洗／对比工具</small></span>
+<span class="module-toggle">展开详情</span>
+</summary>
+<div class="module-body">
+<div class="ach-main gap20">
+<div class="ach-left"><div class="dark-grid"></div>
+<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge blue">平台能力升级</span><span class="status-date">2026.07</span></div>
+<p class="ach-desc" style="position:relative;z-index:1;">QC门户追加个人登录、权限控制、Token处理、使用日志与 Summary 统计能力，同时持续完善地域转换、Excel不可见字符清洗及对比工具等现场品质功能。</p>
+<p class="ach-desc" style="position:relative;z-index:1;">将零散工具逐步纳入统一入口和统一管理口径，提高可追踪性和复用性。</p>
+</div>
+<div class="ach-right">
+<div class="dc purple-dc"><div class="dc-label">管理能力</div><div class="dc-val sm">认证 · 权限<br/>日志 · 统计</div></div>
+<div class="dc purple-dc"><div class="dc-label">地域主数据</div><div class="dc-val">47/47</div></div>
+<div class="dc purple-dc"><div class="dc-label">现场工具</div><div class="dc-val sm">清洗 · 对比<br/>转换</div></div>
+<div class="dc purple-dc"><div class="dc-label">方向</div><div class="dc-val sm">统一管理</div></div>
+</div>
+</div>
+</div>
+</details>
+<details class="month-module">
+<summary>
+<span class="module-no">05</span>
+<span class="module-copy"><strong>现场效率与远程运行环境改善</strong><small>Excel 40秒→7秒 · 自动开机／启动／关机</small></span>
+<span class="module-toggle">展开详情</span>
+</summary>
+<div class="module-body">
+<div class="ach-main gap20">
+<div class="ach-left"><div class="dark-grid"></div>
+<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge">效率改善完成</span><span class="status-date">2026.07</span></div>
+<p class="ach-desc" style="position:relative;z-index:1;">针对大型 Excel 文件完成轻量化处理，样本打开时间由约 <strong class="green">40秒缩短至约7秒</strong>，并录制操作视频向现场共享。</p>
+<p class="ach-desc" style="position:relative;z-index:1;">同时完善远程电脑自动开机、程序启动及定点关机机制，减少每日人工环境准备。</p>
+</div>
+<div class="ach-right">
+<div class="dc green-dc"><div class="dc-label">Excel打开时间</div><div class="dc-val">40s→7s</div></div>
+<div class="dc green-dc"><div class="dc-label">缩短比例</div><div class="dc-val">82.5%</div></div>
+<div class="dc green-dc"><div class="dc-label">推广</div><div class="dc-val sm">视频共享</div></div>
+<div class="dc green-dc"><div class="dc-label">远程运行</div><div class="dc-val sm">自动开机<br/>启动 · 关机</div></div>
+</div>
+</div>
+</div>
+</details>
+</div>
+</div><div class="ach-page" id="a2">
+<div class="ach-header">
+<div class="kicker">2026.06 · DEPLOYED</div>
+<div class="sec-divider"></div>
+<h2>Amazon DSP设定自动对比工具正式落地</h2>
+<p>6月完成Amazon DSP／PVA设定自动对比工具落地，支援现场校正作业。</p>
+<div aria-label="本月重点速览" class="ach-month-focus"><span>Amazon DSP / PVA</span><span>后台与设定表自动比对</span><span>品质校正</span></div></div>
+<div class="ach-main gap20">
+<div class="ach-left"><div class="dark-grid"></div>
+<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge orange">已落地</span><span class="status-date">2026.06.15</span></div>
+<p class="ach-desc" style="position:relative;z-index:1;">完成Amazon DSP／Amazon PVA后台数据与设定表的自动对比。系统自动读取可下载项目并生成差异结果，将原本依赖人工逐项检索的确认方式，转变为优先查看异常项目的辅助校正方式。</p>
+<p class="ach-desc" style="position:relative;z-index:1;">第一阶段用于自我校正及W校正支援，重点覆盖配信条件、金额、频次、Audience等项目，帮助担当在较短时间内锁定高风险差异。</p>
+<div class="flow-row" style="position:relative;z-index:1;"><div class="flow-node">后台数据</div><div class="flow-arr">→</div><div class="flow-node">设定表解析</div><div class="flow-arr">→</div><div class="flow-node">规则比对</div><div class="flow-arr">→</div><div class="flow-node">差异报告</div></div>
+</div>
+<div class="ach-right">
+<div class="dc"><div class="dc-label">适用媒体</div><div class="dc-val sm">Amazon DSP<br/>Amazon PVA</div></div>
+<div class="dc"><div class="dc-label">异常确认</div><div class="dc-val sm">差异集中展示</div><div class="dc-sub">聚焦差异项目</div></div>
+<div class="dc"><div class="dc-label">目标</div><div class="dc-val sm">减少人为遗漏</div></div>
+<div class="dc"><div class="dc-label">阶段</div><div class="dc-val sm">辅助校正</div><div class="dc-sub">持续吸收现场反馈</div></div>
+</div>
+</div>
+<div class="phase-row"><div class="phase-card ph-active"><div class="phase-tag">6月成果</div><div class="phase-title">从人工逐项确认转为系统差异提示</div><div class="phase-desc">建立后台数据与设定表的结构化对比基础，为7月持续追加案件规则、CR检查及PVA修复提供统一架构。</div></div><div class="phase-card"><div class="phase-tag">运用方式</div><div class="phase-title">工具辅助与人工确认结合</div><div class="phase-desc">由系统先展示差异，担当结合案件指示确认异常及工具覆盖范围外的项目。</div></div></div>
+</div><div class="ach-page" id="a1">
+<div class="ach-header">
+<div class="kicker purple">2026.05 · DEPLOYED</div>
+<div class="sec-divider"></div>
+<h2>跨平台自动汇总与全中心数据分发落地</h2>
+<p>邮件监控、Teams联络汇总与全中心合计表分发形成稳定运行的自动化基础</p>
+<div aria-label="本月重点速览" class="ach-month-focus"><span>3条信息汇总线路</span><span>10中心自动分发</span><span>跨平台联动</span></div></div>
+<div class="ach-main gap20">
+<div class="ach-left"><div class="dark-grid"></div>
+<div class="status-row" style="position:relative;z-index:1;"><span class="status-badge blue">已落地</span><span class="status-date">2026.05 · 稳定运行</span></div>
+<p class="ach-desc" style="position:relative;z-index:1;">完成跨平台邮件自动监控与同步机制，覆盖Xone、Outlook、OneDrive、SharePoint及Teams等信息来源。Python负责采集和加工，GAS负责去重、解析及写入团队总表，减少人工每日巡查、逐条确认和重复转记。</p>
+<p class="ach-desc" style="position:relative;z-index:1;">同期完成<strong class="green">全中心合计表自动分发</strong>，将一份合计表按中心自动筛选并写入10个中心，同时联动收益别、团队别、HDY本部别及月次Summary等多个Sheet。</p>
+<div class="flow-row" style="position:relative;z-index:1;"><div class="flow-node purple-n">多平台采集</div><div class="flow-arr">→</div><div class="flow-node purple-n">Python加工</div><div class="flow-arr">→</div><div class="flow-node green-n">GAS写入</div><div class="flow-arr">→</div><div class="flow-node green-n">总表与中心表联动</div></div>
+</div>
+<div class="ach-right">
+<div class="dc purple-dc"><div class="dc-label">自动汇总线路</div><div class="dc-val">3条</div><div class="dc-sub">Xone · Outlook/OneDrive · Teams</div></div>
+<div class="dc green-dc"><div class="dc-label">中心覆盖</div><div class="dc-val">10</div><div class="dc-sub">＋第一WEB本部汇总</div></div>
+<div class="dc purple-dc"><div class="dc-label">巡查间隔</div><div class="dc-val">5 min</div><div class="dc-sub">自动获取新增信息</div></div>
+<div class="dc green-dc"><div class="dc-label">执行方式</div><div class="dc-val sm">自动／一键</div><div class="dc-sub">复合键去重</div></div>
+</div>
+</div>
+<div class="principle-grid">
+<div class="pc"><div class="pc-title purple">📡 自动信息汇总</div><ul class="pc-list"><li><span class="ic">✓</span>Xone邮件自动巡查与纳期提取</li><li><span class="ic">✓</span>Outlook／OneDrive新增邮件同步</li><li><span class="ic">✓</span>Teams联络自动采集并写入总表</li><li><span class="ic">✓</span>持久化去重与异常重试</li></ul></div>
+<div class="pc"><div class="pc-title green">📊 全中心自动分发</div><ul class="pc-list"><li><span class="ic">✓</span>10中心数据自动筛选分发</li><li><span class="ic">✓</span>5种中心模板自动适配</li><li><span class="ic">✓</span>6个以上汇总维度联动</li><li><span class="ic">✓</span>样式、公式及新增编码标识自动处理</li></ul></div>
+</div>
+</div>
+<!-- ====== 2026年10月：截至10月20日的阶段成果 ====== -->
+
+
+
+
+
+
 </div>
 <div class="dark-footer">長春恵海業務報告 · 馬 林 · 业务自动化与品质改善</div>
 </div>
@@ -1288,46 +1733,26 @@ body {
      PAGE 4 · 工作计划（2026年10月更新）
 ========================================== -->
 <div class="page" id="p4">
-  <div class="container">
-    <div class="sec-hd"><div class="sec-divider"></div><h2>后续工作计划</h2>
-      <p>两条推进主线：TL Python业务化与既存自動化ツールの統合管理・横展開</p>
-    </div>
-    <div class="plan-grid">
-      <div class="plan-card theme-red">
-        <div class="plan-top"><div class="plan-pri">PRIORITY 01</div><div class="plan-badge">开发／测试</div></div>
-        <div class="plan-title">TL Report Python化</div>
-        <div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div>
-        <div class="report-copy">继续完善通用引擎、单CP与多CP加工流程，尽快使用真实FMT验证；优化便携EXE操作步骤，完成作业者GUI测试后评估业务导入与实际工时效果。</div>
-      </div>
-      <div class="plan-card theme-blue">
-        <div class="plan-top"><div class="plan-pri">PRIORITY 02</div><div class="plan-badge">统一整合／横向推广</div></div>
-        <div class="plan-title">既存自動化ツールの統合管理・横展開</div>
-        <div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div>
-        <div class="report-copy">盘点公司已开发的自动化工具，按适用范围、版本、上线条件与维护责任进行整理；围绕Chrome扩展整合、QC门户统一更新及个人工具共同化推进。</div>
-      </div>
-    </div>
-    <div class="card" style="margin-top:24px">
-      <h3>统一整合的三个实施方向</h3>
-      <p class="csub">优先盘点现有成果，分批验证并推广，不将尚未验证的工具直接合并上线。</p>
-      <div class="three-col" style="gap:14px">
-        <div class="pc" style="background:#f7faff">
-          <div class="pc-title" style="margin-bottom:9px">A　5課媒体防误操作扩展统合</div>
-          <p class="report-copy" style="margin-top:0">将LINE及其他媒体现有的按钮／开关误操作防止Chrome扩展，逐步整合为一个扩展；统一安装、更新与维护，并验证各媒体规则互不冲突。</p>
-        </div>
-        <div class="pc" style="background:#f6fdfb">
-          <div class="pc-title green" style="margin-bottom:9px">B　可用工具统一上线与日志统计</div>
-          <p class="report-copy" style="margin-top:0">将具备上线条件的工具逐步发布到QC门户，保持版本同步；调取使用日志，统计各工具的使用次数和频率，分析实际使用状况与改善重点。</p>
-        </div>
-        <div class="pc" style="background:#faf7ff">
-          <div class="pc-title purple" style="margin-bottom:9px">C　个人工具转为共同使用</div>
-          <p class="report-copy" style="margin-top:0">调查个人开发或个人使用的工具，确认适用性、权限、安全与维护方式；成熟项目补充说明并逐步转为课室／公司共用。</p>
-        </div>
-      </div>
-      <p class="report-note">Chrome扩展技术上可考虑集中管理，但实际合并前仍需确认媒体页面差异、权限范围、功能冲突与回归测试；正式发布以各工具验证结果为准。</p>
-    </div>
-  </div>
-  <div class="footer">長春恵海業務報告 · 馬 林 · 工具统一管理与业务改善</div>
+<div class="container">
+<div class="sec-hd"><div class="sec-divider"></div><h2>下个月工作计划</h2><p>既定3项重点＋近期新增2项业务对应</p></div>
+<div class="plan-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+<div class="plan-card theme-blue"><div class="plan-top"><div class="plan-pri">01</div><div class="plan-badge">统合管理</div></div><div class="plan-title">自動化・创新成果整理整合</div><div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div><p class="report-copy">按Chrome扩展、HTML、VBA、GAS、Python、个人工具等分类盘点；整合相似功能，研究指定人员发布、QC门户统一维护及使用频率统计。</p></div>
+<div class="plan-card theme-purple"><div class="plan-top"><div class="plan-pri">02</div><div class="plan-badge">业务化</div></div><div class="plan-title">TL Report Python化</div><div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div><p class="report-copy">优先完成单CP真实案件加工验收与便携EXE试用，再评估多CP、特殊FMT及其他课室报表加工需求。预计11月上旬单CP验收、11月内争取试用版。</p></div>
+<div class="plan-card theme-green"><div class="plan-top"><div class="plan-pri">03</div><div class="plan-badge">中长期</div></div><div class="plan-title">3課 Teams総TODO转记扩展</div><div class="plan-owner"><span class="plan-avatar">馬</span>馬 林</div><p class="report-copy">现有Section3_AutoTransfer扩展，涉及70+原稿业务、约110个Teams群组／聊天；调查Power Automate流程新增或复用、GAS联动调整，分阶段验证导入。</p></div>
 </div>
+<div class="oct-new-work"><div class="oct-new-head"><div><strong>近期追加 · 5課／1課业务需求</strong><small>与长期开发主线并行，先确认规则与影响范围</small></div><span class="oct-new-flag">NEW 02</span></div>
+<div class="oct-new-grid">
+<article class="oct-new-card is-soon"><div class="oct-new-top"><span class="oct-new-area">5課 · 自动转记逻辑</span><span class="oct-new-date">10/26 样例预定</span></div><h4>高知/東京/長春_設定管理シート</h4><p>11/1起使用新设定管理表。按日方10/26预计发来的Backlog依赖及Outlook通知，核实数据抽取字段与自动转记规则，必要时修改并验证。</p><div class="oct-new-steps"><span>实案确认</span><span>解析调整</span><span>回归</span></div></article>
+<article class="oct-new-card"><div class="oct-new-top"><span class="oct-new-area">1課 · 自动总表</span><span class="oct-new-date">范围待确认</span></div><h4>博報堂Gravityレポート作成业务追加</h4><p>确认相关业务字段与自动总表现行结构，整理映射与录入条件，分步完成追加及实际数据验证。</p><div class="oct-new-steps"><span>字段整理</span><span>总表追加</span><span>验证</span></div></article>
+</div><p class="oct-new-sub">两项均为计划事项；5課依赖形式以实际样例为准，1課工期需先确认业务规则。</p></div>
+<div class="card" style="margin-top:20px"><h3>三个实施方向 · 自動化成果统合</h3><div class="three-col" style="gap:12px;margin-top:12px">
+<div class="pc"><div class="pc-title">A · Chrome扩展</div><p class="report-copy" style="margin:0">5課媒体防误操作扩展合并评估，研究指定人员发布、集中更新。</p></div>
+<div class="pc"><div class="pc-title green">B · HTML／QC门户</div><p class="report-copy" style="margin:0">可上线工具统一入口、版本同步及使用次数／频率统计。</p></div>
+<div class="pc"><div class="pc-title purple">C · 个人工具</div><p class="report-copy" style="margin:0">确认适用范围及维护方式，逐步推动共同使用。</p></div>
+</div></div>
+<div class="card" style="margin-top:18px"><h3>3課 Teams総TODO · 中长期开发路线</h3><div class="flow-row" style="margin:15px 0"><span class="flow-node">来源／业务调查</span><span class="flow-arr">→</span><span class="flow-node">Power Automate设计</span><span class="flow-arr">→</span><span class="flow-node green-n">GAS／转记规则扩展</span><span class="flow-arr">→</span><span class="flow-node green-n">分批实案QA</span></div><p class="report-note">约110个来源不代表必须建立110条Flow；需先验证复用、访问权限与消息结构。整体工期较长，明确范围后再评估完成日期。</p></div>
+<div class="footer">長春恵海業務報告 · 馬 林 · 自动化开发统筹与横向推广</div>
+</div></div>
 <!-- ==========================================
      PAGE 5 · 月AI定例报告
 ========================================== -->
@@ -1340,31 +1765,15 @@ body {
 </div>
 <!-- ====== 2026年10月：阶段进展，月度尚未结束 ====== -->
 <details class="meeting-item latest" open="">
-  <summary class="meeting-summary">
-    <span class="ms-left"><span class="ms-date">2026.10</span>
-      <span class="ms-title">10月阶段成果与后续工具统合计划</span>
-      <span class="ms-meta"><span class="ms-type">报告截至10月20日</span><span class="ms-status status-prepare">本月进度</span></span>
-    </span><span class="ms-arrow">▾</span>
-  </summary>
-  <div class="meeting-content">
-    <div style="background:#f8fafc;border-radius:10px;padding:16px;margin:14px 0;">
-      <div style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:8px;">📌 本月重点：三项专项＋其他改善</div>
-      <p style="font-size:13px;color:var(--text);line-height:1.85;">10月围绕TL Report Python化、Outlook三版本正式封板、Backlog→Outlook日方独立交付准备推进。其他设定校正工具集中归类，后续重点转向公司现有工具的统一管理与横向推广。</p>
-    </div>
-    <div class="tpl-grid">
-      <div class="tpl-card"><h4>01　TL Report Python化</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">单CP便携EXE候选与通用引擎取得阶段成果；仍需完成真实FMT、多CP及操作界面验证，尚未正式上线。</p></div>
-      <div class="tpl-card"><h4>02　Outlook邮件校正</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">通用、社内简化、5課SNS三个版本已分别正式封板；现场反馈继续由独立候选承接。</p></div>
-      <div class="tpl-card"><h4>03　Backlog → Outlook</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成面向日方的V0.4.3独立安装包、日文说明与独立安全审查；候选包待最终确认封板。</p></div>
-      <div class="tpl-card"><h4>04　其他业务工具优化</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">TVer AXA真实案件修复与733／733项回归完成；DV360、Amazon DSP及其他现有工具持续维护。</p></div>
-    </div>
-    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;margin:16px 0 4px;">
-      <div style="font-size:13px;font-weight:700;color:#c2410c;margin-bottom:8px;">➡ 后续两项优先工作</div>
-      <p style="font-size:12.5px;color:var(--text);line-height:1.9;">
-        <strong>① TL Python化：</strong>真实FMT与多CP验证，完善便携EXE，推进现场试用。<br/>
-        <strong>② 既存自動化ツールの統合管理・横展開：</strong>A. 将5課各媒体防误操作Chrome扩展整合；B. 可上线工具统一进入QC门户，维护版本并统计使用频率；C. 评估个人工具的共同使用化。
-      </p>
-    </div>
-  </div>
+<summary class="meeting-summary"><span class="ms-left"><span class="ms-date">2026.10</span><span class="ms-title">10月定例会：自动化开发统筹与跨课室改善</span><span class="ms-meta"><span class="ms-type">上次定例会后～10/23</span><span class="ms-status status-prepare">本期汇报</span></span></span><span class="ms-arrow">▾</span></summary>
+<div class="meeting-content"><div style="background:#edf6ff;border-radius:10px;padding:16px;margin:14px 0;"><div style="font-size:13px;font-weight:800;color:#1259a0;margin-bottom:7px;">① 主要工作内容</div><p style="font-size:12.5px;line-height:1.8;">正式职务为「チームリーダー」，新增明确负责后续自动化开发的统一统筹，从需求、立项、方案、开发管理到测试、上线、维护全流程推进。</p></div>
+<div class="tpl-grid"><div class="tpl-card"><h4>② 成果｜TL Report</h4><p style="font-size:12.5px;line-height:1.75">普通案件NO06宏阶段成果完成；为改善VBA维护及Excel稳定性，推进Python通用引擎、单CP和便携EXE，真实案件验证中。</p></div>
+<div class="tpl-card"><h4>② 成果｜Outlook</h4><p style="font-size:12.5px;line-height:1.75">5課／4課／共通3版本完成，已向日方展示；Domain自动显示方案仍需确认企业管理权限和部署条件。</p></div>
+<div class="tpl-card"><h4>② 成果｜Backlog→Outlook</h4><p style="font-size:12.5px;line-height:1.75">对日展示及资料提交完成；4課专用版完成开发、测试中，研究Chrome扩展指定人员发布。</p></div>
+<div class="tpl-card"><h4>② 成果｜其他改善</h4><p style="font-size:12.5px;line-height:1.75">TVer持续与现场对接；DV360 3项、Amazon DSP 9项、5課TODO 1项、3課自动转记2项，部门数据表函数追加整理。</p></div></div>
+<div class="tpl-grid" style="margin-top:14px"><div class="tpl-card"><h4>③ 业务动向</h4><p style="font-size:12.5px;line-height:1.75">开发体制从个人分散推进，转向统一统筹与共通管理；复杂业务的自动化需求持续增加。</p></div><div class="tpl-card"><h4>④ 痛点／待解决</h4><p style="font-size:12.5px;line-height:1.75">VBA稳定性、Outlook权限、扩展ZIP分发及工具分散维护问题，分别推进技术替换、权限协调与统一发布。</p></div></div>
+<div style="background:#f3f9f7;border:1px solid #c8ebe0;border-radius:10px;padding:15px;"><h4 style="font-size:13px;color:#087663;margin-bottom:9px;">⑤ 下个月工作重点</h4><p style="font-size:12.5px;line-height:1.9">① 自动化／创新成果分类整合、统一发布与使用数据统计。<br/>② TL Python单CP真实案件验收、便携EXE试用（预计11月目标）。<br/>③ 3課 Teams総TODO覆盖扩展：70+业务、约110个Teams来源，涉及Power Automate和GAS联动，按中长期项目分阶段推进。<br/><strong>【近期新增】</strong> 5課「高知/東京/長春_設定管理シート」11/1起使用；10/26预计收到Backlog依赖样例，届时确认Outlook信息提取与自动转记逻辑。<br/>1課「博報堂Gravityレポート作成」相关业务计划追加至自动总表，规则与工期待确认。</p></div>
+<p class="report-note">统计包含9月下半旬；修复数量按本次定例会周期。预计工期及权限申请事项尚待最终确认。</p></div>
 </details>
 <details class="meeting-item done"><summary class="meeting-summary"><span class="ms-left"><span class="ms-date">2026.09</span><span class="ms-title">9月核心成果与TL业务改善</span><span class="ms-meta"><span class="ms-type">AI开发 · 自动化 · 业务工时改善</span><span class="ms-status status-done">9月成果</span></span></span><span class="ms-arrow">▾</span></summary><div class="meeting-content"><div style="background:#f8fafc;border-radius:10px;padding:16px;margin:14px 0;"><div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:8px;">📌 9月完成重点</div><p style="font-size:13px;color:var(--text);line-height:1.85;">9月围绕媒体設定校正、邮件发送防错、Backlog自动化与TL报表加工持续推进。核心方向由“单点工具开发”进一步转向“真实案件验证＋工时削减＋可横向共有”的业务改善。</p></div><div class="tpl-grid"><div class="tpl-card"><h4>01　TVer設定校正工具完成</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">完成Campaign／Group／Creative各层级设定比对、真实案件验证及入口整合，差异集中展示，辅助担当优先确认异常项目。</p></div><div class="tpl-card"><h4>02　Outlook邮件校正工具完成</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">发送前集中检查宛先、CC、件名和附件，减少漏填、误送风险；已投入现场使用并持续吸收反馈。</p></div><div class="tpl-card"><h4>03　Backlog→Outlook草稿自动生成</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">自动提取案件信息并生成标准化Outlook草稿，减少重复复制编辑；优秀统计登记月间节省80.5分钟。</p></div><div class="tpl-card"><h4>04　Backlog桌面通知与三线路监控</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">三条线路并行监控，桌面实时提示新增通知，减少人工反复确认Backlog页面。</p></div><div class="tpl-card"><h4>05　DV360／Amazon DSP校正工具完善</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">基于真实案件持续补强CSV、合并单元格、YouTube、Audience及PVA等判定规则，提高自动校正稳定性与准确性。</p></div><div class="tpl-card"><h4>TL普通案件报表加工宏完成</h4><p style="font-size:12.5px;line-height:1.8;color:var(--text);">面向约占TL业务量90%的普通案件完成自动加工宏。预计单件由20～25分钟缩短至10～15分钟。下一步与相关负责人共有并通过真实案件确认实际削减工时。</p></div></div><div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:16px;margin:16px 0;"><div style="font-size:13px;font-weight:700;color:#047857;margin-bottom:8px;">⭐ TL宏：建议作为本月重点案例进行共有</div><p style="font-size:12.5px;color:var(--text);line-height:1.9;margin-bottom:8px;">普通案件约占TL业务量90%，目前已完成主要自动加工逻辑。预计单件作业可由20～25分钟缩短至10～15分钟，重点改善重复数据加工、追加行、格式保持和人为漏删／多删等问题。</p><p style="font-size:12.5px;color:var(--text);line-height:1.9;">后续先由长春侧相关负责人结合真实案件确认实际削减工时；确认无问题后，建议尽快向日方共有。此前日方已就TL业务联络长春侧，希望推进作业优化，因此本项目既回应了现场需求，也形成了长春侧主动改善并完成开发的实际成果，作为AI／自动化改善案例更有代表性。</p></div><div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:16px;margin:16px 0 4px;"><div style="font-size:13px;font-weight:700;color:#c2410c;margin-bottom:8px;">➡ 后续工作计划</div><p style="font-size:12.5px;color:var(--text);line-height:1.9;">① <strong>公司开发成果审查与整理：</strong>统一确认正式使用状态、效果量化及推广条件。<br/>② <strong>TL其他FMT开发：</strong>在普通案件宏已完成基础上继续扩展特殊FMT兼容。<br/>③ <strong>综合业务管理工作台试行（1課先行）：</strong>以1課TODO为起点验证统一入口、数据汇总和权限展示。</p></div></div></details>
 <!-- ====== 2026年8月：截至当前已完成 ====== -->
@@ -1455,19 +1864,21 @@ function showPage(id, btn) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   btn.classList.add('active');
+  window.scrollTo({top:0,behavior:'instant'});
 }
 
 /* ---------- achievement switch ---------- */
 function showAch(id, btn) {
   document.querySelectorAll('.ach-page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.ach-nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.ach-nav-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
   document.getElementById(id).classList.add('active');
   btn.classList.add('active');
+  btn.setAttribute('aria-pressed','true');
 }
 
 /* ---------- 日期自动化 ---------- */
 // ★ 内容更新截至固定日期，后续只需修改此一处
-const REPORT_UPDATED_AT = '2026.10.20';
+const REPORT_UPDATED_AT = '2026.10.23';
 
 (function() {
  function refreshReportDates() {
