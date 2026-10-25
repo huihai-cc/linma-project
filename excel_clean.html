@@ -6,12 +6,7 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Segoe UI','Noto Sans SC',sans-serif; background:#f5f5f5; color:#333; min-height:100vh; }
-header { background:#2c3e50; color:white; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
-header h1 { font-size:1.2rem; letter-spacing:1px; }
-.badge { background:#27ae60; border-radius:12px; padding:3px 12px; font-size:0.75rem; }
-.back-nav { background:#34495e; padding:8px 20px; display:flex; align-items:center; gap:12px; }
-.back-btn { background:#2980b9; color:white; border:none; border-radius:4px; padding:5px 14px; font-size:0.82rem; cursor:pointer; text-decoration:none; display:inline-block; }
-.back-btn:hover { background:#1a6fa8; }
+/* P1: 旧 header / .badge / .back-nav / .back-btn は qc-ui.css + qc-header.js へ移行 */
 .input-area { padding:14px 20px; border-bottom:1px solid #eee; }
 button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; font-weight:bold; cursor:pointer; transition:all 0.2s; }
 .btn-check { background:#4ecca3; color:#1a1a2e; font-weight:bold; }
@@ -44,38 +39,32 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 .xl-progress.show{display:block;}
 .xl-sheet-tag{display:inline-block;background:#dfe6e9;color:#2d3436;border-radius:4px;padding:1px 8px;font-size:0.78rem;margin-right:4px;}
 </style>
+<link rel="stylesheet" href="qc-ui.css">
 </head>
 <body>
+<!-- P1: 公共 Header 挂载点（显式节点，组件只渲染该节点内部） -->
+<div id="qcHeaderMount"></div>
 <script src="qc-auth.js"></script>
-<style>
-.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
-.qc-userbar a{color:#67e8f9;text-decoration:none;}
-</style>
-<div class="qc-userbar" id="qcUserBar">
-  <span id="qcUserInfo"></span>
-  <span><a href="index.html">&#x2190; 返回门户</a></span>
-</div>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
 <script>
 (function(){
+  // 既存の認証フローをそのまま使用（guardPage の呼び出し位置・順序は従来どおり）
   var u = guardPage();
-  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
-  else {
-    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
-  }
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; return; }
+  QCHeader.mount({
+    target: '#qcHeaderMount',
+    title: 'Excel清洗',
+    iconId: 'excelClean',
+    // FIX1：状态徽标已移除（无导航/操作价值）；业务说明保留在工具行内
+    note: '清除Excel中的不可见字符',
+    user: u,
+    // 会社公式 LOGO（惠海信息技术 360×118 PNG・透明背景）→ 候选内 assets/brand/ に配置
+    logo: 'assets/brand/huihai-logo.png',
+    logoAlt: '惠海信息技术'
+  });
 })();
 </script>
-
-
-
-<header>
-    <h1>🧹 Excel清洗</h1>
-    <span class="badge">🔒 完全本地运行</span>
-</header>
-
-<div class="back-nav">
-    <a href="index.html" class="back-btn">← 返回导航页</a>
-    <span style="color:#bdc3c7;font-size:0.82rem;">清除Excel中的不可见字符</span>
-</div>
 
 <div class="input-area">
     <div class="xl-drop-area" id="xlclean-drop">

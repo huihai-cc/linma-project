@@ -147,23 +147,27 @@ input[type=range]{flex:1;height:6px;border-radius:3px;accent-color:var(--primary
 .card-actions{display:flex;gap:6px;align-items:center}
 .sheet-name{font-size:11px;color:var(--text4);margin-bottom:8px;padding:0 4px}
 </style>
+<link rel="stylesheet" href="qc-ui.css">
 </head>
 <body>
 <script src="qc-auth.js"></script>
-<style>
-.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
-.qc-userbar a{color:#67e8f9;text-decoration:none;}
-</style>
-<div class="qc-userbar" id="qcUserBar">
-  <span id="qcUserInfo"></span>
-  <span><a href="index.html">&#x2190; 返回门户</a></span>
-</div>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
+<div id="qcHeaderMount"></div>
 <script>
 (function(){
   var u = guardPage();
   if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
   else {
-    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
+    QCHeader.mount({
+      target: '#qcHeaderMount',
+      title: 'SEM見積ターゲティング推薦ツール',
+      iconId: 'target',
+      note: '基礎データベース | YDA / GDA / YTV / DGC / Microsoft Ads / Netflix',
+      user: u,
+      logo: 'assets/brand/huihai-logo.png',
+      logoAlt: '惠海信息技术'
+    });
     // ページアクセスログ（1回のみ）
     sendLog('ターゲット推薦ツール', 0, 0, 'ページアクセス').then(function(r){ console.log('✅ 上报结果:', r); });
   }

@@ -1,0 +1,442 @@
+/* ============================================================
+   qc-ui.css — 惠海 QC 门户 公共布局样式（P1 候选）
+   ------------------------------------------------------------
+   目的：为所有业务工具页面提供统一的顶部 Header 外观。
+   本轮只在候选项目内使用，正式项目尚未引用。
+
+   设计约束（与任务书一致）：
+     ・Header 外层整体 sticky（不是只固定标题栏或返回栏）
+     ・不强行固定总高度；各行高度由 CSS 变量管理
+     ・内部吸顶元素（表格 thead / 结果区 header 等）应使用
+       var(--qc-header-h) 作为 top 偏移
+     ・z-index 低于弹窗层。本文件只声明 Header 自身层级，
+       页面内弹窗必须使用大于 --qc-z-header 的值
+     ・不改动页面主体布局：Header 位于文档流中，sticky 不产生额外偏移
+
+   变量命名统一前缀 --qc-*，避免与各业务页自有变量冲突。
+   ============================================================ */
+
+:root {
+  /* --- 顶部行高（只需改这两个值即可整体缩放） --- */
+  --qc-header-h-brand: 56px;   /* 品牌行：公司 LOGO / 门户名（左） ｜ 用户 / 返回（右） */
+  --qc-header-h-tool: 52px;    /* 工具行：工具图标 / 标题 / 说明（全部左对齐） */
+
+  /* --- Header 总高：供内部吸顶元素做 top 偏移 --- */
+  --qc-header-h: calc(var(--qc-header-h-brand) + var(--qc-header-h-tool));
+
+  /* --- 层级（弹窗必须 > 该值） --- */
+  --qc-z-header: 120;
+
+  /* --- 颜色 --- */
+  --qc-brand-bg: #0f172a;
+  --qc-tool-bg: #1a252f;
+  --qc-fg: #ffffff;
+  --qc-fg-dim: rgba(255, 255, 255, 0.62);
+  --qc-accent: #67e8f9;
+  --qc-line: rgba(255, 255, 255, 0.10);
+
+  /* --- 品牌图片（官方 LOGO）--- */
+  --qc-logo-max-h: 38px;       /* 品牌行 56px - 承载板上下 padding 8px = 48px 可用 */
+  --qc-logo-max-w: 124px;      /* 38 × (360/118) ≈ 115.9px，高度仍是主导约束 → 比例不变 */
+  --qc-logo-plate-bg: #ffffff; /* 透明底 LOGO 需要浅色承载区 */
+  --qc-logo-plate-pad: 4px 8px;
+  --qc-logo-plate-radius: 8px;
+
+  /* --- 横向内边距：整条 Header 全宽，左右只留这一份留白 --- */
+  --qc-pad-x: 24px;
+}
+
+/* ------------------------------------------------------------
+   外层：整块吸顶
+   ------------------------------------------------------------ */
+.qc-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--qc-z-header);
+  background: var(--qc-brand-bg);
+  color: var(--qc-fg);
+  font-family: 'Segoe UI', 'Noto Sans SC', sans-serif;
+  border-bottom: 1px solid var(--qc-line);
+  /* 深色磨砂：与门户侧栏观感一致；不支持时自动退化为纯色 */
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* 两行共用：全宽轨道 + 统一左右内边距
+   ★ FIX1：不再使用 max-width / margin:0 auto 的居中容器。
+   ★ FIX1：行容器改为 display:block，避免 .qc-inner 退化成「内容宽度 + 自动外边距居中」的
+           flex 子项（这正是旧版内容堆在屏幕中央、左右大片空白的根因）。 */
+.qc-header .qc-inner {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 var(--qc-pad-x);
+  display: flex;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+}
+
+/* 行容器：高度只由变量决定，不写死具体数值 */
+.qc-header .qc-row {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.qc-header .qc-row-brand {
+  height: var(--qc-header-h-brand);
+  background: var(--qc-brand-bg);
+  border-bottom: 1px solid var(--qc-line);
+}
+
+/* 第一行：品牌靠左、用户操作靠右 */
+.qc-header .qc-row-brand .qc-inner {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.qc-header .qc-row-tool {
+  height: var(--qc-header-h-tool);
+  background: var(--qc-tool-bg);
+}
+
+/* 第二行：工具信息一律从左侧开始，不做居中、不做两端分散 */
+.qc-header .qc-row-tool .qc-inner {
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+/* ------------------------------------------------------------
+   品牌区：公司 LOGO ＋ 门户名称
+   ------------------------------------------------------------ */
+.qc-header .qc-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+/* LOGO 承载区：透明底官方 LOGO 放在浅色板上保证深色 Header 上可读 */
+.qc-header .qc-logo-plate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--qc-logo-plate-bg);
+  border-radius: var(--qc-logo-plate-radius);
+  padding: var(--qc-logo-plate-pad);
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+/* 官方 LOGO：以高度为主、宽度上限约束，保持原始纵横比 */
+.qc-header .qc-logo {
+  display: block;
+  width: auto;
+  height: auto;
+  max-height: var(--qc-logo-max-h);
+  max-width: var(--qc-logo-max-w);
+  object-fit: contain;
+}
+
+/* 未配置 LOGO 时的空槽：整体隐藏，不显示占位图形或 Emoji */
+.qc-header .qc-logo-plate.is-empty {
+  display: none;
+}
+
+.qc-header .qc-portal {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.qc-header .qc-portal-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qc-header .qc-portal-sub {
+  font-size: 0.58rem;
+  letter-spacing: 1.1px;
+  color: var(--qc-fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------
+   右上：用户信息 ＋ 返回门户（唯一入口）
+   ------------------------------------------------------------ */
+.qc-header .qc-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.qc-header .qc-user {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--qc-fg-dim);
+  min-width: 0;
+  max-width: 42vw;
+}
+
+.qc-header .qc-user-name {
+  color: var(--qc-fg);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qc-header .qc-user-mail {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 返回入口：全站统一尺寸与文案规则（← 返回门户） */
+.qc-header .qc-return {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.10);
+  color: var(--qc-fg);
+  font-size: 0.73rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.qc-header .qc-return:hover {
+  background: rgba(255, 255, 255, 0.20);
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+.qc-header .qc-return:focus-visible {
+  outline: 2px solid var(--qc-accent);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------
+   工具行：工具图标 ＋ 标题 ＋ 徽标 ＋ 可选说明
+   ------------------------------------------------------------ */
+.qc-header .qc-tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.qc-header .qc-tool-icon {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  line-height: 0;
+}
+
+.qc-header .qc-tool-icon svg {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+}
+
+.qc-header .qc-tool-title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 状态徽标容器：数量与文案由页面通过配置传入 */
+.qc-header .qc-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.qc-header .qc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.qc-header .qc-badge.is-ok {
+  background: rgba(34, 197, 94, 0.20);
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #bbf7d0;
+}
+
+.qc-header .qc-badge.is-warn {
+  background: rgba(245, 158, 11, 0.20);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fde68a;
+}
+
+/* 业务说明：紧跟在工具标题右侧（★ FIX1：不再 margin-left:auto 推到最右端） */
+.qc-header .qc-tool-meta {
+  font-size: 0.72rem;
+  color: var(--qc-fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+/* ------------------------------------------------------------
+   P2-B：可选插槽（第一行右侧附加操作 / 第二行末尾附加信息）
+   不传插槽时不会输出任何节点，P2-A 已验收页面的 DOM 保持不变
+   ------------------------------------------------------------ */
+.qc-header .qc-extra-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.qc-header .qc-tool-extra {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 0;
+  font-size: 0.7rem;
+  color: var(--qc-fg-dim);
+  white-space: nowrap;
+}
+
+/* 插槽内通用小按钮（语言切换 / 刷新等） */
+.qc-header .qc-slot-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--qc-fg);
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.qc-header .qc-slot-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.qc-header .qc-slot-sep {
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 0.7rem;
+}
+
+/* 语言切换按钮的「当前语言」标记（沿用页面原有 active 语义） */
+.qc-header .qc-lang-btn.is-active {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.42);
+}
+
+/* ------------------------------------------------------------
+   窄屏：只压缩信息密度与留白，不改变「左品牌 / 右操作」「工具信息左对齐」的结构，
+         也不改变整块 sticky 行为
+   ------------------------------------------------------------ */
+@media (max-width: 900px) {
+  /* 说明文字过长时让位给标题，不允许把两行结构挤散 */
+  .qc-header .qc-tool-meta {
+    max-width: 42vw;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --qc-header-h-brand: 52px;
+    --qc-header-h-tool: 48px;
+    --qc-logo-max-h: 30px;
+    --qc-logo-max-w: 96px;    /* 30 × (360/118) ≈ 91.5px → 仍由高度主导 */
+    --qc-pad-x: 16px;
+  }
+
+  .qc-header .qc-portal-title {
+    font-size: 0.88rem;
+  }
+
+  .qc-header .qc-portal-sub,
+  .qc-header .qc-user-mail {
+    display: none;
+  }
+
+  .qc-header .qc-tool-title {
+    font-size: 0.92rem;
+  }
+
+  .qc-header .qc-tool-meta {
+    font-size: 0.68rem;
+    max-width: none;
+  }
+
+  .qc-header .qc-return {
+    padding: 0 9px;
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-width: 520px) {
+  /* 极窄屏：说明文字让位，工具名与返回仍完整可见 */
+  .qc-header .qc-tool-meta,
+  .qc-header .qc-tool-extra {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  :root {
+    --qc-pad-x: 12px;
+    --qc-logo-max-h: 26px;
+    --qc-logo-max-w: 84px;    /* 26 × (360/118) ≈ 79.3px */
+  }
+
+  .qc-header .qc-brand {
+    gap: 8px;
+  }
+
+  .qc-header .qc-badges {
+    display: none;   /* 徽标（若将来某些页面启用）在极窄屏隐藏 */
+  }
+}

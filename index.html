@@ -11,29 +11,20 @@
   --common:#5e6d75;--ka1:#2478ac;--ka2:#229759;--ka3:#7e3da2;--ka4:#d66f1c;--ka5:#af3328;--ka6:#128e77;
   --radius:16px;--shadow:0 1px 3px rgba(15,23,42,.06),0 4px 12px rgba(15,23,42,.04);
   --shadow-hover:0 8px 24px rgba(15,23,42,.10);
+  /* FIX1：サイドバー幅は 1 か所で管理（桌面 300〜320px の範囲） */
+  --sidebar-w:312px;
 }
 body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
-/* ===== Header ===== */
-.header{position:sticky;top:0;z-index:100;background:rgba(15,23,42,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08);padding:0 clamp(16px,3vw,40px);height:56px;display:flex;align-items:center;justify-content:space-between;}
-.header-left{display:flex;align-items:center;gap:12px;}
-.header-logo{font-size:1.05rem;font-weight:700;color:#fff;letter-spacing:.5px;}
-.header-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
-.lang-sw{display:flex;align-items:center;gap:2px;font-size:.72rem;}
-.lang-sw button{background:none;border:none;color:rgba(255,255,255,.55);cursor:pointer;font-size:.72rem;padding:3px 5px;border-radius:4px;transition:all .15s;}
-.lang-sw button:hover,.lang-sw button.active{color:#fff;background:rgba(255,255,255,.12);}
-.lang-sw .sep{color:rgba(255,255,255,.3);}
-.header-user{font-size:.78rem;color:rgba(255,255,255,.8);}
-.header-btn{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.72rem;transition:all .15s;}
-.header-btn:hover{background:rgba(255,255,255,.2);}
-.update-trigger{position:relative;background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.72rem;transition:all .15s;}
-.update-trigger:hover{background:rgba(255,255,255,.2);}
+/* ===== Header（FIX1 で全廃） =====
+   上部の固定ヘッダーは廃止し、ブランド／更新／管理／ユーザー情報／設定は
+   すべて左サイドバーへ集約した。ここには窄屏用のメニューボタンだけを残す。 */
+.sb-mobile-toggle{display:none;position:fixed;top:12px;left:12px;z-index:96;width:38px;height:38px;border-radius:10px;border:1px solid rgba(15,23,42,.12);background:rgba(255,255,255,.92);backdrop-filter:blur(8px);color:#0f172a;font-size:1rem;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(15,23,42,.12);align-items:center;justify-content:center;}
+.sb-mobile-toggle:hover{background:#fff;}
 
-/* ===== Main Layout ===== */
-.main{max-width:1680px;margin:0 auto;padding:24px clamp(16px,3vw,40px) 60px;}
 
 /* ===== Auth ===== */
-#authSection{display:flex;justify-content:center;align-items:center;min-height:calc(100vh - 56px);}
+#authSection{display:flex;justify-content:center;align-items:center;min-height:100vh;}
 .auth-box{background:var(--card);border-radius:var(--radius);padding:32px 28px;width:400px;max-width:90vw;box-shadow:var(--shadow-hover);border:1px solid var(--border);}
 .auth-tabs{display:flex;gap:0;margin-bottom:24px;}
 .auth-tab{flex:1;text-align:center;padding:10px;font-size:.9rem;font-weight:700;cursor:pointer;border:none;border-bottom:3px solid var(--border);color:var(--text2);background:none;outline:none;}
@@ -49,73 +40,136 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
 .auth-msg.success{color:#22c55e;}
 .auth-hint{font-size:.7rem;color:var(--text2);text-align:center;margin-top:4px;}
 
-/* ===== Search ===== */
-.search-area{margin-bottom:28px;}
-.search-box{position:relative;max-width:640px;}
-.search-input{width:100%;padding:12px 16px 12px 42px;border:1px solid var(--border);border-radius:12px;font-size:.88rem;background:var(--card);color:var(--text);outline:none;transition:all .2s;box-shadow:var(--shadow);}
-.search-input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
-.search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:.9rem;pointer-events:none;}
-.search-kbd{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:.62rem;color:var(--text2);background:var(--bg);border:1px solid var(--border);padding:2px 6px;border-radius:4px;}
-.search-tags{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
-.search-tag{font-size:.68rem;padding:3px 10px;border-radius:999px;background:var(--card);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all .15s;}
-.search-tag:hover{border-color:#6366f1;color:#6366f1;}
-.search-count{font-size:.72rem;color:var(--text2);margin-top:8px;display:none;}
-.search-empty{font-size:.82rem;color:var(--text2);margin-top:16px;display:none;text-align:center;padding:32px 0;}
+/* ===== App Shell（左ナビ + 右コンテンツ／FIX1：上部ヘッダー無し） ===== */
+.app{display:flex;align-items:stretch;min-height:100vh;}
+.sidebar{width:var(--sidebar-w);flex:0 0 var(--sidebar-w);background:rgba(15,23,42,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:90;}
+.sb-brand{display:flex;align-items:center;gap:11px;padding:18px 18px 14px;border-bottom:1px solid rgba(255,255,255,.07);flex:0 0 auto;}
+.sb-brand-mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(140deg,#6366f1,#0ea5e9);display:flex;align-items:center;justify-content:center;font-size:1.02rem;flex:0 0 34px;}
+.sb-brand-text{display:flex;flex-direction:column;min-width:0;}
+.sb-brand-title{font-size:.88rem;font-weight:700;color:#fff;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-brand-sub{font-size:.6rem;color:rgba(255,255,255,.45);letter-spacing:.6px;}
 
-/* ===== Section ===== */
-.section{margin-bottom:24px;}
-.section-header{display:flex;align-items:center;gap:10px;padding:10px 0;cursor:pointer;user-select:none;}
-.section-dot{width:4px;height:20px;border-radius:2px;}
-.section-label{font-size:.72rem;font-weight:700;color:#fff;padding:2px 10px;border-radius:999px;letter-spacing:.5px;}
-.section-title{font-size:.88rem;font-weight:700;color:var(--text);}
-.section-count{font-size:.68rem;color:var(--text2);margin-left:4px;}
-.section-arrow{margin-left:auto;font-size:.65rem;color:var(--text2);transition:transform .2s;}
-.section.collapsed .section-arrow{transform:rotate(-90deg);}
-.section.collapsed .section-grid{display:none;}
-.section.collapsed .ka1-subgroups{display:none;}
+.sb-search{padding:14px 14px 10px;flex:0 0 auto;}
+.sb-search-box{position:relative;}
+.sb-search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:.82rem;color:rgba(255,255,255,.45);pointer-events:none;}
+.sb-search-input{width:100%;padding:9px 11px 9px 32px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);color:#fff;font-size:.8rem;font-family:inherit;outline:none;transition:border-color .15s,background .15s;}
+.sb-search-input::placeholder{color:rgba(255,255,255,.38);}
+.sb-search-input:focus{border-color:rgba(99,102,241,.85);background:rgba(255,255,255,.11);}
 
-/* ===== Card Grid ===== */
-.section-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:4px 0 8px;}
-@media(max-width:1280px){.section-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
-@media(max-width:1024px){.section-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
-@media(max-width:768px){.section-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
-@media(max-width:390px){.section-grid{grid-template-columns:1fr;}}
+.sb-nav{flex:1 1 auto;min-height:0;overflow-y:auto;padding:6px 10px 14px;scrollbar-width:thin;}
+.sb-nav::-webkit-scrollbar{width:6px;}
+.sb-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px;}
+.nav-group-label{font-size:.58rem;font-weight:700;letter-spacing:.9px;color:rgba(255,255,255,.34);padding:14px 8px 6px;}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:none;background:none;border-radius:7px;color:rgba(255,255,255,.74);font-size:.8rem;font-family:inherit;cursor:pointer;text-align:left;position:relative;transition:background .13s,color .13s;line-height:1.35;}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.nav-item.active{background:rgba(255,255,255,.12);color:#fff;font-weight:700;}
+.nav-item.active::before{content:"";position:absolute;left:-8px;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;background:var(--nav-color,#6366f1);}
+.nav-dot{width:7px;height:7px;border-radius:2px;flex:0 0 7px;background:var(--nav-color,#64748b);}
+.nav-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nav-count{font-size:.6rem;color:rgba(255,255,255,.4);font-variant-numeric:tabular-nums;}
+.nav-item.active .nav-count{color:rgba(255,255,255,.72);}
+.nav-item.locked{opacity:.5;cursor:not-allowed;}
+.nav-sub{padding:1px 0 1px 10px;margin-left:9px;border-left:1px solid rgba(255,255,255,.1);}
+.nav-sub .nav-item{padding:5px 8px;font-size:.72rem;color:rgba(255,255,255,.6);}
+.nav-sub .nav-item.active{color:#fff;background:rgba(255,255,255,.1);}
+.nav-sub .nav-item.active::before{display:none;}
+.nav-sub .nav-dot{width:5px;height:5px;flex:0 0 5px;border-radius:50%;}
 
-/* ===== 1課 Subgroups ===== */
-.ka1-subgroups{display:flex;flex-direction:column;gap:16px;padding:4px 0 8px;}
-.tool-subgroup{min-width:0;--subgroup-color:var(--ka1);--subgroup-tint:rgba(36,120,172,.08);--subgroup-text:#245a7a;}
-.tool-subgroup-title{
-  display:flex;align-items:center;gap:8px;margin-bottom:9px;padding:7px 10px;
-  border-left:3px solid var(--subgroup-color);border-radius:0 7px 7px 0;
-  background:var(--subgroup-tint);color:var(--subgroup-text);font-size:.75rem;font-weight:700;
+/* ===== サイドバー底部：A) 近期更新 / B) 管理 / C) ユーザー＋設定 ===== */
+.sb-foot{flex:0 0 auto;border-top:1px solid rgba(255,255,255,.07);background:rgba(0,0,0,.14);}
+.sb-zone{padding:8px 10px;}
+.sb-zone + .sb-zone{border-top:1px solid rgba(255,255,255,.06);}
+.sb-action{position:relative;display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:none;background:none;border-radius:7px;color:rgba(255,255,255,.78);font-size:.79rem;font-family:inherit;cursor:pointer;text-align:left;transition:background .13s,color .13s;}
+.sb-action:hover{background:rgba(255,255,255,.08);color:#fff;}
+.sb-action-icon{font-size:.86rem;flex:0 0 auto;}
+.sb-action-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sb-action-badge{background:#ef4444;color:#fff;font-size:.58rem;font-weight:700;min-width:17px;height:17px;border-radius:999px;display:none;align-items:center;justify-content:center;padding:0 4px;flex:0 0 auto;}
+.sb-action-badge.visible{display:flex;}
+.sb-user-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.06);}
+.sb-user-avatar{width:30px;height:30px;border-radius:50%;background:rgba(99,102,241,.4);display:flex;align-items:center;justify-content:center;font-size:.76rem;color:#fff;flex:0 0 30px;font-weight:700;}
+.sb-user-meta{min-width:0;flex:1;}
+.sb-user-name{display:block;font-size:.78rem;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-user-mail{display:block;font-size:.6rem;color:rgba(255,255,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-settings-btn{width:28px;height:28px;border-radius:7px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);font-size:.86rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 28px;transition:background .13s,color .13s;}
+.sb-settings-btn:hover{background:rgba(255,255,255,.16);color:#fff;}
+
+/* ===== 設定モーダル ===== */
+.settings-box{max-width:440px;}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);}
+.settings-row:last-child{border-bottom:none;}
+.settings-label{font-size:.84rem;font-weight:700;color:var(--text);}
+.settings-note{font-size:.68rem;color:var(--text2);margin-top:3px;line-height:1.5;}
+.lang-options{display:flex;gap:8px;flex-wrap:wrap;}
+.lang-option{border:1px solid var(--border);background:var(--bg);color:var(--text2);border-radius:8px;padding:6px 14px;font-size:.78rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .13s;}
+.lang-option:hover{border-color:#94a3b8;color:var(--text);}
+.lang-option.active{background:#0f172a;border-color:#0f172a;color:#fff;}
+.btn-danger{background:#b91c1c;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:.78rem;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn-danger:hover{background:#991b1b;}
+.btn-ghost{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:.78rem;font-weight:700;font-family:inherit;cursor:pointer;}
+.btn-ghost:hover{background:var(--bg);}
+.logout-confirm{margin-top:12px;padding:12px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px;}
+.logout-confirm-text{font-size:.78rem;color:#991b1b;line-height:1.6;margin-bottom:10px;}
+.logout-confirm-actions{display:flex;gap:8px;justify-content:flex-end;}
+
+/* ===== Content ===== */
+.content{flex:1;min-width:0;padding:22px clamp(16px,2.4vw,32px) 48px;}
+.breadcrumb{display:flex;align-items:center;gap:7px;font-size:.68rem;color:var(--text2);margin-bottom:8px;flex-wrap:wrap;}
+.breadcrumb b{color:var(--text);font-weight:600;}
+.content-hd{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.content-title{font-size:1.12rem;font-weight:700;display:flex;align-items:center;gap:9px;line-height:1.3;}
+.content-title .title-bar{width:4px;height:19px;border-radius:2px;background:var(--nav-color,#6366f1);}
+.content-meta{font-size:.7rem;color:var(--text2);}
+.content-empty{padding:56px 16px;text-align:center;color:var(--text2);font-size:.82rem;line-height:1.9;}
+.content-empty .ce-icon{font-size:1.6rem;display:block;margin-bottom:8px;opacity:.65;}
+
+/* ===== Tool Grid / Card ===== */
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(252px,1fr));gap:12px;}
+.tool-card{position:relative;background:var(--card);border:1px solid #E8EDF3;border-radius:12px;transition:border-color .15s,box-shadow .15s,transform .15s;}
+.tool-card:hover{border-color:#C7D2E0;box-shadow:0 4px 14px rgba(15,23,42,.07);transform:translateY(-1px);}
+.tool-card:active{transform:translateY(0);}
+.tool-main{display:flex;gap:11px;align-items:flex-start;padding:13px 36px 13px 13px;text-decoration:none;color:inherit;min-height:78px;}
+.tool-logo{flex:0 0 34px;width:34px;height:34px;margin-top:1px;}
+.tool-logo svg{width:34px;height:34px;display:block;border-radius:9px;}
+.tool-body{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px;}
+.tool-name{font-size:.8rem;font-weight:700;color:var(--text);line-height:1.35;word-break:break-word;}
+.tool-desc{font-size:.67rem;color:var(--text2);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.tool-foot{display:flex;align-items:center;gap:5px;margin-top:2px;}
+.tool-badge{font-size:.56rem;padding:1px 6px;border-radius:999px;font-weight:600;}
+.tool-fav{position:absolute;top:9px;right:9px;width:22px;height:22px;border-radius:6px;border:1px solid transparent;background:none;color:#CBD5E1;font-size:.72rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .13s;}
+.tool-fav:hover{background:#FEF3C7;color:#B45309;border-color:#FDE68A;}
+.tool-fav.on{color:#F59E0B;}
+.tool-card.is-disabled{opacity:.6;}
+.tool-card.is-disabled .tool-main{cursor:not-allowed;}
+.tool-card.is-locked{background:#F8FAFC;}
+
+/* 1課 サブグループ（右ペイン内） */
+.ka1-subgroups{display:flex;flex-direction:column;gap:18px;}
+.tool-subgroup{--subgroup-color:var(--ka1);--subgroup-tint:rgba(36,120,172,.08);--subgroup-text:#245a7a;min-width:0;}
+.tool-subgroup-title{display:flex;align-items:center;gap:8px;margin-bottom:9px;padding:6px 10px;border-left:3px solid var(--subgroup-color);border-radius:0 7px 7px 0;background:var(--subgroup-tint);color:var(--subgroup-text);font-size:.73rem;font-weight:700;}
+.tool-subgroup-title::after{content:"";height:1px;background:var(--subgroup-color);opacity:.22;flex:1;}
+.tool-subgroup-title .ts-count{font-size:.6rem;font-weight:600;opacity:.75;}
+
+/* ===== Search results ===== */
+.search-result-hd{font-size:.72rem;color:var(--text2);margin-bottom:12px;}
+.search-result-hd b{color:var(--text);}
+
+/* ===== Responsive ===== */
+.sb-mask{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:89;}
+.sb-mask.open{display:block;}
+@media(max-width:960px){
+  .sidebar{position:fixed;top:0;left:0;height:100vh;transform:translateX(-100%);transition:transform .22s ease;z-index:95;width:min(var(--sidebar-w),86vw);flex:0 0 min(var(--sidebar-w),86vw);}
+  .sidebar.open{transform:translateX(0);}
+  .sb-mobile-toggle{display:flex;}
+  body.sb-open .sb-mobile-toggle{display:none;}
+  /* ☰ ボタンと重ならないよう上に余白を確保（コンテンツ側は横溢れさせない） */
+  .content{padding:64px 14px 40px;}
+  .tool-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));}
 }
-.tool-subgroup-title::after{content:"";height:1px;background:var(--subgroup-color);opacity:.2;flex:1;}
-.tool-subgroup .section-grid{padding:0;}
-
-/* ===== Recent Grid ===== */
-.recent-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:4px 0 8px;}
-@media(max-width:1024px){.recent-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
-@media(max-width:768px){.recent-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
-@media(max-width:390px){.recent-grid{grid-template-columns:1fr;}}
-
-/* ===== Card ===== */
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-decoration:none;color:var(--text);display:flex;flex-direction:column;gap:6px;transition:all .18s;cursor:pointer;position:relative;box-shadow:var(--shadow);border-left:3px solid var(--border);min-height:110px;}
-.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover);border-color:#cbd5e1;}
-.card:active{transform:scale(.985);}
-.card-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:var(--bg);}
-.card-name{font-size:.8rem;font-weight:700;line-height:1.3;color:var(--text);}
-.card-desc{font-size:.68rem;color:var(--text2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1;}
-.card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;}
-.card-badge{font-size:.58rem;padding:2px 7px;border-radius:999px;font-weight:600;}
-.badge-new{background:#ede9fe;color:#6d28d9;}
-.badge-update{background:#dcfce7;color:#166534;}
-.badge-dev{background:#f1f5f9;color:#64748b;}
-.badge-soon{background:#fef3c7;color:#92400e;}
-.badge-local{background:#e0f2fe;color:#075985;}
-.card-arrow{font-size:.7rem;color:#cbd5e1;transition:all .15s;}
-.card:hover .card-arrow{color:#6366f1;transform:translateX(2px);}
-.card-disabled{opacity:.55;cursor:not-allowed;pointer-events:none;}
-.card-disabled:hover{transform:none;box-shadow:var(--shadow);}
+@media(max-width:420px){
+  .tool-grid{grid-template-columns:1fr;}
+  .content-title{font-size:1rem;}
+  .settings-box{max-width:calc(100vw - 24px);}
+}
 
 /* ===== Drawer ===== */
 .drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;}
@@ -138,8 +192,6 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
 .drawer-item-req{background:#e0f2fe;color:#0369a1;padding:0 6px;border-radius:999px;font-size:.58rem;font-weight:600;}
 .drawer-item-title{font-size:.74rem;font-weight:600;color:var(--text);line-height:1.35;word-break:break-word;overflow-wrap:anywhere;}
 .drawer-item-desc{font-size:.64rem;color:var(--text2);margin-top:2px;line-height:1.3;word-break:break-word;overflow-wrap:anywhere;}
-.update-badge{position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;font-size:.58rem;min-width:16px;height:16px;border-radius:999px;display:none;align-items:center;justify-content:center;font-weight:700;}
-.update-badge.visible{display:flex;}
 
 /* ===== Update Detail Modal ===== */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:300;justify-content:center;align-items:flex-start;padding:40px 20px;overflow-y:auto;}
@@ -176,19 +228,12 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
 
 <script src="qc-auth.js"></script>
 <script src="qc-i18n.js"></script>
+<script src="tool_logos.js"></script>
 
-<!-- ===== Header ===== -->
-<div class="header">
-  <div class="header-left">
-    <span class="header-logo" data-i18n="portalTitle">🛠️ 惠海 QC ポータル</span>
-  </div>
-  <div class="header-right" id="headerRight" style="display:none;">
-    <span class="lang-sw"><button onclick="portalSetLang('zh-CN')" id="langZh">中文</button><span class="sep">｜</span><button onclick="portalSetLang('ja-JP')" id="langJa">日本語</button></span>
-    <span class="header-user" id="headerUser"></span>
-    <button class="update-trigger" onclick="openDrawer()" id="updateTriggerBtn"><span data-i18n="recentUpdates">📢 近期更新</span><span class="update-badge" id="updateCount">0</span></button>
-    <button class="header-btn" onclick="logout()" data-i18n="logout">退出</button>
-  </div>
-</div>
+<!-- ===== 上部ヘッダーは FIX1 で全廃（ブランド／更新／管理／ユーザー／設定はサイドバーへ集約） ===== -->
+<!-- 窄屏用メニューボタン（デスクトップでは非表示） -->
+<button class="sb-mobile-toggle" id="sbMobileToggle" type="button" onclick="toggleSidebar()"
+        aria-label="メニュー" aria-controls="sidebar">☰</button>
 
 <!-- ===== 登录/注册 ===== -->
 <div id="authSection">
@@ -250,30 +295,68 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
   </div>
 </div>
 
-<!-- ===== 工具列表（登录后显示） ===== -->
-<div class="main" id="mainSection" style="display:none;">
-  <div class="search-area">
-    <div class="search-box">
-      <span class="search-icon">🔍</span>
-      <input class="search-input" id="searchInput" type="text" placeholder="搜索工具名称、课室或功能…（Ctrl + K）">
-      <span class="search-kbd">Ctrl K</span>
-    </div>
-    <div class="search-tags" id="searchTags"></div>
-    <div class="search-count" id="searchCount"></div>
-    <div class="search-empty" id="searchEmpty">未找到匹配工具</div>
-  </div>
-  <div class="section" id="recentSection">
-    <div class="section-header" style="cursor:default;">
-      <span class="section-dot" style="background:#6366f1;"></span>
-      <span class="section-title" id="recentTitle">⭐ 常用工具</span>
-    </div>
-    <div class="recent-grid" id="recentGrid"></div>
-  </div>
-  <div id="groupsContainer"></div>
-</div>
+<!-- ===== メインシェル（左ナビ＋右コンテンツ／ログイン後表示） ===== -->
+<div class="app" id="mainSection" style="display:none;">
 
-<!-- Footer -->
-<div class="footer" id="footerBar" style="display:none;">惠海 QC ポータル — BPO品質チェックツール</div>
+  <!-- 左：常駐ナビゲーション -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <span class="sb-brand-mark">🛠️</span>
+      <span class="sb-brand-text">
+        <span class="sb-brand-title">惠海 QC ポータル</span>
+        <span class="sb-brand-sub">BPO QUALITY CHECK</span>
+      </span>
+    </div>
+    <div class="sb-search">
+      <div class="sb-search-box">
+        <span class="sb-search-icon">&#128269;</span>
+        <input class="sb-search-input" id="searchInput" type="search" autocomplete="off"
+               placeholder="ツール名・課室・機能を検索…" aria-label="ツール検索">
+      </div>
+    </div>
+    <nav class="sb-nav" id="sbNav" aria-label="ツールナビゲーション"></nav>
+    <!-- 底部操作区：A) 近期更新 / B) 管理 / C) ユーザー情報＋設定 -->
+    <div class="sb-foot" id="sbFoot">
+      <!-- 区域 A：近期更新（既存の通知数・既読ロジックをそのまま使用） -->
+      <div class="sb-zone" id="sbUpdatesZone">
+        <button class="sb-action" type="button" onclick="openDrawer()" id="updateTriggerBtn"
+                aria-haspopup="dialog" aria-controls="drawer">
+          <span class="sb-action-icon" aria-hidden="true">&#128226;</span>
+          <span class="sb-action-label" id="sbUpdatesLabel">近期更新</span>
+          <span class="sb-action-badge" id="updateCount">0</span>
+        </button>
+      </div>
+      <!-- 区域 B：管理（renderAdminNav が権限に応じて描画） -->
+      <div class="sb-zone" id="sbAdmin"></div>
+      <!-- 区域 C：ユーザー情報と設定 -->
+      <div class="sb-zone" id="sbUserZone">
+        <div class="sb-user-card">
+          <span class="sb-user-avatar" id="sbUserAvatar">?</span>
+          <span class="sb-user-meta">
+            <span class="sb-user-name" id="sbUserName">—</span>
+            <span class="sb-user-mail" id="sbUserMail">—</span>
+          </span>
+          <button class="sb-settings-btn" type="button" id="sbSettingsBtn" onclick="openSettings()"
+                  title="設定" aria-label="設定" aria-haspopup="dialog" aria-controls="settingsModal">&#9881;</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sb-mask" id="sbMask" onclick="toggleSidebar()"></div>
+
+  <!-- 右：動的コンテンツ -->
+  <main class="content">
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div class="content-hd">
+      <h1 class="content-title" id="contentTitle"></h1>
+      <span class="content-meta" id="contentMeta"></span>
+    </div>
+    <div class="search-result-hd" id="searchCount" style="display:none;"></div>
+    <div id="contentBody"></div>
+    <div class="content-empty" id="searchEmpty" style="display:none;"></div>
+    <div class="footer" id="footerBar" style="display:none;">惠海 QC ポータル — BPO品質チェックツール</div>
+  </main>
+</div>
 
 <!-- ===== Drawer ===== -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
@@ -296,21 +379,84 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
   </div>
 </div>
 
+<!-- ===== 設定モーダル（FIX1：言語設定 / ログアウト） ===== -->
+<div class="modal-overlay" id="settingsModal" onclick="onSettingsOverlayClick(event)">
+  <div class="modal-box settings-box" role="dialog" aria-modal="true" aria-labelledby="settingsTitle"
+       onclick="event.stopPropagation()">
+    <div class="modal-header" style="padding:16px 20px;">
+      <span id="settingsTitle">⚙ 設定</span>
+      <button class="modal-close" type="button" onclick="closeSettings()" aria-label="閉じる">✕</button>
+    </div>
+    <div class="modal-body" style="padding:6px 20px 18px;">
+      <!-- 言語設定 -->
+      <div class="settings-row">
+        <div>
+          <div class="settings-label" id="settingsLangLabel">表示言語 / 显示语言</div>
+          <div class="settings-note" id="settingsLangNote">メニューや各画面の表示言語を切り替えます。</div>
+        </div>
+        <div class="lang-options" role="group" aria-labelledby="settingsLangLabel">
+          <button type="button" class="lang-option" id="langZh" onclick="portalSetLang('zh-CN')">中文</button>
+          <button type="button" class="lang-option" id="langJa" onclick="portalSetLang('ja-JP')">日本語</button>
+        </div>
+      </div>
+      <!-- ログアウト -->
+      <div class="settings-row" style="border-bottom:none;">
+        <div>
+          <div class="settings-label" id="settingsLogoutLabel">ログアウト / 退出登录</div>
+          <div class="settings-note" id="settingsLogoutNote">現在のアカウントからログアウトします。</div>
+        </div>
+        <button type="button" class="btn-danger" id="settingsLogoutBtn" onclick="requestLogout()">ログアウト</button>
+      </div>
+      <div class="logout-confirm" id="logoutConfirm" hidden>
+        <div class="logout-confirm-text" id="logoutConfirmText">ログアウトしますか？</div>
+        <div class="logout-confirm-actions">
+          <button type="button" class="btn-ghost" id="logoutCancelBtn" onclick="cancelLogout()">キャンセル</button>
+          <button type="button" class="btn-danger" id="logoutConfirmBtn" onclick="confirmLogout()">ログアウト</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ==================== Portal i18n ====================
 var PORTAL_DICT = {
   'zh-CN': {
     searchPh:'搜索工具名称、课室或功能…（Ctrl + K）', noResult:'未找到匹配工具',
-    recentTitle:'⭐ 常用工具', drawerTitle:'📢 近期更新', modalTitle:'📋 更新履历',
-    commonTools:'共通工具', ka1:'広告設定チェック・入稿', ka2:'2課 ツール', ka3:'3課 ツール',
-    ka4:'4課 ツール', ka5:'5課 ツール', ka6:'6課 ツール', report:'定例会報告書',
+    drawerTitle:'📢 近期更新', modalTitle:'📋 更新履历',
+    commonTools:'共通工具', ka1:'广告设定检查・入稿', ka2:'2課 工具', ka3:'3課 工具',
+    ka4:'4課 工具', ka5:'5課 工具', ka6:'6課 工具', report:'定例会报告书',
+    adminMenu:'管理', otherTools:'其他工具', favTools:'常用工具', navTools:'工具',
+    home:'首页', searchResult:'搜索结果', toolCount:'共 {n} 个工具', favCount:'共 {n} 个',
+    favEmptyTitle:'还没有常用工具', favEmptyText:'点击工具卡片右上角的 ☆ 即可加入常用工具。',
+    pendingTitle:'待开通', pendingText:'该分组尚未开通工具，敬请期待。',
+    pendingNote:'该分组还有准备中的工具，开通后会显示在这里。',
+    dashTitle:'工具使用状况管理', dashLocked:'管理者专用',
+    dashLockedText:'需要「管理者」职务才能查看全公司统计。',
+    updatesLabel:'近期更新',
+    settingsTitle:'设置', settingsLangLabel:'显示语言', settingsLangNote:'切换菜单和页面文字的语言。',
+    settingsLogoutLabel:'退出登录', settingsLogoutNote:'退出当前登录账号。',
+    settingsOpen:'设置', settingsClose:'关闭',
+    logoutAsk:'确定要退出登录吗？', logoutConfirm:'退出登录', logoutCancel:'取消',
     searchCount:'找到 {n} 个工具', updateBtn:'📢 近期更新'
   },
   'ja-JP': {
     searchPh:'ツール名・課・機能を検索…（Ctrl + K）', noResult:'一致するツールが見つかりません',
-    recentTitle:'⭐ よく使うツール', drawerTitle:'📢 最近の更新', modalTitle:'📋 更新履歴',
+    drawerTitle:'📢 最近の更新', modalTitle:'📋 更新履歴',
     commonTools:'共通ツール', ka1:'広告設定チェック・入稿', ka2:'2課 ツール', ka3:'3課 ツール',
     ka4:'4課 ツール', ka5:'5課 ツール', ka6:'6課 ツール', report:'定例会報告書',
+    adminMenu:'管理', otherTools:'その他のツール', favTools:'よく使うツール', navTools:'ツール',
+    home:'ホーム', searchResult:'検索結果', toolCount:'全 {n} 件', favCount:'{n} 件',
+    favEmptyTitle:'よく使うツールはまだありません', favEmptyText:'ツールカード右上の ☆ を押すとここに追加されます。',
+    pendingTitle:'準備中', pendingText:'このグループはまだツールが登録されていません。',
+    pendingNote:'このグループには準備中のツールがあります。',
+    dashTitle:'ツール使用状況管理', dashLocked:'管理者専用',
+    dashLockedText:'全社統計の閲覧には「管理者」職務が必要です。',
+    updatesLabel:'最近の更新',
+    settingsTitle:'設定', settingsLangLabel:'表示言語', settingsLangNote:'メニューや各画面の表示言語を切り替えます。',
+    settingsLogoutLabel:'ログアウト', settingsLogoutNote:'現在のアカウントからログアウトします。',
+    settingsOpen:'設定', settingsClose:'閉じる',
+    logoutAsk:'ログアウトしますか？', logoutConfirm:'ログアウト', logoutCancel:'キャンセル',
     searchCount:'{n} 件見つかりました', updateBtn:'📢 最近の更新'
   }
 };
@@ -319,42 +465,51 @@ function isJa(){ return (typeof getLanguage==='function')&&getLanguage()==='ja-J
 
 function portalSetLang(lang){
   if(typeof setLanguage==='function') setLanguage(lang);
-  applyPortalI18n(); renderGroups(); renderRecent(); renderDrawer();
+  applyPortalI18n();
+  if(typeof renderNav==='function'&&document.getElementById('sbNav')){renderNav();renderContent();}
+  renderDrawer();
 }
 function applyPortalI18n(){
   var lang=(typeof getLanguage==='function')?getLanguage():'zh-CN';
   document.documentElement.lang=(lang==='ja-JP')?'ja':'zh-CN';
   if(typeof applyI18n==='function') applyI18n();
-  document.getElementById('searchInput').placeholder=pt('searchPh');
-  document.getElementById('searchEmpty').textContent=pt('noResult');
-  document.getElementById('recentTitle').textContent=pt('recentTitle');
-  document.getElementById('drawerTitle').textContent=pt('drawerTitle');
-  document.getElementById('modalTitle').textContent=pt('modalTitle');
+  var input=document.getElementById('searchInput');
+  if(input)input.placeholder=pt('searchPh');
+  var empty=document.getElementById('searchEmpty');
+  if(empty)empty.textContent=pt('noResult');
+  var dt=document.getElementById('drawerTitle');
+  if(dt)dt.textContent=pt('drawerTitle');
+  var mt=document.getElementById('modalTitle');
+  if(mt)mt.textContent=pt('modalTitle');
+  var ul=document.getElementById('sbUpdatesLabel');
+  if(ul)ul.textContent=pt('updatesLabel');
   var zh=document.getElementById('langZh'),ja=document.getElementById('langJa');
   if(zh)zh.classList.toggle('active',lang==='zh-CN');
   if(ja)ja.classList.toggle('active',lang==='ja-JP');
+  if(typeof renderSettings==='function')renderSettings();
 }
-
 // ==================== Tool Data ====================
 var TOOLS=[
-  {group:'common',icon:'🔍',name:'文本对比工具',name_ja:'テキスト比較ツール',desc:'逐行比較・包含関係・記号チェック、色分けと重複定位',desc_ja:'行比較・包含関係・記号チェック、色分けと重複定位',href:'tools_text.html',badge:'local'},
-  {group:'common',icon:'🧹',name:'Excel清洗',name_ja:'Excelクリーニング',desc:'不要データの除去・整形',desc_ja:'不要データの除去・整形',href:'excel_clean.html',badge:'local'},
-  {group:'common',icon:'🪶',name:'Excel文件轻量化',name_ja:'Excelファイル軽量化',desc:'清理无效公式尾部，可选公式值化，提升大型文件打开速度',desc_ja:'不要な数式末尾を整理、数式値化対応、大容量ファイルの速度改善',href:'excel_formula_cleaner.html',badge:''},
-  {group:'common',icon:'📊',name:'Excel対比',name_ja:'Excel比較',desc:'2ファイルの差分チェック',desc_ja:'2ファイルの差分チェック',href:'excel_compare.html',badge:''},
-  {group:'common',icon:'🖼️',name:'图片对比',name_ja:'画像比較',desc:'画像の並べて比較',desc_ja:'画像の並べて比較',href:'image_compare.html',badge:'local'},
-  {group:'ka1',subgroup:'settings',icon:'📋',name:'Amazon DSP 設定チェック',name_ja:'Amazon DSP 設定チェック',desc:'CR日時空白のLI継承・チェック対象自動検出・Audience大小文字対応',desc_ja:'CR日時空白のLI継承・チェック対象自動検出・Audience大小文字対応',href:'amazon_dsp_check.html',badge:''},
-  {group:'ka1',subgroup:'settings',icon:'📈',name:'DV360 設定チェック',name_ja:'DV360 設定チェック',desc:'Display / Youtube / OTT 対応',desc_ja:'Display / Youtube / OTT 対応',href:'dv360_check.html',badge:''},
-  {group:'ka1',subgroup:'manuscript',icon:'📤',name:'読売専用 アップロード',name_ja:'読売専用 アップロード',desc:'読売新聞向け入稿ツール',desc_ja:'読売新聞向け入稿ツール',href:'upload.html',badge:''},
-  {group:'ka1',subgroup:'manuscript',icon:'📋',name:'読売ルール管理',name_ja:'読売ルール管理',desc:'広告ルールの閲覧・編集・追加',desc_ja:'広告ルールの閲覧・編集・追加',href:'yomiko_kanri.html',badge:''},
-  {group:'ka1',subgroup:'manuscript',icon:'🧾',name:'原稿配列ジェネレーター',name_ja:'原稿配列ジェネレーター',desc:'単列リストを整組・項目ごとの並びへ変換',desc_ja:'単列リストを整組・項目ごとの並びへ変換',href:'manuscript_array_generator.html',badge:''},
-  {group:'ka1',subgroup:'shared',icon:'🗾',name:'地域表記変換チェック',name_ja:'地域表記変換チェック',desc:'日方地域記載の変換、東洋経済新報社向け英語地域→日本語変換',desc_ja:'日方地域記載の変換、東洋経済新報社向け英語地域→日本語変換',href:'region_check.html',badge:''},
-  {group:'ka2',icon:'🎯',name:'ターゲット推薦ツール',name_ja:'ターゲット推薦ツール',desc:'SEM見積向けターゲティング推薦',desc_ja:'SEM見積向けターゲティング推薦',href:'ターゲット推薦ツール 2.html',badge:''},
-  {group:'ka2',icon:'📺',name:'TVer',name_ja:'TVer',desc:'TVer設定校正',desc_ja:'TVer設定チェック',href:'tver_check.html',badge:''},
-  {group:'ka3',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
-  {group:'ka4',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
-  {group:'ka5',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
-  {group:'ka6',icon:'📦',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
-  {group:'report',icon:'📋',name:'BPO定例会 報告書',name_ja:'BPO定例会 報告書',desc:'年度目标・効率指標・核心成果・工作计划',desc_ja:'年度目標・効率指標・核心成果・業務計画',href:'bpo_weekly_report_malin.html',badge:'',perm:'管理者'}
+  {group:'common',icon:'🔍',logo:'text',name:'文本对比工具',name_ja:'テキスト比較ツール',desc:'逐行比較・包含関係・記号チェック、色分けと重複定位',desc_ja:'行比較・包含関係・記号チェック、色分けと重複定位',href:'tools_text.html',badge:'local'},
+  {group:'common',icon:'🧹',logo:'excelClean',name:'Excel清洗',name_ja:'Excelクリーニング',desc:'不要データの除去・整形',desc_ja:'不要データの除去・整形',href:'excel_clean.html',badge:'local'},
+  {group:'common',icon:'🪶',logo:'excelLight',name:'Excel文件轻量化',name_ja:'Excelファイル軽量化',desc:'清理无效公式尾部，可选公式值化，提升大型文件打开速度',desc_ja:'不要な数式末尾を整理、数式値化対応、大容量ファイルの速度改善',href:'excel_formula_cleaner.html',badge:''},
+  {group:'common',icon:'📊',logo:'excelCompare',name:'Excel対比',name_ja:'Excel比較',desc:'2ファイルの差分チェック',desc_ja:'2ファイルの差分チェック',href:'excel_compare.html',badge:''},
+  {group:'common',icon:'🖼️',logo:'image',name:'图片对比',name_ja:'画像比較',desc:'画像の並べて比較',desc_ja:'画像の並べて比較',href:'image_compare.html',badge:'local'},
+  {group:'ka1',subgroup:'settings',icon:'📋',logo:'amazon',name:'Amazon DSP 設定チェック',name_ja:'Amazon DSP 設定チェック',desc:'CR日時空白のLI継承・チェック対象自動検出・Audience大小文字対応',desc_ja:'CR日時空白のLI継承・チェック対象自動検出・Audience大小文字対応',href:'amazon_dsp_check.html',badge:''},
+  {group:'ka1',subgroup:'settings',icon:'📈',logo:'google360',name:'DV360 設定チェック',name_ja:'DV360 設定チェック',desc:'Display / Youtube / OTT 対応',desc_ja:'Display / Youtube / OTT 対応',href:'dv360_check.html',badge:''},
+  {group:'ka1',subgroup:'manuscript',icon:'📤',logo:'yomiuriUpload',name:'読売専用 アップロード',name_ja:'読売専用 アップロード',desc:'読売新聞向け入稿ツール',desc_ja:'読売新聞向け入稿ツール',href:'upload.html',badge:''},
+  {group:'ka1',subgroup:'manuscript',icon:'📋',logo:'yomiuriRules',name:'読売ルール管理',name_ja:'読売ルール管理',desc:'広告ルールの閲覧・編集・追加',desc_ja:'広告ルールの閲覧・編集・追加',href:'yomiko_kanri.html',badge:''},
+  {group:'ka1',subgroup:'manuscript',icon:'🧾',logo:'manuscript',name:'原稿配列ジェネレーター',name_ja:'原稿配列ジェネレーター',desc:'単列リストを整組・項目ごとの並びへ変換',desc_ja:'単列リストを整組・項目ごとの並びへ変換',href:'manuscript_array_generator.html',badge:''},
+  {group:'ka1',subgroup:'shared',icon:'🗾',logo:'region',name:'地域表記変換チェック',name_ja:'地域表記変換チェック',desc:'日方地域記載の変換、東洋経済新報社向け英語地域→日本語変換',desc_ja:'日方地域記載の変換、東洋経済新報社向け英語地域→日本語変換',href:'region_check.html',badge:''},
+  {group:'ka2',icon:'🎯',logo:'target',name:'ターゲット推薦ツール',name_ja:'ターゲット推薦ツール',desc:'SEM見積向けターゲティング推薦',desc_ja:'SEM見積向けターゲティング推薦',href:'ターゲット推薦ツール 2.html',badge:''},
+  {group:'ka2',icon:'📺',logo:'tver',name:'TVer',name_ja:'TVer',desc:'TVer設定校正',desc_ja:'TVer設定チェック',href:'tver_check.html',badge:''},
+  {group:'ka3',icon:'🔬',logo:'check3',name:'3課チェック用ツール',name_ja:'3課チェック用ツール',desc:'符号检查・画像解析・URL抽出',desc_ja:'記号チェック・画像解析・URL抽出',href:'3ka_check_tool.html',badge:''},
+  {group:'ka3',icon:'📦',logo:'soon',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
+  {group:'ka4',icon:'📦',logo:'soon',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
+  {group:'ka5',icon:'📦',logo:'soon',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
+  {group:'ka6',icon:'📦',logo:'soon',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
+  {group:'report',icon:'📋',logo:'report',name:'BPO定例会 報告書',name_ja:'BPO定例会 報告書',desc:'年度目标・効率指標・核心成果・工作计划',desc_ja:'年度目標・効率指標・核心成果・業務計画',href:'bpo_weekly_report_malin.html',badge:'',perm:'管理者'},
+  {group:'admin',icon:'📊',logo:'usage',name:'工具使用状况管理',name_ja:'ツール使用状況管理',desc:'课室・月度・日度・人员・工具别使用统计（管理者专用）',desc_ja:'課室・月次・日次・人員・ツール別の利用統計（管理者専用）',href:'usage_dashboard.html',badge:'',perm:'管理者',permDeniedName:'管理者専用',permDeniedDesc:'ツール使用状況管理は管理者のみ閲覧可能です'}
 ];
 var KA1_SUBGROUPS=[
   {id:'settings',label:'設定チェック',color:'#2f7fb8',tint:'#eaf4fb',textColor:'#245b82'},
@@ -369,13 +524,15 @@ var GROUPS=[
   {id:'ka4',color:'var(--ka4)',labelKey:'ka4',label:'4課',expanded:false},
   {id:'ka5',color:'var(--ka5)',labelKey:'ka5',label:'5課',expanded:false},
   {id:'ka6',color:'var(--ka6)',labelKey:'ka6',label:'6課',expanded:false},
-  {id:'report',color:'#1a252f',labelKey:'report',label:'報告',expanded:false}
+  {id:'report',color:'#1a252f',labelKey:'report',label:'報告',expanded:false},
+  {id:'admin',color:'#475569',labelKey:'adminMenu',label:'管理',expanded:false}
 ];
 var BADGE_MAP={'new':{cls:'badge-new',zh:'NEW',ja:'NEW'},'update':{cls:'badge-update',zh:'更新',ja:'更新'},'dev':{cls:'badge-dev',zh:'开发中',ja:'開発中'},'soon':{cls:'badge-soon',zh:'准备中',ja:'準備中'},'local':{cls:'badge-local',zh:'本地处理',ja:'ローカル'}};
-var SEARCH_TAGS=['Excel','Amazon','DV360','地域','文本','图片'];
 
 // ==================== Complete UPDATE_LOG ====================
 var UPDATE_LOG=[
+  {date:'2026/10/23',requester:'马林',type:'improve',tool:'ポータル',title:'首页改版：左侧常驻导航 + 右侧工具区',title_ja:'トップページ改版：左サイド常駐ナビ＋右ツールエリア',detail:'工具カードを並べるだけの構成から、左サイドに常駐ナビ（よく使うツール／共通／1課〜6課／その他／管理）を置き、右側に選択中の課室・グループのツールだけを表示する構成へ変更しました。1課は三つのサブグループをサイドバーから直接切り替えられます。検索は常時サイドバー上部に固定し、名称・説明・課室・グループを対象に絞り込みます。よく使うツールはカード右上の☆で追加・解除でき、ブラウザ内にツールの href のみを保存します。',detail_ja:'ツールカードを並べるだけの構成から、左サイドに常駐ナビ（よく使うツール／共通／1課〜6課／その他／管理）を置き、右側に選択中の課室・グループのツールだけを表示する構成へ変更しました。1課は三つのサブグループをサイドバーから直接切り替えられます。検索は常時サイドバー上部に固定し、名称・説明・課室・グループを対象に絞り込みます。よく使うツールはカード右上の☆で追加・解除でき、ブラウザ内にツールの href のみを保存します。',summary:'左サイド常駐ナビ＋右ツールエリアの企業ポータル構成へ改版。課室/サブグループ切替、常時検索、お気に入り、ツール別ロゴを追加。',summary_ja:'左サイド常駐ナビ＋右ツールエリアの企業ポータル構成へ改版。課室/サブグループ切替、常時検索、お気に入り、ツール別ロゴを追加。',note:''},
+  {date:'2026/10/23',requester:'马林',type:'new',tool:'ツール使用状況管理',title:'工具使用状况管理看板を追加（管理者専用）',title_ja:'ツール使用状況管理ダッシュボードを追加（管理者専用）',detail:'課室・月次・日次・人員・ツール別の利用統計を一画面で確認できる看板を追加しました。執行回数・有効利用回数・差異件数合計は既存 summary の集計値をそのまま表示し、案件数や削減工数への換算は行いません。閲覧は GAS 側でトークンを検証し、users 表の職務が「管理者」のユーザーに限定されます。',detail_ja:'課室・月次・日次・人員・ツール別の利用統計を一画面で確認できる看板を追加しました。執行回数・有効利用回数・差異件数合計は既存 summary の集計値をそのまま表示し、案件数や削減工数への換算は行いません。閲覧は GAS 側でトークンを検証し、users 表の職務が「管理者」のユーザーに限定されます。',summary:'課室・月次・日次・人員・ツールの5ビューを持つ利用統計看板を追加。表示は管理者のみ、権限は GAS 側で検証。',summary_ja:'課室・月次・日次・人員・ツールの5ビューを持つ利用統計看板を追加。表示は管理者のみ、権限は GAS 側で検証。',note:''},
   {date:'2026/10/22',requester:'张微',type:'fix',tool:'Amazon DSP 設定チェック',title:'フリークエンシー（FQ）の全角数字表記に対応',title_ja:'フリークエンシー（FQ）の全角数字表記に対応',detail:'修正设定表中以全角数字・全角斜杠记载的 FQ（例：３回／12日間）无法识别、被误显示为「要確認」的问题。现在会将其正规化为与下载侧 FrequencyCap1:[User, 3, 12, Days] 相同的比较键进行比对。',detail_ja:'設定シートに全角数字・全角スラッシュで記載されたFQ（例：３回／12日間）を認識できず「要確認」と表示されていた問題を修正しました。ダウンロード側の FrequencyCap1:[User, 3, 12, Days] と同じ比較キーへ正規化して照合します。',summary:'FQ 的全角数字・全角斜杠正规化，与下载侧使用同一比较键，消除「要確認」误报。',summary_ja:'FQの全角数字・全角スラッシュを正規化し、ダウンロード側と同じ比較キーで照合。「要確認」の誤表示を解消。',note:''},
   {date:'2026/10/22',requester:'张微',type:'fix',tool:'Amazon DSP 設定チェック',title:'設定シートの「【管理画面設定用】ラインアイテム名」を認識',title_ja:'設定シートの「【管理画面設定用】ラインアイテム名」を認識',detail:'修正设定表表头为「【管理画面設定用】ラインアイテム名」形式时，LI 名被读取为内部值（15s／30s），无法与下载侧实际 LI 名（PD_15s_2610／Bonus_PD_15s_2610）比对的问题。管理画面設定用の列が一意に存在する場合はその列を優先します。',detail_ja:'設定シートのヘッダーが「【管理画面設定用】ラインアイテム名」形式の場合、LI名が内部値（15s／30s）として読み込まれ、ダウンロード側の実際のLI名（PD_15s_2610／Bonus_PD_15s_2610）と照合できない問題を修正しました。管理画面設定用の列が一意に存在する場合はその列を優先して読み込みます。',summary:'管理画面設定用 LI 名の列を優先読み込みし、実際の LI 名で照合できるよう修正。',summary_ja:'管理画面設定用ラインアイテム名列を優先して読み込み、実際のLI名で照合できるよう修正。',note:'管理画面設定用の列が複数あり一意に決められない場合は、従来の読み込みを維持します（誤った優先は行いません）。'},
   {date:'2026/10/22',requester:'张微',type:'fix',tool:'Amazon DSP 設定チェック',title:'エリアシートの横並び複数ブロックを LI ごとに照合',title_ja:'エリアシートの横並び複数ブロックを LI ごとに照合',detail:'修正一张地域 sheet 内横向排列多个区块（关东・关西・Bonus关东・Bonus关西）时，只读取第一个区块、所有 LI 都以同一地域比对的问题。现在按区块读取所有「含む／除外」表头，并以 LI 名完全一致选择对应区块。',detail_ja:'1枚のエリアシート内に複数の地域ブロック（関東・関西・Bonus関東・Bonus関西）が横並びで記載されている場合、最初のブロックのみを読み込み、すべてのLIが同じ地域で照合されていた問題を修正しました。シート内のすべての「含む／除外」見出しをブロック単位で読み分け、LI名の完全一致で対応するブロックを選択します。',summary:'地域 sheet の複数ブロックを個別に解析し、LI ごとに対応する地域で照合。',summary_ja:'エリアシートの複数ブロックを個別に解析し、LIごとに対応する地域で照合。',note:'ブロック名が完全一致で複数該当する場合は、誤関連付けを避けるため判定を保留（要確認）とします。'},
@@ -526,17 +683,154 @@ async function handleResetPassword(){
   else{btn.disabled=false;msg.className='auth-msg error';msg.textContent=result.error||'変更失敗 / 修改失败';}
 }
 
-// ==================== Main Display ====================
+// ==================== Main Display（左ナビ＋右コンテンツ） ====================
 var currentUser=null;
+var navState={view:'common',subgroup:null,query:''};
+var FAV_KEY='qc_favorites_v1';
+
+function esc(s){
+  return String(s===null||s===undefined?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function showMain(){
   document.getElementById('authSection').style.display='none';
-  document.getElementById('mainSection').style.display='block';
-  document.getElementById('headerRight').style.display='flex';
+  document.getElementById('mainSection').style.display='flex';
   document.getElementById('footerBar').style.display='block';
   currentUser=getUser();
-  if(currentUser){document.getElementById('headerUser').textContent='👤 '+currentUser.name+' ('+currentUser.email+')';}
-  renderGroups();renderRecent();renderDrawer();initSearch();
+  if(currentUser){
+    var nm=String(currentUser.name||'?').trim();
+    document.getElementById('sbUserAvatar').textContent=nm.charAt(0)||'?';
+    document.getElementById('sbUserName').textContent=currentUser.name||'—';
+    document.getElementById('sbUserMail').textContent=currentUser.email||'—';
+  }
+  renderNav();renderContent();renderDrawer();initSearch();
   updateBadge();
+}
+
+// ==================== 設定モーダル（言語 / ログアウト） ====================
+// 既存の言語切替（portalSetLang）と既存のログアウト（qc-auth.js の logout）を再利用する。
+function renderSettings(){
+  var ja=isJa();
+  var map={
+    title:pt('settingsTitle'),langLabel:pt('settingsLangLabel'),langNote:pt('settingsLangNote'),
+    logoutLabel:pt('settingsLogoutLabel'),logoutNote:pt('settingsLogoutNote'),
+    logoutBtn:pt('settingsLogoutLabel'),ask:pt('logoutAsk'),
+    cancel:pt('logoutCancel'),confirm:pt('logoutConfirm')
+  };
+  var el;
+  if((el=document.getElementById('settingsTitle')))el.textContent='⚙ '+map.title;
+  if((el=document.getElementById('settingsLangLabel')))el.textContent=map.langLabel;
+  if((el=document.getElementById('settingsLangNote')))el.textContent=map.langNote;
+  if((el=document.getElementById('settingsLogoutLabel')))el.textContent=map.logoutLabel;
+  if((el=document.getElementById('settingsLogoutNote')))el.textContent=map.logoutNote;
+  if((el=document.getElementById('settingsLogoutBtn')))el.textContent=map.logoutBtn;
+  if((el=document.getElementById('logoutConfirmText')))el.textContent=map.ask;
+  if((el=document.getElementById('logoutCancelBtn')))el.textContent=map.cancel;
+  if((el=document.getElementById('logoutConfirmBtn')))el.textContent=map.confirm;
+  var btn=document.getElementById('sbSettingsBtn');
+  if(btn){btn.title=ja?'設定':'设置';btn.setAttribute('aria-label',ja?'設定':'设置');}
+  var zh=document.getElementById('langZh'),jaBtn=document.getElementById('langJa');
+  if(zh)zh.classList.toggle('active',!ja);
+  if(jaBtn)jaBtn.classList.toggle('active',ja);
+}
+function openSettings(){
+  renderSettings();
+  var m=document.getElementById('settingsModal');
+  if(!m)return;
+  cancelLogout();
+  m.classList.add('show');
+  document.body.style.overflow='hidden';
+}
+function closeSettings(){
+  var m=document.getElementById('settingsModal');
+  if(m)m.classList.remove('show');
+  cancelLogout();
+  if(!document.getElementById('drawer').classList.contains('open')&&
+     !document.getElementById('updateModal').classList.contains('show')){
+    document.body.style.overflow='';
+  }
+}
+function onSettingsOverlayClick(ev){
+  if(ev&&ev.target&&ev.target.id==='settingsModal')closeSettings();
+}
+function requestLogout(){
+  var box=document.getElementById('logoutConfirm');
+  if(box)box.hidden=false;
+}
+function cancelLogout(){
+  var box=document.getElementById('logoutConfirm');
+  if(box)box.hidden=true;
+}
+function confirmLogout(){
+  // 既存のログアウト実装（qc-auth.js）をそのまま呼ぶ。Token には一切触れない。
+  if(typeof logout==='function')logout();
+}
+
+// ==================== お気に入り（localStorage・href のみ保存） ====================
+// 保存するのはツールの href（安定キー）だけ。Token/メール/パスワード等は保存しない。
+function getFavorites(){
+  try{
+    var raw=JSON.parse(localStorage.getItem(FAV_KEY)||'[]');
+    if(Object.prototype.toString.call(raw)!=='[object Array]')return[];
+    return raw.filter(function(x){return typeof x==='string'&&x;});
+  }catch(e){return[];}
+}
+function saveFavorites(list){
+  try{localStorage.setItem(FAV_KEY,JSON.stringify(list));}catch(e){/* 容量不足等は黙って無視 */}
+}
+function isFavorite(id){
+  if(!id)return false;
+  return getFavorites().indexOf(id)>=0;
+}
+function findToolById(id){
+  if(!id)return null;
+  for(var i=0;i<TOOLS.length;i++){if(TOOLS[i].href===id)return TOOLS[i];}
+  return null;
+}
+function favoriteTools(){
+  // ツール一覧に存在しない ID は安全に無視（リンク切れを作らない）
+  return getFavorites().map(findToolById).filter(function(t){return !!t&&!t.disabled;});
+}
+function toggleFavorite(id,ev){
+  if(ev){if(ev.preventDefault)ev.preventDefault();if(ev.stopPropagation)ev.stopPropagation();}
+  var t=findToolById(id);
+  if(!t||t.disabled)return;
+  var fav=getFavorites();
+  var i=fav.indexOf(id);
+  if(i>=0)fav.splice(i,1);else fav.push(id);
+  saveFavorites(fav);
+  renderNav();renderContent();
+}
+
+// ==================== ナビゲーション定義 ====================
+// グループは GROUPS（既存データ）から生成し、ツールは TOOLS をそのまま使う。
+function groupLabel(group){
+  if(group.id==='report')return pt('otherTools');
+  if(group.id==='admin')return pt('adminMenu');
+  if(group.id==='common')return pt('commonTools');
+  // 1課〜6課 は課室名そのものをナビに出す（例：1課）
+  if(/^ka[1-6]$/.test(group.id))return group.label;
+  return pt(group.labelKey)||group.label;
+}
+function navTools(groupId){
+  return TOOLS.filter(function(t){return t.group===groupId;});
+}
+function usableTools(groupId){
+  return navTools(groupId).filter(function(t){return !t.disabled;});
+}
+function mainNavItems(){
+  var items=[];
+  GROUPS.forEach(function(g){
+    if(g.id==='admin')return;
+    items.push({id:g.id,label:groupLabel(g),color:g.color,group:g,
+      children:g.id==='ka1'?KA1_SUBGROUPS:null});
+  });
+  return items;
+}
+function isAdminUser(){
+  return !!(currentUser&&currentUser.position==='管理者');
 }
 
 // ==================== Card Rendering ====================
@@ -544,122 +838,296 @@ function getKa1Subgroup(tool){
   if(tool.group!=='ka1')return null;
   return KA1_SUBGROUPS.find(function(subgroup){return subgroup.id===tool.subgroup;})||null;
 }
+function toolLogoHTML(tool){
+  var fn=(typeof window.toolLogoSVG==='function')?window.toolLogoSVG:null;
+  if(fn)return fn(tool.logo||'generic');
+  return '<svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#E2E8F0"/></svg>';
+}
+function badgeHTML(tool){
+  var lang=isJa();
+  if(!tool.badge||!BADGE_MAP[tool.badge])return'';
+  var b=BADGE_MAP[tool.badge];
+  return '<span class="tool-badge '+b.cls+'">'+(lang?b.ja:b.zh)+'</span>';
+}
 function cardHTML(tool){
   var lang=isJa();
-  // 权限检查：定例会报告书仅管理者可见
-  if(tool.perm&&(!currentUser||currentUser.position!==tool.perm)){
-    return '<div class="card card-disabled" style="border-left-color:#1a252f;"><div class="card-icon" style="background:#1a252f18;">🔒</div><span class="card-name">管理者専用</span><span class="card-desc">定例会報告書は管理者のみ閲覧可能</span><div class="card-footer"><span class="card-badge badge-dev">限定</span></div></div>';
-  }
   var name=lang&&tool.name_ja?tool.name_ja:tool.name;
   var desc=lang&&tool.desc_ja?tool.desc_ja:tool.desc;
-  var cls='card'+(tool.disabled?' card-disabled':'');
+
+  // 管理者専用：フロントは表示制御のみ（実データ取得可否は GAS 側で毎回判定）
+  if(tool.perm&&!isAdminUser()){
+    var denyName=tool.permDeniedName||'管理者専用';
+    var denyDesc=tool.permDeniedDesc||'管理者のみ閲覧可能';
+    return '<div class="tool-card is-disabled is-locked" data-tool="'+esc(tool.href||'')+'">'+
+      '<div class="tool-main"><span class="tool-logo">'+
+        '<svg viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#1A252F"/><text x="20" y="25" text-anchor="middle" font-size="15">🔒</text></svg>'+
+      '</span><span class="tool-body"><span class="tool-name">'+esc(denyName)+'</span>'+
+      '<span class="tool-desc">'+esc(denyDesc)+'</span></span></div></div>';
+  }
+  if(tool.disabled){
+    return '<div class="tool-card is-disabled" data-tool="">'+
+      '<div class="tool-main"><span class="tool-logo">'+toolLogoHTML(tool)+'</span>'+
+      '<span class="tool-body"><span class="tool-name">'+esc(name)+'</span>'+
+      (desc?'<span class="tool-desc">'+esc(desc)+'</span>':'')+'</span></div></div>';
+  }
+
+  var id=tool.href;
+  var fav=isFavorite(id);
+  var sub=getKa1Subgroup(tool);
   var g=GROUPS.find(function(x){return x.id===tool.group;});
-  var subgroup=getKa1Subgroup(tool);
-  var accent=subgroup?subgroup.color:(g?g.color:'#eee');
-  var border='border-left-color:'+accent+';';
-  var badgeHtml='';
-  if(tool.badge&&BADGE_MAP[tool.badge]){var b=BADGE_MAP[tool.badge];badgeHtml='<span class="card-badge '+b.cls+'">'+(lang?b.ja:b.zh)+'</span>';}
-  var tag=tool.disabled?'div':'a';
-  var hrefAttr=tool.disabled?'':' href="'+tool.href+'" target="_blank" onclick="recordRecent(\''+encodeURIComponent(tool.name)+'\')"';
-  var html='<'+tag+' class="'+cls+'" style="'+border+'"'+hrefAttr+' data-name="'+tool.name+'" data-name-ja="'+(tool.name_ja||'')+'" data-desc="'+(tool.desc||'')+'" data-desc-ja="'+(tool.desc_ja||'')+'" data-group="'+tool.group+'">';
-  html+='<div class="card-icon" style="background:'+accent+'18;">'+tool.icon+'</div>';
-  html+='<span class="card-name">'+name+'</span>';
-  if(desc)html+='<span class="card-desc">'+desc+'</span>';
-  html+='<div class="card-footer">'+badgeHtml+'<span class="card-arrow">→</span></div>';
-  html+='</'+tag+'>';
+  var accent=sub?sub.color:(g?g.color:'#64748b');
+  var html='<div class="tool-card" data-tool="'+esc(id)+'" data-name="'+esc(tool.name)+'"'+
+    ' data-name-ja="'+esc(tool.name_ja||'')+'" data-desc="'+esc(tool.desc||'')+'"'+
+    ' data-desc-ja="'+esc(tool.desc_ja||'')+'" data-group="'+esc(tool.group)+'"'+
+    ' style="--tool-accent:'+accent+'">';
+  html+='<a class="tool-main" href="'+esc(id)+'" target="_blank" rel="noopener"'+
+    ' onclick="recordRecent(\''+encodeURIComponent(tool.name)+'\')">';
+  html+='<span class="tool-logo">'+toolLogoHTML(tool)+'</span>';
+  html+='<span class="tool-body"><span class="tool-name">'+esc(name)+'</span>';
+  if(desc)html+='<span class="tool-desc">'+esc(desc)+'</span>';
+  html+='<span class="tool-foot">'+badgeHTML(tool)+'</span>';
+  html+='</span></a>';
+  html+='<button class="tool-fav'+(fav?' on':'')+'" type="button" title="'+(fav?'お気に入りから削除':'お気に入りに追加')+'"'+
+    ' aria-label="お気に入り" onclick="toggleFavorite(\''+esc(id)+'\',event)">'+(fav?'★':'☆')+'</button>';
+  html+='</div>';
   return html;
+}
+function gridHTML(tools){
+  if(!tools.length)return'';
+  return '<div class="tool-grid">'+tools.map(cardHTML).join('')+'</div>';
 }
 function renderKa1Tools(tools){
   var html='<div class="ka1-subgroups">';
   KA1_SUBGROUPS.forEach(function(subgroup){
     var subgroupTools=tools.filter(function(tool){return tool.subgroup===subgroup.id;});
     html+='<section class="tool-subgroup" data-subgroup="'+subgroup.id+'" style="--subgroup-color:'+subgroup.color+';--subgroup-tint:'+subgroup.tint+';--subgroup-text:'+subgroup.textColor+';">';
-    html+='<h3 class="tool-subgroup-title">'+subgroup.label+'</h3>';
-    html+='<div class="section-grid">';
-    subgroupTools.forEach(function(tool){html+=cardHTML(tool);});
-    html+='</div></section>';
+    html+='<h3 class="tool-subgroup-title">'+esc(subgroup.label)+'<span class="ts-count">'+subgroupTools.length+'</span></h3>';
+    html+=gridHTML(subgroupTools);
+    html+='</section>';
   });
   html+='</div>';
   return html;
 }
-function renderGroups(){
-  var container=document.getElementById('groupsContainer');var html='';
-  GROUPS.forEach(function(g){
-    var tools=TOOLS.filter(function(t){return t.group===g.id;});
-    var collapsed=g.expanded?'':' collapsed';
-    html+='<div class="section'+collapsed+'" id="sec-'+g.id+'">';
-    html+='<div class="section-header" onclick="toggleSection(\'sec-'+g.id+'\')">';
-    html+='<span class="section-dot" style="background:'+g.color+';"></span>';
-    html+='<span class="section-label" style="background:'+g.color+';">'+g.label+'</span>';
-    html+='<span class="section-title">'+pt(g.labelKey)+'</span>';
-    html+='<span class="section-count">'+tools.length+'</span>';
-    html+='<span class="section-arrow">▼</span></div>';
-    if(g.id==='ka1'){
-      html+=renderKa1Tools(tools);
-    }else{
-      html+='<div class="section-grid">';
-      tools.forEach(function(t){html+=cardHTML(t);});
-      html+='</div>';
-    }
-    html+='</div>';
-  });
-  container.innerHTML=html;
+function highlightSubgroup(id){
+  var blocks=document.querySelectorAll('.tool-subgroup');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].classList.toggle('is-current',blocks[i].getAttribute('data-subgroup')===id);
+  }
 }
-function toggleSection(id){document.getElementById(id).classList.toggle('collapsed');}
 
-// ==================== Recent ====================
-function getToolUsage(){try{return JSON.parse(localStorage.getItem('qc_tool_usage')||'{}');}catch(e){return{};}}
-function recordRecent(name){
-  try{name=decodeURIComponent(name);}catch(e){}
-  var usage=getToolUsage();
-  if(!usage[name])usage[name]={count:0,lastUsed:0};
-  usage[name].count+=1;
-  usage[name].lastUsed=Date.now();
-  localStorage.setItem('qc_tool_usage',JSON.stringify(usage));
+// ==================== 左ナビ描画 ====================
+function navButtonHTML(opts){
+  var active=opts.active?' active':'';
+  var locked=opts.locked?' locked':'';
+  var style=opts.color?' style="--nav-color:'+opts.color+';"':'';
+  var onclick=opts.locked?'':(opts.onclick||'');
+  var count=(opts.count===undefined||opts.count===null)?'':'<span class="nav-count">'+opts.count+'</span>';
+  var dot=opts.dot===false?'':'<span class="nav-dot"></span>';
+  return '<button class="nav-item'+active+locked+'" type="button"'+style+
+    (onclick?' onclick="'+onclick+'"':'')+(opts.locked?' disabled aria-disabled="true"':'')+
+    ' title="'+esc(opts.title||opts.label)+'">'+dot+
+    '<span class="nav-label">'+esc(opts.label)+'</span>'+count+'</button>';
 }
-function renderRecent(){
-  var grid=document.getElementById('recentGrid');var usage=getToolUsage();
-  var tools=TOOLS.filter(function(tool){return !tool.disabled&&usage[tool.name];}).sort(function(a,b){
-    var ua=usage[a.name],ub=usage[b.name];
-    if(ub.count!==ua.count)return ub.count-ua.count;
-    return ub.lastUsed-ua.lastUsed;
-  }).slice(0,4);
-  if(tools.length===0){['Excel文件轻量化','Excel対比','Amazon DSP 設定チェック','地域表記変換チェック'].forEach(function(n){var t=TOOLS.find(function(x){return x.name===n;});if(t)tools.push(t);});}
-  grid.innerHTML=tools.map(function(t){return cardHTML(t);}).join('');
+function renderNav(){
+  var nav=document.getElementById('sbNav');
+  var html='';
+  var inSearch=!!navState.query.trim();
+
+  // 常用工具（お気に入り）— ブランド直下に置くためグループ見出しは付けない
+  html+=navButtonHTML({label:pt('favTools'),color:'#F59E0B',dot:false,
+    count:favoriteTools().length,active:!inSearch&&navState.view==='fav',
+    onclick:"selectNav('fav')"});
+
+  // ツール（共通 / 1課〜6課 / その他）
+  html+='<div class="nav-group-label">'+esc(pt('navTools'))+'</div>';
+  mainNavItems().forEach(function(item){
+    var count=usableTools(item.id).length;
+    html+=navButtonHTML({label:item.label,color:item.color,count:count,
+      active:!inSearch&&navState.view===item.id&&!navState.subgroup,
+      onclick:"selectNav('"+item.id+"')"});
+    if(item.children&&!inSearch){
+      var children=item.children.map(function(sub){
+        return navButtonHTML({label:sub.label,color:sub.color,count:usableTools(item.id).filter(function(t){return t.subgroup===sub.id;}).length,
+          active:navState.view===item.id&&navState.subgroup===sub.id,
+          onclick:"selectNav('"+item.id+"','"+sub.id+"')"});
+      }).join('');
+      // 1課 は選択中のみサブメニューを展開（常時展開は縦に長くなるため）
+      if(navState.view===item.id){
+        html+='<div class="nav-sub nav-subgroups">'+children+'</div>';
+      }
+    }
+  });
+
+  nav.innerHTML=html;
+  renderAdminNav();
+}
+function renderAdminNav(){
+  var box=document.getElementById('sbAdmin');
+  if(!box)return;
+  var admin=isAdminUser();
+  var html='<div class="nav-group-label">'+esc(pt('adminMenu'))+'</div>';
+  html+=navButtonHTML({
+    label:pt('dashTitle'),color:'#475569',dot:false,locked:!admin,
+    active:navState.view==='admin',
+    title:admin?pt('dashTitle'):pt('dashLocked'),
+    onclick:"selectNav('admin')"
+  });
+  box.innerHTML=html;
+}
+function selectNav(view,subgroup){
+  navState.view=view;
+  navState.subgroup=subgroup||null;
+  navState.query='';
+  var input=document.getElementById('searchInput');
+  if(input)input.value='';
+  renderNav();renderContent();
+  closeSidebar();
+}
+function toggleSidebar(){
+  var sb=document.getElementById('sidebar'),mask=document.getElementById('sbMask');
+  var open=!sb.classList.contains('open');
+  sb.classList.toggle('open',open);
+  mask.classList.toggle('open',open);
+  document.body.classList.toggle('sb-open',open);
+}
+function closeSidebar(){
+  var sb=document.getElementById('sidebar'),mask=document.getElementById('sbMask');
+  if(sb)sb.classList.remove('open');
+  if(mask)mask.classList.remove('open');
+  document.body.classList.remove('sb-open');
+}
+
+// ==================== 右コンテンツ描画 ====================
+function paintHeader(crumbs,title,meta,color){
+  var bc=document.getElementById('breadcrumb');
+  bc.innerHTML=crumbs.map(function(c,i){
+    return (i?'<span>/</span>':'')+'<b>'+esc(c)+'</b>';
+  }).join('');
+  document.getElementById('contentTitle').innerHTML=
+    '<span class="title-bar" style="--nav-color:'+(color||'#6366f1')+'"></span>'+esc(title);
+  document.getElementById('contentMeta').textContent=meta||'';
+}
+function emptyStateHTML(icon,title,text){
+  return '<div class="content-empty"><span class="ce-icon">'+icon+'</span>'+
+    '<b>'+esc(title)+'</b><br>'+esc(text||'')+'</div>';
+}
+function renderContent(){
+  var body=document.getElementById('contentBody');
+  var countEl=document.getElementById('searchCount');
+  var emptyEl=document.getElementById('searchEmpty');
+  countEl.style.display='none';countEl.textContent='';
+  emptyEl.style.display='none';emptyEl.innerHTML='';
+
+  var q=navState.query.trim();
+  if(q){renderSearch(q.toLowerCase());return;}
+
+  var item=mainNavItems().filter(function(x){return x.id===navState.view;})[0];
+  var home=pt('home');
+
+  if(navState.view==='fav'){
+    var favs=favoriteTools();
+    paintHeader([home,pt('favTools')],pt('favTools'),pt('favCount').replace('{n}',favs.length),'#F59E0B');
+    body.innerHTML=favs.length?gridHTML(favs)
+      :emptyStateHTML('☆',pt('favEmptyTitle'),pt('favEmptyText'));
+    return;
+  }
+
+  if(navState.view==='admin'){
+    paintHeader([home,pt('adminMenu')],pt('dashTitle'),'',"#475569");
+    if(!isAdminUser()){
+      body.innerHTML=emptyStateHTML('🔒',pt('dashLocked'),pt('dashLockedText'));
+      return;
+    }
+    var dash=TOOLS.filter(function(t){return t.group==='admin';});
+    body.innerHTML=gridHTML(dash);
+    return;
+  }
+
+  if(!item){body.innerHTML=emptyStateHTML('📁',pt('noResult'),'');return;}
+
+  if(item.id==='ka1'&&navState.subgroup){
+    var sub=KA1_SUBGROUPS.filter(function(s){return s.id===navState.subgroup;})[0];
+    var subTools=usableTools('ka1').filter(function(t){return t.subgroup===navState.subgroup;});
+    paintHeader([home,item.label,sub?sub.label:''],sub?sub.label:item.label,
+      pt('toolCount').replace('{n}',subTools.length),sub?sub.color:item.color);
+    body.innerHTML=subTools.length?gridHTML(subTools)
+      :emptyStateHTML('📦',pt('pendingTitle'),pt('pendingText'));
+    return;
+  }
+
+  var all=navTools(item.id);
+  var tools=usableTools(item.id);
+  var needCount=all.filter(function(t){return t.disabled;}).length;
+  paintHeader([home,item.label],item.label,
+    pt('toolCount').replace('{n}',tools.length),item.color);
+
+  if(!tools.length){
+    body.innerHTML=emptyStateHTML('📦',pt('pendingTitle'),pt('pendingText'));
+    return;
+  }
+  if(item.id==='ka1'){
+    body.innerHTML=renderKa1Tools(tools)+
+      (needCount?'<div class="search-result-hd" style="margin-top:16px;">※ '+esc(pt('pendingNote'))+'</div>':'');
+    highlightSubgroup(null);
+  }else{
+    body.innerHTML=gridHTML(tools)+
+      (needCount?'<div class="search-result-hd" style="margin-top:16px;">※ '+esc(pt('pendingNote'))+'</div>':'');
+  }
 }
 
 // ==================== Search ====================
-function initSearch(){
-  var input=document.getElementById('searchInput'),tagsEl=document.getElementById('searchTags');
-  tagsEl.innerHTML=SEARCH_TAGS.map(function(t){return '<span class="search-tag" onclick="quickSearch(\''+t+'\')">'+t+'</span>';}).join('');
-  input.addEventListener('input',function(){doSearch(this.value);});
-  document.addEventListener('keydown',function(e){
-    if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();input.focus();input.select();}
-    if(e.key==='Escape'){input.value='';doSearch('');input.blur();closeDrawer();closeUpdateModal();}
-  });
+function toolSearchHaystack(tool){
+  var g=GROUPS.find(function(x){return x.id===tool.group;});
+  var sub=getKa1Subgroup(tool);
+  return [tool.name,tool.name_ja||'',tool.desc||'',tool.desc_ja||'',
+    tool.href||'',tool.group||'',
+    g?(g.label+' '+pt(g.labelKey)):'',
+    sub?sub.label:''].join(' ').toLowerCase();
 }
-function quickSearch(term){var input=document.getElementById('searchInput');input.value=term;doSearch(term);}
-function doSearch(q){
-  q=q.trim().toLowerCase();
-  var countEl=document.getElementById('searchCount'),emptyEl=document.getElementById('searchEmpty');
-  var cards=document.querySelectorAll('#groupsContainer .card');var visible=0;
-  cards.forEach(function(card){
-    if(!q){card.style.display='';visible++;return;}
-    var hay=[card.getAttribute('data-name'),card.getAttribute('data-name-ja'),card.getAttribute('data-desc'),card.getAttribute('data-desc-ja'),card.getAttribute('data-group')].join(' ').toLowerCase();
-    var match=hay.indexOf(q)>=0;card.style.display=match?'':'none';if(match)visible++;
+function searchTools(q){
+  if(!q)return[];
+  var hits=[];
+  for(var i=0;i<TOOLS.length;i++){
+    var t=TOOLS[i];
+    if(t.disabled)continue;                    // 準備中は検索結果に出さない（無効入口を作らない）
+    if(t.perm&&!isAdminUser())continue;        // 権限のない管理者専用ツールも出さない
+    if(toolSearchHaystack(t).indexOf(q)>=0)hits.push(t);
+  }
+  return hits;
+}
+function renderSearch(q){
+  var hits=searchTools(q);
+  var home=pt('home');
+  paintHeader([home,pt('searchResult')],pt('searchResult')+'「'+navState.query.trim()+'」',
+    pt('searchCount').replace('{n}',hits.length),'#6366f1');
+  var body=document.getElementById('contentBody');
+  var countEl=document.getElementById('searchCount');
+  countEl.style.display='block';
+  countEl.innerHTML=pt('searchCount').replace('{n}','<b>'+hits.length+'</b>');
+  if(hits.length){body.innerHTML=gridHTML(hits);return;}
+  body.innerHTML='';
+  var emptyEl=document.getElementById('searchEmpty');
+  emptyEl.style.display='block';
+  emptyEl.innerHTML='<span class="ce-icon">🔍</span>'+esc(pt('noResult'));
+}
+function initSearch(){
+  var input=document.getElementById('searchInput');
+  if(!input)return;
+  if(input.getAttribute('data-bound')==='1')return;
+  input.setAttribute('data-bound','1');
+  input.addEventListener('input',function(){
+    navState.query=this.value;
+    renderNav();renderContent();
   });
-  document.querySelectorAll('.tool-subgroup').forEach(function(subgroup){
-    var subgroupCards=subgroup.querySelectorAll('.card');
-    var hasVisibleCard=Array.prototype.some.call(subgroupCards,function(card){return card.style.display!=='none';});
-    subgroup.style.display=(q&&!hasVisibleCard)?'none':'';
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();input.focus();input.select();}
+    if(e.key==='Escape'){
+      if(document.activeElement===input||navState.query){
+        input.value='';navState.query='';renderNav();renderContent();input.blur();
+      }
+      closeSettings();closeDrawer();closeUpdateModal();closeSidebar();
+    }
   });
-  document.querySelectorAll('#groupsContainer .section').forEach(function(sec){
-    var vis=sec.querySelectorAll('.card:not([style*="display: none"])');
-    sec.style.display=(q&&vis.length===0)?'none':'';
-  });
-  document.getElementById('recentSection').style.display=q?'none':'';
-  if(q){countEl.style.display='block';countEl.textContent=pt('searchCount').replace('{n}',visible);emptyEl.style.display=visible===0?'block':'none';}
-  else{countEl.style.display='none';emptyEl.style.display='none';}
 }
 
 // ==================== Drawer ====================
@@ -689,24 +1157,21 @@ function closeDrawer(){document.getElementById('drawerOverlay').classList.remove
 function renderDrawer(){
   var body=document.getElementById('drawerBody'),lang=isJa();
   var sorted=UPDATE_LOG.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
-  var groups={new:{icon:'🆕',label:lang?'新機能':'新功能',cls:'dg-new',items:[]},add:{icon:'➕',label:lang?'機能追加':'功能追加',cls:'dg-add',items:[]},fix:{icon:'🔧',label:lang?'改善・修正':'改善/修复',cls:'dg-fix',items:[]}};
-  sorted.forEach(function(item){if(item.type==='new')groups.new.items.push(item);else if(item.type==='add')groups.add.items.push(item);else groups.fix.items.push(item);});
   var html='';
-  ['new','add','fix'].forEach(function(k){
-    var g=groups[k];if(!g.items.length)return;
-    html+='<div class="drawer-group"><div class="drawer-group-header '+g.cls+'">'+g.icon+' '+g.label+'</div>';
-    g.items.forEach(function(item){
-      var idx=sorted.indexOf(item);
+  if(sorted.length){
+    html+='<div class="drawer-group">';
+    // 分类不再重排记录；与完整履历保持同一日期顺序及同日源顺序。
+    sorted.forEach(function(item,idx){
       var title=(lang&&item.title_ja)?item.title_ja:item.title;
       var summary=(lang&&item.summary_ja)?item.summary_ja:(item.summary||'');
       html+='<div class="drawer-item" onclick="openUpdateModal('+idx+')">';
-      html+='<div class="drawer-item-meta"><span>'+item.date+'</span><span class="drawer-item-req">'+item.requester+'</span><span style="color:#94a3b8;">'+item.tool+'</span></div>';
+      html+='<div class="drawer-item-meta"><span>'+item.date+'</span><span class="drawer-item-req">'+item.requester+'</span><span class="upd-type-side upd-type-side-'+getTypeClass(item.type)+'">'+getTypeLabel(item.type)+'</span><span style="color:#94a3b8;">'+item.tool+'</span></div>';
       html+='<div class="drawer-item-title">'+title+'</div>';
       if(summary)html+='<div class="drawer-item-desc">'+summary+'</div>';
       html+='</div>';
     });
     html+='</div>';
-  });
+  }
   body.innerHTML=html;
 }
 

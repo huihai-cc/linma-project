@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_CANDIDATE_NOT_DEPLOYED",
+  "notes": [
+    "保留全部 HEAD 根 HTML，另含已列入旧白名单的3ka。",
+    "TVer未验收工作区变更、excel_formula_cleaner XLSM未验收变更与本地删除workbench均不随输出；从固定Git基线bf6cf5a读取已确认稳定生产版本（与线上部署字节一致），不恢复或覆盖工作区候选。",
+    "每项SHA256固定；版本更新需独立审核、重建清单及测试。",
+    "TVer公开性/既有认证、XLSM候选业务验收（候选仅保留在工作区，不随本清单发布）、真人QA和实际Vercel配置仍是阻断项。"
+  ],
+  "files": [
+    {
+      "path": "3ka_check_tool.html",
+      "source": "workspace",
+      "sha256": "e823387a854af0c71b7361b76ad8214ca8fa12627a6a1e26e7015bcb383cc43d"
+    },
+    {
+      "path": "amazon_dsp_check.html",
+      "source": "workspace",
+      "sha256": "db838fa8a992fee3d1569ad04f1db67c64a2bd125336443bed9f650e09c4b89d"
+    },
+    {
+      "path": "assets/brand/huihai-logo.png",
+      "source": "workspace",
+      "sha256": "6e7c2611e7051e7c7e3c3d24c76a6a55724044a885f44683c227d3f306557b55"
+    },
+    {
+      "path": "bpo_weekly_report_malin.html",
+      "source": "workspace",
+      "sha256": "fba097edd7144d8a98bc677ca30025544d758afa5176b00b57a1f2532b781112"
+    },
+    {
+      "path": "dv360_check.html",
+      "source": "workspace",
+      "sha256": "648959768c90029370274ca94da17ad3c9debb9c5d0e96e882d413b6903838d3"
+    },
+    {
+      "path": "encoding.min.js",
+      "source": "workspace",
+      "sha256": "43c2ea66c0a9d54a513ac76b92de8aee02f45eb8972318d5af38aae56ac35813"
+    },
+    {
+      "path": "excel_clean.html",
+      "source": "workspace",
+      "sha256": "909e7cbcc233146d86a998e8124c9535895ee7355fe10cd2688a5f783225804b"
+    },
+    {
+      "path": "excel_compare.html",
+      "source": "workspace",
+      "sha256": "9cde86927150c55bdabb1fb999e449f9de1acd85d9f67c521ea4ce66a31a12ad"
+    },
+    {
+      "path": "excel_formula_cleaner.html",
+      "source": "git",
+      "sha256": "45c4c69391d3312a977402a8a61fa44ce0ad8e64e9d65f6606fbfd68bc285d94",
+      "revision": "bf6cf5a25754be70ed630d8d554912d9039d1d90"
+    },
+    {
+      "path": "excel_formula_cleaner_worker.js",
+      "source": "git",
+      "sha256": "9f857ca71c2b9cb1e252cf94ed29a4c8245fad6530bcac847332d07876499a98",
+      "revision": "bf6cf5a25754be70ed630d8d554912d9039d1d90"
+    },
+    {
+      "path": "image_compare.html",
+      "source": "workspace",
+      "sha256": "43b06d8ea74829cb520648fddd84856e36f624f59ac09875c44619608f6f8887"
+    },
+    {
+      "path": "index.html",
+      "source": "workspace",
+      "sha256": "bbdf48ea4aaa1033dd0f186e4900ab7da009a445feee5858e427fab9995a42f8"
+    },
+    {
+      "path": "jszip.min.js",
+      "source": "workspace",
+      "sha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e"
+    },
+    {
+      "path": "manuscript_array_generator.html",
+      "source": "workspace",
+      "sha256": "02eca33c2ce9eaf8016221b8434270737deb0aee5dd6f11baaf5f4f178e12a17"
+    },
+    {
+      "path": "manuscript_array_logic.js",
+      "source": "workspace",
+      "sha256": "783f0bf3b2f14cd9de636545d339247f18f4418a3d621d7733661a00b5791214"
+    },
+    {
+      "path": "manuscript_array_page.js",
+      "source": "workspace",
+      "sha256": "33a72095d6fe4d521f79642d51c059e539a973902ac0e8d37ce65fada1b6e0ef"
+    },
+    {
+      "path": "qc-auth.js",
+      "source": "workspace",
+      "sha256": "3c4824950efe853778d804c28c8acb2d369526ab83cf505ffbc1ef549f669f64"
+    },
+    {
+      "path": "qc-case-session.js",
+      "source": "workspace",
+      "sha256": "5d035242fe4181f782d881c6d7e516d4f6f9a3d3121daccfe2d8ae6674baa259"
+    },
+    {
+      "path": "qc-header.js",
+      "source": "workspace",
+      "sha256": "4a60576ad4a8ed8ca11b12e4ba19c54ffc495d0f29d94d777b50cac7ee863bed"
+    },
+    {
+      "path": "qc-i18n.js",
+      "source": "workspace",
+      "sha256": "29ab218883c3f5965171f67c6e4f575d64071743b3694ffacdcca9199bf076ab"
+    },
+    {
+      "path": "qc-ui.css",
+      "source": "workspace",
+      "sha256": "5df7b42ccf4a38ff9dcae317d16be3405748361eadacc3dbffc8e26de88949a5"
+    },
+    {
+      "path": "region_check.html",
+      "source": "workspace",
+      "sha256": "407edc91ee096cb869c081c55ae2973254304646770e196cf326a4391903c584"
+    },
+    {
+      "path": "tool_logos.js",
+      "source": "workspace",
+      "sha256": "a0634b53be28674734efa3c965a0d92fd5ad63501c5c5e0cc0265cbd5ca34fe0"
+    },
+    {
+      "path": "tools_text.html",
+      "source": "workspace",
+      "sha256": "4261da4b01e56b30195d5295d59996cdb2792870d20646e9ada46cf3f200f1cb"
+    },
+    {
+      "path": "tver_check.html",
+      "source": "git",
+      "sha256": "ca3d99e13f6b64a1604c669a3ae51dd78eb037cadf1f04e362d43bf767519dd6",
+      "revision": "bf6cf5a25754be70ed630d8d554912d9039d1d90"
+    },
+    {
+      "path": "upload.html",
+      "source": "workspace",
+      "sha256": "4a441ad77ab04a4cb3253e0038b94359759de272bcb4464c29decd2432753848"
+    },
+    {
+      "path": "usage_dashboard.html",
+      "source": "workspace",
+      "sha256": "4fa0c20fb66c21715324e9f392979638e3c7aca683edecd3052a0c2a1b050b32"
+    },
+    {
+      "path": "usage_dashboard_logic.js",
+      "source": "workspace",
+      "sha256": "8662783b745808df805202a8d985f94cb875b1bfb2897fb849be62eabea380ad"
+    },
+    {
+      "path": "workbench_concept.html",
+      "source": "git",
+      "sha256": "682ec5916e2bae6126bc47b3e9e2fa42f4ffd4c164d25e618185b57f29b42f89",
+      "revision": "bf6cf5a25754be70ed630d8d554912d9039d1d90"
+    },
+    {
+      "path": "xlsx.full.min.js",
+      "source": "workspace",
+      "sha256": "c9506197caf809a075b6dee1da0d36fb19da7158ffe8a88e7b0c96c5d8623c99"
+    },
+    {
+      "path": "yomiko_kanri.html",
+      "source": "workspace",
+      "sha256": "9a1adb03ebd17601659dace64912b4089b1acffb070288b51b3891cf83b4ff1c"
+    },
+    {
+      "path": "ターゲット推薦ツール 2.html",
+      "source": "workspace",
+      "sha256": "7aaef65f3f3a6fba62c1fa109d90361572124fa5e7f24869cec9d83f7e66c3be"
+    }
+  ]
+}

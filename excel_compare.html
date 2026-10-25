@@ -123,45 +123,51 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
   .drop-wrap { grid-template-columns:1fr; }
 }
 </style>
+<link rel="stylesheet" href="qc-ui.css">
+<style>
+/* P2-B：公共 Header 两行整体吸顶后，页面内部吸顶元素需要下移，避免被 Header 遮挡。
+   只覆盖 top 偏移，不改动原有 sticky/z-index/尺寸等其它声明。 */
+.xl-fast-result-header { top: var(--qc-header-h); }
+/* 窄屏隐藏 Build 标记（信息性，不占位业务功能），避免 400px 横向溢出 */
+@media (max-width: 900px) { #xlcomp-build-id { display: none; } }
+</style>
 </head>
 <body>
 <script src="qc-auth.js"></script>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
 <script src="qc-i18n.js"></script>
-<style>
-.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
-.qc-userbar a{color:#67e8f9;text-decoration:none;}
-</style>
-<div class="qc-userbar" id="qcUserBar">
-  <span id="qcUserInfo"></span>
-  <span><a href="index.html">&#x2190; 返回门户</a></span>
-</div>
+<div id="qcHeaderMount"></div>
 <script>
 (function(){
+  // 既存の認証フローをそのまま使用（guardPage の呼び出し位置・順序は従来どおり）
   var u = guardPage();
-  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
-  else {
-    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
-  }
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; return; }
+  QCHeader.mount({
+    target: '#qcHeaderMount',
+    title: 'Excel対比',
+    iconId: 'excelCompare',
+    note: '对比两个Excel文件的差异',
+    user: u,
+    logo: 'assets/brand/huihai-logo.png',
+    logoAlt: '惠海信息技术',
+    brandActions: '<span id="xlcomp-build-id" style="font-size:.66rem;color:rgba(255,255,255,.55);white-space:nowrap;">Build: FASTMODE-DEBUG-20260724-01</span><button type="button" class="qc-slot-btn qc-lang-btn" id="langZh" onclick="qcHeaderLang(\'zh-CN\')">中文</button><span class="qc-slot-sep">|</span><button type="button" class="qc-slot-btn qc-lang-btn" id="langJa" onclick="qcHeaderLang(\'ja-JP\')">日本語</button>'
+  });
 })();
 </script>
-
-
-
-<header>
-  <h1 data-i18n="compareTitle">📊 Excel対比</h1>
-  <span class="badge" data-i18n="compareBadge">🔒 完全本地运行</span>
-  <span id="xlcomp-build-id"
-        style="background:#fff3cd;color:#7a5200;border:2px solid #ffc107;border-radius:5px;
-               padding:4px 10px;font-size:0.82rem;font-weight:800;letter-spacing:0.02em;">
-    Build: FASTMODE-DEBUG-20260724-01
-  </span>
-  <span class="lang-switch" style="margin-left:8px;"><button onclick="setLanguage('zh-CN')" id="langZh" style="background:none;border:none;color:#fff;cursor:pointer;font-size:0.75rem;opacity:0.6;">中文</button><span style="opacity:0.4;color:#fff;">｜</span><button onclick="setLanguage('ja-JP')" id="langJa" style="background:none;border:none;color:#fff;cursor:pointer;font-size:0.75rem;opacity:0.6;">日本語</button></span>
-</header>
-
-<div class="back-nav">
-  <a href="index.html" class="back-btn" data-i18n="backNav">← 返回导航页</a>
-  <span style="color:#bdc3c7;font-size:0.82rem;" data-i18n="compareSubDesc">对比两个Excel文件的差异</span>
-</div>
+<script>
+// 言語切替：既存 setLanguage() をそのまま使い、ヘッダーのツール名・説明だけ追従させる
+function qcHeaderLang(lang){
+  if (typeof setLanguage === 'function') setLanguage(lang);
+  var ja = (lang === 'ja-JP');
+  QCHeader.setTitle(ja ? 'Excel比較' : 'Excel対比');
+  QCHeader.setNote(ja ? '2つのExcelファイルの差分を比較' : '对比两个Excel文件的差异');
+}
+(function(){
+  var l = (typeof getLanguage === 'function') ? getLanguage() : 'zh-CN';
+  qcHeaderLang(l);
+})();
+</script>
 
 <!-- モード切替バー -->
 <div class="mode-bar">

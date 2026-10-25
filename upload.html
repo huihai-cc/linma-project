@@ -549,40 +549,36 @@ textarea::placeholder { color:#adb5bd; }
 .back-btn { background:#2980b9; color:white; border:none; border-radius:4px; padding:5px 14px; font-size:0.82rem; cursor:pointer; text-decoration:none; display:inline-block; }
 .back-btn:hover { background:#1a6fa8; }
 </style>
+<link rel="stylesheet" href="qc-ui.css">
+<style>
+/* P2-B：公共 Header 两行整体吸顶后，页面内部吸顶元素需要下移，避免被 Header 遮挡。
+   只覆盖 top 偏移，不改动原有 sticky/z-index/尺寸等其它声明。 */
+.main-tabs { top: var(--qc-header-h); }
+.ctrl-bar { top: calc(var(--qc-header-h) + var(--qc-main-tabs-h, 49px)); }
+</style>
 </head>
 
 <body>
 <script src="qc-auth.js"></script>
-<style>
-.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
-.qc-userbar a{color:#67e8f9;text-decoration:none;}
-</style>
-<div class="qc-userbar" id="qcUserBar">
-  <span id="qcUserInfo"></span>
-  <span><a href="index.html">&#x2190; 返回门户</a></span>
-</div>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
+<div id="qcHeaderMount"></div>
 <script>
 (function(){
+  // 既存の認証フローをそのまま使用（guardPage の呼び出し位置・順序は従来どおり）
   var u = guardPage();
-  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
-  else {
-    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
-  }
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; return; }
+  QCHeader.mount({
+    target: '#qcHeaderMount',
+    title: '读卖専用チェックツール',
+    iconId: 'yomiuriUpload',
+    note: '読売専用チェックツール',
+    user: u,
+    logo: 'assets/brand/huihai-logo.png',
+    logoAlt: '惠海信息技术'
+  });
 })();
 </script>
-
-
-
-<!-- ===== 顶部 Header ===== -->
-<header class="app-header">
-  <h1>🔧 读卖専用チェックツール</h1>
-  <span class="version">完全本地运行</span>
-</header>
-
-<div class="back-nav">
-  <a href="index.html" class="back-btn">← 返回导航页</a>
-  <span style="color:#bdc3c7;font-size:0.82rem;">读卖専用チェックツール</span>
-</div>
 
 <!-- ===== 主 Tab 导航 ===== -->
 <nav class="main-tabs">
@@ -596,6 +592,18 @@ textarea::placeholder { color:#adb5bd; }
     <span class="ico">🔗</span>URL提取
   </button>
 </nav>
+<script>
+// FIX1：窄屏主标签会换行，控制栏偏移使用标签栏实测高度。
+(function () {
+  var tabs = document.querySelector('.main-tabs');
+  function syncTabsHeight() {
+    document.documentElement.style.setProperty('--qc-main-tabs-h', tabs.getBoundingClientRect().height + 'px');
+  }
+  syncTabsHeight();
+  if (typeof ResizeObserver === 'function') new ResizeObserver(syncTabsHeight).observe(tabs);
+  else window.addEventListener('resize', syncTabsHeight);
+})();
+</script>
 
 <!-- ================================================================
      TAB 1：文本比对

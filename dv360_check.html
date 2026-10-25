@@ -313,37 +313,36 @@ body.dv-column-resizing{cursor:col-resize;user-select:none;}
   .lvl-badge{font-size:0.6rem;padding:1px 4px;}
 }
 </style>
+<link rel="stylesheet" href="qc-ui.css">
+<style>
+/* P2-B：公共 Header 两行整体吸顶后，页面内部吸顶元素需要下移，避免被 Header 遮挡。
+   只覆盖 top 偏移，不改动原有 sticky/z-index/尺寸等其它声明。 */
+.result-table thead { top: var(--qc-header-h); }
+.detail-table th { top: var(--qc-header-h); }
+</style>
 </head>
 <body>
 <script src="qc-auth.js"></script>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
 <script src="qc-case-session.js"></script>
-<style>
-.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
-.qc-userbar a{color:#67e8f9;text-decoration:none;}
-</style>
-<div class="qc-userbar" id="qcUserBar">
-  <span id="qcUserInfo"></span>
-  <span><a href="index.html">&#x2190; 返回门户</a></span>
-</div>
+<div id="qcHeaderMount"></div>
 <script>
 (function(){
+  // 既存の認証フローをそのまま使用（guardPage の呼び出し位置・順序は従来どおり）
   var u = guardPage();
-  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
-  else {
-    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
-  }
+  if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; return; }
+  QCHeader.mount({
+    target: '#qcHeaderMount',
+    title: 'DV360 設定チェック',
+    iconId: 'google360',
+    note: 'DV360 広告設定の自動チェック',
+    user: u,
+    logo: 'assets/brand/huihai-logo.png',
+    logoAlt: '惠海信息技术'
+  });
 })();
 </script>
-
-<header>
-  <h1>📈 DV360 設定チェック</h1>
-  <span class="badge">🔒 完全本地运行</span>
-</header>
-
-<div class="back-nav">
-  <a href="index.html" class="back-btn">← 返回导航页</a>
-  <span style="color:#bdc3c7;font-size:0.8rem;">DV360 広告設定の自動チェック</span>
-</div>
 
 <!-- Media Selector Bar -->
 <div class="media-select-bar">

@@ -220,25 +220,14 @@ button.action:disabled{opacity:.45;cursor:not-allowed;}
   button.action{width:100%;}
 }
 </style>
+<link rel="stylesheet" href="qc-ui.css">
 </head>
 <body>
 <script src="qc-auth.js"></script>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
 
-<div class="top-shell">
-<div class="qc-userbar" id="qcUserBar">
-  <span id="qcUserInfo"></span>
-</div>
-
-<header>
-  <h1>🧾 原稿配列ジェネレーター</h1>
-  <span class="badge">🔒 完全ローカル処理</span>
-</header>
-
-<div class="back-nav">
-  <a href="index.html" class="back-btn">← 返回导航页</a>
-  <span class="back-note">単列の原稿リストを必要な順序へ並べ替えます</span>
-</div>
-</div>
+<div id="qcHeaderMount"></div>
 
 <main class="page-wrap">
   <p class="intro">対象リストを貼り付け、必要な並びに変換できます。</p>
@@ -304,8 +293,15 @@ button.action:disabled{opacity:.45;cursor:not-allowed;}
       '<h2 style="color:#c0392b;">ログインしてください</h2></div>';
     return;
   }
-  document.getElementById('qcUserInfo').textContent =
-    '👤 ' + (user.name || '?') + ' (' + (user.email || '?') + ')';
+  QCHeader.mount({
+    target: '#qcHeaderMount',
+    title: '原稿配列ジェネレーター',
+    iconId: 'manuscript',
+    note: '単列の原稿リストを必要な順序へ並べ替えます',
+    user: user,
+    logo: 'assets/brand/huihai-logo.png',
+    logoAlt: '惠海信息技术'
+  });
 
   var Logic = window.ManuscriptArrayLogic;
   var Page = window.ManuscriptArrayPage;
