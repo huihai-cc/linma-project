@@ -1,0 +1,35 @@
+# Round 12：仅对审核运行文件/封板副本保留原始字节，避免 CRLF 转换破坏 SHA256。
+# .gitattributes 本身不暂存文件；只允许最终 Gate 通过后按文件级清单纳入。
+# CRLF是已批准原始字节；保留默认空白检查，仅将CR识别为行结束的一部分。
+"3ka_check_tool.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"amazon_dsp_check.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"assets/brand/huihai-logo.png" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"bpo_weekly_report_malin.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"docs/usage-dashboard/seal/FIX1A_FINAL_20261024/usage_dashboard.html.sealed" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"docs/usage-dashboard/seal/FIX1A_FINAL_20261024/usage_dashboard_logic.js.sealed" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"dv360_check.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"encoding.min.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"excel_clean.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"excel_compare.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"excel_formula_cleaner.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"excel_formula_cleaner_worker.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"image_compare.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"index.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"jszip.min.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"manuscript_array_generator.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"manuscript_array_logic.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"manuscript_array_page.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"qc-auth.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"qc-case-session.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"qc-header.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"qc-i18n.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"qc-ui.css" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"region_check.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"tool_logos.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"tools_text.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"upload.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"usage_dashboard.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"usage_dashboard_logic.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"xlsx.full.min.js" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"yomiko_kanri.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+"ターゲット推薦ツール 2.html" -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
