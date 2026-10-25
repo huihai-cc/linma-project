@@ -264,7 +264,12 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
 .result-table .col-status{text-align:center;white-space:nowrap;}
 .result-table thead .col-no{z-index:27;box-shadow:inset -1px 0 0 rgba(255,255,255,0.30);}
 .result-table thead .col-name{z-index:26;background:#1a252f;color:white;box-shadow:inset -1px 0 0 #8fa0b3;}
-.dv-col-resizer{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:35;touch-action:none;user-select:none;}
+/* ROUND19-FIX2：列宽手柄必须低于固定列表头（.col-no=27 / .col-name=26），
+   否则横向滚动时手柄的 1px ::after 白线会穿透到固定「名称」表头内部（实测 z-index:35 会穿透，
+   24 时不穿透）。手柄仍需高于普通 th（z-index:auto），故取 24。 */
+.dv-col-resizer{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:24;touch-action:none;user-select:none;}
+/* No. 列自身的列宽手柄不得向右越界到「名称」表头内：固定在自身列内，避免固定列之间互相压线。 */
+.result-table .col-no>.dv-col-resizer{right:0;}
 .dv-col-resizer::after{content:'';position:absolute;top:20%;bottom:20%;left:3px;width:1px;background:rgba(255,255,255,0.45);}
 .dv-col-resizer:hover::after,.dv-col-resizer.active::after{top:0;bottom:0;width:2px;background:#f39c12;}
 body.dv-column-resizing{cursor:col-resize;user-select:none;}
