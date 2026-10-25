@@ -31,7 +31,7 @@
     {
       "path": "dv360_check.html",
       "source": "workspace",
-      "sha256": "648959768c90029370274ca94da17ad3c9debb9c5d0e96e882d413b6903838d3"
+      "sha256": "f840674e8fe7e31edee2b76ae99b57ec717104bfa465d0dacb12fc11d3cf7d0b"
     },
     {
       "path": "encoding.min.js",
@@ -128,7 +128,7 @@
     {
       "path": "tools_text.html",
       "source": "workspace",
-      "sha256": "4261da4b01e56b30195d5295d59996cdb2792870d20646e9ada46cf3f200f1cb"
+      "sha256": "015049fddd6b941f848d1aa7c2232a2ce5cf6ddd5369600dfbd61ac0a346a961"
     },
     {
       "path": "tver_check.html",

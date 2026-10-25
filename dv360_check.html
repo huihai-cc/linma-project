@@ -317,7 +317,11 @@ body.dv-column-resizing{cursor:col-resize;user-select:none;}
 <style>
 /* P2-B：公共 Header 两行整体吸顶后，页面内部吸顶元素需要下移，避免被 Header 遮挡。
    只覆盖 top 偏移，不改动原有 sticky/z-index/尺寸等其它声明。 */
-.result-table thead { top: var(--qc-header-h); }
+/* ROUND19 修正：.result-table-wrap 自身是内部滚动容器（max-height:70vh; overflow:auto），
+   其 thead 的 sticky 偏移必须相对自身滚动窗（0），不能套用全局 Header 高度，
+   否则表头会下移并在容器内遮住前几行数据。
+   .detail-table 为遗留选择器（当前 DOM 未使用），保留其视口吸顶偏移。 */
+.result-table thead { top: 0; }
 .detail-table th { top: var(--qc-header-h); }
 </style>
 </head>
