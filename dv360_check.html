@@ -270,8 +270,15 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
 .dv-col-resizer{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:24;touch-action:none;user-select:none;}
 /* No. 列自身的列宽手柄不得向右越界到「名称」表头内：固定在自身列内，避免固定列之间互相压线。 */
 .result-table .col-no>.dv-col-resizer{right:0;}
-.dv-col-resizer::after{content:'';position:absolute;top:20%;bottom:20%;left:3px;width:1px;background:rgba(255,255,255,0.45);}
-.dv-col-resizer:hover::after,.dv-col-resizer.active::after{top:0;bottom:0;width:2px;background:#f39c12;}
+/* ROUND19-FIX3：手柄の視覚線は通常は非表示にする。
+   従来は ::after の 1px 白線が常時表示され、列境界の border と並んで「二重線」に見えていた
+   （実測：No. 列は right:0 のため境界から 5px 内側、他の列は境界の 1px 手前に白線が出ていた）。
+   hover / ドラッグ中のみ、境界線上に淡青 1 本のヒント線を表示する。
+   位置決め・z-index・当たり判定（8px）・ドラッグ処理は変更しない。 */
+.dv-col-resizer::after{content:'';position:absolute;top:20%;bottom:20%;left:3px;width:1px;background:#4da3ff;opacity:0;pointer-events:none;}
+/* No. 列の手柄は right:0 で内側に寄っているため、ヒント線も境界線の上に来るよう右基準で置く。 */
+.result-table .col-no>.dv-col-resizer::after{left:auto;right:-1px;}
+.dv-col-resizer:hover::after,.dv-col-resizer.active::after{top:0;bottom:0;width:2px;opacity:1;}
 body.dv-column-resizing{cursor:col-resize;user-select:none;}
 .result-table tr[data-io-header="1"] td{padding:8px 12px;}
 
