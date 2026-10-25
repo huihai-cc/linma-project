@@ -148,6 +148,20 @@ input[type=range]{flex:1;height:6px;border-radius:3px;accent-color:var(--primary
 .sheet-name{font-size:11px;color:var(--text4);margin-bottom:8px;padding:0 4px}
 </style>
 <link rel="stylesheet" href="qc-ui.css">
+<style>
+/* P2-B FIX2：SEM 統計指標（総エントリ数 / 対応メディア）を公共 Header 第二行右側に表示。
+   ページ内スコープのみ。qc-ui.css（公共コンポーネント）は変更しない。 */
+.qc-header .qc-tool-extra{margin-left:auto;gap:14px}
+.qc-header .qc-tool-extra .qc-stat{display:inline-flex;align-items:baseline;gap:4px;white-space:nowrap}
+.qc-header .qc-tool-extra .qc-stat b{font-size:.86rem;color:#fff;font-weight:700;font-variant-numeric:tabular-nums}
+.qc-header .qc-tool-extra .qc-stat i{font-style:normal;font-size:.6rem;color:rgba(255,255,255,.62)}
+/* 窄屏：統計は業務情報のため非表示にせず、縮小＋折返しで残す */
+@media (max-width:520px){
+  .qc-header .qc-tool-extra{display:inline-flex;gap:10px;white-space:normal}
+  .qc-header .qc-tool-extra .qc-stat b{font-size:.78rem}
+  .qc-header .qc-tool-extra .qc-stat i{font-size:.54rem}
+}
+</style>
 </head>
 <body>
 <script src="qc-auth.js"></script>
@@ -164,6 +178,7 @@ input[type=range]{flex:1;height:6px;border-radius:3px;accent-color:var(--primary
       title: 'SEM見積ターゲティング推薦ツール',
       iconId: 'target',
       note: '基礎データベース | YDA / GDA / YTV / DGC / Microsoft Ads / Netflix',
+      toolExtra: '<span class="qc-stat"><b id="totalCount">—</b><i>総エントリ数</i></span><span class="qc-stat"><b>6</b><i>対応メディア</i></span>',
       user: u,
       logo: 'assets/brand/huihai-logo.png',
       logoAlt: '惠海信息技术'
@@ -173,17 +188,7 @@ input[type=range]{flex:1;height:6px;border-radius:3px;accent-color:var(--primary
   }
 })();
 </script>
-<div class="header">
-<div class="header-icon">🎯</div>
-<div class="header-text">
-<h1>SEM見積ターゲティング推薦ツール</h1>
-<p>基礎データベース | YDA / GDA / YTV / DGC / Microsoft Ads / Netflix</p>
-</div>
-<div class="header-stats">
-<div class="hstat"><div class="hstat-num" id="totalCount">—</div><div class="hstat-lbl">総エントリ数</div></div>
-<div class="hstat"><div class="hstat-num">6</div><div class="hstat-lbl">対応メディア</div></div>
-</div>
-</div>
+
 <div class="layout">
 <div>
 <div class="panel">

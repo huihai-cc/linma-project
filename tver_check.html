@@ -33,13 +33,43 @@
     .tver-horizontal-cell-entry-with-reason{max-height:none;overflow:visible}.tver-horizontal-cell-reason{display:block;margin-top:4px;color:#455a64;font-size:11px;font-weight:700;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere}.qc-mismatch-focus{outline:3px solid #f39c12!important;outline-offset:-3px;box-shadow:0 0 0 4px rgba(243,156,18,.32)!important;position:relative;z-index:25}.qc-mismatch-nav-trigger{cursor:pointer}.qc-mismatch-nav-trigger:hover{text-decoration:underline;filter:brightness(.97)}.qc-mismatch-nav-floating{position:fixed;right:20px;bottom:20px;z-index:1000;display:flex;align-items:center;gap:7px;padding:8px 10px;background:#fff3cd;border:2px solid #dc3545;border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.2);color:#842029;font-size:.78rem}.qc-mismatch-nav-floating[hidden]{display:none}.qc-mismatch-nav-label{font-weight:700;white-space:nowrap}.qc-mismatch-nav-count{min-width:64px;text-align:center;font-weight:700;white-space:nowrap}.qc-mismatch-nav-btn{min-width:38px;padding:4px 7px;border:1px solid #bdc3c7;border-radius:4px;background:#f7f9fa;color:#2c3e50;cursor:pointer;font-weight:700}.qc-mismatch-nav-btn:hover{background:#ecf0f1}.qc-mismatch-nav-btn:focus-visible{outline:2px solid #c0392b;outline-offset:2px}
   </style>
   <style>
-    :root{--tver-back-nav-height:36px}.back-nav{position:sticky;top:0;z-index:20;height:36px;display:flex;align-items:center}.tver-horizontal-sticky-header{top:var(--tver-back-nav-height,36px)}.results-table th{top:var(--tver-back-nav-height,36px)}
+    :root{--tver-back-nav-height:var(--qc-header-h,109px)}.tver-horizontal-sticky-header{top:var(--tver-back-nav-height,var(--qc-header-h,109px))}.results-table th{top:var(--tver-back-nav-height,var(--qc-header-h,109px))}
   </style>
+<link rel="stylesheet" href="qc-ui.css">
+<style>
+/* P2-B FIX2：TVer 補助情報（ID主データ / 外部送信なし）を公共 Header 第二行右側に低調表示。
+   ページ内スコープのみ。qc-ui.css は変更しない。 */
+.qc-header .qc-tool-extra{margin-left:auto}
+.qc-header .qc-tool-extra .qc-sub{font-size:.66rem;color:rgba(255,255,255,.62);white-space:nowrap}
+.qc-header .qc-tool-extra .qc-sub+.qc-sub{padding-left:8px;border-left:1px solid rgba(255,255,255,.18);margin-left:8px}
+@media (max-width:520px){
+  .qc-header .qc-tool-extra{display:inline-flex;gap:6px}
+  .qc-header .qc-tool-extra .qc-sub{font-size:.6rem}
+}
+</style>
 </head>
 <body>
   <script src="qc-auth.js"></script>
-  <header class="app-header"><h1>2課 TVer 設定チェック</h1><p>摺合せシートとTVer CSVをブラウザ内で照合します。</p><div class="badges"><span class="badge">ID主データ：260605</span><span class="badge">ファイルは外部送信されません</span></div></header>
-  <nav class="back-nav" aria-label="ページ移動"><a href="index.html">← トップへ戻る</a></nav>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
+<div id="qcHeaderMount"></div>
+<script>
+(function(){
+  // TVer 従来どおり認証ガードは行わない（既存挙動を変えない）。
+  // ユーザー表示のみ既存の getUser() を読み取り専用で参照する。
+  var u = (typeof getUser === 'function') ? getUser() : null;
+  QCHeader.mount({
+    target: '#qcHeaderMount',
+    title: '2課 TVer 設定チェック',
+    iconId: 'tver',
+    note: '摺合せシートとTVer CSVをブラウザ内で照合します。',
+    toolExtra: '<span class="qc-sub">ID主データ：260605</span><span class="qc-sub">ファイルは外部送信されません</span>',
+    user: u,
+    logo: 'assets/brand/huihai-logo.png',
+    logoAlt: '惠海信息技术'
+  });
+})();
+</script>
   <main class="page" id="tver-page">
     <section class="upload-grid" aria-label="ファイル選択">
       <label class="upload-zone" id="tver-upload-zone" for="tver-file-input"><h2>設定表 + CSV</h2><p>TVer 摺合せシート（.xlsx）とTVer管理画面の登録／編集CSV（.csv）</p><p>一度に2ファイル、または順番にドラッグ＆ドロップ／クリックで選択</p><input id="tver-file-input" type="file" multiple accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" aria-describedby="setting-file-state csv-file-state upload-recognition-state"><div class="file-state" id="setting-file-state">設定表：未選択</div><div class="file-state" id="csv-file-state">CSV：未選択</div><p class="upload-recognition-state" id="upload-recognition-state" role="status">.xlsx と .csv を選択してください。</p></label>

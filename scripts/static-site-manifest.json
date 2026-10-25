@@ -3,7 +3,7 @@
   "status": "LOCAL_CANDIDATE_NOT_DEPLOYED",
   "notes": [
     "保留全部 HEAD 根 HTML，另含已列入旧白名单的3ka。",
-    "TVer未验收工作区变更、excel_formula_cleaner XLSM未验收变更与本地删除workbench均不随输出；从固定Git基线bf6cf5a读取已确认稳定生产版本（与线上部署字节一致），不恢复或覆盖工作区候选。",
+    "ROUND16：TVer 已按授权把 FIX4-B 封板业务逻辑 + 统一 Header 作为正式版（workspace 源）；excel_formula_cleaner XLSM 未验收变更与本地删除 workbench 仍不随输出（workbench 从固定 Git 基线 bf6cf5a 读取）。",
     "每项SHA256固定；版本更新需独立审核、重建清单及测试。",
     "TVer公开性/既有认证、XLSM候选业务验收（候选仅保留在工作区，不随本清单发布）、真人QA和实际Vercel配置仍是阻断项。"
   ],
@@ -16,7 +16,7 @@
     {
       "path": "amazon_dsp_check.html",
       "source": "workspace",
-      "sha256": "db838fa8a992fee3d1569ad04f1db67c64a2bd125336443bed9f650e09c4b89d"
+      "sha256": "e1a561651de9232d876d63d6d970d0eeb2f7b1ed121cc8a00908db1f009aeafe"
     },
     {
       "path": "assets/brand/huihai-logo.png",
@@ -132,9 +132,8 @@
     },
     {
       "path": "tver_check.html",
-      "source": "git",
-      "sha256": "ca3d99e13f6b64a1604c669a3ae51dd78eb037cadf1f04e362d43bf767519dd6",
-      "revision": "bf6cf5a25754be70ed630d8d554912d9039d1d90"
+      "source": "workspace",
+      "sha256": "a2a7b35cea37c364df6bef3eedae4e8b789dbcfa1dc9fa74e2de1c85ae49bb92"
     },
     {
       "path": "upload.html",
@@ -165,12 +164,12 @@
     {
       "path": "yomiko_kanri.html",
       "source": "workspace",
-      "sha256": "9a1adb03ebd17601659dace64912b4089b1acffb070288b51b3891cf83b4ff1c"
+      "sha256": "0162c35e28eb04c9530d521ee855fcb9cef28650737978a572e0754e6bea841c"
     },
     {
       "path": "ターゲット推薦ツール 2.html",
       "source": "workspace",
-      "sha256": "7aaef65f3f3a6fba62c1fa109d90361572124fa5e7f24869cec9d83f7e66c3be"
+      "sha256": "88b96b2694f6b6b2397db237cecd7531928cd9569b0d0c0cdf59ed27ffc705c2"
     }
   ]
 }
