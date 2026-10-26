@@ -125,37 +125,48 @@ button:disabled { opacity:0.5; cursor:not-allowed; }
 
 .footer-note { text-align:center; font-size:0.72rem; color:#999; padding:20px; }
 </style>
+<link rel="stylesheet" href="qc-ui.css">
+<style>
+/* Header-only: keep brand, language, signed-in user and return control visible on narrow windows. */
+html { scroll-padding-top: calc(var(--qc-header-h) + 12px); }
+@media (max-width: 800px) {
+  #qcHeaderMount .qc-row-brand { height: auto; min-height: var(--qc-header-h-brand); }
+  #qcHeaderMount .qc-row-brand .qc-inner { flex-wrap: wrap; gap: 8px 16px; padding-top: 8px; padding-bottom: 8px; }
+  #qcHeaderMount .qc-actions { flex-wrap: wrap; }
+}
+@media (max-width: 520px) {
+  #qcHeaderMount .qc-actions { width: 100%; justify-content: flex-end; gap: 8px; }
+  #qcHeaderMount .qc-user { max-width: 36vw; }
+}
+</style>
 </head>
 <body>
 <script src="qc-auth.js"></script>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
 <script src="qc-i18n.js"></script>
-<style>
-.qc-userbar{background:#1a252f;color:#fff;padding:6px 16px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;}
-.qc-userbar a{color:#67e8f9;text-decoration:none;}
-</style>
-<div class="qc-userbar" id="qcUserBar">
-  <span id="qcUserInfo"></span>
-  <span><a href="index.html">&#x2190; 返回门户</a></span>
-</div>
+<div id="qcHeaderMount"></div>
 <script>
 (function(){
   var u = guardPage();
   if (!u) { document.body.innerHTML = '<div style="text-align:center;margin-top:120px;"><h2 style="color:red;">请先登录</h2><a href="index.html">返回登录</a></div>'; }
   else {
-    document.getElementById('qcUserInfo').innerHTML = '&#x1f464; ' + (u.name||'?') + ' (' + (u.email||'?') + ')';
+    QCHeader.mount({
+      target: '#qcHeaderMount',
+      title: 'Excelファイル軽量化',
+      portalTitle: '惠海 QC ポータル',
+      iconId: 'excelLight',
+      note: '清理无效公式尾部，生成轻量版Excel。原文件不修改。',
+      user: u,
+      logo: 'assets/brand/huihai-logo.png',
+      homeHref: 'index.html',
+      homeLabel: 'ポータルに戻る',
+      brandActions: '<button type="button" class="qc-slot-btn" id="langZh" onclick="setLanguage(\'zh-CN\')">中文</button><span class="qc-slot-sep">|</span><button type="button" class="qc-slot-btn" id="langJa" onclick="setLanguage(\'ja-JP\')">日本語</button>'
+    });
+    document.querySelector('#qcHeaderMount .qc-tool-meta').setAttribute('data-i18n', 'cleanerSubDesc');
   }
 })();
 </script>
-
-<header>
-  <h1 data-i18n="cleanerTitle">📊 Excel文件轻量化</h1>
-  <span class="badge" data-i18n="cleanerBadge">🔒 完全本地处理 | ZIP/XML v4.1</span>
-  <span class="lang-switch" style="margin-left:auto;"><button onclick="setLanguage('zh-CN')" id="langZh" style="background:none;border:none;color:#fff;cursor:pointer;font-size:0.75rem;opacity:0.6;">中文</button><span style="opacity:0.4;color:#fff;">｜</span><button onclick="setLanguage('ja-JP')" id="langJa" style="background:none;border:none;color:#fff;cursor:pointer;font-size:0.75rem;opacity:0.6;">日本語</button></span>
-</header>
-<div class="back-nav">
-  <a href="index.html" class="back-btn" data-i18n="backHome">← 返回主页</a>
-  <span style="color:#bdc3c7;font-size:0.78rem;" data-i18n="cleanerSubDesc">清理无效公式尾部，生成轻量版Excel。原文件不修改。</span>
-</div>
 
 <div class="container">
   <!-- 流程进度 -->
