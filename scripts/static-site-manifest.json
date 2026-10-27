@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "LOCAL_CANDIDATE_NOT_DEPLOYED",
+  "status": "V20_CASE_STATS_PRODUCTION",
   "notes": [
     "保留全部 HEAD 根 HTML，另含已列入旧白名单的3ka。",
     "ROUND16：TVer 已按授权把 FIX4-B 封板业务逻辑 + 统一 Header 作为正式版（workspace 源）。ROUND20：excel_formula_cleaner.html 已按授权接入 Header ONLY 候选（workspace 源，仅顶部 UI，业务脚本与 Worker 未改）；XLSM 未验收变更不随输出，worker 继续从固定 Git 基线 bf6cf5a 读取；本地删除的 workbench 亦从该基线读取。",
@@ -142,7 +142,7 @@
     {
       "path": "usage_dashboard.html",
       "source": "workspace",
-      "sha256": "4fa0c20fb66c21715324e9f392979638e3c7aca683edecd3052a0c2a1b050b32"
+      "sha256": "0f7b37f8952cde6c3d0477facba2aa48976ca7fe17202210a4e297dc97ab7fcb"
     },
     {
       "path": "usage_dashboard_logic.js",
@@ -169,6 +169,11 @@
       "path": "ターゲット推薦ツール 2.html",
       "source": "workspace",
       "sha256": "88b96b2694f6b6b2397db237cecd7531928cd9569b0d0c0cdf59ed27ffc705c2"
+    },
+    {
+      "path": "case_analysis_logic.js",
+      "source": "workspace",
+      "sha256": "b56f9f6182699e3c4663a348247fd089cc99e04a93ff42b897affa70d345b459"
     }
   ]
 }

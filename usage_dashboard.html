@@ -151,6 +151,37 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
 .spark-single{font-variant-numeric:tabular-nums;font-weight:700;color:var(--text);}
 .spark-single small{font-weight:400;color:var(--text2);margin-left:2px;}
 
+/* ============================================================
+   CASE-ANALYSIS V1：案件分析ビュー
+   既存の 5 ビューの見た目は変えない（このブロックは .ca- 接頭辞のみ）
+============================================================ */
+.ca-note{font-size:.68rem;color:var(--text2);line-height:1.6;}
+.ca-note b{color:var(--text);}
+.ca-caveat{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:10px 12px;font-size:.68rem;line-height:1.6;margin-bottom:14px;}
+.ca-caveat ul{margin:6px 0 0 18px;}
+.ca-caveat li{margin:2px 0;}
+.ca-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px;}
+.ca-kpi{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+.ca-kpi-label{font-size:.62rem;color:var(--text2);font-weight:700;}
+.ca-kpi-value{font-size:1.1rem;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;}
+.ca-kpi-unit{font-size:.62rem;font-weight:400;color:var(--text2);margin-left:2px;}
+.ca-toolraw{font-size:.68rem;color:var(--text2);}
+.ca-tool-name{display:inline;}
+.ca-tool-raw{display:block;font-size:.6rem;line-height:1.25;color:var(--text2);}
+/* 案件テーブルはツール名が長いので専用の幅を確保し、元IDは折り返して省略しない */
+.ca-table td.tool-cell,.ca-table th.tool-cell{max-width:250px;}
+.ca-table td.tool-cell{white-space:normal;word-break:break-word;line-height:1.35;}
+.ca-mark{display:inline-block;margin-left:4px;font-size:.68rem;font-weight:700;color:#b45309;cursor:help;}
+.ca-foot-note{margin-top:8px;font-size:.66rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 10px;line-height:1.5;}
+.ca-diff{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap;}
+.ca-diff.up{color:#af3328;}
+.ca-diff.down{color:#229759;}
+.ca-diff.flat,.ca-diff.muted{color:var(--text2);}
+.ca-diff-note{display:block;font-size:.58rem;font-weight:400;color:var(--text2);white-space:normal;max-width:260px;}
+.ca-detail{margin-top:16px;}
+.ca-sessid{font-family:ui-monospace,Consolas,monospace;font-size:.66rem;color:var(--text2);}
+.ca-status{font-size:.72rem;color:var(--text2);padding:10px 2px;}
+
 /* ---- 表格 ---- */
 .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;max-height:70vh;}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:.76rem;}
@@ -269,6 +300,7 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
 <script src="tool_logos.js"></script>
 <script src="qc-header.js"></script>
 <script src="usage_dashboard_logic.js"></script>
+<script src="case_analysis_logic.js"></script>
 
 <div id="qcHeaderMount"></div>
 
@@ -324,7 +356,7 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
         <label for="selDate">対象日</label>
         <select id="selDate"></select>
       </div>
-      <div class="field" data-views="monthly daily">
+      <div class="field" data-views="monthly daily case">
         <label for="selPerson">人員</label>
         <select id="selPerson"><option value="">全員</option></select>
       </div>
@@ -349,6 +381,36 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
         <label for="inpTo">期間 To（任意）</label>
         <input type="date" id="inpTo">
       </div>
+      <!-- CASE-ANALYSIS V1：案件分析ビュー専用の絞り込み -->
+      <div class="field" data-views="case">
+        <label for="inpCaseFrom">期間 From（任意）</label>
+        <input type="date" id="inpCaseFrom">
+      </div>
+      <div class="field" data-views="case">
+        <label for="inpCaseTo">期間 To（任意）</label>
+        <input type="date" id="inpCaseTo">
+      </div>
+      <div class="field" data-views="case">
+        <label for="selCaseTool">ツール（元ID）</label>
+        <select id="selCaseTool"><option value="">すべて</option></select>
+      </div>
+      <div class="field" data-views="case">
+        <label for="inpCaseQuery">案件名検索</label>
+        <input type="text" id="inpCaseQuery" placeholder="案件名の一部">
+      </div>
+      <div class="field" data-views="case">
+        <label for="selCaseSort">並び順</label>
+        <select id="selCaseSort">
+          <option value="lastUsedDesc">最終利用（新しい順）</option>
+          <option value="execDesc">実行回数（多い順）</option>
+          <option value="sessionDesc">セッション数（多い順）</option>
+          <option value="caseNameAsc">案件名（昇順）</option>
+        </select>
+      </div>
+      <div class="field" data-views="case">
+        <label>&nbsp;</label>
+        <button class="btn" type="button" id="btnCaseSearch">検索</button>
+      </div>
       <div class="toolbar-spacer"></div>
       <div class="field">
         <label>&nbsp;</label>
@@ -363,6 +425,7 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
       <button class="tab" type="button" data-view="daily">日次統計</button>
       <button class="tab" type="button" data-view="person">人員分析</button>
       <button class="tab" type="button" data-view="tool">ツール分析</button>
+      <button class="tab" type="button" data-view="case">案件分析</button>
     </div>
 
     <div id="viewMount"></div>
@@ -407,7 +470,13 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
     sort: 'execDesc',
     from: '',
     to: '',
-    trendTool: ''     // FIX1A-3：ツール分析で選択中のツール名（空なら実行回数 1 位）
+    trendTool: '',     // FIX1A-3：ツール分析で選択中のツール名（空なら実行回数 1 位）
+    // CASE-ANALYSIS V1：案件分析ビュー専用（他ビューの状態とは独立）
+    caseFrom: '',
+    caseTo: '',
+    caseTool: '',
+    caseQuery: '',
+    caseSort: 'lastUsedDesc'
   };
 
   var store = {
@@ -442,6 +511,8 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
     $('gateDenied').hidden = which !== 'denied';
     $('gateError').hidden = which !== 'error';
     $('dashBody').hidden = which !== 'body';
+    // CASE-ANALYSIS V1：権限拒否・取得エラー（ログイン失効を含む）では案件データを破棄する
+    if (which === 'error' || which === 'denied') clearCaseData();
     if (which === 'error') {
       $('gateErrorTitle').textContent = title || '統計データを取得できませんでした';
       $('gateErrorText').textContent = text || '';
@@ -1316,6 +1387,391 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
   }
 
   // ============================================================
+  // CASE-ANALYSIS V1：案件分析
+  // ------------------------------------------------------------
+  // ・「案件分析」を開いたときだけ caseStats を呼ぶ（遅延ロード）。
+  //   他の 5 ビューは従来どおり usageStats の 1 回取得のみで動く。
+  // ・案件データは localStorage / sessionStorage に一切保存しない。
+  // ・権限失効・ログイン失効を検知したら caseStore を破棄する。
+  // ・集計（案件のまとめ / Session 去重）はサーバー側。ここは表示だけ。
+  // ============================================================
+
+  var CA = window.CaseAnalysis || null;
+
+  function emptyCaseStore() {
+    return { loaded: false, loading: false, error: '', rows: [], meta: null, filters: null };
+  }
+  function emptyCaseDetail() {
+    return { caseKey: '', open: false, loading: false, rows: [], row: null, meta: null, error: '' };
+  }
+  var caseStore = emptyCaseStore();
+  var caseDetail = emptyCaseDetail();
+
+  // CASE-GATE：要求バージョン。遅れて返った古い応答を破棄するために使う。
+  //   summary … 一覧取得 / sessions … Session 明細取得
+  var caseReqSeq = { summary: 0, sessions: 0 };
+
+  // 権限・ログイン失効時に画面の案件データを破棄する。
+  // 進行中の応答も同時に無効化するので、消した後に古い内容が復活しない。
+  function clearCaseData() {
+    caseReqSeq.summary++;
+    caseReqSeq.sessions++;
+    caseStore = emptyCaseStore();
+    caseDetail = emptyCaseDetail();
+  }
+
+  // 課室など、案件データの取得条件が変わったときの共通処理。
+  // ・旧条件のデータを即座に消す（新条件と不一致な古い行を見せない）
+  // ・進行中の応答は clearCaseData が無効化する
+  function invalidateCaseAndReload() {
+    clearCaseData();
+    fetchCaseCases().then(function () { render(); });
+  }
+
+  function currentCaseFilters() {
+    return {
+      dept: state.dept,
+      email: state.person,
+      tool: state.caseTool,
+      from: state.caseFrom,
+      to: state.caseTo,
+      q: state.caseQuery
+    };
+  }
+
+  function caseFilterPayload(f) {
+    return {
+      dept: f.dept || '',
+      email: f.email || '',
+      tool: f.tool || '',
+      from: f.from ? f.from.replace(/-/g, '/') : '',
+      to: f.to ? f.to.replace(/-/g, '/') : '',
+      q: f.q || ''
+    };
+  }
+
+  function fetchCaseCases() {
+    var session = (typeof getValidSession === 'function') ? getValidSession() : null;
+    if (!session || !session.token) {
+      clearCaseData();
+      caseStore.error = 'ログイン状態を確認できませんでした。ポータルから再度ログインしてください。';
+      return Promise.resolve(false);
+    }
+    if (typeof apiCall !== 'function') {
+      caseStore.error = '認証モジュールを読み込めませんでした。';
+      return Promise.resolve(false);
+    }
+    var f = currentCaseFilters();
+    var payload = caseFilterPayload(f);
+    payload.token = session.token;
+    payload.mode = 'summary';
+
+    // 新しい要求を発行（同時に走っても最後の版だけが採用される）
+    var seq = ++caseReqSeq.summary;
+
+    // 新条件で取り直す間、旧条件の行は表示しない
+    caseStore.rows = [];
+    caseStore.meta = null;
+    caseStore.loaded = false;
+    caseStore.loading = true;
+    caseStore.error = '';
+    render();
+
+    return apiCall('caseStats', payload).then(function (res) {
+      if (seq !== caseReqSeq.summary) return false;   // 古い応答は捨てる
+      caseStore.loading = false;
+      var probe = CA ? CA.validatePayload(res) : { ok: false, error: '表示モジュールを読み込めませんでした' };
+      if (res && res.meta && res.meta.mode === 'sessions') probe = { ok: false, error: '案件一覧の応答形式が不正です' };
+      if (!probe.ok) {
+        if (res && (res.code === 'UNAUTHORIZED' || res.code === 'FORBIDDEN')) {
+          clearCaseData();   // 権限失効：保持している案件データも破棄（進行中も無効化）
+        }
+        caseStore.error = probe.error + (res && res.code ? '（' + res.code + '）' : '');
+        return false;
+      }
+      caseStore.rows = res.cases || [];
+      caseStore.meta = res.meta || null;
+      caseStore.filters = f;
+      caseStore.loaded = true;
+      buildCaseToolOptions(res.toolsDetail || res.tools || []);
+      return true;
+    }).catch(function (err) {
+      if (seq !== caseReqSeq.summary) return false;   // 古い応答は捨てる
+      caseStore.loading = false;
+      caseStore.error = '案件データの取得に失敗しました：' + (err && err.message ? err.message : String(err));
+      return false;
+    });
+  }
+
+  function buildCaseToolOptions(tools) {
+    var sel = $('selCaseTool');
+    if (!sel) return;
+    var current = state.caseTool || '';
+    var list = (tools || []).map(function (t) {
+      if (typeof t === 'string') {
+        // 旧応答（生 ID のみ）との互換。表示名が無いので生 ID のまま出す
+        return { tool: t, toolLabel: t, toolLabelKnown: false, toolLabelAmbiguous: false };
+      }
+      return t;
+    });
+    var html = '<option value="">すべて</option>';
+    list.forEach(function (t) {
+      var label = t.toolLabel || t.tool;
+      var text = (!t.toolLabelKnown || t.toolLabelAmbiguous) && label !== t.tool
+        ? label + '（' + t.tool + '）'
+        : label;
+      html += '<option value="' + esc(t.tool) + '">' + esc(text) + '</option>';
+    });
+    if (current && !list.some(function (t) { return t.tool === current; })) {
+      // 現在の絞り込み値が今回の応答に無い場合も、選択状態を失わないよう残す
+      html += '<option value="' + esc(current) + '">' + esc(current) + '</option>';
+    }
+    sel.innerHTML = html;
+    sel.value = current;
+  }
+
+  function openCaseDetail(caseKey) {
+    if (!caseKey) return;
+    var session = (typeof getValidSession === 'function') ? getValidSession() : null;
+    if (!session || !session.token) {
+      clearCaseData();
+      caseStore.error = 'ログイン状態を確認できませんでした。';
+      render();
+      return;
+    }
+    var seq = ++caseReqSeq.sessions;
+    caseDetail = emptyCaseDetail();
+    caseDetail.caseKey = caseKey;
+    caseDetail.open = true;
+    caseDetail.loading = true;
+    render();
+
+    var payload = caseFilterPayload(caseStore.filters || currentCaseFilters());
+    payload.token = session.token;
+    payload.mode = 'sessions';
+    payload.caseKey = caseKey;
+
+    apiCall('caseStats', payload).then(function (res) {
+      // 別の案件を開き直した / データを消した場合は、この応答を捨てる
+      if (seq !== caseReqSeq.sessions || caseDetail.caseKey !== caseKey) return;
+      caseDetail.loading = false;
+      var probe = CA ? CA.validatePayload(res) : { ok: false, error: '表示モジュールを読み込めませんでした' };
+      if (!res || !res.meta || res.meta.mode !== 'sessions') probe = { ok: false, error: 'Session 明細の応答形式が不正です' };
+      if (!probe.ok) {
+        if (res && (res.code === 'UNAUTHORIZED' || res.code === 'FORBIDDEN')) {
+          clearCaseData();
+        }
+        caseDetail.error = probe.error + (res && res.code ? '（' + res.code + '）' : '');
+      } else {
+        caseDetail.rows = res.sessions || [];
+        caseDetail.row = res.case || null;
+        caseDetail.meta = res.meta || null;
+      }
+      render();
+    }).catch(function (err) {
+      if (seq !== caseReqSeq.sessions || caseDetail.caseKey !== caseKey) return;
+      caseDetail.loading = false;
+      caseDetail.error = 'Session 明細の取得に失敗しました：' +
+        (err && err.message ? err.message : String(err));
+      render();
+    });
+  }
+
+  // 画面が必ず出す前提（サーバー応答に依存させない）
+  var CASE_BASE_CAVEATS = [
+    '媒体種別（Display/YouTube/OTT 等）は logs に記録がないため分割できません（BLOCKED）',
+    '案件名は自由入力です。同名の別案件・別名の同一案件は機械的に判定できません',
+    '案件グループは名称別の表示です。日付をまたぐ同名も含みますが、同一案件とは判定しません。実際の案件数は算出できません。Session明細で各作業記録を確認してください',
+    '対応者の人数は表示名の重複除去です。同姓同名の別人を区別できません',
+    'ツールは元の識別子（logs E）で区別します。日文表示名での統合は行いません',
+    '最新の差異件数が 0 でも「案件完了」とは判定しません（完了概念は未実装）'
+  ];
+
+  function caseCaveatHTML(meta) {
+    // 応答前でも前提は必ず見せる（取得に失敗しても誤読しないように）
+    var items = CASE_BASE_CAVEATS.slice();
+    ((meta && meta.caveats) || []).forEach(function (c) {
+      if (items.indexOf(String(c)) < 0) items.push(String(c));
+    });
+    var html = '<div class="ca-caveat"><b>この画面の前提（誤読防止のため必ず確認）</b><ul>';
+    items.forEach(function (c) { html += '<li>' + esc(c) + '</li>'; });
+    html += '</ul></div>';
+    return html;
+  }
+
+  // ツール名の表示（集計は元ID、表示は日文名。多対一・未知のときは元IDを併記）
+  function toolLabelHTML(c) {
+    var label = c.toolLabel || c.tool || '';
+    var raw = c.tool || '';
+    var needRaw = (!c.toolLabelKnown || c.toolLabelAmbiguous) && raw && raw !== label;
+    return '<span class="ca-tool-name">' + esc(label) +
+      (needRaw ? '<span class="ca-tool-raw">（' + esc(raw) + '）</span>' : '') +
+      '</span>';
+  }
+
+  function caseTableHTML(rows) {
+    if (!rows.length) {
+      return '<div class="empty">対象条件に該当する案件がありません。<br>' +
+        '<span class="ca-note">案件情報を記録しているのは現状 DV360 設定チェック / Amazon DSP 設定チェック のみです。' +
+        '他のツールは案件名を送っていないため、ここには表示されません。</span></div>';
+    }
+    var html = '<div class="table-wrap" style="max-height:54vh;"><table class="ca-table"><thead><tr>' +
+      '<th>案件名</th><th>ツール</th><th>課室</th>' +
+      '<th class="num">作業セッション数</th><th class="num">実行回数</th>' +
+      '<th>対応者</th><th>初回利用</th><th>最終利用</th><th>差異（初回→最終）</th><th></th>' +
+      '</tr></thead><tbody>';
+
+    rows.forEach(function (c) {
+      var diff = CA ? CA.formatDiffChange(c.diff) : { text: '確認不可', tone: 'muted', note: '', showNumbers: false };
+      var assignees = CA ? CA.formatAssignees(c.assignees, 2) : (c.assignees || []).join(' / ');
+      var partial = (c.partialSessions || 0) > 0
+        ? '<span class="ca-mark" title="期間外にもログがある Session が ' + fmtNum(c.partialSessions) +
+          ' 件あります（その Session は期間内の分だけで集計しています）">※</span>'
+        : '';
+      html += '<tr>' +
+        '<td title="' + esc(c.caseName) + '">' + esc(c.caseName) + '</td>' +
+        '<td class="tool-cell" title="' + esc(c.tool) + '">' + toolLabelHTML(c) + '</td>' +
+        '<td>' + esc(c.dept || '—') + '</td>' +
+        '<td class="num">' + fmtNum(c.sessionCount) + partial + '</td>' +
+        '<td class="num">' + fmtNum(c.execCount) + '</td>' +
+        '<td title="' + esc((c.assignees || []).join(' / ')) + '">' + esc(assignees) + '</td>' +
+        '<td>' + esc(c.firstUsed || '—') + '</td>' +
+        '<td>' + esc(c.lastUsed || '—') + '</td>' +
+        '<td><span class="ca-diff ' + diff.tone + '">' + esc(diff.text) + '</span>' +
+          (diff.note ? '<span class="ca-diff-note">' + esc(diff.note) + '</span>' : '') + '</td>' +
+        '<td><button class="btn btn-ghost" type="button" style="padding:3px 10px;font-size:.68rem;" ' +
+          'data-case-detail="' + esc(c.caseKey) + '">Session</button></td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function caseDetailHTML() {
+    if (!caseDetail.open) return '';
+    var html = '<div class="panel ca-detail"><div class="panel-hd">' +
+      '<span class="panel-title">Session 明細</span>' +
+      '<span class="panel-sub">' +
+      (caseDetail.row ? esc(caseDetail.row.caseName) + ' ・ ' +
+        esc(caseDetail.row.toolLabel || caseDetail.row.tool) : '') +
+      '</span>' +
+      '<button class="btn btn-ghost" type="button" id="btnCaseDetailClose" ' +
+      'style="margin-left:auto;padding:3px 10px;font-size:.68rem;">閉じる</button></div>' +
+      '<div class="panel-bd">';
+
+    if (caseDetail.loading) {
+      html += '<div class="ca-status">Session 明細を読み込んでいます…</div>';
+    } else if (caseDetail.error) {
+      html += notice('error', esc(caseDetail.error));
+    } else if (!caseDetail.rows.length) {
+      html += '<div class="empty">Session がありません</div>';
+    } else {
+      html += '<div class="ca-note" style="margin-bottom:8px;">' +
+        '「差異合計」は<b>その Session 内の合計</b>です。最後の 1 回の差異件数ではありません。' +
+        '（最後の差異は一覧の「差異（初回→最終）」列を参照）</div>';
+      html += '<div class="table-wrap" style="max-height:40vh;"><table><thead><tr>' +
+        '<th>Session ID</th><th>対応者</th><th class="num">実行回数</th>' +
+        '<th class="num">差異合計</th><th>初回</th><th>最終</th>' +
+        '</tr></thead><tbody>';
+      caseDetail.rows.forEach(function (s) {
+        html += '<tr>' +
+          '<td class="ca-sessid" title="' + esc(s.sessionId) + '">' + esc(String(s.sessionId).slice(0, 13)) + '…</td>' +
+          '<td>' + esc((s.assignees || []).join(' / ') || '—') + '</td>' +
+          '<td class="num">' + fmtNum(s.logCount) + '</td>' +
+          '<td class="num">' + (s.diffSum === null || s.diffSum === undefined
+            ? '<span class="ca-diff muted">確認不可</span>'
+            : fmtNum(s.diffSum)) + '</td>' +
+          '<td>' + esc(s.firstUsed || '—') + '</td>' +
+          '<td>' + esc(s.lastUsed || '—') + '</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderCase() {
+    if (!CA) {
+      return notice('error', '案件分析の表示モジュール（case_analysis_logic.js）を読み込めませんでした。');
+    }
+    var html = '';
+    var meta = caseStore.meta;
+    var rows = CA.sortCases(caseStore.rows, state.caseSort);
+
+    html += '<div class="panel"><div class="panel-hd">' +
+      '<span class="panel-title">案件分析</span>' +
+      '<span class="panel-sub">' + caseSubText() + '</span></div><div class="panel-bd">';
+
+    html += caseCaveatHTML(meta);
+
+    if (caseStore.error) {
+      html += notice('error', esc(caseStore.error) +
+        ' <button class="link-btn" type="button" id="btnCaseRetry">再試行</button>');
+    } else if (caseStore.loading) {
+      html += '<div class="ca-status">案件データを読み込んでいます…</div>';
+    } else if (caseStore.loaded) {
+      var sum = CA.summarizeCases(rows);
+      html += '<div class="ca-kpis">' +
+        caKpi('案件グループ', sum.caseCount, '件') +
+        caKpi('作業セッション数', sum.sessionTotal, '件') +
+        caKpi('実行回数', sum.execTotal, '回') +
+        caKpi('対応者（表示名数）', sum.assigneeCount, '名') +
+        caKpi('ツール（元ID）', sum.toolCount, '種') +
+        '</div>';
+      html += caseTableHTML(rows);
+      if (meta && meta.partialSessionCount > 0) {
+        html += '<div class="ca-foot-note">※ 指定期間の外にもログがある Session が ' +
+          fmtNum(meta.partialSessionCount) + ' 件あります。該当する Session は期間内のログだけで集計しています。' +
+          '（案件ごとの件数は「作業セッション数」列の ※ にマウスを乗せると確認できます）</div>';
+      }
+      html += '<div class="ca-note" style="margin-top:10px;">' +
+        '・<b>案件グループ</b>＝「課室 + 元ツールID + 完全一致の案件名」。業務上の案件IDではありません。<br>' +
+        '・<b>作業セッション数</b>＝異なる案件Session ID の数、<b>実行回数</b>＝ログ行数（1 Session＝1 実行ではありません）。<br>' +
+        '・<b>ツール名の表示</b>＝既存の日文マッピング。集計は元ツールIDで行い、表示名では統合しません。' +
+        '同じ表示名に複数の元IDがある場合と未知のツールは、元IDを併記します。<br>' +
+        '・差異は「最後の 1 回」と「Session 内合計」を区別しています。最新差異が 0 でも案件完了とは判定しません。' +
+        '</div>';
+      if (meta && meta.crossCheck && meta.crossCheck.available) {
+        html += '<div class="ca-note" style="margin-top:6px;">参考：case_summary 明細行 ' +
+          fmtNum(meta.crossCheck.caseSummaryRows) + ' 行（(メール×ツール×Session) 粒度のため案件数とは一致しません）</div>';
+      }
+      if (meta) {
+        html += '<div class="ca-note" style="margin-top:6px;">走査ログ ' + fmtNum(meta.scannedRows) +
+          ' 行 / 案件情報不足・不正 ' + fmtNum(meta.skippedNoCaseRows) +
+          (meta.skippedNoCaseNameRows !== undefined ? '（案件名なし ' + fmtNum(meta.skippedNoCaseNameRows) + ' / Sessionなし ' + fmtNum(meta.skippedNoSessionRows) + ' / その他不正 ' + fmtNum(meta.skippedInvalidRows) + '）' : '') +
+          ' 行 / 条件外 ' + fmtNum(meta.filteredRows) + ' 行' +
+          (meta.generatedAt ? ' ・ 集計 ' + esc(meta.generatedAt) : '') + '</div>';
+      }
+    } else {
+      html += '<div class="ca-status">「検索」を押すと案件データを取得します。</div>';
+    }
+
+    html += '</div></div>';
+    html += caseDetailHTML();
+    return html;
+  }
+
+  function caKpi(label, value, unit) {
+    return '<div class="ca-kpi"><div class="ca-kpi-label">' + esc(label) + '</div>' +
+      '<div class="ca-kpi-value">' + fmtNum(value) + '<span class="ca-kpi-unit">' + esc(unit) + '</span></div></div>';
+  }
+
+  function caseSubText() {
+    var parts = [];
+    parts.push(state.dept ? esc(state.dept) : '全部門');
+    if (state.caseFrom || state.caseTo) {
+      parts.push('期間 ' + esc(state.caseFrom || '指定なし') + ' 〜 ' + esc(state.caseTo || '指定なし'));
+    } else {
+      parts.push('全期間');
+    }
+    if (state.caseTool) parts.push('ツール ' + esc(state.caseTool));
+    if (state.person) parts.push('人員 ' + esc(state.person));
+    if (state.caseQuery) parts.push('検索「' + esc(state.caseQuery) + '」');
+    return parts.join(' ・ ');
+  }
+
+  // ============================================================
   // 主渲染
   // ============================================================
 
@@ -1329,6 +1785,7 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
       else if (state.view === 'daily') html = renderDaily();
       else if (state.view === 'person') html = renderPerson();
       else if (state.view === 'tool') html = renderTool();
+      else if (state.view === 'case') html = renderCase();
     } catch (e) {
       console.error('[usage] render failed', e);
       html = notice('error', '表示中にエラーが発生しました：' + esc(e && e.message ? e.message : String(e)));
@@ -1384,6 +1841,27 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
     if (moreBtn) {
       moreBtn.addEventListener('click', function () { gotoToolAnalysisAllPeriod(); });
     }
+    // CASE-ANALYSIS V1：Session 明細
+    var detailBtns = document.querySelectorAll('#viewMount [data-case-detail]');
+    for (var k = 0; k < detailBtns.length; k++) {
+      detailBtns[k].addEventListener('click', function () {
+        openCaseDetail(this.getAttribute('data-case-detail'));
+      });
+    }
+    var closeDetail = document.querySelector('#viewMount #btnCaseDetailClose');
+    if (closeDetail) {
+      closeDetail.addEventListener('click', function () {
+        caseReqSeq.sessions++;
+        caseDetail = emptyCaseDetail();
+        render();
+      });
+    }
+    var caseRetry = document.querySelector('#viewMount #btnCaseRetry');
+    if (caseRetry) {
+      caseRetry.addEventListener('click', function () {
+        fetchCaseCases().then(function () { render(); });
+      });
+    }
     // FIX1A-3：分析対象ツールの切替。グラフだけを差し替え、表・GAS には触れない。
     var trendSel = document.querySelector('#viewMount #selTrendTool');
     if (trendSel) {
@@ -1405,11 +1883,21 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
       state.tool = '';
       // 换课室后重新生成人员/工具下拉（不重新请求后端）
       buildFilters();
+      // CASE-GATE：案件分析は課室が検索条件なので、表示中なら案件データも取り直す
+      //（他の 5 ビューは従来どおりローカル再計算のみ）
+      if (state.view === 'case') {
+        invalidateCaseAndReload();
+        return;
+      }
       render();
     });
     el.selMonth.addEventListener('change', function () { state.month = this.value; render(); });
     el.selDate.addEventListener('change', function () { state.date = this.value; render(); });
-    el.selPerson.addEventListener('change', function () { state.person = this.value; render(); });
+    el.selPerson.addEventListener('change', function () {
+      state.person = this.value;
+      if (state.view === 'case') { invalidateCaseAndReload(); return; }
+      render();
+    });
     el.selTool.addEventListener('change', function () { state.tool = this.value; render(); });
     el.selSort.addEventListener('change', function () { state.sort = this.value; render(); });
     el.inpFrom.addEventListener('change', function () { state.from = this.value; render(); });
@@ -1419,6 +1907,17 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
       var t = ev.target.closest ? ev.target.closest('.tab') : null;
       if (!t) return;
       state.view = t.getAttribute('data-view');
+      // CASE-ANALYSIS V1：案件分析は「開いたときだけ」取得する（遅延ロード）。
+      // ただし保持しているデータの取得条件が現在の条件と違う場合は取り直す
+      //（他ビューで課室を変えて戻ってきたときに、古い条件の行を見せない）。
+      if (state.view === 'case') {
+        var sameAsLoaded = caseStore.loaded && CA && CA.sameFilters(caseStore.filters, currentCaseFilters());
+        if (!sameAsLoaded) {
+          caseDetail = emptyCaseDetail();
+          invalidateCaseAndReload();
+          return;
+        }
+      }
       render();
     });
 
@@ -1429,7 +1928,17 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
       fetchStats().then(function (ok) {
         btn.disabled = false;
         btn.textContent = '🔄 再取得';
-        if (ok) { buildFilters(); render(); showGate('body'); }
+        if (!ok) return;
+        buildFilters();
+        // CASE-ANALYSIS V1：statistics を取り直したら案件データは古いので必ず捨てる。
+        // 案件分析を開いている場合は、その場で取り直す（閉じている場合は次に開いたとき）。
+        clearCaseData();
+        if (state.view === 'case') {
+          fetchCaseCases().then(function () { render(); showGate('body'); });
+          return;
+        }
+        render();
+        showGate('body');
       });
     });
 
@@ -1447,9 +1956,47 @@ td.tool-cell,th.tool-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis
       state.to = '';
       el.inpFrom.value = '';
       el.inpTo.value = '';
+      // CASE-ANALYSIS V1：案件分析の絞り込みも一緒に戻す（取得済みデータは破棄）
+      state.caseFrom = '';
+      state.caseTo = '';
+      state.caseTool = '';
+      state.caseQuery = '';
+      state.caseSort = 'lastUsedDesc';
+      if ($('inpCaseFrom')) $('inpCaseFrom').value = '';
+      if ($('inpCaseTo')) $('inpCaseTo').value = '';
+      if ($('selCaseTool')) $('selCaseTool').value = '';
+      if ($('inpCaseQuery')) $('inpCaseQuery').value = '';
+      if ($('selCaseSort')) $('selCaseSort').value = 'lastUsedDesc';
+      clearCaseData();
       buildFilters();
       render();
     });
+
+    // ---- CASE-ANALYSIS V1：案件分析の絞り込み（明示操作でのみ再取得） ----
+    var caseSearch = $('btnCaseSearch');
+    if (caseSearch) {
+      caseSearch.addEventListener('click', function () {
+        state.caseFrom = $('inpCaseFrom') ? $('inpCaseFrom').value : '';
+        state.caseTo = $('inpCaseTo') ? $('inpCaseTo').value : '';
+        state.caseTool = $('selCaseTool') ? $('selCaseTool').value : '';
+        state.caseQuery = $('inpCaseQuery') ? String($('inpCaseQuery').value || '').trim() : '';
+        caseDetail = emptyCaseDetail();
+        fetchCaseCases().then(function () { render(); });
+      });
+    }
+    var caseQueryInput = $('inpCaseQuery');
+    if (caseQueryInput) {
+      caseQueryInput.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' && caseSearch) caseSearch.click();
+      });
+    }
+    var caseSortSel = $('selCaseSort');
+    if (caseSortSel) {
+      caseSortSel.addEventListener('change', function () {
+        state.caseSort = this.value;
+        render();   // 並べ替えのみ。再取得はしない
+      });
+    }
 
     $('personModalClose').addEventListener('click', function () {
       $('personModal').classList.remove('open');
