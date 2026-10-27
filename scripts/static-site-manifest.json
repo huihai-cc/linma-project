@@ -3,7 +3,7 @@
   "status": "V20_CASE_STATS_PRODUCTION",
   "notes": [
     "保留全部 HEAD 根 HTML，另含已列入旧白名单的3ka。",
-    "ROUND16：TVer 已按授权把 FIX4-B 封板业务逻辑 + 统一 Header 作为正式版（workspace 源）。ROUND20：excel_formula_cleaner.html 已按授权接入 Header ONLY 候选（workspace 源，仅顶部 UI，业务脚本与 Worker 未改）；XLSM 未验收变更不随输出，worker 继续从固定 Git 基线 bf6cf5a 读取；本地删除的 workbench 亦从该基线读取。",
+    "ROUND16：TVer 已按授权把 FIX4-B 封板业务逻辑 + 统一 Header 作为正式版（workspace 源）。ROUND20：excel_formula_cleaner.html 已按授权接入 Header ONLY 候选（workspace 源，仅顶部 UI，业务脚本与 Worker 未改）；XLSM 未验收变更不随输出。V20：worker 与 workbench_concept 改为从 workspace 源读取（字节与固定 Git 基线 bf6cf5a 逐字节一致，仅改 source 字段以兼容 Vercel 浅克隆构建）。",
     "每项SHA256固定；版本更新需独立审核、重建清单及测试。",
     "TVer公开性/既有认证、XLSM候选业务验收（候选仅保留在工作区，不随本清单发布）、Excel Header ONLY 的真人QA和实际Vercel配置仍是阻断项。"
   ],
@@ -55,9 +55,8 @@
     },
     {
       "path": "excel_formula_cleaner_worker.js",
-      "source": "git",
-      "sha256": "9f857ca71c2b9cb1e252cf94ed29a4c8245fad6530bcac847332d07876499a98",
-      "revision": "bf6cf5a25754be70ed630d8d554912d9039d1d90"
+      "source": "workspace",
+      "sha256": "9f857ca71c2b9cb1e252cf94ed29a4c8245fad6530bcac847332d07876499a98"
     },
     {
       "path": "image_compare.html",
@@ -151,9 +150,8 @@
     },
     {
       "path": "workbench_concept.html",
-      "source": "git",
-      "sha256": "682ec5916e2bae6126bc47b3e9e2fa42f4ffd4c164d25e618185b57f29b42f89",
-      "revision": "bf6cf5a25754be70ed630d8d554912d9039d1d90"
+      "source": "workspace",
+      "sha256": "682ec5916e2bae6126bc47b3e9e2fa42f4ffd4c164d25e618185b57f29b42f89"
     },
     {
       "path": "xlsx.full.min.js",
