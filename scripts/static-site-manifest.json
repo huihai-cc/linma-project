@@ -14,6 +14,11 @@
       "sha256": "e823387a854af0c71b7361b76ad8214ca8fa12627a6a1e26e7015bcb383cc43d"
     },
     {
+      "path": "3ka_remaining_task.html",
+      "source": "workspace",
+      "sha256": "9bb88a143a8658c86f557b1f4b59aef4656dd89080f62df457d04f5306bd543e"
+    },
+    {
       "path": "amazon_dsp_check.html",
       "source": "workspace",
       "sha256": "e1a561651de9232d876d63d6d970d0eeb2f7b1ed121cc8a00908db1f009aeafe"
@@ -66,7 +71,7 @@
     {
       "path": "index.html",
       "source": "workspace",
-      "sha256": "bbdf48ea4aaa1033dd0f186e4900ab7da009a445feee5858e427fab9995a42f8"
+      "sha256": "d55af844b0815d9ec0fe4573c42ade606fb427ab6e97c28a9ad9bb8cd9f8fe84"
     },
     {
       "path": "jszip.min.js",
@@ -152,6 +157,11 @@
       "path": "workbench_concept.html",
       "source": "workspace",
       "sha256": "682ec5916e2bae6126bc47b3e9e2fa42f4ffd4c164d25e618185b57f29b42f89"
+    },
+    {
+      "path": "xlsx-0.20.3.full.min.js",
+      "source": "workspace",
+      "sha256": "cc015130aa8521e7f088f88898eba949ccdcbfb38df0bd129b44b7273c3a6f41"
     },
     {
       "path": "xlsx.full.min.js",

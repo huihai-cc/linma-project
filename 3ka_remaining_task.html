@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3課 残タスク生成ツール</title>
+<link rel="stylesheet" href="qc-ui.css">
+<!--
+  FIX01: 参照ライブラリを CDN(xlsx@0.18.5) からローカル静的資産へ変更
+  ・xlsx-0.20.3.full.min.js : SheetJS 公式配布 (https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/)
+  ・ライセンス : Apache-2.0
+  ・業務データは一切外部送信しない（読み込みは FileReader → メモリ内解析のみ）
+-->
+<script src="xlsx-0.20.3.full.min.js"></script>
+<style>
+/* ============================================================
+   3課 残タスク生成ツール — ページ固有スタイル
+   ・全セレクタを .r3- 接頭辞 / #r3App 配下に限定（他ページへ影響なし）
+   ・Header は qc-ui.css / qc-header.js の共通実装を使用
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP', 'Yu Gothic UI', 'Meiryo UI', 'Meiryo', sans-serif;
+  background: #f0f2f5;
+  color: #1a1a2e;
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.r3-wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 56px; }
+
+/* ---- カード ---- */
+.r3-card {
+  background: #fff; border-radius: 12px; padding: 22px 24px; margin-bottom: 18px;
+  border: 1px solid #e0e4ea; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 18px rgba(0,0,0,0.03);
+}
+.r3-card-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.r3-step {
+  width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center;
+  justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0;
+  background: #3b5bdb;
+}
+.r3-step.s2 { background: #2f7fb8; }
+.r3-step.s3 { background: #2b8a3e; }
+.r3-card-title { font-size: 15px; font-weight: 700; color: #1a2332; }
+.r3-card-sub { font-size: 12px; color: #868e96; margin-left: auto; }
+
+/* ---- アップロード ---- */
+.r3-upload {
+  border: 2px dashed #cbd5e1; border-radius: 10px; padding: 30px 18px;
+  text-align: center; cursor: pointer; transition: border-color .2s, background .2s;
+  background: #fafbfc;
+}
+.r3-upload:hover, .r3-upload.dragover { border-color: #3b5bdb; background: #f2f5ff; }
+.r3-upload.is-busy { opacity: .6; pointer-events: none; }
+.r3-upload:focus-visible { outline: 3px solid rgba(59,91,219,.35); outline-offset: 2px; }
+.r3-upload-icon { font-size: 30px; line-height: 1.2; margin-bottom: 8px; }
+.r3-upload-text { font-size: 13px; color: #6b7280; line-height: 1.7; }
+.r3-upload-text strong { color: #3b5bdb; }
+.r3-upload-text small { color: #9ca3af; font-size: 11.5px; }
+.r3-file-input { display: none; }
+
+.r3-fileinfo {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; margin-top: 12px;
+  flex-wrap: wrap;
+}
+.r3-fileinfo-name { font-size: 13px; font-weight: 600; color: #166534; flex: 1 1 auto; word-break: break-all; }
+.r3-fileinfo-size { font-size: 11.5px; color: #15803d; }
+.r3-fileinfo-btn {
+  background: none; border: 1px solid #bbf7d0; color: #b91c1c; cursor: pointer;
+  font-size: 12px; padding: 3px 10px; border-radius: 6px; font-family: inherit;
+}
+.r3-fileinfo-btn:hover { background: #fef2f2; border-color: #fecaca; }
+
+/* ---- メッセージ ---- */
+.r3-msg { font-size: 12.5px; padding: 10px 13px; border-radius: 8px; margin-top: 10px; line-height: 1.7; }
+.r3-msg.is-error   { color: #a11212; background: #fef2f2; border: 1px solid #fecaca; }
+.r3-msg.is-warn    { color: #8a5300; background: #fffbeb; border: 1px solid #fde68a; }
+.r3-msg.is-info    { color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; }
+.r3-msg.is-ok      { color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; }
+.r3-msg ul { margin: 5px 0 0 18px; }
+.r3-msg li { margin: 2px 0; }
+
+/* ---- 設定グリッド ---- */
+.r3-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.r3-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.r3-field-label { font-size: 11.5px; font-weight: 700; color: #374151; }
+.r3-field select, .r3-field input[type="date"], .r3-field input[type="text"] {
+  width: 100%; padding: 7px 11px; border: 1px solid #d1d5db; border-radius: 8px;
+  font-size: 13px; color: #1a1a2e; background: #fff; outline: none; font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+}
+.r3-field select:focus, .r3-field input:focus {
+  border-color: #3b5bdb; box-shadow: 0 0 0 3px rgba(59,91,219,.12);
+}
+.r3-field-hint { font-size: 11px; color: #9ca3af; line-height: 1.5; }
+
+/* ---- ルール説明 ---- */
+.r3-rules {
+  margin-top: 14px; padding: 12px 14px; background: #f8fafc; border: 1px solid #e2e8f0;
+  border-radius: 8px; font-size: 11.5px; color: #475569; line-height: 1.9;
+}
+.r3-rules strong { color: #1e293b; }
+.r3-tag {
+  display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10.5px;
+  font-weight: 700; margin: 0 2px; background: #dbeafe; color: #1e40af;
+}
+.r3-tag.b { background: #fef9c3; color: #854d0e; }
+.r3-tag.f { background: #d1fae5; color: #065f46; }
+.r3-tag.i { background: #fce7f3; color: #9d174d; }
+
+/* ---- ボタン ---- */
+.r3-actions { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.r3-btn {
+  font-family: inherit; font-size: 14px; font-weight: 700; padding: 10px 30px;
+  border-radius: 8px; border: 1px solid transparent; cursor: pointer;
+  transition: background .15s, box-shadow .15s, transform .1s;
+}
+.r3-btn-primary { background: #3b5bdb; color: #fff; box-shadow: 0 2px 8px rgba(59,91,219,.28); }
+.r3-btn-primary:hover:not(:disabled) { background: #2f4ac4; }
+.r3-btn-primary:active:not(:disabled) { transform: translateY(1px); }
+.r3-btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+.r3-btn-ghost { background: #fff; color: #374151; border-color: #d1d5db; padding: 9px 18px; font-size: 13px; }
+.r3-btn-ghost:hover { background: #f3f4f6; }
+.r3-btn-copy { background: #2b8a3e; color: #fff; padding: 7px 18px; font-size: 12.5px; box-shadow: none; }
+.r3-btn-copy:hover:not(:disabled) { background: #247032; }
+.r3-btn-copy.copied { background: #15803d; }
+
+/* ---- 統計チップ ---- */
+.r3-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.r3-chip {
+  padding: 5px 12px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+  background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb;
+}
+.r3-chip.must { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.r3-chip.notmust { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.r3-chip.furi { background: #fefce8; color: #854d0e; border-color: #fde68a; }
+.r3-chip.mifuri { background: #f3f4f6; color: #374151; }
+.r3-chip.confirm { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+
+/* ---- 要確認アラート ---- */
+.r3-alert {
+  border: 1px solid #f59e0b; border-left: 5px solid #d97706; border-radius: 8px;
+  background: #fffbeb; padding: 12px 15px; margin: 0 0 14px;
+}
+.r3-alert-title {
+  font-size: 13px; font-weight: 700; color: #92400e; line-height: 1.6;
+  display: flex; gap: 7px; align-items: flex-start;
+}
+.r3-alert-sub { font-size: 12px; color: #b45309; margin-top: 4px; }
+.r3-alert-list {
+  margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; color: #78350f;
+  max-height: 168px; overflow: auto;
+}
+.r3-alert-list li {
+  padding: 3px 0; border-bottom: 1px dashed #fde68a; display: flex; gap: 8px;
+  flex-wrap: wrap; align-items: baseline;
+}
+.r3-alert-list li:last-child { border-bottom: none; }
+.r3-alert-row { font-weight: 700; color: #92400e; min-width: 74px; }
+.r3-alert-no { font-family: Consolas, Monaco, monospace; color: #1f2937; word-break: break-all; }
+.r3-alert-why { color: #a16207; }
+
+/* ---- 診断パネル ---- */
+.r3-diag { margin: 14px 0 4px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.r3-diag-head {
+  padding: 9px 14px; background: #f8fafc; font-size: 12px; font-weight: 700; color: #334155;
+  border-bottom: 1px solid #e2e8f0;
+}
+.r3-diag-body { padding: 10px 14px; font-size: 12px; color: #475569; line-height: 1.85; }
+.r3-diag-item { padding: 3px 0; border-bottom: 1px dashed #eef2f6; }
+.r3-diag-item:last-child { border-bottom: none; }
+.r3-diag-item .k { font-weight: 700; color: #1e293b; }
+.r3-diag-item .v { color: #b45309; }
+.r3-diag-item .r { color: #94a3b8; font-size: 11.5px; }
+
+/* ---- 折りたたみ ---- */
+.r3-toggle {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  gap: 10px; padding: 9px 12px; background: #f8fafc; border: 1px solid #e2e8f0;
+  border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 12.5px;
+  font-weight: 700; color: #374151; text-align: left;
+}
+.r3-toggle:hover { background: #f1f5f9; }
+.r3-toggle .arrow { font-size: 11px; color: #94a3b8; transition: transform .2s; }
+.r3-toggle[aria-expanded="true"] .arrow { transform: rotate(180deg); }
+.r3-toggle-body { margin-top: 10px; }
+
+/* ---- プレビュー表 ---- */
+.r3-preview-wrap {
+  max-height: 440px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff;
+}
+.r3-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.r3-table th {
+  background: #f3f4f6; padding: 7px 9px; text-align: left; font-weight: 700; color: #374151;
+  border-bottom: 2px solid #e5e7eb; position: sticky; top: 0; z-index: 1; white-space: nowrap;
+}
+.r3-table td {
+  padding: 5px 9px; border-bottom: 1px solid #f3f4f6; color: #4b5563;
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.r3-table tr:hover td { background: #f9fafb; }
+.r3-table tr.is-confirm td { background: #fffbf2; }
+.r3-table tr.is-confirm:hover td { background: #fff7e6; }
+.r3-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 10.5px;
+  font-weight: 700; white-space: nowrap;
+}
+.r3-badge.furi { background: #fef9c3; color: #854d0e; }
+.r3-badge.mifuri { background: #e5e7eb; color: #374151; }
+.r3-badge.must { background: #fecaca; color: #991b1b; }
+.r3-badge.notmust { background: #dbeafe; color: #1e40af; }
+.r3-badge.confirm { background: #fed7aa; color: #9a3412; }
+.r3-badge.flag { background: #f1f5f9; color: #64748b; margin-right: 3px; }
+.r3-muted { color: #9ca3af; }
+
+/* ---- 出力 ---- */
+.r3-out-head { display: flex; align-items: center; gap: 10px; margin: 18px 0 8px; flex-wrap: wrap; }
+.r3-out-label { font-size: 13px; font-weight: 700; color: #1a2332; }
+.r3-out-head .r3-btn-copy { margin-left: auto; }
+.r3-out {
+  background: #1e1e2e; border-radius: 10px; padding: 18px 20px; color: #cdd6f4;
+  font-family: 'Consolas', 'Monaco', 'MS Gothic', monospace; font-size: 13px;
+  line-height: 1.85; white-space: pre-wrap; word-break: break-word;
+  min-height: 160px; max-height: 480px; overflow: auto;
+}
+.r3-out.is-empty { color: #585b70; font-style: italic; }
+
+/* ---- 認証ブロック ---- */
+.r3-blocked { max-width: 420px; margin: 90px auto; text-align: center; }
+.r3-blocked h2 { font-size: 16px; color: #b91c1c; margin-bottom: 10px; }
+.r3-blocked a { color: #3b5bdb; font-size: 13px; }
+
+.r3-hidden { display: none !important; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+@media (max-width: 720px) {
+  .r3-wrap { padding: 16px 12px 40px; }
+  .r3-card { padding: 18px 16px; }
+  .r3-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="qcHeaderMount"></div>
+
+<div class="r3-wrap" id="r3App">
+
+  <!-- Step 1 : アップロード -->
+  <section class="r3-card" id="r3CardUpload">
+    <div class="r3-card-head">
+      <span class="r3-step">1</span>
+      <span class="r3-card-title">Excelファイルをアップロード</span>
+    </div>
+
+    <div class="r3-upload" id="r3Upload" role="button" tabindex="0" aria-label="Excelファイルを選択">
+      <div class="r3-upload-icon" aria-hidden="true">📁</div>
+      <div class="r3-upload-text">
+        <strong>クリックして選択</strong> またはドラッグ＆ドロップ<br>
+        <small>.xlsx / .xls ファイル対応　／　ファイルは外部に送信されません（ローカル処理）</small>
+      </div>
+      <input class="r3-file-input" type="file" id="r3FileInput" accept=".xlsx,.xls">
+    </div>
+
+    <div id="r3FileSlot"></div>
+
+    <div class="r3-rules">
+      <strong>📌 判定ルール</strong><br>
+      <span class="r3-tag">振出列</span> 空欄 → <strong>振出済</strong>／「未」を含む → <strong>未振出</strong>／
+      それ以外の値 → <strong>振出済</strong>（判定は変更せず、要確認として警告表示）<br>
+      <span class="r3-tag b">No</span> 案件番号　／
+      <span class="r3-tag f">アカウント</span>　／
+      <span class="r3-tag i">サイト（媒体）</span><br>
+      <span class="r3-tag">AP対応締切日</span> 基準日以前 → <strong>本日マスト</strong>／基準日より後 → <strong>本日マストではない</strong>／
+      空欄・日付として解釈できない → <strong>要確認</strong>（<u>上記どちらにも分類しません</u>）<br>
+      媒体統合：YDN／GDN／Lis（GKT_RSA・YSA_RAS・MSA_RSA・広告表示OP）／「媒体_メニュー」→ 媒体名のみ／件数＝出力行数
+    </div>
+  </section>
+
+  <!-- Step 2 : カラム設定 -->
+  <section class="r3-card r3-hidden" id="r3CardConfig">
+    <div class="r3-card-head">
+      <span class="r3-step s2">2</span>
+      <span class="r3-card-title">カラム設定</span>
+      <span class="r3-card-sub" id="r3SheetMeta"></span>
+    </div>
+
+    <div class="r3-grid">
+      <div class="r3-field">
+        <label class="r3-field-label" for="r3ColFuri">振出判定カラム（空欄=振出済、「未」=未振出）</label>
+        <select id="r3ColFuri"></select>
+      </div>
+      <div class="r3-field">
+        <label class="r3-field-label" for="r3ColNo">No（案件番号）カラム</label>
+        <select id="r3ColNo"></select>
+      </div>
+      <div class="r3-field">
+        <label class="r3-field-label" for="r3ColAccount">アカウントカラム</label>
+        <select id="r3ColAccount"></select>
+      </div>
+      <div class="r3-field">
+        <label class="r3-field-label" for="r3ColSite">サイト／メニューカラム</label>
+        <select id="r3ColSite"></select>
+      </div>
+      <div class="r3-field">
+        <label class="r3-field-label" for="r3ColDeadline">AP対応締切日カラム</label>
+        <select id="r3ColDeadline"></select>
+      </div>
+      <div class="r3-field">
+        <label class="r3-field-label" for="r3SheetSelect">シート選択</label>
+        <select id="r3SheetSelect"></select>
+      </div>
+      <div class="r3-field">
+        <label class="r3-field-label" for="r3BaseDate">基準日</label>
+        <input type="date" id="r3BaseDate">
+        <span class="r3-field-hint">この日付を「本日」として締切日と比較します</span>
+      </div>
+      <div class="r3-field">
+        <label class="r3-field-label" for="r3MifuriText">未振出の判定文字</label>
+        <input type="text" id="r3MifuriText" value="未" placeholder="未">
+        <span class="r3-field-hint">振出列にこの文字が含まれていれば未振出と判定</span>
+      </div>
+    </div>
+
+    <div id="r3ConfigMsg"></div>
+
+    <div class="r3-actions">
+      <button class="r3-btn r3-btn-primary" id="r3GenerateBtn" type="button">🚀 生成する</button>
+      <button class="r3-btn r3-btn-ghost" id="r3ResetBtn" type="button">ファイルをクリア</button>
+    </div>
+  </section>
+
+  <!-- Step 3 : プレビュー & 結果 -->
+  <section class="r3-card r3-hidden" id="r3CardResult">
+    <div class="r3-card-head">
+      <span class="r3-step s3">3</span>
+      <span class="r3-card-title">データプレビュー &amp; 生成結果</span>
+      <span class="r3-card-sub" id="r3ResultMeta"></span>
+    </div>
+
+    <div class="r3-stats" id="r3Stats"></div>
+    <div id="r3ConfirmAlert"></div>
+    <div id="r3DiagSlot"></div>
+
+    <button class="r3-toggle" id="r3PreviewToggle" type="button" aria-expanded="false" aria-controls="r3PreviewBody">
+      <span>📊 検出データ一覧を開く</span>
+      <span class="arrow" aria-hidden="true">▼</span>
+    </button>
+    <div class="r3-toggle-body r3-hidden" id="r3PreviewBody">
+      <div class="r3-preview-wrap" id="r3PreviewWrap"></div>
+      <div class="r3-field-hint" style="margin-top:6px;" id="r3PreviewNote"></div>
+    </div>
+
+    <div class="r3-out-head">
+      <span class="r3-out-label">📝 生成結果</span>
+      <button class="r3-btn r3-btn-copy" id="r3CopyBtn" type="button" disabled>📋 コピー</button>
+    </div>
+    <pre class="r3-out is-empty" id="r3Out">生成ボタンをクリックしてください</pre>
+  </section>
+
+</div>
+
+<div class="r3-blocked r3-hidden" id="r3Blocked">
+  <h2>ログインが必要です</h2>
+  <p>ポータルに戻ってログインしてください。</p>
+  <!-- 候補版は candidates/<dir>/ 配下にあるため 2 階層上。正式昇格時は "index.html" に変更 -->
+  <p style="margin-top:12px;"><a href="index.html">← ポータルへ戻る</a></p>
+</div>
+
+<script src="qc-auth.js"></script>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
+<script>
+/* ============================================================
+   3課 残タスク生成ツール  (candidate 01)
+   元実装 : 残タスク生成ツール.html
+            SHA256 07c53fcdaf011732069779567b2dd2bfc7c7a2f72661ce502af328cbecb1510c
+   方針   : 既存業務アルゴリズムを保持し、以下のみ修正
+            ・FIX01 依存ライブラリ（CDN 0.18.5 → ローカル 0.20.3）
+            ・FIX02 HTML インジェクション（innerHTML 全廃）
+            ・FIX03 ファイル状態管理（競合・残存状態）
+            ・BUS01 日付解析失敗の「要確認」分離
+            ・BUS02 行データ診断（業務判定は不変更）
+            ・BUS03 祝日データ修正（主分類には未使用）
+   ============================================================ */
+(function () {
+  'use strict';
+
+  var VERSION = '1.0.0-candidate01';
+
+  /* ============================================================
+     0. 定数
+     ============================================================ */
+
+  /* 国民の祝日 + 振替休日（法定休日のみ）
+     BUS03 修正点:
+       ・2025-11-24 追加 … 2025-11-23(勤労感謝の日/日) の振替休日
+       ・2027-03-22 追加 … 2027-03-21(春分の日/日) の振替休日
+       ・2025-12-31 を COMPANY_HOLIDAYS へ移動（法定休日ではない）
+     注: isBizDay / nextBizDay は既存どおり主分類では未使用のため、
+         本修正は現行の生成結果に影響しない。 */
+  var JP_HOLIDAYS = [
+    '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24',
+    '2025-03-20','2025-04-29','2025-05-03','2025-05-04','2025-05-05',
+    '2025-05-06','2025-07-21','2025-08-11','2025-09-15','2025-09-23',
+    '2025-10-13','2025-11-03','2025-11-23','2025-11-24',
+    '2026-01-01','2026-01-12','2026-02-11','2026-02-23','2026-03-20',
+    '2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06',
+    '2026-07-20','2026-08-11','2026-09-21','2026-09-22','2026-09-23',
+    '2026-10-12','2026-11-03','2026-11-23',
+    '2027-01-01','2027-01-11','2027-02-11','2027-02-23','2027-03-21',
+    '2027-03-22',
+    '2027-04-29','2027-05-03','2027-05-04','2027-05-05','2027-07-19',
+    '2027-08-11','2027-09-20','2027-09-23','2027-10-11','2027-11-03','2027-11-23'
+  ];
+
+  /* 会社独自休業日（法定休日ではない） */
+  var COMPANY_HOLIDAYS = ['2025-12-31'];
+
+  /* 使用記録（usage_dashboard の「ツール別」表示名）
+     既存 3課 ツールはすべて日本語ラベルで登録されているため、
+     表示名は日本語を採用。論理IDは別途保持する。 */
+  var TOOL_LABEL = '3課 残タスク生成';
+  var TOOL_ID = '3ka_remaining_task';
+
+  /* 大きすぎるファイルは「警告のみ」。ブロックしない。 */
+  var LARGE_FILE_WARN_BYTES = 40 * 1024 * 1024;
+
+  /* プレビュー描画の上限（業務判定には影響しない） */
+  var PREVIEW_ROW_LIMIT = 20000;
+
+  /* 診断で画面に列挙する最大件数（件数自体は全件集計） */
+  var DIAG_SHOW_LIMIT = 20;
+
+  /* ============================================================
+     1. 日付ユーティリティ
+     ============================================================ */
+  function fmtDate(d) {
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+  function isHoliday(d) { return JP_HOLIDAYS.indexOf(fmtDate(d)) !== -1; }
+  function isCompanyHoliday(d) { return COMPANY_HOLIDAYS.indexOf(fmtDate(d)) !== -1; }
+  function isBizDay(d) {
+    var w = d.getDay();
+    return w !== 0 && w !== 6 && !isHoliday(d) && !isCompanyHoliday(d);
+  }
+  function nextBizDay(d) {
+    var n = new Date(d.getTime());
+    n.setDate(n.getDate() + 1);
+    while (!isBizDay(n)) n.setDate(n.getDate() + 1);
+    return n;
+  }
+  /* 既存の比較ロジックをそのまま保持（日付のみ比較・時刻無視） */
+  function beforeOrSame(a, b) {
+    return a.getFullYear() < b.getFullYear() ||
+      (a.getFullYear() === b.getFullYear() && (a.getMonth() < b.getMonth() ||
+        (a.getMonth() === b.getMonth() && a.getDate() <= b.getDate())));
+  }
+
+  /* 実在日付のみ生成（2月30日等の繰り上がりを拒否） */
+  function mkDate(y, m, d) {
+    if (!(y >= 1900 && y <= 2200)) return null;
+    if (!(m >= 1 && m <= 12)) return null;
+    if (!(d >= 1 && d <= 31)) return null;
+    var dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+    return dt;
+  }
+
+  /* 全角数字・全角記号・和暦風表記の正規化（判定は厳格なパターンのみ） */
+  function normalizeDateString(raw) {
+    var s = String(raw);
+    s = s.replace(/[\uFF10-\uFF19]/g, function (ch) {
+      return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
+    });
+    s = s.replace(/[／]/g, '/').replace(/[．]/g, '.').replace(/[－ー―–—]/g, '-');
+    s = s.replace(/年/g, '/').replace(/月/g, '/').replace(/日/g, '');
+    s = s.replace(/\s+/g, ' ').trim();
+    s = s.replace(/[ T]\d{1,2}:\d{2}(:\d{2})?(\.\d+)?$/, '').trim();
+    return s;
+  }
+
+  /* 戻り値: { date: Date|null, reason: null|'ambiguous'|'invalid' }
+     ・年なし（3/5 等）は年を推測せず ambiguous として「要確認」へ
+     ・旧実装 new Date("3-5") は 2001-03-05 と解釈され、静かに誤分類していた */
+  function parseDateString(raw) {
+    if (raw === null || raw === undefined) return { date: null, reason: 'invalid' };
+    var s = normalizeDateString(raw);
+    if (!s) return { date: null, reason: 'invalid' };
+    if (/^0+$/.test(s)) return { date: null, reason: 'invalid' };
+
+    var m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);
+    if (m) {
+      var d1 = mkDate(+m[1], +m[2], +m[3]);
+      return d1 ? { date: d1, reason: null } : { date: null, reason: 'invalid' };
+    }
+    m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+    if (m) {
+      var d2 = mkDate(+m[1], +m[2], +m[3]);
+      return d2 ? { date: d2, reason: null } : { date: null, reason: 'invalid' };
+    }
+    m = s.match(/^(\d{1,2})[-\/.](\d{1,2})$/);
+    if (m) return { date: null, reason: 'ambiguous' };
+
+    return { date: null, reason: 'invalid' };
+  }
+
+  /* Excel セル 1 個の締切日解析
+     既存のシリアル値受理窓 (30000 < v < 60000) をそのまま維持する。
+     窓を広げると「2026」のような年だけの数値が 1905 年に化けるため。 */
+  function parseDeadlineCell(cell) {
+    if (!cell) return { date: null, reason: 'empty' };
+    var v = cell.v;
+    if (v === undefined || v === null || v === '') return { date: null, reason: 'empty' };
+
+    if (Object.prototype.toString.call(v) === '[object Date]') {
+      if (isNaN(v.getTime())) return { date: null, reason: 'invalid' };
+      return { date: new Date(v.getFullYear(), v.getMonth(), v.getDate()), reason: null };
+    }
+    if (typeof v === 'number') {
+      if (!isFinite(v)) return { date: null, reason: 'invalid' };
+      if (v > 30000 && v < 60000) {
+        var p = XLSX.SSF.parse_date_code(v);
+        if (p) {
+          var d = mkDate(p.y, p.m, p.d);
+          if (d) return { date: d, reason: null };
+        }
+      }
+      return { date: null, reason: 'invalid' };
+    }
+    if (typeof v === 'string') {
+      var r = parseDateString(v);
+      if (r.date) return r;
+      if (cell.w && String(cell.w).trim()) {
+        var r2 = parseDateString(cell.w);
+        if (r2.date) return r2;
+        return r2;
+      }
+      return r;
+    }
+    return { date: null, reason: 'invalid' };
+  }
+
+  /* 解析失敗の理由を画面表示用の日本語へ */
+  function dlReasonLabel(reason) {
+    if (reason === 'empty') return '空欄';
+    if (reason === 'ambiguous') return '年の記載がない';
+    return '日付として解釈できない';
+  }
+  /* 「理由（実値）」形式。空欄のときは括弧を重ねない */
+  function dlReasonDetail(item) {
+    if (!item || item.dlReason === 'empty') return '空欄';
+    return dlReasonLabel(item.dlReason) + '（' + (item.dlRaw || '空欄') + '）';
+  }
+
+  /* ============================================================
+     2. 媒体統合（既存ルールを byte 等価で保持・追加マッピング禁止）
+     ============================================================ */
+  function consolidateMedia(val) {
+    if (!val) return val;
+    var t = String(val).trim();
+
+    /* 1. Lis menus — check FULL value first (before _ split!) */
+    if (['GKT_RSA', 'YSA_RAS', 'MSA_RSA', '広告表示OP', 'GKT', 'YSA', 'MSA'].indexOf(t) !== -1) return 'Lis';
+
+    /* 2. "媒体_メニュー" format — extract prefix before "_" */
+    if (t.indexOf('_') !== -1) {
+      var prefix = t.split('_')[0];
+      var p = prefix.trim();
+      if (p === 'YDN' || p === 'GDN' || p === 'Lis') return p;
+      if (['GKT_RSA', 'YSA_RAS', 'MSA_RSA', 'GKT', 'YSA', 'MSA'].indexOf(p) !== -1) return 'Lis';
+      return p;
+    }
+
+    /* 3. YDN-only menus */
+    if (['SPBP', 'ブラパネ', 'レスポンシブディスプ', 'カルーセル'].indexOf(t) !== -1) return 'YDN';
+    /* 4. GDN-only menus */
+    if (['Find', 'P-max', 'SDC'].indexOf(t) !== -1) return 'GDN';
+    /* 5. Static / レスポンシブ are ambiguous — keep as-is */
+    return t;
+  }
+
+  /* ============================================================
+     3. 案件番号の整形（既存ルールを byte 等価で保持）
+        ・単独 → そのまま
+        ・連続 2 件 → 個別表記
+        ・連続 3 件以上 → 範囲表記（接頭辞 + 開始～終了）
+     ============================================================ */
+  function formatNos(nos) {
+    if (!nos || nos.length === 0) return '';
+    var parsed = [], unparsed = [];
+    nos.forEach(function (no) {
+      var m = no.match(/^([A-Za-z]+)(\d+)$/);
+      if (m) parsed.push({ prefix: m[1], num: parseInt(m[2], 10), pad: m[2].length, orig: no });
+      else unparsed.push(no);
+    });
+    var groups = Object.create(null);
+    parsed.forEach(function (p) {
+      if (!groups[p.prefix]) groups[p.prefix] = [];
+      groups[p.prefix].push(p);
+    });
+    var parts = unparsed.slice();
+    Object.keys(groups).sort().forEach(function (pfx) {
+      var items = groups[pfx].sort(function (a, b) { return a.num - b.num; });
+      var i = 0;
+      while (i < items.length) {
+        var j = i;
+        while (j + 1 < items.length && items[j + 1].num === items[j].num + 1) j++;
+        if (i === j) {
+          parts.push(items[i].orig);
+        } else if (j - i + 1 === 2) {
+          parts.push(items[i].orig);
+          parts.push(items[j].orig);
+        } else {
+          var s = String(items[i].num).padStart(items[i].pad, '0');
+          var e = String(items[j].num).padStart(items[i].pad, '0');
+          parts.push(pfx + s + '～' + e);
+        }
+        i = j + 1;
+      }
+    });
+    return parts.join('、');
+  }
+
+  /* ============================================================
+     4. シート解析
+     ============================================================ */
+
+  function cellOf(sheet, r, c) { return sheet[XLSX.utils.encode_cell({ r: r, c: c })]; }
+  function cellText(cell) {
+    if (!cell || cell.v === undefined || cell.v === null) return '';
+    return String(cell.v).trim();
+  }
+  function cellHasFormulaNoValue(cell) {
+    return !!(cell && cell.f && (cell.v === undefined || cell.v === null));
+  }
+
+  function processSheet(wb, config) {
+    var empty = {
+      items: [],
+      warnings: [],
+      diagnostics: [],
+      diag: { dataRows: 0, skipped: 0, dupNos: 0, hiddenSheets: [] },
+      sheetMissing: true,
+      headerSuspicious: false
+    };
+    var sheet = wb.Sheets[config.sheet];
+    if (!sheet || !sheet['!ref']) {
+      empty.warnings.push('シートが見つかりません');
+      return empty;
+    }
+
+    var range = XLSX.utils.decode_range(sheet['!ref']);
+    var baseDate = new Date(config.baseDate + 'T00:00:00');
+    if (isNaN(baseDate.getTime())) {
+      empty.warnings.push('基準日が正しくありません');
+      return empty;
+    }
+
+    var cFuri = XLSX.utils.decode_col(config.colFuri);
+    var cNo = XLSX.utils.decode_col(config.colNo);
+    var cAcc = XLSX.utils.decode_col(config.colAccount);
+    var cSite = XLSX.utils.decode_col(config.colSite);
+    var cDL = XLSX.utils.decode_col(config.colDeadline);
+
+    var mifuriText = config.mifuriText || '未';
+
+    var items = [];
+    var warnings = [];
+    var skippedRows = [];       /* No 空欄でスキップしたが他列に値がある行 */
+    var formulaNoValue = [];    /* 数式セルなのにキャッシュ値が無い行 */
+    var dupMap = Object.create(null);
+    var noRows = Object.create(null);
+
+    for (var r = range.s.r + 1; r <= range.e.r; r++) {
+      var cellNo = cellOf(sheet, r, cNo);
+
+      if (cellHasFormulaNoValue(cellNo)) formulaNoValue.push(r + 1);
+
+      var noText = cellText(cellNo);
+      if (noText === '') {
+        /* 完全な空行は無視。他列に値がある行だけ診断対象にする */
+        var others = [cellOf(sheet, r, cFuri), cellOf(sheet, r, cAcc), cellOf(sheet, r, cSite), cellOf(sheet, r, cDL)];
+        var hasOther = others.some(function (c) { return cellText(c) !== ''; });
+        if (hasOther) skippedRows.push(r + 1);
+        continue;
+      }
+
+      var no = noText;
+
+      /* --- 振出判定（既存ルールを保持）--- */
+      var cellFuri = cellOf(sheet, r, cFuri);
+      var furiCellVal = cellText(cellFuri);
+      var furiStatus;
+      var furiOther = false;
+      if (furiCellVal === '') {
+        furiStatus = '振出済';
+      } else if (furiCellVal.indexOf(mifuriText) !== -1) {
+        furiStatus = '未振出';
+      } else {
+        /* 第3の値: 既存どおり「振出済」だが、業務確認のため警告対象にする */
+        furiStatus = '振出済';
+        furiOther = true;
+      }
+
+      /* --- アカウント / サイト --- */
+      var cellAcc = cellOf(sheet, r, cAcc);
+      var account = cellText(cellAcc);
+      var cellSite = cellOf(sheet, r, cSite);
+      var siteRaw = cellText(cellSite);
+      var site = consolidateMedia(siteRaw);
+
+      /* --- 締切日 --- */
+      var cellDL = cellOf(sheet, r, cDL);
+      var dl = parseDeadlineCell(cellDL);
+      var dlRaw = '';
+      if (cellDL && cellDL.v !== undefined && cellDL.v !== null) {
+        dlRaw = (Object.prototype.toString.call(cellDL.v) === '[object Date]')
+          ? fmtDate(cellDL.v) : String(cellDL.v);
+      } else if (cellDL && cellDL.w) {
+        dlRaw = String(cellDL.w);
+      }
+
+      /* --- 判定 --- */
+      var mustStatus;
+      if (!dl.date) {
+        mustStatus = '要確認';
+      } else if (beforeOrSame(dl.date, baseDate)) {
+        mustStatus = '本日マスト';
+      } else {
+        mustStatus = '本日マストではない';
+      }
+
+      var flags = [];
+      if (!account) flags.push('アカウント空欄');
+      if (!siteRaw) flags.push('サイト空欄');
+      if (dl.reason === 'empty') flags.push('締切日空欄');
+      if (dl.reason === 'ambiguous') flags.push('締切日の年が不明');
+      if (dl.reason === 'invalid') flags.push('締切日を解釈できません');
+      if (furiOther) flags.push('振出列が想定外の値');
+
+      items.push({
+        no: no,
+        account: account,
+        site: site,
+        siteRaw: siteRaw,
+        deadline: dl.date,
+        dlReason: dl.reason,
+        dlRaw: dlRaw,
+        furiStatus: furiStatus,
+        furiCellVal: furiCellVal,
+        furiOther: furiOther,
+        mustStatus: mustStatus,
+        flags: flags,
+        row: r + 1
+      });
+
+      if (!noRows[no]) noRows[no] = [];
+      noRows[no].push(r + 1);
+    }
+
+    Object.keys(noRows).forEach(function (k) {
+      if (noRows[k].length > 1) dupMap[k] = noRows[k];
+    });
+    var dupNos = Object.keys(dupMap);
+
+    /* --- ヘッダー行の妥当性（観測のみ・判定は不変更）--- */
+    var headerCell = cellOf(sheet, range.s.r, cNo);
+    var headerText = cellText(headerCell);
+    var headerSuspicious = false;
+    if (headerText === '') {
+      headerSuspicious = true;
+      warnings.push('1行目（ヘッダー想定行）の No カラムが空です。表が2行目以降から始まっている可能性があります（1行目は処理対象外です）');
+    } else if (/^[A-Za-z]+\d+$/.test(headerText)) {
+      headerSuspicious = true;
+      warnings.push('1行目（ヘッダー想定行）が案件Noの形式です（' + headerText + '）。1行目がデータ行の場合、その行は処理対象外です');
+    }
+
+    /* --- 非表示シート --- */
+    var hiddenSheets = [];
+    if (wb.Workbook && wb.Workbook.Sheets) {
+      wb.Workbook.Sheets.forEach(function (s, i) {
+        if (s && s.Hidden) {
+          hiddenSheets.push((wb.SheetNames[i] || ('Sheet' + (i + 1))) + (s.Hidden === 2 ? '（非表示・VeryHidden）' : '（非表示）'));
+        }
+      });
+    }
+
+    var diagnostics = [];
+
+    if (skippedRows.length) {
+      diagnostics.push({
+        key: 'No が空のためスキップした行',
+        count: skippedRows.length,
+        rows: skippedRows,
+        note: '他列に値があります。案件Noが別の列にある可能性を確認してください'
+      });
+    }
+    if (formulaNoValue.length) {
+      diagnostics.push({
+        key: '数式セルに計算結果が無い行',
+        count: formulaNoValue.length,
+        rows: formulaNoValue,
+        note: 'Excel で一度保存し直すとキャッシュ値が作成されます'
+      });
+    }
+    var noAccEmpty = items.filter(function (i) { return !i.account; });
+    if (noAccEmpty.length) {
+      diagnostics.push({
+        key: 'アカウントが空欄の行',
+        count: noAccEmpty.length,
+        rows: noAccEmpty.map(function (i) { return i.row; }),
+        note: '出力では「/サイト/No」の形になるため、先頭が空になります'
+      });
+    }
+    var noSiteEmpty = items.filter(function (i) { return !i.siteRaw; });
+    if (noSiteEmpty.length) {
+      diagnostics.push({
+        key: 'サイトが空欄の行',
+        count: noSiteEmpty.length,
+        rows: noSiteEmpty.map(function (i) { return i.row; })
+      });
+    }
+    /* ---- 要確認（AP対応締切日）----
+       業務確定ルール（2026-10-30 ユーザー確認）:
+         締切日 ≦ 基準日 → 本日マスト
+         締切日 >  基準日 → 本日マストではない
+         空欄／解析不能   → 要確認（上記どちらにも分類しない）
+       異常は正常分類へ混ぜず、行番号つきで明示する。 */
+    var confirmItems = items.filter(function (i) { return i.mustStatus === '要確認'; });
+    if (confirmItems.length) {
+      diagnostics.push({
+        key: '要確認案件（AP対応締切日を確認できません）',
+        count: confirmItems.length,
+        rows: confirmItems.map(function (i) { return i.row; }),
+        note: '日方への確認が必要です。本日マスト／本日マストではないのいずれにも分類していません（内訳は上部の警告欄を参照）'
+      });
+    }
+    if (dupNos.length) {
+      diagnostics.push({
+        key: '同一案件Noが複数行にある',
+        count: dupNos.length,
+        rows: [],
+        note: '同じアカウント・サイトなら1行にまとまります。異なる場合は別行として出力されます',
+        detail: dupNos.slice(0, DIAG_SHOW_LIMIT).map(function (n) { return n + ' → ' + dupMap[n].join(', ') + '行目'; })
+      });
+    }
+    var furiOtherItems = items.filter(function (i) { return i.furiOther; });
+    if (furiOtherItems.length) {
+      diagnostics.push({
+        key: '振出列が「空欄」でも「未」でもない行',
+        count: furiOtherItems.length,
+        rows: furiOtherItems.map(function (i) { return i.row; }),
+        note: '現行ルールでは「振出済」として扱っています（判定は変更していません）。業務的に正しいかご確認ください',
+        detail: furiOtherItems.slice(0, DIAG_SHOW_LIMIT).map(function (i) { return i.row + '行目: 「' + i.furiCellVal + '」'; })
+      });
+    }
+    if (hiddenSheets.length) {
+      diagnostics.push({
+        key: '非表示シート',
+        count: hiddenSheets.length,
+        note: 'シート選択には表示されます。対象シートかご確認ください',
+        detail: hiddenSheets
+      });
+    }
+
+    return {
+      items: items,
+      warnings: warnings,
+      diagnostics: diagnostics,
+      confirmItems: confirmItems,
+      diag: {
+        dataRows: items.length,
+        skipped: skippedRows.length,
+        dupNos: dupNos.length,
+        hiddenSheets: hiddenSheets
+      },
+      sheetMissing: false,
+      headerSuspicious: headerSuspicious
+    };
+  }
+
+  /* ============================================================
+     5. 生成（出力テキスト）
+        通常データでは旧実装と 1 byte も変わらない。
+        日付判定不能行のみ「要確認」セクションへ分離する。
+     ============================================================ */
+  function generateOutput(items) {
+    function pick(kind, furi) {
+      return items.filter(function (i) {
+        if (i.furiStatus !== furi) return false;
+        if (kind === 'must') return i.mustStatus === '本日マスト';
+        if (kind === 'notmust') return i.mustStatus === '本日マストではない';
+        return i.mustStatus === '要確認';
+      });
+    }
+
+    function fmtGroup(arr, showDL) {
+      if (!arr.length) return null;
+      var map = new Map();
+      arr.forEach(function (it) {
+        var key = it.account + '|||' + it.site;
+        if (!map.has(key)) map.set(key, { account: it.account, site: it.site, nos: [], deadlines: new Set() });
+        var g = map.get(key);
+        if (g.nos.indexOf(it.no) === -1) g.nos.push(it.no);
+        if (showDL && it.deadline && !isNaN(it.deadline.getTime())) {
+          g.deadlines.add(it.deadline.getTime());
+        }
+      });
+      var lines = [];
+      map.forEach(function (g) {
+        var line = g.account + '/' + g.site + '/' + formatNos(g.nos);
+        if (showDL && g.deadlines.size > 0) {
+          var sorted = Array.from(g.deadlines).sort(function (a, b) { return a - b; });
+          var ds = sorted.map(function (ts) {
+            var d = new Date(ts);
+            return (d.getMonth() + 1) + '/' + d.getDate() + '〆';
+          });
+          line += '\u3000' + ds.join(' ');
+        }
+        lines.push(line);
+      });
+      return lines;
+    }
+
+    var mf = fmtGroup(pick('must', '振出済'), false);
+    var mm = fmtGroup(pick('must', '未振出'), false);
+    var nf = fmtGroup(pick('notmust', '振出済'), true);
+    var nm = fmtGroup(pick('notmust', '未振出'), true);
+    var uf = fmtGroup(pick('confirm', '振出済'), false);
+    var um = fmtGroup(pick('confirm', '未振出'), false);
+
+    var o = '@All 皆様、お疲れ様です。\n';
+    o += '本日の残タスク以下の認識です。ご確認ください。\n';
+    o += '▼未対応\n';
+    o += '【本日マスト】\n';
+    o += mf ? '・振出済（' + mf.length + '件）\n' + mf.join('\n') + '\n' : '・振出済\nなし\n';
+    o += '\n';
+    o += mm ? '・未振出（' + mm.length + '件）\n' + mm.join('\n') + '\n' : '・未振出\nなし\n';
+    o += '【本日マストではない】\n';
+    o += nf ? '・振出済（' + nf.length + '件）\n' + nf.join('\n') + '\n' : '・振出済\nなし\n';
+    o += '\n';
+    o += nm ? '・未振出（' + nm.length + '件）\n' + nm.join('\n') + '\n' : '・未振出\nなし\n';
+
+    /* BUS01: 日付判定不能行がある場合のみ追記（通常時は出力不変）
+       業務確定ルール（2026-10-30）: 異常は正常分類へ混ぜず、要確認として明示する */
+    if (uf || um) {
+      o += '\n【要確認：AP対応締切日を確認できません】\n';
+      o += '※日方への確認が必要です。本日マストには含めていません。\n';
+      o += uf ? '・振出済（' + uf.length + '件）\n' + uf.join('\n') + '\n' : '・振出済\nなし\n';
+      o += '\n';
+      o += um ? '・未振出（' + um.length + '件）\n' + um.join('\n') + '\n' : '・未振出\nなし\n';
+    }
+
+    return {
+      text: o,
+      groups: {
+        mustFuri: mf, mustMifuri: mm,
+        notMustFuri: nf, notMustMifuri: nm,
+        confirmFuri: uf, confirmMifuri: um
+      }
+    };
+  }
+
+  /* ============================================================
+     6. 状態管理（FIX03）
+     ============================================================ */
+  var STATE = {
+    workbook: null,
+    fileName: '',
+    loadSeq: 0,        /* 読み込み世代。古い完了結果を破棄する */
+    result: null,      /* 直近の成功結果 */
+    outputText: '',
+    busy: false
+  };
+
+  var el = {};
+  function $(id) { return document.getElementById(id); }
+
+  function clearChildren(node) {
+    while (node && node.firstChild) node.removeChild(node.firstChild);
+  }
+
+  function setMsg(host, type, lines) {
+    clearChildren(host);
+    if (!type) return;
+    var box = document.createElement('div');
+    box.className = 'r3-msg is-' + type;
+    if (Object.prototype.toString.call(lines) === '[object Array]') {
+      var ul = document.createElement('ul');
+      lines.forEach(function (t) {
+        var li = document.createElement('li');
+        li.textContent = t;
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+    } else {
+      box.textContent = lines;
+    }
+    host.appendChild(box);
+  }
+
+  /* 参照実装の一連の表示を初期状態へ戻す */
+  function resetAll(options) {
+    var keepUploadError = options && options.keepUploadError;
+
+    STATE.workbook = null;
+    STATE.fileName = '';
+    STATE.result = null;
+    STATE.outputText = '';
+    STATE.busy = false;
+
+    if (!keepUploadError) clearChildren(el.fileSlot);
+
+    el.cardConfig.classList.add('r3-hidden');
+    el.cardResult.classList.add('r3-hidden');
+
+    clearChildren(el.configMsg);
+    clearChildren(el.stats);
+    clearChildren(el.confirmAlert);
+    clearChildren(el.diagSlot);
+    clearChildren(el.previewWrap);
+    el.previewNote.textContent = '';
+    el.resultMeta.textContent = '';
+    el.sheetMeta.textContent = '';
+
+    el.previewBody.classList.add('r3-hidden');
+    el.previewToggle.setAttribute('aria-expanded', 'false');
+    el.previewToggle.firstChild.textContent = '📊 検出データ一覧を開く';
+
+    el.out.classList.add('is-empty');
+    el.out.textContent = '生成ボタンをクリックしてください';
+    el.copyBtn.disabled = true;
+    el.copyBtn.textContent = '📋 コピー';
+    el.copyBtn.classList.remove('copied');
+
+    el.generateBtn.disabled = false;
+    el.sheetSelect.value = '';
+    clearChildren(el.sheetSelect);
+    ['r3ColFuri', 'r3ColNo', 'r3ColAccount', 'r3ColSite', 'r3ColDeadline'].forEach(function (id) {
+      var sel = $(id);
+      if (sel) clearChildren(sel);
+    });
+  }
+
+  function renderFileInfo(file) {
+    clearChildren(el.fileSlot);
+    var box = document.createElement('div');
+    box.className = 'r3-fileinfo';
+
+    var name = document.createElement('span');
+    name.className = 'r3-fileinfo-name';
+    /* FIX02: ファイル名は textContent でのみ描画（HTML として解釈させない） */
+    name.textContent = '📄 ' + file.name;
+
+    var size = document.createElement('span');
+    size.className = 'r3-fileinfo-size';
+    size.textContent = formatSize(file.size);
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'r3-fileinfo-btn';
+    btn.textContent = '✕ クリア';
+    btn.addEventListener('click', function () { fullReset(); });
+
+    box.appendChild(name);
+    box.appendChild(size);
+    box.appendChild(btn);
+    el.fileSlot.appendChild(box);
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+  }
+
+  function fullReset() {
+    STATE.loadSeq++;   /* 進行中の読み込みを無効化 */
+    resetAll();
+    el.fileInput.value = '';
+    el.upload.classList.remove('is-busy');
+  }
+
+  /* ============================================================
+     7. ファイル読み込み
+     ============================================================ */
+  function handleFile(file) {
+    if (!file) return;
+
+    /* FIX03: まず完全に初期化してから読み込む
+       → 旧 Excel / 旧結果 / 旧設定が残らない */
+    var seq = ++STATE.loadSeq;
+    resetAll();
+    el.fileInput.value = '';
+
+    if (!/\.xlsx?$/i.test(file.name)) {
+      var msg = document.createElement('div');
+      msg.className = 'r3-msg is-error';
+      msg.textContent = '❌ .xlsx または .xls ファイルを選択してください（選択されたファイル: ' + file.name + '）';
+      el.fileSlot.appendChild(msg);
+      return;
+    }
+
+    /* サイズ警告のみ（業務を妨げる上限は設けない） */
+    var sizeWarn = null;
+    if (file.size > LARGE_FILE_WARN_BYTES) {
+      sizeWarn = document.createElement('div');
+      sizeWarn.className = 'r3-msg is-warn';
+      sizeWarn.textContent = '⚠️ ファイルサイズが ' + formatSize(file.size) +
+        ' です。読み込みに時間がかかる場合があります。処理が終わるまでこの画面を閉じないでください。';
+    }
+
+    renderFileInfo(file);
+    if (sizeWarn) el.fileSlot.appendChild(sizeWarn);
+
+    el.upload.classList.add('is-busy');
+    STATE.busy = true;
+
+    var reader = new FileReader();
+
+    reader.onload = function (e) {
+      /* 競合対策: 新しい読み込みが始まっていたら結果を捨てる */
+      if (seq !== STATE.loadSeq) return;
+
+      var wb;
+      try {
+        wb = XLSX.read(new Uint8Array(e.target.result), {
+          type: 'array',
+          cellStyles: false,
+          cellDates: true
+        });
+      } catch (err) {
+        if (seq !== STATE.loadSeq) return;
+        el.upload.classList.remove('is-busy');
+        STATE.busy = false;
+        resetAll({ keepUploadError: true });
+        renderFileInfo(file);
+        var em = document.createElement('div');
+        em.className = 'r3-msg is-error';
+        em.textContent = '❌ ファイル読み込みエラー: ' +
+          ((err && err.message) ? err.message : '不明なエラー') +
+          '　（ファイルが壊れているか、Excel 形式ではありません）';
+        el.fileSlot.appendChild(em);
+        return;
+      }
+
+      if (!wb || !wb.SheetNames || wb.SheetNames.length === 0) {
+        el.upload.classList.remove('is-busy');
+        STATE.busy = false;
+        resetAll({ keepUploadError: true });
+        renderFileInfo(file);
+        var em2 = document.createElement('div');
+        em2.className = 'r3-msg is-error';
+        em2.textContent = '❌ シートが見つかりませんでした。Excel ファイルかご確認ください。';
+        el.fileSlot.appendChild(em2);
+        return;
+      }
+
+      el.upload.classList.remove('is-busy');
+      STATE.busy = false;
+      STATE.workbook = wb;
+      STATE.fileName = file.name;
+      setupConfig();
+    };
+
+    reader.onerror = function () {
+      if (seq !== STATE.loadSeq) return;
+      el.upload.classList.remove('is-busy');
+      STATE.busy = false;
+      resetAll({ keepUploadError: true });
+      renderFileInfo(file);
+      var em = document.createElement('div');
+      em.className = 'r3-msg is-error';
+      em.textContent = '❌ ファイルを読み込めませんでした（権限または破損の可能性）';
+      el.fileSlot.appendChild(em);
+    };
+
+    /* 旧実装は readAsBinaryString（非推奨・廃止済 API）。ArrayBuffer へ変更。 */
+    reader.readAsArrayBuffer(file);
+  }
+
+  /* ============================================================
+     8. カラム設定
+     ============================================================ */
+  function setupConfig() {
+    el.cardConfig.classList.remove('r3-hidden');
+
+    clearChildren(el.sheetSelect);
+    STATE.workbook.SheetNames.forEach(function (name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      el.sheetSelect.appendChild(opt);
+    });
+    el.sheetSelect.value = STATE.workbook.SheetNames[0];
+
+    el.baseDate.value = fmtDate(new Date());
+    el.mifuriText.value = el.mifuriText.value || '未';
+
+    refreshColumns();
+    updateSheetMeta();
+  }
+
+  function updateSheetMeta() {
+    var name = el.sheetSelect.value;
+    var sheet = STATE.workbook && STATE.workbook.Sheets[name];
+    if (!sheet || !sheet['!ref']) { el.sheetMeta.textContent = ''; return; }
+    var range = XLSX.utils.decode_range(sheet['!ref']);
+    el.sheetMeta.textContent = '範囲: ' + XLSX.utils.encode_range(range) +
+      '（' + (range.e.r - range.s.r + 1) + '行）';
+  }
+
+  function refreshColumns() {
+    var sheetName = el.sheetSelect.value;
+    var sheet = STATE.workbook && STATE.workbook.Sheets[sheetName];
+    if (!sheet || !sheet['!ref']) {
+      ['r3ColFuri', 'r3ColNo', 'r3ColAccount', 'r3ColSite', 'r3ColDeadline'].forEach(function (id) {
+        clearChildren($(id));
+      });
+      return;
+    }
+    var range = XLSX.utils.decode_range(sheet['!ref']);
+    var headers = [];
+    for (var c = range.s.c; c <= range.e.c; c++) {
+      var cell = cellOf(sheet, range.s.r, c);
+      headers.push({
+        letter: XLSX.utils.encode_col(c),
+        name: cellText(cell),
+        idx: c
+      });
+    }
+
+    function populate(selId, defaultCol) {
+      var sel = $(selId);
+      var prevVal = sel.value;
+      clearChildren(sel);
+      var o0 = document.createElement('option');
+      o0.value = '';
+      o0.textContent = '-- 選択 --';
+      sel.appendChild(o0);
+      headers.forEach(function (h) {
+        var opt = document.createElement('option');
+        opt.value = h.letter;
+        opt.textContent = h.letter + (h.name ? ' — ' + h.name : '');
+        if (h.letter === prevVal) opt.selected = true;
+        else if (!prevVal && h.letter === defaultCol) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    /* 既定: 振出判定=A, No=B, アカウント=F, サイト=I */
+    populate('r3ColFuri', 'A');
+    populate('r3ColNo', 'B');
+    populate('r3ColAccount', 'F');
+    populate('r3ColSite', 'I');
+    populate('r3ColDeadline', '');
+
+    /* ヘッダー名から締切日カラムを自動検出 */
+    var dlSel = el.colDeadline;
+    for (var i = 0; i < headers.length; i++) {
+      var h = headers[i];
+      if (h.name && (h.name.indexOf('締切') !== -1 || h.name.indexOf('期限') !== -1 ||
+        h.name.indexOf('AP対応') !== -1 || h.name.indexOf('対応日') !== -1)) {
+        dlSel.value = h.letter;
+        break;
+      }
+    }
+    updateSheetMeta();
+  }
+
+  /* ============================================================
+     9. 生成
+     ============================================================ */
+  function handleGenerate() {
+    if (!STATE.workbook) return;
+    if (STATE.busy) return;
+
+    var config = {
+      sheet: el.sheetSelect.value,
+      colFuri: el.colFuri.value,
+      colNo: el.colNo.value,
+      colAccount: el.colAccount.value,
+      colSite: el.colSite.value,
+      colDeadline: el.colDeadline.value,
+      baseDate: el.baseDate.value,
+      mifuriText: el.mifuriText.value || '未'
+    };
+
+    var missing = [];
+    if (!config.colFuri) missing.push('振出判定カラム');
+    if (!config.colNo) missing.push('No カラム');
+    if (!config.colAccount) missing.push('アカウントカラム');
+    if (!config.colSite) missing.push('サイトカラム');
+    if (!config.colDeadline) missing.push('AP対応締切日カラム');
+    if (!config.baseDate) missing.push('基準日');
+    if (missing.length) {
+      setMsg(el.configMsg, 'error', '⚠️ 次の項目を選択してください：' + missing.join('、'));
+      return;
+    }
+    if (missing.length) return;
+    clearChildren(el.configMsg);
+
+    var res;
+    try {
+      res = processSheet(STATE.workbook, config);
+    } catch (err) {
+      setMsg(el.configMsg, 'error', '❌ 解析中にエラーが発生しました: ' + ((err && err.message) || '不明'));
+      return;
+    }
+
+    if (res.sheetMissing) {
+      setMsg(el.configMsg, 'error', '❌ ' + res.warnings.join(' / '));
+      return;
+    }
+
+    if (res.items.length === 0) {
+      el.cardResult.classList.add('r3-hidden');
+      setMsg(el.configMsg, 'warn', '⚠️ 条件に一致するデータが見つかりませんでした。カラム設定を確認してください。');
+      var hint = document.createElement('div');
+      hint.className = 'r3-msg is-info';
+      hint.textContent = '💡 確認ポイント：① Noカラムに案件番号が入っているか ' +
+        '② 振出判定カラムが正しいか（空欄=振出済、「未」=未振出） ' +
+        '③ AP対応締切日カラムに日付が入っているか ';
+      el.configMsg.appendChild(hint);
+      return;
+    }
+
+    var gen = generateOutput(res.items);
+    STATE.result = res;
+    STATE.outputText = gen.text;
+
+    el.cardResult.classList.remove('r3-hidden');
+    renderStats(res, gen);
+    renderConfirmAlert(res);
+    renderDiagnostics(res);
+    renderPreview(res);
+    renderOutput(gen.text);
+
+    el.resultMeta.textContent = 'Excel タスク行: ' + res.items.length + ' 行';
+    el.previewToggle.setAttribute('aria-expanded', 'false');
+    el.previewBody.classList.add('r3-hidden');
+
+    el.cardResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    /* 使用記録: 実生成が成功した時のみ 1 回送信 */
+    var outLines = countLines(gen.groups);
+    var confirmCount = res.items.filter(function (i) { return i.mustStatus === '要確認'; }).length;
+    TRACK.emit('generate_success', {
+      dataRows: res.items.length,
+      outputLines: outLines,
+      confirmRows: confirmCount
+    });
+  }
+
+  function countLines(g) {
+    var n = 0;
+    ['mustFuri', 'mustMifuri', 'notMustFuri', 'notMustMifuri', 'confirmFuri', 'confirmMifuri'].forEach(function (k) {
+      if (g[k]) n += g[k].length;
+    });
+    return n;
+  }
+
+  /* 要確認アラート — 業務確定ルール（2026-10-30）
+     ・異常案件を正常分類へ混ぜない
+     ・案件と Excel 行番号を画面に明示する
+     ・通知は一切送らない（この表示のみ） */
+  function renderConfirmAlert(res) {
+    clearChildren(el.confirmAlert);
+    var list = res.confirmItems || [];
+    if (!list.length) return;
+
+    var box = document.createElement('div');
+    box.className = 'r3-alert';
+    box.setAttribute('role', 'alert');
+
+    var title = document.createElement('div');
+    title.className = 'r3-alert-title';
+    var icon = document.createElement('span');
+    icon.textContent = '⚠️';
+    icon.setAttribute('aria-hidden', 'true');
+    var titleText = document.createElement('span');
+    titleText.textContent = 'AP対応締切日を確認できません。日方への確認が必要です。';
+    title.appendChild(icon);
+    title.appendChild(titleText);
+    box.appendChild(title);
+
+    var sub = document.createElement('div');
+    sub.className = 'r3-alert-sub';
+    sub.textContent = '該当 ' + list.length + ' 件は「本日マスト」「本日マストではない」のいずれにも分類していません。' +
+      'Excel 行番号: ' + list.map(function (i) { return i.row; }).join(', ');
+    box.appendChild(sub);
+
+    var ul = document.createElement('ul');
+    ul.className = 'r3-alert-list';
+    list.forEach(function (i) {
+      var li = document.createElement('li');
+
+      var rowSpan = document.createElement('span');
+      rowSpan.className = 'r3-alert-row';
+      rowSpan.textContent = i.row + '行目';
+
+      var noSpan = document.createElement('span');
+      noSpan.className = 'r3-alert-no';
+      noSpan.textContent = i.no;
+
+      var whySpan = document.createElement('span');
+      whySpan.className = 'r3-alert-why';
+      whySpan.textContent = dlReasonDetail(i);
+
+      li.appendChild(rowSpan);
+      li.appendChild(noSpan);
+      li.appendChild(whySpan);
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+
+    el.confirmAlert.appendChild(box);
+  }
+
+  function renderStats(res, gen) {
+    clearChildren(el.stats);
+    var mustCount = res.items.filter(function (i) { return i.mustStatus === '本日マスト'; }).length;
+    var notMustCount = res.items.filter(function (i) { return i.mustStatus === '本日マストではない'; }).length;
+    var confirmCount = res.items.filter(function (i) { return i.mustStatus === '要確認'; }).length;
+    var furiCount = res.items.filter(function (i) { return i.furiStatus === '振出済'; }).length;
+    var mifuriCount = res.items.filter(function (i) { return i.furiStatus === '未振出'; }).length;
+    var outLines = countLines(gen.groups);
+
+    var defs = [
+      { cls: 'must', text: '🔴 本日マスト: ' + mustCount + '件' },
+      { cls: 'notmust', text: '🔵 マストではない: ' + notMustCount + '件' }
+    ];
+    if (confirmCount > 0) defs.push({ cls: 'confirm', text: '🟠 要確認: ' + confirmCount + '件' });
+    defs.push({ cls: 'furi', text: '🟡 振出済: ' + furiCount + '件' });
+    defs.push({ cls: 'mifuri', text: '⚪ 未振出: ' + mifuriCount + '件' });
+    defs.push({ cls: '', text: '📄 Excel行: ' + res.items.length });
+    defs.push({ cls: '', text: '📝 出力行: ' + outLines });
+
+    defs.forEach(function (d) {
+      var s = document.createElement('span');
+      s.className = 'r3-chip' + (d.cls ? ' ' + d.cls : '');
+      s.textContent = d.text;
+      el.stats.appendChild(s);
+    });
+  }
+
+  function renderDiagnostics(res) {
+    clearChildren(el.diagSlot);
+
+    var all = [];
+    if (res.warnings.length) {
+      all.push({ key: '注意', count: res.warnings.length, note: '', detail: res.warnings });
+    }
+    res.diagnostics.forEach(function (d) { all.push(d); });
+    if (!all.length) return;
+
+    var box = document.createElement('div');
+    box.className = 'r3-diag';
+    var head = document.createElement('div');
+    head.className = 'r3-diag-head';
+    head.textContent = '🔍 データ診断（' + all.length + ' 項目）— 業務判定は変更していません';
+    box.appendChild(head);
+
+    var body = document.createElement('div');
+    body.className = 'r3-diag-body';
+
+    all.forEach(function (d) {
+      var row = document.createElement('div');
+      row.className = 'r3-diag-item';
+
+      var k = document.createElement('span');
+      k.className = 'k';
+      k.textContent = '・' + d.key + '：' + d.count + '件';
+      row.appendChild(k);
+
+      if (d.note) {
+        var n = document.createElement('div');
+        n.className = 'r';
+        n.textContent = d.note;
+        row.appendChild(n);
+      }
+      if (d.rows && d.rows.length) {
+        var rl = d.rows.slice(0, DIAG_SHOW_LIMIT).join(', ');
+        var extra = d.rows.length > DIAG_SHOW_LIMIT ? ' …他 ' + (d.rows.length - DIAG_SHOW_LIMIT) + '件' : '';
+        var dv = document.createElement('div');
+        dv.className = 'v';
+        dv.textContent = '対象行: ' + rl + extra;
+        row.appendChild(dv);
+      }
+      if (d.detail && d.detail.length) {
+        var dd = document.createElement('div');
+        dd.className = 'v';
+        dd.textContent = d.detail.join(' ／ ');
+        row.appendChild(dd);
+      }
+      body.appendChild(row);
+    });
+
+    box.appendChild(body);
+    el.diagSlot.appendChild(box);
+  }
+
+  function renderPreview(res) {
+    clearChildren(el.previewWrap);
+
+    var table = document.createElement('table');
+    table.className = 'r3-table';
+
+    var thead = document.createElement('thead');
+    var htr = document.createElement('tr');
+    ['行', '振出列値', '振出', 'No', 'アカウント', 'サイト(元)', 'サイト(統合)', 'AP締切日', '判定', '備考']
+      .forEach(function (t) {
+        var th = document.createElement('th');
+        th.textContent = t;
+        htr.appendChild(th);
+      });
+    thead.appendChild(htr);
+    table.appendChild(thead);
+
+    var tbody = document.createElement('tbody');
+    var frag = document.createDocumentFragment();
+    var limit = Math.min(res.items.length, PREVIEW_ROW_LIMIT);
+
+    for (var i = 0; i < limit; i++) {
+      var it = res.items[i];
+      var tr = document.createElement('tr');
+      if (it.mustStatus === '要確認') tr.className = 'is-confirm';
+
+      function td(text, cls) {
+        var c = document.createElement('td');
+        if (cls) c.className = cls;
+        /* FIX02: Excel 由来の値はすべて textContent（要素生成）で描画 */
+        c.textContent = text;
+        tr.appendChild(c);
+        return c;
+      }
+
+      td(String(it.row));
+      td(it.furiCellVal === '' ? '(空欄)' : it.furiCellVal);
+      var cF = document.createElement('td');
+      var bF = document.createElement('span');
+      bF.className = 'r3-badge ' + (it.furiStatus === '振出済' ? 'furi' : 'mifuri');
+      bF.textContent = it.furiStatus;
+      cF.appendChild(bF);
+      tr.appendChild(cF);
+      td(it.no);
+      td(it.account === '' ? '(空欄)' : it.account);
+      td(it.siteRaw === '' ? '(空欄)' : it.siteRaw);
+      td(it.site === '' ? '(空欄)' : it.site);
+      td(it.deadline ? (it.deadline.getMonth() + 1) + '/' + it.deadline.getDate() : '—');
+      var cM = document.createElement('td');
+      var bM = document.createElement('span');
+      bM.className = 'r3-badge ' +
+        (it.mustStatus === '本日マスト' ? 'must' :
+          it.mustStatus === '本日マストではない' ? 'notmust' : 'confirm');
+      bM.textContent = it.mustStatus;
+      cM.appendChild(bM);
+      tr.appendChild(cM);
+
+      var cNote = document.createElement('td');
+      if (it.flags.length) {
+        it.flags.forEach(function (f) {
+          var b = document.createElement('span');
+          b.className = 'r3-badge flag';
+          b.textContent = f;
+          cNote.appendChild(b);
+        });
+      } else {
+        cNote.className = 'r3-muted';
+        cNote.textContent = '—';
+      }
+      tr.appendChild(cNote);
+
+      frag.appendChild(tr);
+    }
+    tbody.appendChild(frag);
+    table.appendChild(tbody);
+    el.previewWrap.appendChild(table);
+
+    el.previewNote.textContent =
+      '表示 ' + limit + ' / ' + res.items.length + ' 行' +
+      (res.items.length > limit ? '（上限 ' + PREVIEW_ROW_LIMIT + ' 行。判定・出力は全件対象です）' : '') +
+      '　｜　「要確認」行は薄いオレンジで表示しています';
+  }
+
+  function renderOutput(text) {
+    el.out.classList.remove('is-empty');
+    el.out.textContent = text;     /* FIX02: innerHTML を使わない */
+    el.copyBtn.disabled = false;
+  }
+
+  /* ============================================================
+     10. コピー
+     ============================================================ */
+  function handleCopy() {
+    if (!STATE.outputText) return;
+
+    function afterOk() {
+      el.copyBtn.textContent = '✅ コピーしました';
+      el.copyBtn.classList.add('copied');
+      setTimeout(function () {
+        el.copyBtn.textContent = '📋 コピー';
+        el.copyBtn.classList.remove('copied');
+      }, 2000);
+      TRACK.emit('copy_success', {});
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(STATE.outputText).then(afterOk).catch(function () {
+        fallbackCopy();
+      });
+    } else {
+      fallbackCopy();
+    }
+
+    function fallbackCopy() {
+      var ta = document.createElement('textarea');
+      ta.value = STATE.outputText;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      if (ok) afterOk();
+      else setMsg(el.configMsg, 'error', '⚠️ コピーに失敗しました。生成結果欄を選択して手動でコピーしてください。');
+    }
+  }
+
+  /* ============================================================
+     11. 使用記録
+     ----------------------------------------
+     GAS 側の既存 API（action:'log'）は
+       { token, tool, diffCount, criticalCount, note, caseName, caseSessionId }
+     のみを受け付ける。「イベント種別」フィールドは存在しない。
+     同一 tool で複数イベントを送ると usage_dashboard の
+     利用回数が水増しされるため、本ラウンドは業務利用回数として
+     意味が一意な generate_success のみを送信する。
+     tool_open / copy_success は event フィールド追加（V21 統一）後に有効化。
+     ============================================================ */
+  var TRACK = (function () {
+    var ENABLED = {
+      generate_success: true,
+      tool_open: false,      /* GAS_CHANGE_REQUIRED = V21_BATCH */
+      copy_success: false    /* GAS_CHANGE_REQUIRED = V21_BATCH */
+    };
+    var lastSent = null;
+
+    function emit(event, payload) {
+      if (!ENABLED[event]) return { ok: false, skipped: true, reason: 'event-not-enabled' };
+      if (typeof sendLog !== 'function') return { ok: false, reason: 'sendLog-unavailable' };
+
+      /* 認証済みセッションが無ければ送信しない（偽装不可・GAS 側でも token 検証） */
+      var session = (typeof getSession === 'function') ? getSession() : null;
+      if (!session || !session.token) return { ok: false, reason: 'no-session' };
+
+      var p = payload || {};
+      var note = 'evt=' + event +
+        ';rows=' + (p.dataRows || 0) +
+        ';lines=' + (p.outputLines || 0) +
+        ';confirm=' + (p.confirmRows || 0);
+
+      lastSent = { event: event, at: Date.now() };
+
+      /* diffCount / criticalCount も数値のみ。業務内容は一切含めない。 */
+      var p2 = sendLog(TOOL_LABEL, p.outputLines || 0, p.confirmRows || 0, note);
+      if (p2 && typeof p2.catch === 'function') p2.catch(function () {});
+      return { ok: true, note: note };
+    }
+
+    return {
+      emit: emit,
+      toolLabel: TOOL_LABEL,
+      toolId: TOOL_ID,
+      enabled: ENABLED,
+      lastSent: function () { return lastSent; }
+    };
+  })();
+
+  /* ============================================================
+     12. 初期化
+     ============================================================ */
+  function bindUI() {
+    el.upload.addEventListener('click', function () {
+      if (STATE.busy) return;
+      el.fileInput.click();
+    });
+    el.upload.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (!STATE.busy) el.fileInput.click();
+      }
+    });
+    el.upload.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      el.upload.classList.add('dragover');
+    });
+    el.upload.addEventListener('dragleave', function () {
+      el.upload.classList.remove('dragover');
+    });
+    el.upload.addEventListener('drop', function (e) {
+      e.preventDefault();
+      el.upload.classList.remove('dragover');
+      if (STATE.busy) return;
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+    el.fileInput.addEventListener('change', function () {
+      if (el.fileInput.files && el.fileInput.files.length) handleFile(el.fileInput.files[0]);
+    });
+
+    el.sheetSelect.addEventListener('change', function () {
+      refreshColumns();
+      updateSheetMeta();
+    });
+
+    el.generateBtn.addEventListener('click', handleGenerate);
+    el.resetBtn.addEventListener('click', fullReset);
+    el.copyBtn.addEventListener('click', handleCopy);
+
+    el.previewToggle.addEventListener('click', function () {
+      var open = el.previewToggle.getAttribute('aria-expanded') === 'true';
+      el.previewToggle.setAttribute('aria-expanded', open ? 'false' : 'true');
+      if (open) el.previewBody.classList.add('r3-hidden');
+      else el.previewBody.classList.remove('r3-hidden');
+      el.previewToggle.firstChild.textContent = open ? '📊 検出データ一覧を開く' : '📊 検出データ一覧を閉じる';
+    });
+  }
+
+  function boot() {
+    el = {
+      upload: $('r3Upload'),
+      fileInput: $('r3FileInput'),
+      fileSlot: $('r3FileSlot'),
+      cardConfig: $('r3CardConfig'),
+      cardResult: $('r3CardResult'),
+      sheetSelect: $('r3SheetSelect'),
+      sheetMeta: $('r3SheetMeta'),
+      colFuri: $('r3ColFuri'),
+      colNo: $('r3ColNo'),
+      colAccount: $('r3ColAccount'),
+      colSite: $('r3ColSite'),
+      colDeadline: $('r3ColDeadline'),
+      baseDate: $('r3BaseDate'),
+      mifuriText: $('r3MifuriText'),
+      configMsg: $('r3ConfigMsg'),
+      generateBtn: $('r3GenerateBtn'),
+      resetBtn: $('r3ResetBtn'),
+      stats: $('r3Stats'),
+      confirmAlert: $('r3ConfirmAlert'),
+      diagSlot: $('r3DiagSlot'),
+      previewToggle: $('r3PreviewToggle'),
+      previewBody: $('r3PreviewBody'),
+      previewWrap: $('r3PreviewWrap'),
+      previewNote: $('r3PreviewNote'),
+      resultMeta: $('r3ResultMeta'),
+      out: $('r3Out'),
+      copyBtn: $('r3CopyBtn')
+    };
+
+    var user = null;
+    if (typeof guardPage === 'function') {
+      user = guardPage();
+    }
+    if (!user) {
+      document.getElementById('r3App').classList.add('r3-hidden');
+      document.getElementById('r3Blocked').classList.remove('r3-hidden');
+      return;
+    }
+
+    if (typeof QCHeader !== 'undefined' && QCHeader.mount) {
+      QCHeader.mount({
+        target: '#qcHeaderMount',
+        title: '3課 残タスク生成ツール',
+        iconId: 'check3',
+        badges: [{ text: 'ローカル処理', tone: 'ok' }],
+        note: 'Excel から残タスク連絡文を生成',
+        user: user,
+        logo: 'assets/brand/huihai-logo.png',
+        logoAlt: '惠海信息技术',
+        /* 候補版は candidates/<dir>/ 配下にあるため 2 階層上。正式昇格時は "index.html" に変更 */
+        homeHref: 'index.html'
+      });
+    }
+
+    bindUI();
+  }
+
+  /* テスト・検証用の最小公開（副作用なし） */
+  window.R3Tool = {
+    VERSION: VERSION,
+    TOOL_ID: TOOL_ID,
+    TOOL_LABEL: TOOL_LABEL,
+    JP_HOLIDAYS: JP_HOLIDAYS,
+    COMPANY_HOLIDAYS: COMPANY_HOLIDAYS,
+    consolidateMedia: consolidateMedia,
+    formatNos: formatNos,
+    parseDateString: parseDateString,
+    parseDeadlineCell: parseDeadlineCell,
+    processSheet: processSheet,
+    generateOutput: generateOutput,
+    isBizDay: isBizDay,
+    nextBizDay: nextBizDay,
+    fmtDate: fmtDate,
+    state: STATE,
+    track: TRACK
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>
