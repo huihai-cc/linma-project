@@ -47,6 +47,19 @@
   .qc-header .qc-tool-extra .qc-sub{font-size:.6rem}
 }
 </style>
+  <style>
+    .tver-horizontal-fixed-name{left:calc(var(--tver-no-width,56px) + var(--tver-target-width,280px));z-index:3;background:#fff}
+    .tver-horizontal-fixed-comparison{left:calc(var(--tver-no-width,56px) + var(--tver-target-width,280px) + var(--tver-name-width,320px))}
+    .tver-horizontal-name-col.tver-status-consistent{background:#f1f8f2;color:#1b5e20}
+    .tver-horizontal-name-col.tver-status-name-variant{background:#e7f6f3;color:#21695d}
+    .tver-name-variant-label{display:inline-block;margin-top:4px;font-size:11px;font-weight:700}
+    .tver-horizontal-col-comparison .tver-horizontal-entity-status{box-sizing:border-box;min-width:0;max-width:100%;padding:6px 5px;font-size:12px;letter-spacing:0}
+    .tver-horizontal-name-col.tver-status-mismatch{background:#fdecec;color:#9b1c1c}
+    .tver-horizontal-name-col.tver-status-review{background:#fff6e5;color:#9a4d00}
+    .tver-horizontal-name-col{vertical-align:top!important;white-space:normal}
+    .tver-horizontal-table tbody td.tver-horizontal-name-col{padding:8px 9px}
+    .tver-group-name-value{display:block;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;max-height:none;overflow:visible;text-overflow:clip;line-height:1.35}
+  </style>
 </head>
 <body>
   <script src="qc-auth.js"></script>
@@ -162,11 +175,12 @@
     return { rows, issues };
   }
 
+  function normalizeTverCsvHeader(header){
+    return String(header ?? '').replace(/^\uFEFF/, '').trim().replace(/^\uFEFF/, '').trim();
+  }
+
   function detectTverCsvSchema(headers){
-    const normalizedHeaders=headers.map((header, index) => {
-      const text=String(header ?? '').trim();
-      return index===0 ? text.replace(/^\uFEFF/, '') : text;
-    });
+    const normalizedHeaders=headers.map(normalizeTverCsvHeader);
     const headerSet=new Set(normalizedHeaders);
     const duplicateHeaders=[...headerSet].filter(header => normalizedHeaders.filter(candidate => candidate===header).length>1).sort();
     function inspect(expectedHeaders){
@@ -221,42 +235,61 @@
     const fileName=options && options.fileName ? options.fileName : '';
     const parsed=parseCsvRows(String(text ?? ''));
     const parsedRows=parsed.rows;
-    const headers=(parsedRows.shift() || []).map((header, index) => {
-      const value=String(header ?? '');
-      return index===0 ? value.replace(/^\uFEFF/, '') : value;
-    });
-    const schema=detectTverCsvSchema(headers);
+    const rawHeaders=(parsedRows.shift() || []).map(header => String(header ?? ''));
+    const canonicalHeaders=rawHeaders.map(normalizeTverCsvHeader);
+    const schema=detectTverCsvSchema(rawHeaders);
     const parseIssues=[...parsed.issues];
+    const headerCounts=new Map();
+    canonicalHeaders.forEach(header => headerCounts.set(header,(headerCounts.get(header)||0)+1));
+    const duplicateHeaderColumns=(schema.duplicateHeaders || []).map(canonicalHeader=>({
+      canonicalHeader,
+      columns:canonicalHeaders.map((header,index)=>header===canonicalHeader ? {
+        columnNumber:index+1,rawHeader:rawHeaders[index],sourceRef:{fileName,sheetName:null,rowNumber:1,columnName:canonicalHeader,rawValue:rawHeaders[index],columnNumber:index+1},
+      } : null).filter(Boolean),
+    }));
+    if(duplicateHeaderColumns.length) parseIssues.push({
+      code:'CSV_CANONICAL_HEADER_DUPLICATE',duplicateHeaders:schema.duplicateHeaders,columns:duplicateHeaderColumns,
+    });
     const rows=[];
     parsedRows.forEach((cells, rowIndex) => {
       if(cells.length===1 && cells[0]==='') return;
-      if(cells.length!==headers.length){
+      if(cells.length!==rawHeaders.length){
         parseIssues.push({
           code:'CSV_COLUMN_COUNT_MISMATCH',
           rowNumber:rowIndex+2,
-          expected:headers.length,
+          expected:rawHeaders.length,
           actual:cells.length,
         });
       }
       const values={};
       const sourceRefs={};
-      headers.forEach((header, columnIndex) => {
+      const columns=Array.from({length:Math.max(rawHeaders.length,cells.length)},(_,columnIndex)=>{
+        const rawHeader=columnIndex<rawHeaders.length ? rawHeaders[columnIndex] : null;
+        const canonicalHeader=columnIndex<canonicalHeaders.length ? canonicalHeaders[columnIndex] : null;
         const rawValue=columnIndex<cells.length ? cells[columnIndex] : '';
-        values[header]=rawValue;
-        sourceRefs[header]={ fileName, sheetName:null, rowNumber:rowIndex+2, columnName:header, rawValue };
+        const sourceRef={fileName,sheetName:null,rowNumber:rowIndex+2,columnName:canonicalHeader,rawValue,columnNumber:columnIndex+1};
+        return {columnNumber:columnIndex+1,rawHeader,canonicalHeader,rawValue,sourceRef};
+      });
+      columns.forEach(column=>{
+        const key=column.canonicalHeader;
+        if(key===null || headerCounts.get(key)!==1) return;
+        values[key]=column.rawValue;
+        sourceRefs[key]={fileName,sheetName:null,rowNumber:rowIndex+2,columnName:key,rawValue:column.rawValue};
       });
       rows.push({
         rowNumber:rowIndex+2,
         occurrenceIndex:1,
         values,
         sourceRefs,
+        columns,
+        sourceRefsByColumn:columns.map(column=>column.sourceRef),
         source:{ fileName, sheetName:null, rowNumber:rowIndex+2, columnName:null, rawValue:null },
       });
     });
     if(schema.kind===null){
       parseIssues.push({ code:'CSV_SCHEMA_UNRECOGNIZED', missingHeaders:schema.missingHeaders });
     }
-    return { schema, headers, rows, parseIssues };
+    return { schema, headers:rawHeaders, rawHeaders, canonicalHeaders, rows, parseIssues };
   }
 
   function isVisibleSheet(workbook, sheetName){
@@ -324,6 +357,15 @@
     'ターゲティング番号', 'ADG開始日時(yyyy/mm/dd hh:mm)', 'ADG終了日時(yyyy/mm/dd hh:mm)',
     '素材名', 'LP名', 'タグ訴求', '初期設定日予算', 'その他設定', '変更履歴',
   ];
+  const SETTING_OPTIONAL_ALIAS_HEADERS=['デバイス','タグ訴求(0%)','タグ訴求(100%)'];
+  const SETTING_HEADER_FIELD_NAMES={
+    '発注CPN名':'campaignName','CPN訴求':'campaignAppeal','CPN予算':'campaignBudget',
+    '開始日時(yyyy/mm/dd hh:mm)':'startDateTime','終了日時(yyyy/mm/dd hh:mm)':'endDateTime',
+    'ターゲティング番号':'targetingNumber','ADG開始日時(yyyy/mm/dd hh:mm)':'adGroupStartDateTime',
+    'ADG終了日時(yyyy/mm/dd hh:mm)':'adGroupEndDateTime','素材名':'materialName','LP名':'landingPageName',
+    'タグ訴求':'tagAppeal','タグ訴求(0%)':'tagAppeal','タグ訴求(100%)':'tagAppeal',
+    '初期設定日予算':'initialDailyBudget','その他設定':'otherSettings','変更履歴':'changeHistory','デバイス':'device',
+  };
 
   // ===== NEW FMT（2609 以降のテンプレ）後方互換のための「構造能力検出」 =====
   // 実案件（新FMT 4 案）で確認した差分のみを扱う。判定は列/行の構造だけで行い、
@@ -519,10 +561,12 @@
     existing.state='ambiguous';
   }
 
-  function makeTargetingGroup(section, anchor, rowEndIndex, columnEndIndex, fileName, sheetName){
+  function makeTargetingGroup(section, anchor, rowEndIndex, columnEndIndex, fileName, sheetName, diagnostics){
     const fields={};
     const sourceRefs={};
     const rawFields={};
+    const fieldStates={};
+    const duplicateValueOccurrences={};
     for(let rowIndex=anchor.rowIndex; rowIndex<rowEndIndex; rowIndex+=1){
       const row=section.rows[rowIndex] || [];
       const label=String(row[anchor.columnIndex] ?? '').trim();
@@ -539,29 +583,72 @@
           refs.push(source);
         }
       }
-      rawFields[label]={ values, sourceRefs:refs, slots };
+      const occurrence={rowNumber:rowIndex+1,rawValue:values.join(' '),sourceRefs:refs,slots,valueSource:slots[0] && slots[0].source || null};
+      if(!rawFields[label]) rawFields[label]={ values:[...values], sourceRefs:[...refs], slots:[...slots], occurrences:[occurrence] };
+      else{
+        rawFields[label].values.push(...values);
+        rawFields[label].sourceRefs=uniqueSourceRefs([...rawFields[label].sourceRefs,...refs]);
+        rawFields[label].slots.push(...slots);
+        rawFields[label].occurrences.push(occurrence);
+      }
       const field=TARGETING_FIELD_NAMES[label];
       if(field){
         fields[field]=values.join(' ');
         sourceRefs[field]=refs[0] || makeSettingSource(fileName, sheetName, rowIndex+1, label, '');
+        if(field==='device' || field==='price') (duplicateValueOccurrences[field] ||= []).push({label,...occurrence});
       }
     }
-    // NEW FMT：単一槽フィールド（オークションタイプ等）は marker 槽を除外し、業務値槽のみを採用する。
-    // 業務値槽が空でも「行が存在して空」である supporting evidence を保持する（セル値を偽造しない）。
-    Object.entries(TARGETING_SLOT_FIELD_NAMES).forEach(([label, spec]) => {
+    Object.entries(duplicateValueOccurrences).forEach(([field,occurrences])=>{
+      const rawValues=occurrences.map(item=>String(item.rawValue ?? '').trim());
+      const nonEmpty=rawValues.filter(value=>value!=='');
+      const uniqueValues=[...new Set(nonEmpty)];
+      const hasBlank=rawValues.some(value=>value==='');
+      const conflicting=(field==='device' && occurrences.length>1) || uniqueValues.length>1 || (hasBlank && nonEmpty.length>0);
+      const evidence=uniqueSourceRefs(occurrences.flatMap(item=>item.sourceRefs.length ? item.sourceRefs : [item.valueSource].filter(Boolean)));
+      if(occurrences.length>1){
+        diagnostics.push({code:'SETTING_TARGETING_FIELD_DUPLICATE',field,labels:[...new Set(occurrences.map(item=>item.label))],values:rawValues,sources:evidence,sheetName,rowNumber:occurrences[1].rowNumber});
+      }
+      if(conflicting){
+        fields[field]='';sourceRefs[field]=null;fieldStates[field]='ambiguous';
+        diagnostics.push({code:'SETTING_TARGETING_FIELD_CONFLICT',field,labels:[...new Set(occurrences.map(item=>item.label))],values:rawValues,sources:evidence,sheetName,rowNumber:occurrences[1].rowNumber});
+      }else if(uniqueValues.length===1){
+        fields[field]=nonEmpty[0];
+        sourceRefs[field]=occurrences.flatMap(item=>item.sourceRefs).find(source=>String(source.rawValue ?? '').trim()===nonEmpty[0]) || occurrences[0].valueSource;
+        fieldStates[field]='available';
+      }else{
+        fields[field]='';sourceRefs[field]=evidence[0] || null;fieldStates[field]='missing';
+      }
+    });
+    // NEW FMT single-slot field; evaluate every occurrence's actual business-value slot.
+    Object.entries(TARGETING_SLOT_FIELD_NAMES).forEach(([label,spec])=>{
       const rawField=rawFields[label];
       if(!rawField) return;
-      const slot=rawField.slots[spec.valueSlotIndex];
-      const slotSource=(slot && slot.source) || makeSettingSource(fileName, sheetName, anchor.rowIndex+1, label, '');
-      const businessValue=String(slot ? slot.rawValue : '').trim();
-      const isTemplateMarker=!businessValue || businessValue==='-';
-      fields[spec.field]=isTemplateMarker ? '' : businessValue;
-      sourceRefs[spec.field]=slotSource;
-      // marker 槽（'-'）は証拠から除外し、業務値槽のみをこのフィールドの証拠とする。
-      rawField.sourceRefs=uniqueSourceRefs([slotSource]);
+      const occurrences=(rawField.occurrences || []).map(occurrence=>{
+        const slot=occurrence.slots[spec.valueSlotIndex];
+        const source=slot && slot.source || makeSettingSource(fileName,sheetName,occurrence.rowNumber,label,'');
+        const rawValue=String(slot ? slot.rawValue : '').trim();
+        const value=!rawValue || rawValue==='-' ? '' : rawValue;
+        return {label,rowNumber:occurrence.rowNumber,rawValue:value,sourceRefs:[source],valueSource:source};
+      });
+      const rawValues=occurrences.map(item=>item.rawValue);
+      const nonEmpty=rawValues.filter(value=>value!=='');
+      const uniqueValues=[...new Set(nonEmpty)];
+      const hasBlank=rawValues.some(value=>value==='');
+      const conflicting=occurrences.length>1 && (uniqueValues.length>1 || (hasBlank && nonEmpty.length>0));
+      const evidence=uniqueSourceRefs(occurrences.map(item=>item.valueSource));
+      rawField.values=nonEmpty;
+      rawField.sourceRefs=evidence;
+      if(occurrences.length>1) diagnostics.push({code:'SETTING_TARGETING_FIELD_DUPLICATE',field:spec.field,labels:[label],values:rawValues,sources:evidence,sheetName,rowNumber:occurrences[1].rowNumber});
+      if(conflicting){
+        fields[spec.field]='';sourceRefs[spec.field]=null;fieldStates[spec.field]='ambiguous';
+        diagnostics.push({code:'SETTING_TARGETING_FIELD_CONFLICT',field:spec.field,labels:[label],values:rawValues,sources:evidence,sheetName,rowNumber:occurrences[1].rowNumber});
+      }else if(uniqueValues.length===1){
+        fields[spec.field]=nonEmpty[0];sourceRefs[spec.field]=occurrences.find(item=>item.rawValue===nonEmpty[0]).valueSource;fieldStates[spec.field]='available';
+      }else{
+        fields[spec.field]='';sourceRefs[spec.field]=evidence[0] || null;fieldStates[spec.field]='missing';
+      }
     });
     const targetingNameField=rawFields['ターゲティング名'];
-    // C3-C4-2：展示身份独立保存，不加入fields及既有semanticSignature。
     const identity={ targetingNumber:'', targetingName:'', statusHint:'', sourceRefs:{} };
     if(targetingNameField){
       const numberSlot=targetingNameField.slots[1];
@@ -577,19 +664,23 @@
         identity.sourceRefs[field]={ ...slot.source, columnNumber:anchor.columnIndex+slotIndex+2 };
       });
     }
-    return { anchor, fields, sourceRefs, rawFields, identity, numberRuleId:'TVER_260605_TARGETING_NUMBER_RELATIVE_COLUMN_2', semanticSignature:signatureFor(fields) };
+    return { anchor, fields, sourceRefs, rawFields, identity, fieldStates, numberRuleId:'TVER_260605_TARGETING_NUMBER_RELATIVE_COLUMN_2', semanticSignature:signatureFor(fields) };
   }
 
   function targetingSourceEvidence(targeting){
     const fields={};
     const rawFields={};
     Object.entries(targeting && targeting.rawFields || {}).forEach(([label, value]) => {
+      const field=TARGETING_FIELD_NAMES[label] || (TARGETING_SLOT_FIELD_NAMES[label] && TARGETING_SLOT_FIELD_NAMES[label].field);
+      const state=field && targeting.fieldStates && targeting.fieldStates[field];
+      const occurrenceSources=Array.isArray(value && value.occurrences)
+        ? uniqueSourceRefs(value.occurrences.flatMap(occurrence=>occurrence.sourceRefs && occurrence.sourceRefs.length ? occurrence.sourceRefs : [occurrence.valueSource].filter(Boolean)))
+        : [];
       const sources=uniqueSourceRefs(value && value.sourceRefs || []);
-      const evidenceSources=sources.length || !['世帯年収●', 'デモグラフィック●'].includes(label)
+      const evidenceSources=state==='ambiguous' && occurrenceSources.length ? occurrenceSources : (sources.length || !['世帯年収●', 'デモグラフィック●'].includes(label)
         ? sources
-        : uniqueSourceRefs((value && value.slots || []).map(slot => slot && slot.source));
+        : uniqueSourceRefs((value && value.slots || []).map(slot => slot && slot.source)));
       rawFields[label]=evidenceSources;
-      const field=TARGETING_FIELD_NAMES[label];
       if(field) fields[field]=uniqueSourceRefs([...(fields[field] || []), ...evidenceSources]);
     });
     return { fields, rawFields };
@@ -662,7 +753,7 @@
       const nextVertical=anchorRows.find(rowIndex => rowIndex>anchor.rowIndex);
       const rowEndIndex=nextVertical===undefined ? section.endRowIndex : nextVertical;
       const columnEndIndex=nextHorizontal ? nextHorizontal.columnIndex-1 : maxColumn;
-      addTargetingGroup(indexByNumber, makeTargetingGroup(section, anchor, rowEndIndex, columnEndIndex, fileName, sheetName), diagnostics, sheetName);
+      addTargetingGroup(indexByNumber, makeTargetingGroup(section, anchor, rowEndIndex, columnEndIndex, fileName, sheetName, diagnostics), diagnostics, sheetName);
     });
     return indexByNumber;
   }
@@ -1100,6 +1191,26 @@
     }
   }
 
+  const campaignBudgetSourceEvidenceByCampaign=new WeakMap();
+  function addCampaignBudgetSource(campaign, source){
+    if(!campaign || !source) return;
+    const evidence=campaignBudgetSourceEvidenceByCampaign.get(campaign) || [];
+    if(!evidence.some(item=>item.fileName===source.fileName && item.sheetName===source.sheetName && item.rowNumber===source.rowNumber && item.columnName===source.columnName)) evidence.push(source);
+    campaignBudgetSourceEvidenceByCampaign.set(campaign,evidence);
+    const rawValues=evidence.map(item=>String(item.rawValue ?? '').trim());
+    const nonEmpty=rawValues.filter(value=>value!=='');
+    const uniqueValues=[...new Set(nonEmpty)];
+    const hasBlank=rawValues.some(value=>value==='');
+    const ambiguous=evidence.length>1 && (uniqueValues.length>1 || (hasBlank && nonEmpty.length>0));
+    // Keep the historical single-value evidence shape. Expand evidence only when conflicting rows require review.
+    if(!ambiguous) return;
+    const fields=campaign.sourceEvidence && campaign.sourceEvidence.fields || (campaign.sourceEvidence={fields:{}}).fields;
+    fields.campaignBudget=uniqueSourceRefs(evidence);
+    campaign.fieldStates={...(campaign.fieldStates || {}),campaignBudget:'ambiguous'};
+    campaign.fields.campaignBudget=rawValues.join(' / ');
+    campaign.sourceRefs.campaignBudget=null;
+  }
+
   // FIX4-B：Surveyは通常配信と別の業務契約を持つ。同一モデル／既存の親優先matcherへ接続する。
   function tverSurveyRuleSource(field, value, page){
     return { fileName:'embedded:TVer管理画面マニュアル_20260827', sheetName:`P${page}`, rowNumber:page,
@@ -1273,6 +1384,105 @@
     });
   }
 
+
+  // 独立CTV合同：标签定位；Segment/ASR/Device/Price不参与实体身份识别。
+  function appendTverSurveyCtvModel(model,rows,fileName,sheetName,headerIndex){
+    const section=locateSection(rows,'TVerSurvey');
+    if(!section) return false;
+    const scan=(label,start,end)=>{
+      const found=[];
+      for(let r=start;r<end;r+=1) (rows[r] || []).forEach((v,c)=>{if(String(v ?? '').trim()===label) found.push({r,c});});
+      return found;
+    };
+    const source=(r,c,label)=>({...makeSettingSource(fileName,sheetName,r+1,label,(rows[r] || [])[c]),columnNumber:c+1});
+    const pair=(label,start,end)=>{
+      const hits=scan(label,start,end),sources=hits.map(h=>source(h.r,h.c+1,label));
+      const values=[...new Set(sources.map(s=>String(s.rawValue).trim()))];
+      return {hits,sources,value:values.length===1 ? values[0] : null};
+    };
+    const old=scan('旧システム',section.rowIndex+1,section.endRowIndex)[0],end=old ? old.r : section.endRowIndex;
+    const enabled=pair('TVerSurvey',0,headerIndex),tap=pair('新TAP',section.rowIndex+1,end);
+    if(enabled.value!=='あり' || tap.value!=='あり') return false;
+    const ctv=scan('CTV',section.rowIndex+1,end).filter(h=>String((rows[h.r] || [])[h.c+1]).trim()==='接触者');
+    // 旧SP反例のDevice文字だけをCTVへ変更してもCTV業務へ再分類しない。
+    const explicitCtv=scan('CTV接触者',section.rowIndex+1,end).length || scan('VAST(サードパーティ)',section.rowIndex+1,end).some(v=>/_CTV_(?:非)?接触者$/.test(String((rows[v.r] || [])[v.c+1])));
+    if(!explicitCtv) return false;
+    const issue=(code,refs=[])=>model.diagnostics.push({code,message:tverDisplayReasonCodeMessage(code),sheetName,sourceRefs:uniqueSourceRefs(refs)});
+    const coreSources=[...enabled.sources,...tap.sources,...ctv.map(h=>source(h.r,h.c,'Survey CTV'))];
+    const blocked=()=>{issue('CTV_CORE_SOURCE_NOT_UNIQUE',coreSources);return true;};
+    const legacy=old ? ['SP','CTV'].flatMap(label=>scan(label,old.r+1,section.endRowIndex)).filter(h=>String((rows[h.r] || [])[h.c+1]).trim()==='あり') : [];
+    if(legacy.length){issue('CTV_CORE_VERSION_CONFLICT',legacy.map(h=>source(h.r,h.c+1,'旧Survey有効')));return true;}
+    if(ctv.length!==1 || scan('SP',section.rowIndex+1,end).some(h=>String((rows[h.r] || [])[h.c+1]).trim()==='接触者')) return blocked();
+    const plans=['CPN','接触者ADG','非接触者ADG'].map(label=>pair(label,section.rowIndex+1,end));
+    if(plans.some(p=>p.value!=='1本')) return blocked();
+    const h=ctv[0],nc=scan('非接触者',h.r+1,end).filter(v=>v.c===h.c+1);
+    if(nc.length!==1) return blocked();
+    const start=pair('アンケート開始日',section.rowIndex+1,end),date=String(start.value || '').match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+    if(!date || !isValidCalendarDate(+date[1],+date[2],+date[3])) return blocked();
+    const y=+date[1],m=+date[2],d=+date[3],ey=y+Math.floor((m+2)/12),em=(m+2)%12+1,pad=n=>String(n).padStart(2,'0');
+    if(!isValidCalendarDate(ey,em,d)) return blocked();
+    const stamp=`${String(y).slice(-2)}${pad(m)}${pad(d)}`,endStamp=`${pad(em)}${pad(d)}`;
+    const cpName=pair('BLSキャンペーン名',section.rowIndex+1,end),ordinary=model.campaigns.filter(c=>!c.businessType);
+    const parents=ordinary.filter(c=>cpName.value===`${c.fields.campaignName}_${stamp}` || cpName.value===`【BLS】${c.fields.campaignName}_CTV_${stamp}-${endStamp}`);
+    if(parents.length!==1 || !cpName.value) return blocked();
+    const parent=parents[0],identityName=`【BLS】${parent.fields.campaignName}_CTV_${stamp}-${endStamp}`;
+    const roleSource=(label,role)=>scan(label,section.rowIndex+1,end).map(v=>({name:source(v.r,v.c+1,label),id:source(v.r,v.c+2,label+' ID')}))
+      .filter(v=>String(v.name.rawValue).endsWith('_CTV_'+(role==='contact' ? '接触者' : '非接触者')));
+    const roles=['contact','noncontact'].map(role=>({role,name:pair(role==='contact' ? 'CTV接触者' : 'CTV非接触者',section.rowIndex+1,end),
+      creative:roleSource('VAST(サードパーティ)',role),segment:roleSource('ファイルアップロード',role)}));
+    if(roles.some(r=>!r.name.value || r.creative.length!==1) || roles[0].creative[0].name.rawValue===roles[1].creative[0].name.rawValue) return blocked();
+    const manual=(field,value,page)=>({fileName:'embedded:TVer管理画面マニュアル_20260827',sheetName:`P${page}`,rowNumber:page,columnName:field,rawValue:String(value),ruleId:`TVER_SURVEY_CTV_P${page}_${field}`});
+    const rule=(field,value,page,refs=[],reason=null)=>tverSurveyContract(value,reason ? null : normalizeTverSurveyCsvValue(field,value).value,[...refs,manual(field,value,page),...coreSources],`TVER_SURVEY_CTV_${field}`,reason);
+    const unknown=(field,page,reason,refs=[])=>rule(field,'',page,refs,reason);
+    const cp={key:`survey-ctv-campaign:${parent.key}|${stamp}`,level:'Campaign',businessType:'survey-ctv',expectedName:cpName.value,
+      ctvIdentityName:identityName,ctvCreativeNames:roles.map(r=>String(r.creative[0].name.rawValue)),surveyParentKey:parent.key,
+      fields:{campaignName:cpName.value},sourceRefs:{campaignName:cpName.sources[0]},sourceEvidence:{fields:{}},surveyContracts:{
+        campaign_name:rule('campaign_name',cpName.value,65,cpName.sources),
+        start_datetime:rule('start_datetime',`${y}/${pad(m)}/${pad(d)} 00:00`,65,start.sources),
+        end_datetime:rule('end_datetime',`${ey}/${pad(em)}/${pad(d)} 23:45`,65,start.sources),
+        budget:rule('budget','90000',65),daily_budget:rule('daily_budget','1000',65),budget_type:rule('budget_type','2',65),
+        campaign_status:unknown('campaign_status',65,'CTV_STATUS_RULE_CONFLICT'),consumption_type:rule('consumption_type','1',65),report_target_flag:rule('report_target_flag','0',65),
+      }};
+    model.campaigns.push(cp);
+    const contactSegments=roles[0].segment;
+    const segmentContract=(field,records,page)=>{
+      const refs=records.map(r=>r.id),ids=[...new Set(refs.map(s=>String(s.rawValue).trim()))];
+      return rule(field,ids.length===1 ? ids[0] : '',page,refs,ids.length===1 && isValidTverId(ids[0]) ? null : 'CTV_SEGMENT_SOURCE_UNCONFIRMED');
+    };
+    roles.forEach(r=>{
+      const contact=r.role==='contact',page=contact ? 67 : 69,creative=r.creative[0];
+      const contracts={adgroup_name:rule('adgroup_name',r.name.value,contact ? 66 : 68,r.name.sources),
+        device:rule('device','android ios',contact ? 66 : 68),price:rule('price','100',contact ? 66 : 68),
+        tver_video_duration:rule('tver_video_duration','15',contact ? 66 : 68),adgroup_status:rule('adgroup_status','1',contact ? 66 : 68),
+        bid_segment:segmentContract('bid_segment',r.segment,page),
+        bid_segment_exclude:contact ? rule('bid_segment_exclude','',page) : segmentContract('bid_segment_exclude',contactSegments,page),
+        uid_suffix:unknown('uid_suffix',page,'CTV_ASR_RULE_UNCONFIRMED'),
+        affinity:rule('affinity','',page),dmp_segment:rule('dmp_segment','',page),dmp_segment_exclude:rule('dmp_segment_exclude','',page),
+        dmp_segment_expansion_threshold:rule('dmp_segment_expansion_threshold','',page),
+      };
+      ['gender','age','pref','annual_income','demography'].forEach(field=>{
+        contracts[field]=rule(field,'',page);
+      });
+      if(!contact) ['media','local_broadcaster','genre','genre_exclude','subgenre','subgenre_exclude','contents_group'].forEach(field=>{contracts[field]=rule(field,'',page);});
+      contracts.upload_segment_expansion_threshold=unknown('upload_segment_expansion_threshold',page,'CTV_EXPANSION_RULE_UNCONFIRMED');
+      ['affinity','dmp_segment','dmp_segment_exclude','dmp_segment_expansion_threshold','gender','age','pref','annual_income','demography','media','local_broadcaster','genre','genre_exclude','subgenre','subgenre_exclude','contents_group'].forEach(field=>{if(contracts[field]) contracts[field].notRequired=true;});
+      const gp={key:`${cp.key}|${r.role}`,level:'Ad Group',parentKey:cp.key,businessType:'survey-ctv',surveyRole:r.role,
+        expectedName:r.name.value,ctvCreativeName:String(creative.name.rawValue),fields:{},sourceRefs:{},sourceEvidence:{fields:{}},surveyContracts:contracts};
+      model.adGroups.push(gp);
+      const adContracts={creative_name:rule('creative_name',String(creative.name.rawValue),70,[creative.name]),
+        creative_id:rule('creative_id',String(creative.id.rawValue),70,[creative.id],isValidTverId(String(creative.id.rawValue)) ? null : 'CTV_CREATIVE_ID_UNCONFIRMED'),
+        status:unknown('status',70,'CTV_AD_DEFAULT_UNCONFIRMED'),start_time:unknown('start_time',70,'CTV_AD_DEFAULT_UNCONFIRMED'),end_time:unknown('end_time',70,'CTV_AD_DEFAULT_UNCONFIRMED')};
+      ['url','tracking_url_start','tracking_url_first_quartile','tracking_url_midpoint','tracking_url_third_quartile','tracking_url_complete'].forEach(field=>{adContracts[field]={...rule(field,'',70),notRequired:true};});
+      model.ads.push({key:`${gp.key}|ad`,level:'Ad',parentKey:gp.key,businessType:'survey-ctv',surveyRole:r.role,
+        expectedName:String(creative.name.rawValue),fields:{creativeFileName:String(creative.name.rawValue)},sourceRefs:{creativeFileName:creative.name},sourceEvidence:{fields:{}},
+        applicability:{url:'not-required:CTV:P70',tracking:'not-required:CTV:P70'},
+        surveyContracts:adContracts,
+      });
+    });
+    issue('CTV_NAMING_TEMPLATE_CONFLICT',[...cpName.sources,...roles.flatMap(r=>[...r.name.sources,r.creative[0].name])]);
+    return true;
+  }
+
   function parseTverSettingWorkbook(workbook, options){
     const fileName=options && options.fileName ? options.fileName : '';
     const found=findSettingHeaderCandidates(workbook, { maxRows:100 });
@@ -1293,8 +1503,45 @@
       headerCounts[text]=(headerCounts[text] || 0)+1;
       if(headerIndex[text]===undefined) headerIndex[text]=index;
     });
-    const duplicateBusinessHeaders=SETTING_BUSINESS_HEADERS.filter(header => headerCounts[header]>1);
-    if(duplicateBusinessHeaders.length) return emptySettingModel([{ code:'SETTING_BUSINESS_HEADER_DUPLICATE', headers:duplicateBusinessHeaders, sheetName:candidate.sheetName }]);
+    const duplicateBusinessHeaders=[...new Set([...SETTING_BUSINESS_HEADERS,...SETTING_OPTIONAL_ALIAS_HEADERS].filter(header => headerCounts[header]>1))];
+    if(duplicateBusinessHeaders.length){
+      const duplicateFields=duplicateBusinessHeaders.map(header=>{
+        const columns=candidate.headers.map((value,index)=>String(value ?? '').trim()===header ? index : -1).filter(index=>index>=0);
+        const sources=[];
+        for(let sourceRowIndex=candidate.rowIndex+1;sourceRowIndex<rows.length;sourceRowIndex+=1){
+          const sourceRow=rows[sourceRowIndex] || [];
+          if(isSectionBoundary(sourceRow)) break;
+          if(!sourceRow.some(value=>String(value ?? '').trim()!=='')) continue;
+          columns.forEach(columnIndex=>{
+            const source=makeSettingSource(fileName,candidate.sheetName,sourceRowIndex+1,header,sourceRow[columnIndex]);
+            source.columnNumber=columnIndex+1;
+            sources.push(source);
+          });
+        }
+        return {field:SETTING_HEADER_FIELD_NAMES[header] || header,header,columns:columns.map(columnIndex=>({columnNumber:columnIndex+1,rawHeader:String(candidate.headers[columnIndex] ?? '')})),sources};
+      });
+      return emptySettingModel([{code:'SETTING_BUSINESS_HEADER_DUPLICATE',headers:duplicateBusinessHeaders,duplicateFields,sheetName:candidate.sheetName}]);
+    }
+    const presentTagAppealHeaders=[SETTING_TAG_APPEAL_LEGACY_HEADER,SETTING_TAG_APPEAL_PRIMARY_HEADER,...SETTING_TAG_APPEAL_SECONDARY_HEADERS]
+      .filter(header=>headerIndex[header]!==undefined);
+    const mixedTagAppealAliases=headerIndex[SETTING_TAG_APPEAL_LEGACY_HEADER]!==undefined
+      && presentTagAppealHeaders.some(header=>header!==SETTING_TAG_APPEAL_LEGACY_HEADER);
+    if(mixedTagAppealAliases){
+      const columns=presentTagAppealHeaders.map(header=>({header,columnNumber:headerIndex[header]+1,rawHeader:String(candidate.headers[headerIndex[header]] ?? '')}));
+      const sources=[];
+      for(let sourceRowIndex=candidate.rowIndex+1;sourceRowIndex<rows.length;sourceRowIndex+=1){
+        const sourceRow=rows[sourceRowIndex] || [];
+        if(isSectionBoundary(sourceRow)) break;
+        if(!sourceRow.some(value=>String(value ?? '').trim()!=='')) continue;
+        presentTagAppealHeaders.forEach(header=>{
+          const columnNumber=headerIndex[header]+1;
+          const source=makeSettingSource(fileName,candidate.sheetName,sourceRowIndex+1,header,sourceRow[columnNumber-1]);
+          source.columnNumber=columnNumber;
+          sources.push(source);
+        });
+      }
+      return emptySettingModel([{code:'SETTING_TAG_APPEAL_ALIAS_CONFLICT',field:'tagAppeal',headers:presentTagAppealHeaders,columns,sources,sheetName:candidate.sheetName}]);
+    }
     // NEW FMT：tag appeal 列は「タグ訴求」または「タグ訴求(0%)」「タグ訴求(100%)」のいずれかで満たす。
     // 「デバイス」は NEW FMT のみ存在する optional 列（required にはしない＝旧 FMT を阻害しない）。
     const tagAppealHeaders=resolveSettingTagAppealHeaders(headerIndex);
@@ -1364,6 +1611,7 @@
         campaignBySignature.set(campaignSignature, campaign);
         campaigns.push(campaign);
       }
+      addCampaignBudgetSource(campaign, campaignSourceRefs.campaignBudget);
       addCampaignDailyBudgetSource(campaign, campaignSourceRefs.initialDailyBudget);
       const targeting=sourceIndex.targetingByNumber[targetingNumberKey];
       const targetingFields=targeting && targeting.state==='unique' ? targeting.fields : {};
@@ -1401,6 +1649,7 @@
           key:`adgroup:${adGroupSignature}`, level:'Ad Group', parentKey:campaign.key, fields:adGroupFields,
           displayIdentity:targeting && targeting.state==='unique' ? targeting.identity || null : null,
           sourceRefs:adGroupSourceRefs,
+          fieldStates:{targeting:targeting && targeting.state==='unique' ? targeting.fieldStates || {} : {}},
           sourceEvidence:{ fields:adGroupFieldsEvidence, targeting:targetingEvidence.rawFields, derived:{ device:{ derivedFrom:deviceDerivedFrom, primarySource:adGroupSourceRefs.device || null } } },
           semanticSignature:adGroupSignature, expectedName:null, nameRuleId:'TVER_260605_ADGROUP_STRUCTURE', nameGenerationStatus:'TEMPLATE_NO_ADGROUP_NAME_FORMULA', nameComponents:{ parentCampaign:campaign.expectedName, targetingNumber, tagAppeal:adGroupFields.tagAppeal, device:adGroupFields.device },
         };
@@ -1427,8 +1676,76 @@
       ads.push(ad);
     }
     const model={ campaigns, adGroups, ads, diagnostics, sourceIndex, templateVersion:'260605' };
-    appendTverSurveySpModel(model,rows,fileName,candidate.sheetName,candidate.rowIndex);
+    const ctvHandled=appendTverSurveyCtvModel(model,rows,fileName,candidate.sheetName,candidate.rowIndex);
+    if(!ctvHandled){
+      appendTverSurveySpModel(model,rows,fileName,candidate.sheetName,candidate.rowIndex);
+      attachTverOrdinarySurveySpContext(model,rows,fileName,candidate.sheetName,candidate.rowIndex);
+    }
     return model;
+  }
+
+  // FIX4-C：只建立通常SP的P56证据链，不修改已验收的BLS角色合同。
+  function attachTverOrdinarySurveySpContext(model,rows,fileName,sheetName,headerIndex){
+    const section=locateSection(rows,'TVerSurvey');
+    if(!section) return;
+    const read=(label,start,end,offset=1)=>{
+      const sources=[];
+      for(let r=start;r<end;r+=1) (rows[r] || []).forEach((v,c)=>{
+        if(String(v ?? '').trim()===label) sources.push({...makeSettingSource(fileName,sheetName,r+1,label,(rows[r] || [])[c+offset]),columnNumber:c+offset+1});
+      });
+      const values=[...new Set(sources.map(s=>String(s.rawValue).trim()))];
+      return {sources,value:values.length===1 ? values[0] : null};
+    };
+    const basic=locateSection(rows,'基本情報');
+    const enabled=read('TVerSurvey',basic ? basic.rowIndex+1 : 0,headerIndex);
+    const legacy=rows.findIndex((row,r)=>r>section.rowIndex && r<section.endRowIndex && row.some(v=>String(v).trim()==='旧システム'));
+    const end=legacy<0 ? section.endRowIndex : legacy;
+    const tap=read('新TAP',section.rowIndex+1,end);
+    // 明确关闭不扩展旧版/CTV规则；矛盾来源保留review。
+    if(enabled.value==='なし' && tap.value!=='あり' || tap.value==='なし') return;
+    if(![...enabled.sources,...tap.sources].some(s=>String(s.rawValue).trim()==='あり')) return;
+    const sp=read('SP',section.rowIndex+1,end);
+    const ctv=read('CTV',section.rowIndex+1,end);
+    if(!sp.sources.length && ctv.sources.some(s=>['あり','接触者'].includes(String(s.rawValue).trim()))
+      && ctv.sources.every(s=>['あり','接触者','非接触者'].includes(String(s.rawValue).trim()))) return;
+    const contactSp=sp.sources.filter(s=>String(s.rawValue).trim()==='接触者');
+    const scenario=read('シナリオ',section.rowIndex+1,end,2);
+    const hint=read('BLSキャンペーン名',section.rowIndex+1,end);
+    const date=read('アンケート開始日',section.rowIndex+1,end);
+    const dateParts=String(date.value || '').match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+    const stamp=dateParts ? dateParts[1].slice(2)+dateParts[2].padStart(2,'0')+dateParts[3].padStart(2,'0') : '';
+    const ordinary=model.campaigns.filter(c=>!c.businessType);
+    const parents=ordinary.filter(c=>hint.sources.length
+      ? hint.value===`${c.fields.campaignName}_${stamp}` || model.campaigns.some(s=>s.businessType==='survey-sp' && s.surveyParentKey===c.key && s.expectedName===hint.value)
+      : true);
+    const reason=enabled.value!=='あり' || tap.value!=='あり' ? 'SURVEY_ENABLE_OR_VERSION_UNCONFIRMED'
+      : contactSp.length!==1 || sp.sources.some(s=>!['接触者','非接触者'].includes(String(s.rawValue).trim())) ? 'SURVEY_SP_DEVICE_OR_ROLE_UNCONFIRMED'
+      : parents.length!==1 ? 'SURVEY_PARENT_CAMPAIGN_NOT_UNIQUE'
+      : scenario.sources.length!==1 || !isValidTverId(scenario.value) ? 'SURVEY_CONTACT_SEGMENT_UNCONFIRMED' : null;
+    const sources=uniqueSourceRefs([...enabled.sources,...tap.sources,...sp.sources,...ctv.sources,...scenario.sources,...hint.sources,...date.sources]);
+    const candidateParentKeys=parents.map(parent=>parent.key);
+    if(parents.length!==1) model.diagnostics.push({
+      code:'SURVEY_NORMAL_SP_PARENT_SCOPE_UNCONFIRMED',reasonCode:'SURVEY_PARENT_CAMPAIGN_NOT_UNIQUE',comparisonStatus:'需确认',
+      message:`Survey親Campaignの関連付けが未確認です（候補${parents.length}件）。${parents.length ? '候補以外の通常GPにはSurveyチェックを適用しません。' : '通常GPの元の比較結果を保持しています。設定表の親Campaign指定を確認してください。'}`,
+      candidateParentKeys:[...candidateParentKeys],sourceRefs:uniqueSourceRefs([...sources,...parents.map(parent=>parent.sourceRefs.campaignName)]),
+    });
+    model.adGroups.filter(g=>!g.businessType && candidateParentKeys.includes(g.parentKey)).forEach(g=>{
+      const device=resolveSettingAdGroupDevice(g);
+      if(device.resolved && device.device==='ctv') return;
+      // 清单SP/PC虽不能决定既有通用Device值，仍能证明“含SP”；未知row-level/Tag不得回退。
+      const fields=g.fields || {};
+      const listHasSp=!fields.rowDevice && !fields.tagAppeal && parseTverDeviceSet(fields.targeting && fields.targeting.device).has('sp');
+      const mobile=device.resolved && String(device.device).split(' ').some(d=>['android','ios'].includes(d)) || listHasSp;
+      g.ordinarySurveySpContext={candidateParentKeys:[...candidateParentKeys],segmentId:scenario.value,sources:uniqueSourceRefs([...sources,...(device.sourceEvidence || [])]),
+        reason:reason || (!mobile ? 'SURVEY_NORMAL_SP_DEVICE_APPLICABILITY_UNCONFIRMED' : null)};
+    });
+  }
+
+  // FIX1：创建与消费context均按候选父CP限定，拒绝遗留/错误挂载的跨CP上下文。
+  function isTverOrdinarySurveySpScopedGp(setting){
+    const context=setting && setting.ordinarySurveySpContext;
+    return Boolean(setting && setting.level==='Ad Group' && !setting.businessType && context
+      && Array.isArray(context.candidateParentKeys) && context.candidateParentKeys.includes(setting.parentKey));
   }
 
   function isValidTverId(value){
@@ -2262,8 +2579,13 @@
     const field=String(input && input.field || '');
     const settingRawValue=String(input ? (input.settingValue ?? '') : '');
     const csvRawValue=String(input ? (input.csvValue ?? '') : '');
-    const settingNormalization=normalizeComparisonValue(field, settingRawValue, input && input.settingCanonical);
-    const csvNormalization=normalizeComparisonValue(field, csvRawValue, input && input.csvCanonical);
+    const normalize=(rawValue, explicitCanonical)=>{
+      if(field!=='adgroup_name' || String(input && input.ruleBasis || '')!=='TVER_GROUP_NAME_P25') return normalizeComparisonValue(field, rawValue, explicitCanonical);
+      const raw=String(rawValue ?? ''), value=normalizeTverNameForMatching(raw);
+      return { rawValue:raw, value, transformed:value!==raw, ruleId:'TVER_A16_NAME_CANONICAL', state:'known' };
+    };
+    const settingNormalization=normalize(settingRawValue, input && input.settingCanonical);
+    const csvNormalization=normalize(csvRawValue, input && input.csvCanonical);
     const statusFields=['campaign_status', 'adgroup_status', 'status'];
     const settingValidationValue=statusFields.includes(field) && input && input.settingCanonical
       && input.settingCanonical.value!==null && input.settingCanonical.value!==undefined
@@ -2280,7 +2602,7 @@
     const gpAgeGuard=resolveTverGpAgeGuard(comparisonInput, settingRawValue, csvRawValue);
     const gpPrefGuard=resolveTverGpPrefGuard(comparisonInput, settingRawValue, csvRawValue);
     const c344TargetingGuard=resolveTverC344TargetingGuard(comparisonInput, settingRawValue, csvRawValue);
-    const gpGuard=gpPeriodGuard || gpAgeGuard || gpPrefGuard || c344TargetingGuard;
+    const gpGuard=input && input.ctvContract ? null : gpPeriodGuard || gpAgeGuard || gpPrefGuard || c344TargetingGuard;
     const validationIssues=[
       ...validateField({ field, value:settingValidationValue, source:input && input.settingSource }).map(issue => ({ ...issue, side:'設定表値' })),
       ...validateField({ field, value:csvValidationValue, source:input && input.csvSource }).map(issue => ({ ...issue, side:'CSV値' })),
@@ -2336,7 +2658,8 @@
       ruleBasis,
       hidden:conservative.hidden,
       neutral:Boolean(gpGuard && gpGuard.neutral),
-      conservativeReason:conservative.reason || input && input.conservativeReason || null,
+      conservativeReason:input && (input.ctvContract || input.ruleBasis==='TVER_SURVEY_NORMAL_SP_P56')
+        ? input.conservativeReason || null : conservative.reason || input && input.conservativeReason || null,
       evidence:input && Array.isArray(input.evidence) ? input.evidence : [],
     };
   }
@@ -3564,9 +3887,20 @@
     const csvAds=Array.isArray(csvTree && csvTree.ads) ? csvTree.ads : [];
     const matches=[];
     const bySettingKey=new Map();
+    // Edit的同一ID跨父级／身份字段冲突，不能用首行值掩盖；仅限CTV分支消费。
+    const ctvIdentityConflict=entity=>entity && (entity.matchable===false || (entity.conflictIssues || []).some(issue=>
+      issue.code==='EDIT_PARENT_ID_CONFLICT' || issue.code==='DUPLICATE_ID_FIELD_CONFLICT' && ['campaign_name','adgroup_name','creative_name','creative_id'].includes(issue.field)));
+
+    const ctvChildBelongs=(child,parent,idField)=>child.parentKey===parent.key || parent.id && (child.rawRows || []).some(row=>String(row.values[idField]).trim()===String(parent.id));
 
     const campaignMatches=settingCampaigns.map(setting => {
       if(setting.businessType==='survey-sp' && setting.surveyIssue) return makeMatch('Campaign',setting,'ambiguous',setting.surveyIssue,[]);
+      if(setting.businessType==='survey-ctv'){
+        const candidates=csvCampaigns.filter(cp=>(cp.rawRows || []).some(row=>normalizeTverNameForMatching(row.values.campaign_name)===normalizeTverNameForMatching(setting.ctvIdentityName))
+          || csvAdGroups.some(g=>ctvChildBelongs(g,cp,'campaign_id') && csvAds.some(a=>ctvChildBelongs(a,g,'adgroup_id') && (a.rawRows || []).some(row=>setting.ctvCreativeNames.includes(String(row.values.creative_name))))));
+        if(candidates.some(ctvIdentityConflict)) return makeMatch('Campaign',setting,'ambiguous','CTV_CSV_IDENTITY_CONFLICT',candidates);
+        return makeMatch('Campaign',setting,candidates.length===1 ? 'matched' : 'ambiguous',candidates.length===1 ? 'CTV_UNIQUE_CAMPAIGN_LINEAGE' : 'CTV_CAMPAIGN_IDENTITY_UNCONFIRMED',candidates);
+      }
       const expectedName=strictText(setting.expectedName || settingField(setting, 'campaignName'));
       if(!expectedName) return makeMatch('Campaign', setting, 'ambiguous', 'MISSING_CAMPAIGN_NAME', []);
       // TVER-CPN-DTMATCH-FIX：Campaign 的「实体识别」与「字段值校验」分离。
@@ -3591,6 +3925,22 @@
       const parentCsvKey=parentMatch.csvKey;
       const expectedName=strictText(setting.expectedName);
       let candidates=csvAdGroups.filter(csv => csv.parentKey===parentCsvKey);
+      if(setting.businessType==='survey-ctv'){
+        const parentCsv=csvCampaigns.find(cp=>cp.key===parentCsvKey);
+        candidates=csvAdGroups.filter(g=>ctvChildBelongs(g,parentCsv,'campaign_id'));
+        const roleOf=name=> /_非接触者$/.test(name) ? 'noncontact' : /_接触者$/.test(name) ? 'contact' : null;
+        const roleGroups=settingAdGroups.filter(g=>g.parentKey===setting.parentKey && g.businessType==='survey-ctv');
+        const profiles=candidates.map(csv=>{
+          const named=(csv.rawRows || []).map(row=>roleOf(String(row.values.adgroup_name))); 
+          const creativeRoles=[...new Set(csvAds.filter(a=>ctvChildBelongs(a,csv,'adgroup_id')).flatMap(a=>roleGroups.filter(g=>(a.rawRows || []).some(row=>g.ctvCreativeName===String(row.values.creative_name))).map(g=>g.surveyRole)))];
+          return {csv,signals:[...new Set([...named,...creativeRoles].filter(Boolean))]};
+        });
+        const relevant=profiles.filter(p=>p.signals.includes(setting.surveyRole));
+        if(relevant.some(p=>ctvIdentityConflict(p.csv))) return makeMatch('Ad Group',setting,'ambiguous','CTV_CSV_IDENTITY_CONFLICT',relevant.map(p=>p.csv));
+        if(relevant.some(p=>p.signals.length!==1)) return makeMatch('Ad Group',setting,'ambiguous','CTV_ROLE_EVIDENCE_CONFLICT',relevant.map(p=>p.csv));
+        const selected=relevant.map(p=>p.csv);
+        return makeMatch('Ad Group',setting,selected.length===1 ? 'matched' : 'ambiguous',selected.length===1 ? 'CTV_UNIQUE_ROLE_IDENTITY' : 'CTV_ROLE_IDENTITY_UNCONFIRMED',selected);
+      }
       if(expectedName){
         candidates=candidates.filter(csv => csvField(csv, 'adGroupName', 'adgroup_name')===expectedName);
       }else{
@@ -3606,13 +3956,17 @@
             return !identityOwner || identityOwner===setting.key;
           });
         }
-        const settingProfile=conversionContext && typeof conversionContext.getSettingAdGroupProfile==='function'
+        let settingProfile=conversionContext && typeof conversionContext.getSettingAdGroupProfile==='function'
           ? conversionContext.getSettingAdGroupProfile(setting) : null;
+        // 通常Survey的Scenario是待校正字段；只在本类型中以独立price/DMP候选唯一性识别GP。
+        const ordinarySurveyProfile=profile=>isTverOrdinarySurveySpScopedGp(setting) && !setting.ordinarySurveySpContext.reason && profile
+          ? {...profile,requiredFields:profile.requiredFields.filter(f=>f!=='retargetKind'),optionalFields:profile.optionalFields.filter(f=>f!=='retargetSegmentId')} : profile;
+        settingProfile=ordinarySurveyProfile(settingProfile);
         const profileState=resolvedStructuralProfile(settingProfile);
         const candidateProfiles=candidates.map(csv => {
           const profile=conversionContext && typeof conversionContext.getCsvAdGroupProfile==='function'
             ? conversionContext.getCsvAdGroupProfile(csv) : null;
-          return { csv, profile };
+          return { csv, profile:ordinarySurveyProfile(profile) };
         });
         const unknownPotential=candidateProfiles.filter(item => !resolvedStructuralProfile(item.profile).ok
           && !structuralProfilesConflictOnKnownValues(settingProfile, item.profile)).map(item => item.csv);
@@ -3659,9 +4013,11 @@
       const creativeName=strictText(setting.expectedName || settingField(setting, 'creativeFileName'));
       if(!creativeName) return makeMatch('Ad', setting, 'ambiguous', 'MISSING_CREATIVE_FILE_NAME', []);
       // Survey声明每个角色GP一个Ad：唯一父下唯一Ad身份不依赖待校正的Creative值。
-      if(setting.businessType==='survey-sp'){
+      if(setting.businessType==='survey-sp' || setting.businessType==='survey-ctv'){
         const siblings=settingAds.filter(ad=>ad.parentKey===setting.parentKey);
-        const children=csvAds.filter(ad=>ad.parentKey===parentMatch.csvKey);
+        const parentCsv=csvAdGroups.find(g=>g.key===parentMatch.csvKey);
+        const children=csvAds.filter(ad=>setting.businessType==='survey-ctv' ? ctvChildBelongs(ad,parentCsv,'adgroup_id') : ad.parentKey===parentMatch.csvKey);
+        if(setting.businessType==='survey-ctv' && children.some(ctvIdentityConflict)) return makeMatch('Ad',setting,'ambiguous','CTV_CSV_IDENTITY_CONFLICT',children);
         if(siblings.length===1){
           if(children.length===1) return makeMatch('Ad',setting,'matched','UNIQUE_SURVEY_ROLE_AD',children);
           return makeMatch('Ad',setting,children.length ? 'ambiguous' : 'unmatched',children.length ? 'MULTIPLE_HARD_CANDIDATES' : 'NO_HARD_CANDIDATE',children);
@@ -4132,6 +4488,7 @@
       return fallbackDisplayName;
     }
     if(level!=='Ad Group') return fallbackDisplayName;
+    if(settingEntity && settingEntity.businessType==='survey-ctv') return String(csvEntity && csvField(csvEntity,'adGroupName','adgroup_name') || settingEntity.expectedName);
     if(settingEntity) return resolveAdGroupShortDisplayName(settingEntity).value;
     return 'CSV側未匹配';
   }
@@ -4233,6 +4590,11 @@
         ruleBasis:'TVER_NEW_FMT_DEVICE_ROW_LEVEL_UNRESOLVED',
       };
     }
+    const targetingDeviceState=entity && entity.fieldStates && entity.fieldStates.targeting && entity.fieldStates.targeting.device;
+    if(targetingDeviceState==='ambiguous'){
+      const evidence=entity && entity.sourceEvidence && entity.sourceEvidence.fields && entity.sourceEvidence.fields.device || [];
+      return {resolved:false,device:null,primarySource:null,sourceEvidence:evidence,rawValue:'',comparisonSource:null,canonicalValue:null,ruleBasis:'TVER_SETTING_DEVICE_SOURCE_AMBIGUOUS'};
+    }
     const deviceRaw=targeting.device || fields.device || '';
     const deviceSet=parseTverDeviceSet(deviceRaw);
     const tagAppeal=String(fields.tagAppeal ?? '').trim();
@@ -4302,6 +4664,9 @@
     const aggregatedRawValue=String(targeting.price ?? '');
     const sourceEvidence=entity && entity.sourceEvidence && entity.sourceEvidence.fields && entity.sourceEvidence.fields.price || [];
     const fallbackSource=entity && entity.sourceRefs && entity.sourceRefs.price || null;
+    if(entity && entity.fieldStates && entity.fieldStates.targeting && entity.fieldStates.targeting.price==='ambiguous'){
+      return {value:aggregatedRawValue,primarySource:null,sourceEvidence,canonicalValue:null,ruleBasis:'TVER_SETTING_PRICE_SOURCE_AMBIGUOUS'};
+    }
     const sourceCandidates=[];
     let invalid=[];
     (Array.isArray(sourceEvidence) ? sourceEvidence : []).forEach(source => {
@@ -4666,11 +5031,90 @@
     return {value:normalized.value,reason:normalized.state==='known' ? null : 'SURVEY_CSV_VALUE_UNCONFIRMED'};
   }
 
+  function resolveTverGroupNameContract(setting, model){
+    const sources=[],components={};
+    const result=(value,reason,ruleBasis='TVER_GROUP_NAME_P25')=>({value,comparable:!reason,reason:reason || null,ruleBasis,sourceEvidence:uniqueSourceRefs(sources),components});
+    const rule=page=>({fileName:'embedded:TVer管理画面マニュアル_20260827',sheetName:`P${page}`,rowNumber:page,columnName:'Group命名規則',rawValue:'Setting独立派生',ruleId:`TVER_GROUP_NAME_P${page}`});
+    if(setting.businessType){
+      const c=setting.surveyContracts && setting.surveyContracts.adgroup_name;
+      sources.push(...(c && c.sourceEvidence || []));
+      if(setting.businessType==='survey-sp' && c) return result(c.rawValue,c.comparable ? c.reason : c.reason || 'SP名称来源未确认',c.ruleBasis);
+      if(setting.businessType==='survey-ctv'){
+        sources.push(rule(65),rule(66),rule(68));
+        components.settingName=c && c.rawValue || '';
+        return result(null,'CTV_GROUP_NAME_AUTHORITY_PENDING：運用使用欄の名称とP65/P66/P68の優先順位が未確認（P66のCTV前区切りも曖昧）','TVER_GROUP_NAME_CTV_AUTHORITY_PENDING');
+      }
+      return result(null,'特殊業務の名称規則が未確認');
+    }
+    sources.push(rule(22),rule(25));
+    const parent=(model.campaigns || []).find(cp=>cp.key===setting.parentKey);
+    if(!parent) return result(null,'親CPのSetting来源が未確認');
+    // 空値を省略できるのは、列/槽位が存在し、実際に空だと確認できた場合だけ。
+    const read=(entity,field)=>{
+      const source=entity.sourceRefs && entity.sourceRefs[field];
+      if(!source || entity.nameHeaderPresence && entity.nameHeaderPresence[field]===false) return {ok:false};
+      sources.push(source);return {ok:true,value:String((entity.fields && entity.fields[field]) ?? '')};
+    };
+    const cpName=read(parent,'campaignName'),appeal=read(parent,'campaignAppeal');
+    if(!cpName.ok || !cpName.value.trim() || !appeal.ok) return result(null,'CPN名またはCPN訴求の来源列が未確認');
+    const dates=[];
+    for(const field of ['startDateTime','endDateTime']){
+      let value=read(setting,field);
+      if(!value.ok) return result(null,'GP期間の来源列が未確認');
+      if(value.value==='') value=read(parent,field);
+      if(!value.ok) return result(null,'継承するCP期間の来源が未確認');
+      const match=value.value.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:[ T].*)?$/);
+      if(!match || !isValidCalendarDate(Number(match[1]),Number(match[2]),Number(match[3]))) return result(null,'名称用日付を安全に解析できません');
+      dates.push(campaignDateCode(value.value,field==='startDateTime'));
+    }
+    const identity=setting.displayIdentity, targetSource=identity && identity.sourceRefs && identity.sourceRefs.targetingName;
+    if(!targetSource) return result(null,'ターゲティング名の来源槽位が未確認');
+    sources.push(targetSource);
+    const target=String(targetSource.rawValue ?? '');
+    if(target.startsWith('※') || target.trim()!==String(identity.targetingName ?? '').trim()) return result(null,'ターゲティング名はテンプレート注記または解析不一致');
+    const device=resolveSettingAdGroupDevice(setting);
+    sources.push(...(device.sourceEvidence || []));
+    if(!device.resolved || !(device.sourceEvidence || []).length) return result(null,'Deviceの名称用根拠が未確認');
+    const tokens=new Set(String(device.device).split(' ')),siblings=(model.adGroups || []).filter(g=>!g.businessType && g.parentKey===setting.parentKey && String(g.fields.targetingNumber)===String(setting.fields.targetingNumber));
+    const split=siblings.some(g=>g.key!==setting.key && resolveSettingAdGroupDevice(g).resolved && resolveSettingAdGroupDevice(g).device!==device.device);
+    siblings.forEach(g=>sources.push(...(resolveSettingAdGroupDevice(g).sourceEvidence || [])));
+    const spPc=tokens.has('pc') && tokens.has('android') && tokens.has('ios') && !tokens.has('ctv');
+    let suffix=spPc ? 'SPPC' : tokens.size===1 && tokens.has('ctv') && (split || resolveTverAdGroupSide(setting.fields.tagAppeal)==='ctv') ? 'CTV' : '';
+    if(split && !suffix) return result(null,'分割Deviceの名称サフィックスが未確認');
+    const other=String(setting.fields.targeting && setting.fields.targeting.otherSettings || '');
+    if(/消化用/.test(other)) return result(null,'消化用DMPの適用・後置順序の根拠が未確認');
+    const dmp=resolveSettingDmpProfile(setting);
+    const segmentEvidence=uniqueSourceRefs(((setting.sourceEvidence && setting.sourceEvidence.fields && setting.sourceEvidence.fields.segment) || []).filter(source=>String(source && source.rawValue || '').trim() && !String(source.rawValue || '').trim().startsWith('※')));
+    if(dmp.dmpKind==='dmp'){
+      sources.push(...segmentEvidence);
+      const segmentId=String(dmp.dmpSegmentId || '');
+      if(!segmentId || !segmentEvidence.some(source=>String(source.rawValue || '').trim()===segmentId)) return result(null,'DMP Segment IDのSetting来源未确认');
+      if(!/(?:^|_)DMP(?:_|$)/.test(target)) return result(null,'DMPのTargeting名称/消化用区分が未確認');
+    }else if(/(?:^|_)DMP(?:_|$)/.test(target)){
+      return result(null,'DMP Targeting名に対応するSetting segment来源が未确认');
+    }
+    Object.assign(components,{campaignName:cpName.value,start:dates[0],end:dates[1],appeal:appeal.value,targetingName:target,deviceSuffix:suffix});
+    return result(`${cpName.value}_${dates[0]}-${dates[1]}${appeal.value ? '_'+appeal.value : ''}${target ? '_'+target : ''}${suffix ? '_'+suffix : ''}`);
+  }
+
+  function buildTverGroupNameInput(setting,csv,model,base){
+    const contract=resolveTverGroupNameContract(setting,model),evidence=collectFieldEvidence(csv.rawRows || [],'adgroup_name');
+    const actual=String(csvField(csv,'adGroupName','adgroup_name') ?? '');
+    const conflict=new Set(evidence.map(s=>String(s.rawValue))).size>1;
+    const unavailable=!evidence.length,comparable=contract.comparable && !conflict && !unavailable;
+    return {...base,field:'adgroup_name',settingValue:contract.value || '',csvValue:conflict ? '' : actual,
+      settingSource:contract.sourceEvidence.find(s=>!s.fileName.startsWith('embedded:')) || null,csvSource:conflict ? null : evidence[0] || null,
+      settingEvidenceState:contract.comparable ? 'available' : 'ambiguous',csvEvidenceState:conflict ? 'ambiguous' : unavailable ? 'unavailable' : 'available',
+      comparable,alwaysDisplay:true,comparisonStatus:comparable ? null : '需确认',ruleBasis:contract.ruleBasis,
+      conservativeReason:conflict ? 'CSV_GROUP_NAME_CONFLICT' : unavailable ? 'CSV_GROUP_NAME_SOURCE_UNAVAILABLE' : contract.reason,
+      sourceEvidence:{setting:contract.sourceEvidence,csv:evidence,derivedFrom:contract.sourceEvidence}};
+  }
+
   function buildTverSurveyComparisonInputs(setting,csv,parsedCsv,base){
     return Object.entries(setting.surveyContracts || {}).map(([field,originalContract])=>{
       const editAdStatus=setting.level==='Ad' && field==='status' && parsedCsv.schema.kind==='edit-with-ids';
       const contract=editAdStatus ? { ...originalContract,rawValue:'',canonicalValue:null,comparable:false,sourceEvidence:[],
-        ruleBasis:'TVER_SURVEY_SP_EDIT_AD_STATUS_DEFERRED',reason:'SURVEY_EDIT_AD_STATUS_NOT_CONFIRMED' } : originalContract;
+        ruleBasis:setting.businessType==='survey-ctv' ? 'TVER_SURVEY_CTV_EDIT_AD_STATUS_DEFERRED' : 'TVER_SURVEY_SP_EDIT_AD_STATUS_DEFERRED',reason:'SURVEY_EDIT_AD_STATUS_NOT_CONFIRMED' } : originalContract;
       const settingState=editAdStatus ? 'not_provided' : contract.comparable ? 'available' : 'ambiguous';
       const csvFields=field==='age' ? ['start_age','end_age'] : [field];
       const provided=csvFields.every(name=>tverCsvSchemaHasField(parsedCsv,name));
@@ -4684,7 +5128,7 @@
         canonical=rawValue==='' ? '' : parsed && parsed.canonicalValue;
         if(new Set(pairs.map(p=>JSON.stringify(p))).size>1 || (rawValue!=='' && !parsed)) csvReason='SURVEY_CSV_VALUE_CONFLICT';
       }else{
-        const candidates=evidence.map(source=>({source,...normalizeTverSurveyCsvValue(field,source.rawValue)}));
+        const candidates=evidence.map(source=>({source,...(setting.businessType==='survey-ctv' && field==='uid_suffix' ? {value:String(source.rawValue),reason:null} : normalizeTverSurveyCsvValue(field,source.rawValue))}));
         const first=candidates[0];
         rawValue=first ? String(first.source.rawValue) : '';
         canonical=first ? first.value : null;
@@ -4693,13 +5137,14 @@
       // Contact空ASR可比较，不代表所有案件非空ASR都是错误；非空保持业务规则待确认。
       const contactAsrPending=setting.businessType==='survey-sp' && setting.level==='Ad Group' && setting.surveyRole==='contact' && field==='uid_suffix' && rawValue.trim()!=='';
       const comparisonSettingState=contactAsrPending ? 'ambiguous' : settingState;
-      const reason=!provided || !evidence.length ? 'SURVEY_CSV_FIELD_UNAVAILABLE' : editAdStatus ? 'SURVEY_EDIT_AD_STATUS_NOT_CONFIRMED' : contract.reason || csvReason || (contactAsrPending ? 'SURVEY_CONTACT_ASR_RULE_PENDING' : null) || (!contract.comparable ? 'SURVEY_SETTING_SOURCE_UNCONFIRMED' : null);
+      const ctvNotRequired=setting.businessType==='survey-ctv' && contract.notRequired && rawValue.trim()!=='';
+      const reason=!provided || !evidence.length ? 'SURVEY_CSV_FIELD_UNAVAILABLE' : editAdStatus ? 'SURVEY_EDIT_AD_STATUS_NOT_CONFIRMED' : contract.reason || (ctvNotRequired ? 'CTV_NOT_REQUIRED_FIELD_PRESENT' : null) || csvReason || (contactAsrPending ? 'SURVEY_CONTACT_ASR_RULE_PENDING' : null) || (!contract.comparable ? 'SURVEY_SETTING_SOURCE_UNCONFIRMED' : null);
       const comparable=!reason && canonical!==null;
       const comparisonStatus=!comparable ? '需确认' : String(contract.canonicalValue)===String(canonical) ? (contract.rawValue===rawValue ? '一致' : '表記ゆれ一致') : '不一致';
-      return { ...base,field,settingValue:contract.rawValue,csvValue:rawValue,
+      return { ...base,ctvContract:setting.businessType==='survey-ctv',field,settingValue:contract.rawValue,csvValue:rawValue,
         settingSource:contract.sourceEvidence[0] || null,csvSource:evidence[0] || null,
         settingCanonical:{value:contract.canonicalValue,evidenceState:comparisonSettingState,ruleId:contract.ruleBasis},
-        csvCanonical:{value:canonical,evidenceState:provided ? 'available' : 'unavailable',ruleId:'TVER_SURVEY_SP_CSV'},
+        csvCanonical:{value:canonical,evidenceState:provided ? 'available' : 'unavailable',ruleId:setting.businessType==='survey-ctv' ? 'TVER_SURVEY_CTV_CSV' : 'TVER_SURVEY_SP_CSV'},
         settingEvidenceState:comparisonSettingState,csvEvidenceState:provided ? 'available' : 'unavailable',
         schemaKind:parsedCsv.schema.kind,currentStatusRequired:true,comparable,alwaysDisplay:true,comparisonStatus,
         conservativeReason:reason,ruleBasis:contract.ruleBasis,
@@ -4708,17 +5153,61 @@
     });
   }
 
+  function buildTverOrdinarySurveySpInputs(setting,csv,parsedCsv,base){
+    const context=setting.ordinarySurveySpContext;
+    return ['store_segment','uid_suffix'].map(field=>{
+      const resolved=field==='store_segment' ? resolveSettingOperationalTargetingForComparison(setting,field) : resolveSettingTargetingForComparison(setting,field);
+      const expected=field==='store_segment' ? context.segmentId : '0 1 2 3 4 5 6 7 8 9 A B C';
+      const ruleSource=tverSurveyRuleSource(field,field==='store_segment' ? 'データ蓄積：接触者シナリオセグメント' : 'SPを含む通常GP：ASR 0～C（CTVのみ免除）',56);
+      const derived=uniqueSourceRefs([ruleSource,...context.sources]);
+      const settingEvidence=uniqueSourceRefs([...(resolved.sourceEvidence || []),...derived]);
+      const evidence=uniqueSourceRefs(collectFieldEvidence(csv.rawRows || [],field));
+      const parse=raw=>{
+        if(field==='uid_suffix'){
+          const p=tverAsr0CCollection(raw);return {value:p.value,reason:p.value===null ? 'CSV_VALUE_INVALID' : p.duplicate ? 'CSV_DUPLICATE_MEMBERS' : null};
+        }
+        return parseTverCvPointCollection(raw,false);
+      };
+      const candidates=evidence.map(source=>({source,...parse(source.rawValue)}));
+      const first=candidates[0];
+      const csvRaw=first ? String(first.source.rawValue) : '';
+      const csvCanonical=first ? first.value : null;
+      const settingRaw=String(resolved.rawValue ?? '');
+      const settingCanonical=resolved.canonicalValue;
+      const provided=tverCsvSchemaHasField(parsedCsv,field);
+      const reason=context.reason || (!settingRaw.trim() ? 'SETTING_REQUIRED_VALUE_MISSING'
+        : !resolved.comparable || String(settingCanonical)!==String(expected) ? 'SETTING_CONFLICTS_WITH_SURVEY_P56'
+        : !provided || !evidence.length ? 'CSV_FIELD_UNAVAILABLE'
+        : candidates.some(c=>c.reason || c.value===null) ? 'CSV_VALUE_INVALID_OR_DUPLICATE'
+        : new Set(candidates.map(c=>c.value)).size!==1 ? 'CSV_ROWS_CONFLICT' : null);
+      const comparisonStatus=reason ? '需确认' : String(expected)===String(csvCanonical)
+        ? settingRaw===csvRaw ? '一致' : '表記ゆれ一致' : '不一致';
+      return {...base,field,settingValue:settingRaw,csvValue:csvRaw,
+        settingSource:resolved.primarySource || (resolved.sourceEvidence || [])[0] || null,csvSource:first && first.source || null,
+        settingCanonical:{value:settingCanonical,evidenceState:resolved.evidenceState,ruleId:'TVER_SURVEY_NORMAL_SP_P56'},
+        csvCanonical:{value:csvCanonical,evidenceState:provided ? 'available' : 'unavailable',ruleId:'TVER_SURVEY_NORMAL_SP_CSV'},
+        settingEvidenceState:resolved.evidenceState,csvEvidenceState:provided ? 'available' : 'unavailable',
+        comparable:!reason,alwaysDisplay:true,comparisonStatus,conservativeReason:reason ? 'TVER_SURVEY_NORMAL_SP_'+reason : null,
+        ruleBasis:'TVER_SURVEY_NORMAL_SP_P56',sourceEvidence:{setting:settingEvidence,csv:evidence,derivedFrom:derived}};
+    });
+  }
+
   function buildRunFromModels(settingModel, csvTree, matching, parsedCsv){
     const inputs=[];
     const settingAll=[...(settingModel.campaigns || []), ...(settingModel.adGroups || []), ...(settingModel.ads || [])];
     const csvAll=[...(csvTree.campaigns || []), ...(csvTree.adGroups || []), ...(csvTree.ads || [])];
+    // Survey/FIX4-C models and blocked Survey designs retain their whole-run Group-name baseline.
+    const hasSurveyScope=settingAll.some(entity=>entity && ['survey-sp','survey-ctv'].includes(entity.businessType))
+      || (Array.isArray(settingModel.surveyDiagnostics) && settingModel.surveyDiagnostics.length>0)
+      || (Array.isArray(settingModel.diagnostics) && settingModel.diagnostics.some(diagnostic=>/^(?:CTV|SURVEY)_/.test(String(diagnostic && diagnostic.code || ''))));
     (matching.matches || []).forEach(match => {
       const setting=findEntityByKey(settingAll, match.settingKey);
       const csv=findEntityByKey(csvAll, match.csvKey);
       const base={ level:match.level, entityKey:setting && setting.key || null, csvEntityKey:csv && csv.key || null, targetName:entityTargetName(setting), reason:match.reasonCode };
       const fallbackCsv=tverA173SingleAdGroupComparisonFallback(match, setting, settingModel, csvTree, parsedCsv.schema.kind);
       if(match.status==='matched'){
-        if(setting && setting.businessType==='survey-sp'){
+        if(match.level==='Ad Group' && setting && csv && !setting.businessType && !hasSurveyScope && !isTverOrdinarySurveySpScopedGp(setting)){inputs.push(buildTverGroupNameInput(setting,csv,settingModel,base,parsedCsv));}
+        if(setting && (setting.businessType==='survey-sp' || setting.businessType==='survey-ctv')){
           buildTverSurveyComparisonInputs(setting,csv,parsedCsv,base).forEach(input=>inputs.push(input));
           return;
         }
@@ -4731,7 +5220,11 @@
            addFieldResult(inputs, base, 'campaign_name', setting.expectedName || settingField(setting, 'campaignName'), csvField(csv, 'campaignName', 'campaign_name'), campaignNameSource, csv.sourceRefs && csv.sourceRefs.campaign_name, { sourceEvidence:entrySourceEvidence(setting, 'campaignName', campaignNameSource, csv, 'campaign_name', csv.sourceRefs && csv.sourceRefs.campaign_name, setting.sourceEvidence && setting.sourceEvidence.derived && setting.sourceEvidence.derived.expectedName && setting.sourceEvidence.derived.expectedName.derivedFrom) });
            addFieldResult(inputs, base, 'start_datetime', settingField(setting, 'startDateTime'), csvField(csv, 'startDateTime', 'start_datetime'), campaignStartSource, csv.sourceRefs && csv.sourceRefs.start_datetime, { sourceEvidence:entrySourceEvidence(setting, 'startDateTime', campaignStartSource, csv, 'start_datetime', csv.sourceRefs && csv.sourceRefs.start_datetime) });
            addFieldResult(inputs, base, 'end_datetime', settingField(setting, 'endDateTime'), csvField(csv, 'endDateTime', 'end_datetime'), campaignEndSource, csv.sourceRefs && csv.sourceRefs.end_datetime, { sourceEvidence:entrySourceEvidence(setting, 'endDateTime', campaignEndSource, csv, 'end_datetime', csv.sourceRefs && csv.sourceRefs.end_datetime) });
-           addFieldResult(inputs, base, 'budget', settingField(setting, 'campaignBudget'), csvField(csv, 'budget', 'budget'), campaignBudgetSource, csv.sourceRefs && csv.sourceRefs.budget, { sourceEvidence:entrySourceEvidence(setting, 'campaignBudget', campaignBudgetSource, csv, 'budget', csv.sourceRefs && csv.sourceRefs.budget) });
+           const campaignBudgetState=setting.fieldStates && setting.fieldStates.campaignBudget || 'available';
+           addFieldResult(inputs, base, 'budget', settingField(setting, 'campaignBudget'), csvField(csv, 'budget', 'budget'), campaignBudgetSource, csv.sourceRefs && csv.sourceRefs.budget, {
+             settingEvidenceState:campaignBudgetState==='ambiguous' ? 'ambiguous' : campaignBudgetState==='missing' ? 'not_provided' : 'available',
+             sourceEvidence:entrySourceEvidence(setting, 'campaignBudget', campaignBudgetSource, csv, 'budget', csv.sourceRefs && csv.sourceRefs.budget),
+           });
            const dailyBudgetState=setting.fieldStates && setting.fieldStates.initialDailyBudget || 'available';
            const dailyBudgetEvidence=entityFieldEvidence(setting, 'initialDailyBudget', campaignDailyBudgetSource);
            addFieldResult(inputs, base, 'daily_budget', settingField(setting, 'initialDailyBudget'), csvField(csv, 'dailyBudget', 'daily_budget'), campaignDailyBudgetSource, csv.sourceRefs && csv.sourceRefs.daily_budget, {
@@ -4840,6 +5333,12 @@
           buildTverA173OperationalComparisonInputs(setting, csv, parsedCsv.schema.kind, base).forEach(input => inputs.push(input));
           buildTverA173ExpansionComparisonInputs(setting, csv, parsedCsv.schema.kind, base).forEach(input => inputs.push(input));
           buildTverA173RetargetComparisonInputs(setting, csv, parsedCsv.schema.kind, base).forEach(input => inputs.push(input));
+          if(isTverOrdinarySurveySpScopedGp(setting)){
+            for(let i=inputs.length-1;i>=0;i-=1){
+              if(inputs[i].entityKey===setting.key && ['store_segment','uid_suffix'].includes(inputs[i].field)) inputs.splice(i,1);
+            }
+            buildTverOrdinarySurveySpInputs(setting,csv,parsedCsv,base).forEach(input=>inputs.push(input));
+          }
         }else if(match.level==='Ad'){
           const resolved=resolveCreativeFields(setting, settingModel.sourceIndex && settingModel.sourceIndex.creativeByMaterial, settingModel.sourceIndex && settingModel.sourceIndex.measurementTagByAppeal, settingModel.sourceIndex && settingModel.sourceIndex.uploadUrlByLandingPage);
           addFieldResult(inputs, base, 'creative_name', resolved.creative.fileName || '', csvField(csv, 'creativeName', 'creative_name'), resolved.creative.sourceRef, csv.sourceRefs && csv.sourceRefs.creative_name, { settingSourceState:resolved.creative.state==='missing' ? 'missing' : null, sourceEvidence:entrySourceEvidence(setting, 'creativeFileName', resolved.creative.sourceRef, csv, 'creative_name', csv.sourceRefs && csv.sourceRefs.creative_name, resolved.creative.derivedFrom) });
@@ -5143,9 +5642,11 @@
   };
   const TVER_HORIZONTAL_SOURCE_COLUMN_KEY='source';
   const TVER_HORIZONTAL_SOURCE_COLUMN_WIDTH=96;
-  const TVER_COLUMN_WIDTH_STORAGE_KEY='tver-horizontal-column-widths-v1';
-  const TVER_COLUMN_DEFAULT_WIDTHS={ no:56, target:280, comparison:160, field:160 };
-  const TVER_COLUMN_WIDTH_LIMITS={ no:{ min:56, max:56 }, target:{ min:160, max:560 }, comparison:{ min:120, max:240 }, field:{ min:120, max:560 } };
+  const TVER_COLUMN_WIDTH_STORAGE_KEY='tver-horizontal-column-widths-v4-ad-name';
+  const TVER_COLUMN_PREVIOUS_WIDTH_STORAGE_KEY='tver-horizontal-column-widths-v3-name-colors';
+  const TVER_COLUMN_LEGACY_WIDTH_STORAGE_KEY='tver-horizontal-column-widths-v2-single-name';
+  const TVER_COLUMN_DEFAULT_WIDTHS={ no:56, target:280, name:320, comparison:104, field:160 };
+  const TVER_COLUMN_WIDTH_LIMITS={ no:{ min:56, max:56 }, target:{ min:90, max:560 }, name:{ min:220, max:480 }, comparison:{ min:96, max:240 }, field:{ min:120, max:560 } };
 
   function getTverColumnStorage(storage){
     if(storage!==undefined) return storage;
@@ -5153,24 +5654,53 @@
   }
 
   function tverColumnWidthKind(columnKey){
-    return columnKey==='no' ? 'no' : columnKey==='target' ? 'target' : columnKey==='comparison' ? 'comparison' : 'field';
+    return columnKey==='no' ? 'no' : columnKey==='target' ? 'target' : columnKey==='comparison' ? 'comparison' : columnKey==='name' ? 'name' : 'field';
   }
 
-  function clampTverColumnWidth(columnKey, width){
+  function getTverColumnDefaultWidth(level, columnKey){
+    const kind=tverColumnWidthKind(columnKey);
+    if(kind==='target' && (level==='Ad Group' || level==='Ad')) return 100;
+    return TVER_COLUMN_DEFAULT_WIDTHS[kind];
+  }
+
+  function clampTverColumnWidth(columnKey, width, level){
     const kind=tverColumnWidthKind(columnKey);
     const limits=TVER_COLUMN_WIDTH_LIMITS[kind];
+    const minimum=kind==='target' && level!=='Ad Group' && level!=='Ad' ? 160 : limits.min;
     const value=Number(width);
-    const fallback=TVER_COLUMN_DEFAULT_WIDTHS[kind];
-    const safe=Number.isFinite(value) ? value : fallback;
-    return Math.round(Math.min(limits.max, Math.max(limits.min, safe)));
+    const safe=Number.isFinite(value) ? value : getTverColumnDefaultWidth(level, columnKey);
+    return Math.round(Math.min(limits.max, Math.max(minimum, safe)));
   }
 
   function readTverColumnWidthPreferences(storage){
     const source=getTverColumnStorage(storage);
     if(!source || typeof source.getItem!=='function') return {};
     try{
-      const parsed=JSON.parse(source.getItem(TVER_COLUMN_WIDTH_STORAGE_KEY) || '{}');
-      return parsed && typeof parsed==='object' && !Array.isArray(parsed) ? parsed : {};
+      const current=source.getItem(TVER_COLUMN_WIDTH_STORAGE_KEY);
+      if(current!==null){
+        const parsed=JSON.parse(current || '{}');
+        return parsed && typeof parsed==='object' && !Array.isArray(parsed) ? parsed : {};
+      }
+      const previousRaw=source.getItem(TVER_COLUMN_PREVIOUS_WIDTH_STORAGE_KEY);
+      const fromV2=previousRaw===null;
+      const previous=JSON.parse((fromV2 ? source.getItem(TVER_COLUMN_LEGACY_WIDTH_STORAGE_KEY) : previousRaw) || '{}');
+      const migrated={};
+      if(previous && typeof previous==='object' && !Array.isArray(previous)){
+        Object.entries(previous).forEach(([level, values]) => {
+          if(!values || typeof values!=='object' || Array.isArray(values)) return;
+          migrated[level]={};
+          Object.entries(values).forEach(([key, value]) => {
+            // FIX5: reset only Ad target/comparison; retain FIX4 migration for untouched v2 stores.
+            if((level==='Ad' || fromV2 && (level==='Campaign' || level==='Ad Group')) && (key==='target' || key==='comparison')) return;
+            if(Number.isFinite(Number(value))) migrated[level][key]=value;
+          });
+          if(level==='Ad' && !Object.prototype.hasOwnProperty.call(migrated[level], 'name') && Number.isFinite(Number(values.creative_name))){
+            migrated[level].name=values.creative_name;
+          }
+        });
+      }
+      try{ if(typeof source.setItem==='function') source.setItem(TVER_COLUMN_WIDTH_STORAGE_KEY, JSON.stringify(migrated)); }catch(error){ /* read-only storage */ }
+      return migrated;
     }catch(error){ return {}; }
   }
 
@@ -5181,13 +5711,13 @@
     if(kind==='no') return TVER_COLUMN_DEFAULT_WIDTHS.no;
     const preferences=readTverColumnWidthPreferences(storage);
     const levelPreferences=preferences && preferences[String(level)] && typeof preferences[String(level)]==='object' ? preferences[String(level)] : {};
-    return clampTverColumnWidth(key, levelPreferences[key] ?? TVER_COLUMN_DEFAULT_WIDTHS[kind]);
+    return clampTverColumnWidth(key, levelPreferences[key] ?? getTverColumnDefaultWidth(level, key), level);
   }
 
   function setTverColumnWidth(level, columnKey, width, storage){
     const key=String(columnKey || '');
     if(key==='parent') return TVER_COLUMN_DEFAULT_WIDTHS.field;
-    const next=clampTverColumnWidth(key, width);
+    const next=clampTverColumnWidth(key, width, level);
     if(tverColumnWidthKind(key)==='no') return next;
     const source=getTverColumnStorage(storage);
     if(!source || typeof source.setItem!=='function') return next;
@@ -5204,8 +5734,8 @@
 
   function resetTverColumnWidths(storage){
     const source=getTverColumnStorage(storage);
-    if(source && typeof source.removeItem==='function'){
-      try{ source.removeItem(TVER_COLUMN_WIDTH_STORAGE_KEY); }catch(error){ /* localStorage不可用 */ }
+    if(source && typeof source.setItem==='function'){
+      try{ source.setItem(TVER_COLUMN_WIDTH_STORAGE_KEY, '{}'); }catch(error){ /* localStorage不可用 */ }
     }
   }
 
@@ -5281,6 +5811,7 @@
     const nodes=collectTverDisplayNodesByLevel(safeRun.displayTree, level);
     const fixedFields=Array.isArray(TVER_HORIZONTAL_FIELD_ORDER[level]) ? TVER_HORIZONTAL_FIELD_ORDER[level] : [];
     const fixedSet=new Set(fixedFields);
+    const projectedNameField=level==='Campaign' ? 'campaign_name' : level==='Ad Group' ? 'adgroup_name' : level==='Ad' ? 'creative_name' : null;
     const discoveredFields=[];
     const fieldHasMeaningfulValue=new Map();
 
@@ -5290,8 +5821,8 @@
         const entry=entries[entryIndex];
         if(!entry || entry.hidden || entry.level!==level) return;
         const field=String(entry.field ?? '');
-        if(!field) return;
-        if(level==='Campaign' && field==='report_target_flag' && !String(entry.ruleBasis || '').startsWith('TVER_SURVEY_SP_')) return;
+        if(!field || field===projectedNameField) return;
+        if(level==='Campaign' && field==='report_target_flag' && !/^(TVER_SURVEY_SP_|TVER_SURVEY_CTV_)/.test(String(entry.ruleBasis || ''))) return;
         if(!fieldHasMeaningfulValue.has(field)){
           fieldHasMeaningfulValue.set(field, false);
           if(!fixedSet.has(field)) discoveredFields.push(field);
@@ -5302,7 +5833,7 @@
     });
 
     return [...fixedFields, ...discoveredFields]
-      .filter(field => fieldHasMeaningfulValue.get(field)===true)
+      .filter(field => field!==projectedNameField && fieldHasMeaningfulValue.get(field)===true)
       .map(field => ({ key:field, label:buildTverHorizontalFieldLabel(level, field) }));
   }
 
@@ -5311,6 +5842,7 @@
     const entries=Array.isArray(safeRun.entries) ? safeRun.entries : [];
     const columns=buildTverHorizontalColumns(safeRun, level);
     const columnByKey=new Map(columns.map(column => [column.key, column]));
+    const projectedNameField=level==='Campaign' ? 'campaign_name' : level==='Ad Group' ? 'adgroup_name' : level==='Ad' ? 'creative_name' : null;
     const criteria=buildTverEntryFilterCriteria({ ...(filters || {}), level });
     const rows=[];
 
@@ -5329,6 +5861,17 @@
       columns.forEach(column => {
         cells[column.key]={ field:column.key, label:column.label, entryIndexes:[], entries:[] };
       });
+      if(projectedNameField){
+        const label=buildTverHorizontalFieldLabel(level, projectedNameField);
+        const nameIndexes=nodeView.entryIndexes.filter(entryIndex=>{
+          const entry=Number.isInteger(entryIndex) ? entries[entryIndex] : null;
+          return Boolean(entry && !entry.hidden && entry.level===level && String(entry.field ?? '')===projectedNameField);
+        });
+        cells[projectedNameField]={
+          field:projectedNameField,label,entryIndexes:nameIndexes,
+          entries:nameIndexes.map(entryIndex=>entries[entryIndex]),
+        };
+      }
       visibleEntryIndexes.forEach(entryIndex => {
         const entry=entries[entryIndex];
         const field=String(entry.field ?? '');
@@ -5337,6 +5880,16 @@
         cell.entryIndexes.push(entryIndex);
         cell.entries.push(entry);
       });
+
+      const projectedNameCell=projectedNameField ? cells[projectedNameField] : null;
+      const projectedNameEntry=projectedNameCell && projectedNameCell.entries.length===1 ? projectedNameCell.entries[0] : null;
+      const projectedName=projectedNameEntry ? {
+        entryIndex:projectedNameCell.entryIndexes[0],
+        expected:String(projectedNameEntry.settingRawValue ?? ''),
+        actual:String(projectedNameEntry.csvRawValue ?? ''),
+        status:projectTverDisplayStatus(projectedNameEntry.displayStatus || projectedNameEntry.comparisonStatus),
+        entry:projectedNameEntry,
+      } : null;
 
       rows.push({
         rowKey:nodeView.rowKey,
@@ -5352,6 +5905,13 @@
         directStatusCounts:{ ...(nodeView.node && nodeView.node.directStatusCounts || {}) },
         entryIndexes:[...nodeView.entryIndexes],
         visibleEntryIndexes:[...visibleEntryIndexes],
+        campaignName:level==='Campaign' ? projectedName : undefined,
+        groupName:level==='Ad Group' ? projectedName : undefined,
+        creativeName:level==='Ad' ? projectedName || {
+          entry:null,
+          candidateCount:projectedNameCell ? projectedNameCell.entries.length : 0,
+          candidates:projectedNameCell ? projectedNameCell.entries.map((entry, index) => ({ entry, entryIndex:projectedNameCell.entryIndexes[index] })) : [],
+        } : undefined,
         cells,
       });
     });
@@ -5441,6 +6001,22 @@
   }
 
   const TVER_DISPLAY_REASON_MESSAGES={
+    CTV_EXPANSION_RULE_UNCONFIRMED:'CTVアップロード拡張率の期待値は手順に明示されていないため要確認です',
+    CTV_NOT_REQUIRED_FIELD_PRESENT:'CTV手順で設定不要とされる項目にCSV値があります。禁止値とは断定せず適用範囲を確認してください',
+    CTV_CSV_IDENTITY_CONFLICT:'CTVのCSVで同じIDの親Campaign／GPまたは役割・素材の識別値が競合しています。先頭行だけで一致とせず、構造を確認してください',
+    CTV_CORE_VERSION_CONFLICT:'新TAP CTVと旧Surveyが同時に有効です。対象バージョンを一意に確認できないためCTV校正を停止しました',
+    CTV_CORE_SOURCE_NOT_UNIQUE:'CTVの新TAP・役割・親Campaign・素材の設定元が不足または複数です。構造を確定できないため校正を停止しました',
+    CTV_CAMPAIGN_IDENTITY_UNCONFIRMED:'CTV Campaignの独立した親子関係を一意に確定できません',
+    CTV_ROLE_EVIDENCE_CONFLICT:'CTVのGP役割名と独立した素材の役割が矛盾しています。Segment値による強制照合は行いません',
+    CTV_ROLE_IDENTITY_UNCONFIRMED:'CTVのGP役割候補が不足または複数です。Segment値では役割を確定しません',
+    CTV_STATUS_RULE_CONFLICT:'CTV手順の停止指示と画面例の状態に差異があるため現在ステータスを確認してください',
+    CTV_SEGMENT_SOURCE_UNCONFIRMED:'CTV役割別のアップロードSegment IDが空欄・不正または複数です',
+    CTV_ASR_RULE_UNCONFIRMED:'CTVのASR期待値は手順で確認できません。SPの0～C／D E Fを適用せず要確認です',
+    CTV_TARGETING_REFERENCE_UNCONFIRMED:'CTV非接触者の通常配信ターゲティング参照を項目単位で確定できません',
+    CTV_CREATIVE_ID_UNCONFIRMED:'CTV役割別のCreative IDを一意に確認できません',
+    CTV_AD_DEFAULT_UNCONFIRMED:'CTV広告の状態・配信時刻について登録初期値を期待値にする根拠が未確認です',
+    CTV_NAMING_TEMPLATE_CONFLICT:'CTV手順の命名例（SP表記を含む）と設定表の明示名に差異があります。明示名の比較結果と併せて命名契約を確認してください',
+
     SETTING_SOURCE_NOT_PROVIDED:'設定表側に確認元がないため、CSV値を確認してください',
     SETTING_EVIDENCE_NOT_PROVIDED:'設定表側に確認元がないため、CSV値を確認してください',
     SETTING_EVIDENCE_UNAVAILABLE:'設定表側の確認元を利用できないため、CSV値を確認してください',
@@ -5477,6 +6053,16 @@
     SURVEY_DUPLICATE_MEMBERS:'Survey ASRのCSV指定に重複があります',
     SURVEY_ASR_TOKEN_UNCONFIRMED:'Survey ASRに未対応の文字が含まれています',
     SURVEY_CONTACT_ASR_RULE_PENDING:'接触者GPの非空ASRは業務ルール未確認のため要確認です',
+    TVER_SURVEY_NORMAL_SP_SETTING_REQUIRED_VALUE_MISSING:'Survey有効・SPを含む通常GPですが設定表の必須値が空欄です。P56の接触者Scenario／ASR 0～Cと設定元を確認してください',
+    TVER_SURVEY_NORMAL_SP_SETTING_CONFLICTS_WITH_SURVEY_P56:'設定表の値をP56の接触者Scenario／ASR 0～Cと一意に照合できません。設定表の原文とSurvey設計を確認してください',
+    TVER_SURVEY_NORMAL_SP_CSV_FIELD_UNAVAILABLE:'通常SPのScenario／ASRを比較するCSV列または行の根拠がありません',
+    TVER_SURVEY_NORMAL_SP_CSV_VALUE_INVALID_OR_DUPLICATE:'通常SPのScenario／ASRに解釈できない値または重複があります',
+    TVER_SURVEY_NORMAL_SP_CSV_ROWS_CONFLICT:'同一通常GPのCSV行でScenario／ASRの値が競合しています',
+    TVER_SURVEY_NORMAL_SP_SURVEY_ENABLE_OR_VERSION_UNCONFIRMED:'設定表のSurvey有効状態または新TAPの根拠が競合・不足しています',
+    TVER_SURVEY_NORMAL_SP_SURVEY_SP_DEVICE_OR_ROLE_UNCONFIRMED:'新TAP SPの接触者設計を一意に確認できません',
+    TVER_SURVEY_NORMAL_SP_SURVEY_PARENT_CAMPAIGN_NOT_UNIQUE:'Surveyと通常Campaignの親子関係を一意に確認できません',
+    TVER_SURVEY_NORMAL_SP_SURVEY_CONTACT_SEGMENT_UNCONFIRMED:'Survey接触者Scenario IDが空欄・不正または複数あり一意に確認できません',
+    TVER_SURVEY_NORMAL_SP_SURVEY_NORMAL_SP_DEVICE_APPLICABILITY_UNCONFIRMED:'通常GPのDeviceからSP包含またはCTVのみを確定できません。P56の適用対象を確認してください',
     SURVEY_ID_COLLECTION_UNCONFIRMED:'Surveyセグメント等のID指定に重複または解釈できない値があります',
     TVER_A17_3A_VALUE_UNAVAILABLE:'設定表側の確認値を利用できないため確認が必要です',
     TVER_A17_3B_VALUE_UNAVAILABLE:'設定表側の確認値を利用できないため確認が必要です',
@@ -5657,7 +6243,7 @@
   function buildTverHorizontalDetailRowHtml(row, columns){
     const details=buildTverHorizontalDetailViewModel(row);
     if(!details.length) return '';
-    const columnCount=4 + (Array.isArray(columns) ? columns.length : 0);
+    const columnCount=5 + (Array.isArray(columns) ? columns.length : 0);
     const entriesHtml=details.map(buildTverHorizontalDetailEntryHtml).join('');
     return `<tr class="tver-horizontal-detail-row hidden" hidden data-detail-row-key="${escapeHtml(row && row.rowKey)}"><td colspan="${columnCount}"><div class="tver-horizontal-detail">${entriesHtml}</div></td></tr>`;
   }
@@ -5712,6 +6298,7 @@
     const resolved={
       no:getTverColumnWidth(level, 'no', storage),
       target:getTverColumnWidth(level, 'target', storage),
+      name:getTverColumnWidth(level, 'name', storage),
       comparison:getTverColumnWidth(level, 'comparison', storage),
       fields:{},
     };
@@ -5719,7 +6306,7 @@
       const key=String(column && column.key || '');
       if(key) resolved.fields[key]=getTverColumnWidth(level, key, storage);
     });
-    resolved.fixed=resolved.no + resolved.target + resolved.comparison;
+    resolved.fixed=resolved.no + resolved.target + resolved.name + resolved.comparison;
     return resolved;
   }
 
@@ -5727,7 +6314,7 @@
     const key=String(columnKey || '');
     if(key===TVER_HORIZONTAL_SOURCE_COLUMN_KEY) return TVER_HORIZONTAL_SOURCE_COLUMN_WIDTH;
     if(resolvedWidths){
-      if(key==='no' || key==='target' || key==='comparison') return Number(resolvedWidths[key]);
+      if(key==='no' || key==='target' || key==='name' || key==='comparison') return Number(resolvedWidths[key]);
       if(resolvedWidths.fields && Object.prototype.hasOwnProperty.call(resolvedWidths.fields, key)) return Number(resolvedWidths.fields[key]);
     }
     return getTverColumnWidth(level, key, storage);
@@ -5756,7 +6343,34 @@
     const widths=resolvedWidths || resolveTverHorizontalWidths(level, [], storage);
     const dynamicWidth=tverResolvedHorizontalDynamicWidth(widths);
     const tableWidth=widths.fixed + dynamicWidth;
-    return `style="--tver-no-width:${widths.no}px;--tver-target-width:${widths.target}px;--tver-comparison-width:${widths.comparison}px;--tver-fixed-width:${widths.fixed}px;--tver-dynamic-width:${dynamicWidth}px;--tver-table-width:${tableWidth}px"`;
+    return `style="--tver-no-width:${widths.no}px;--tver-target-width:${widths.target}px;--tver-name-width:${widths.name}px;--tver-comparison-width:${widths.comparison}px;--tver-fixed-width:${widths.fixed}px;--tver-dynamic-width:${dynamicWidth}px;--tver-table-width:${tableWidth}px"`;
+  }
+
+  function buildTverHorizontalProjectedNameCellHtml(row, level, sourceKind){
+    const projection=level==='Campaign' ? row && row.campaignName : level==='Ad Group' ? row && row.groupName : level==='Ad' ? row && row.creativeName : null;
+    const entry=projection && projection.entry;
+    const expected=sourceKind==='setting';
+    let value='', marker='', status='', nameStatus='';
+    if(entry){
+      const raw=String(expected ? entry.settingRawValue ?? '' : entry.csvRawValue ?? '');
+      const evidenceState=entry.evidenceStates && entry.evidenceStates[expected ? 'setting' : 'csv'];
+      value=raw!=='' ? raw : evidenceState==='available' ? '（空欄）' : '（要確認）';
+      nameStatus=entry.comparisonStatus || entry.displayStatus || '';
+      status=projectTverDisplayStatus(entry.displayStatus || entry.comparisonStatus);
+      const qcMismatchAttr=expected && status==='不一致' ? ` data-qc-status="mismatch" data-qc-scope="${escapeHtml(level)}"` : '';
+      marker=` data-entry-index="${escapeHtml(projection.entryIndex)}" data-entry-status="${escapeHtml(status)}"${qcMismatchAttr}`;
+    }
+    let projectionState='unique';
+    if(!entry && level==='Ad'){
+      const candidates=projection && Array.isArray(projection.candidates) ? projection.candidates : [];
+      projectionState=candidates.length>1 ? 'ambiguous' : 'missing';
+      value=projectionState==='ambiguous' ? '（要確認：名称比較結果が複数あります）' : '（要確認：名称比較結果がありません）';
+      if(candidates.length) value+='\n'+candidates.map(candidate => String(expected ? candidate.entry.settingRawValue ?? '' : candidate.entry.csvRawValue ?? '')).join('\n');
+    }
+    const variant=nameStatus==='表記ゆれ一致';
+    const nameClass=variant ? 'tver-status-name-variant' : !entry && level==='Ad' ? 'tver-status-review' : tverHorizontalStatusClass(nameStatus);
+    const label=variant ? '<span class="tver-name-variant-label" title="既存の正規化ルールによる表記ゆれ一致">表記ゆれ</span>' : '';
+    return `<td class="tver-horizontal-fixed tver-horizontal-name-col tver-horizontal-fixed-name ${nameClass}" data-column-key="name" data-source-kind="${sourceKind}" data-name-status="${escapeHtml(nameStatus)}"${level==='Ad' ? ` data-name-projection-state="${projectionState}"` : ''}><span class="tver-group-name-value"${marker} title="${escapeHtml(value)}">${escapeHtml(value)}</span>${label}</td>`;
   }
 
   function buildTverHorizontalTableHtmlLegacy(viewModel, options){
@@ -5768,15 +6382,16 @@
     const resolvedWidths=config.resolvedWidths || resolveTverHorizontalWidths(view.level, columns, storage);
     const levelId=tverHorizontalLevelId(view.level);
     const targetHeaderLabel=view.level==='Campaign' ? 'CPN訴求' : '対象名';
-    const colgroup=`<colgroup><col class="tver-horizontal-col-no" data-column-key="no" ${buildTverColumnWidthStyle(view.level, 'no', storage, resolvedWidths)}><col class="tver-horizontal-col-target" data-column-key="target" ${buildTverColumnWidthStyle(view.level, 'target', storage, resolvedWidths)}><col class="tver-horizontal-col-comparison" data-column-key="comparison" ${buildTverColumnWidthStyle(view.level, 'comparison', storage, resolvedWidths)}>${buildTverHorizontalSourceColumnHtml()}${columns.map(column => `<col class="tver-horizontal-field-col" data-column-key="${escapeHtml(column.key)}" ${buildTverColumnWidthStyle(view.level, column.key, storage, resolvedWidths)}>`).join('')}</colgroup>`;
-    const head=`<thead><tr>${buildTverColumnHeader('No.', 'tver-horizontal-fixed tver-horizontal-col-no tver-horizontal-fixed-no', 'no', view.level, storage, false, resolvedWidths)}${buildTverColumnHeader(targetHeaderLabel, 'tver-horizontal-fixed tver-horizontal-col-target tver-horizontal-fixed-target', 'target', view.level, storage, true, resolvedWidths)}${buildTverColumnHeader('比較結果', 'tver-horizontal-fixed tver-horizontal-col-comparison tver-horizontal-fixed-comparison', 'comparison', view.level, storage, true, resolvedWidths)}${buildTverColumnHeader('来源', 'tver-horizontal-source-col', TVER_HORIZONTAL_SOURCE_COLUMN_KEY, view.level, storage, false, resolvedWidths)}${columns.map(column => buildTverColumnHeader(column.label, 'tver-horizontal-field-col', column.key, view.level, storage, true, resolvedWidths)).join('')}</tr></thead>`;
+    const nameLabel=view.level==='Campaign' ? 'CP名' : view.level==='Ad Group' ? 'Group名' : 'クリエイティブ名';
+    const colgroup=`<colgroup><col class="tver-horizontal-col-no" data-column-key="no" ${buildTverColumnWidthStyle(view.level, 'no', storage, resolvedWidths)}><col class="tver-horizontal-col-target" data-column-key="target" ${buildTverColumnWidthStyle(view.level, 'target', storage, resolvedWidths)}><col class="tver-horizontal-name-col" data-column-key="name" ${buildTverColumnWidthStyle(view.level, 'name', storage, resolvedWidths)}><col class="tver-horizontal-col-comparison" data-column-key="comparison" ${buildTverColumnWidthStyle(view.level, 'comparison', storage, resolvedWidths)}>${buildTverHorizontalSourceColumnHtml()}${columns.map(column => `<col class="tver-horizontal-field-col" data-column-key="${escapeHtml(column.key)}" ${buildTverColumnWidthStyle(view.level, column.key, storage, resolvedWidths)}>`).join('')}</colgroup>`;
+    const head=`<thead><tr>${buildTverColumnHeader('No.', 'tver-horizontal-fixed tver-horizontal-col-no tver-horizontal-fixed-no', 'no', view.level, storage, false, resolvedWidths)}${buildTverColumnHeader(targetHeaderLabel, 'tver-horizontal-fixed tver-horizontal-col-target tver-horizontal-fixed-target', 'target', view.level, storage, true, resolvedWidths)}${buildTverColumnHeader(nameLabel, 'tver-horizontal-fixed tver-horizontal-name-col tver-horizontal-fixed-name', 'name', view.level, storage, true, resolvedWidths)}${buildTverColumnHeader('比較結果', 'tver-horizontal-fixed tver-horizontal-col-comparison tver-horizontal-fixed-comparison', 'comparison', view.level, storage, true, resolvedWidths)}${buildTverColumnHeader('来源', 'tver-horizontal-source-col', TVER_HORIZONTAL_SOURCE_COLUMN_KEY, view.level, storage, false, resolvedWidths)}${columns.map(column => buildTverColumnHeader(column.label, 'tver-horizontal-field-col', column.key, view.level, storage, true, resolvedWidths)).join('')}</tr></thead>`;
     let previousGroupKey=null;
     const bodyRows=[];
     rows.forEach((row, index) => {
       const groupKey=row.parentNodeKey || (row.isUnattached ? 'unattached' : '');
       if(view.level!=='Campaign' && groupKey!==previousGroupKey){
         const groupLabel=row.parentDisplayLabel || (row.isUnattached ? '未接続' : '');
-        bodyRows.push(`<tr class="tver-horizontal-group-row" data-group-key="${escapeHtml(groupKey)}"><th colspan="${4 + columns.length}">${escapeHtml(groupLabel)}</th></tr>`);
+        bodyRows.push(`<tr class="tver-horizontal-group-row" data-group-key="${escapeHtml(groupKey)}"><th colspan="${5 + columns.length}">${escapeHtml(groupLabel)}</th></tr>`);
         previousGroupKey=groupKey;
       }
       const settingSourceCell=buildTverHorizontalSourceCellHtml('setting');
@@ -5788,10 +6403,11 @@
       const comparisonControl=detailHtml
         ? `<button class="tver-horizontal-entity-status ${tverHorizontalStatusClass(entityStatus)} tver-horizontal-entity-status-toggle" type="button" data-action="toggle-detail" data-row-key="${escapeHtml(row.rowKey)}" aria-expanded="false" aria-controls="tver-horizontal-detail-${escapeHtml(index + 1)}">${escapeHtml(entityStatus)}</button>`
         : `<span class="tver-horizontal-entity-status ${tverHorizontalStatusClass(entityStatus)}" data-entity-status="${escapeHtml(entityStatus)}">${escapeHtml(entityStatus)}</span>`;
-      const fixedCells=`<td class="tver-horizontal-fixed tver-horizontal-col-no tver-horizontal-fixed-no" rowspan="2">${escapeHtml(index + 1)}</td><td class="tver-horizontal-fixed tver-horizontal-col-target tver-horizontal-fixed-target" rowspan="2">${escapeHtml(row.displayLabel)}</td><td class="tver-horizontal-fixed tver-horizontal-col-comparison tver-horizontal-fixed-comparison" rowspan="2"><span data-entity-status="${escapeHtml(entityStatus)}">${comparisonControl}</span></td>`;
-      bodyRows.push(`<tr data-row-key="${escapeHtml(row.rowKey)}" data-row-variant="setting">${fixedCells}${settingSourceCell}${settingCells}</tr><tr data-row-key="${escapeHtml(row.rowKey)}" data-row-variant="csv">${csvSourceCell}${csvCells}</tr>${detailHtml.replace('<tr class="tver-horizontal-detail-row hidden"', `<tr id="tver-horizontal-detail-${escapeHtml(index + 1)}" class="tver-horizontal-detail-row hidden"`)}`);
+      const fixedCells=`<td class="tver-horizontal-fixed tver-horizontal-col-no tver-horizontal-fixed-no" rowspan="2">${escapeHtml(index + 1)}</td><td class="tver-horizontal-fixed tver-horizontal-col-target tver-horizontal-fixed-target" rowspan="2">${escapeHtml(row.displayLabel)}</td>${buildTverHorizontalProjectedNameCellHtml(row, view.level, 'setting')}<td class="tver-horizontal-fixed tver-horizontal-col-comparison tver-horizontal-fixed-comparison" rowspan="2"><span data-entity-status="${escapeHtml(entityStatus)}">${comparisonControl}</span></td>`;
+      const csvNameCells=buildTverHorizontalProjectedNameCellHtml(row, view.level, 'csv');
+      bodyRows.push(`<tr data-row-key="${escapeHtml(row.rowKey)}" data-row-variant="setting">${fixedCells}${settingSourceCell}${settingCells}</tr><tr data-row-key="${escapeHtml(row.rowKey)}" data-row-variant="csv">${csvNameCells}${csvSourceCell}${csvCells}</tr>${detailHtml.replace('<tr class="tver-horizontal-detail-row hidden"', `<tr id="tver-horizontal-detail-${escapeHtml(index + 1)}" class="tver-horizontal-detail-row hidden"`)}`);
     });
-    const body=bodyRows.length ? bodyRows.join('') : `<tr><td class="tver-horizontal-empty" colspan="${4 + columns.length}">現在の条件に一致する結果はありません。</td></tr>`;
+    const body=bodyRows.length ? bodyRows.join('') : `<tr><td class="tver-horizontal-empty" colspan="${5 + columns.length}">現在の条件に一致する結果はありません。</td></tr>`;
     return `<section class="tver-horizontal-panel" id="tver-horizontal-panel-${escapeHtml(levelId)}" role="tabpanel" aria-label="${escapeHtml(view.level)}結果"><div class="tver-horizontal-scroll-shell" ${buildTverHorizontalTableLayoutStyle(view.level, storage, resolvedWidths)}><div class="tver-horizontal-scroll"><table class="tver-horizontal-table" data-level="${escapeHtml(view.level)}" ${buildTverHorizontalTableLayoutStyle(view.level, storage, resolvedWidths)}>${colgroup}${head}<tbody>${body}</tbody></table></div></div></section>`;
   }
 
@@ -5803,15 +6419,18 @@
     const resolvedWidths=config.resolvedWidths || resolveTverHorizontalWidths(view.level, columns, storage);
     const layoutStyle=buildTverHorizontalTableLayoutStyle(view.level, storage, resolvedWidths);
     const targetHeaderLabel=view.level==='Campaign' ? 'CPN訴求' : '対象名';
+    const nameLabel=view.level==='Campaign' ? 'CP名' : view.level==='Ad Group' ? 'Group名' : 'クリエイティブ名';
     const fixedColgroup='<colgroup>'
       + '<col class="tver-horizontal-col-no" data-column-key="no" ' + buildTverColumnWidthStyle(view.level, 'no', storage, resolvedWidths) + '>'
       + '<col class="tver-horizontal-col-target" data-column-key="target" ' + buildTverColumnWidthStyle(view.level, 'target', storage, resolvedWidths) + '>'
+      + '<col class="tver-horizontal-name-col" data-column-key="name" ' + buildTverColumnWidthStyle(view.level, 'name', storage, resolvedWidths) + '>'
       + '<col class="tver-horizontal-col-comparison" data-column-key="comparison" ' + buildTverColumnWidthStyle(view.level, 'comparison', storage, resolvedWidths) + '>'
       + '</colgroup>';
     const dynamicColgroup='<colgroup>' + buildTverHorizontalSourceColumnHtml() + columns.map(column => '<col class="tver-horizontal-field-col" data-column-key="' + escapeHtml(column.key) + '" ' + buildTverColumnWidthStyle(view.level, column.key, storage, resolvedWidths) + '>').join('') + '</colgroup>';
     const fixedHead='<thead><tr>'
       + buildTverColumnHeader('No.', 'tver-horizontal-fixed tver-horizontal-col-no tver-horizontal-fixed-no', 'no', view.level, storage, false, resolvedWidths)
       + buildTverColumnHeader(targetHeaderLabel, 'tver-horizontal-fixed tver-horizontal-col-target tver-horizontal-fixed-target', 'target', view.level, storage, true, resolvedWidths)
+      + buildTverColumnHeader(nameLabel, 'tver-horizontal-fixed tver-horizontal-name-col tver-horizontal-fixed-name', 'name', view.level, storage, true, resolvedWidths)
       + buildTverColumnHeader('比較結果', 'tver-horizontal-fixed tver-horizontal-col-comparison tver-horizontal-fixed-comparison', 'comparison', view.level, storage, true, resolvedWidths)
       + '</tr></thead>';
     const dynamicHead='<thead><tr>' + buildTverColumnHeader('来源', 'tver-horizontal-source-col', TVER_HORIZONTAL_SOURCE_COLUMN_KEY, view.level, storage, false, resolvedWidths) + columns.map(column => buildTverColumnHeader(column.label, 'tver-horizontal-field-col', column.key, view.level, storage, true, resolvedWidths)).join('') + '</tr></thead>';
@@ -6017,6 +6636,11 @@
           const matchingColumn=typeof tableItem.querySelectorAll==='function'
             ? [...tableItem.querySelectorAll('col[data-column-key]')].find(item => item.getAttribute && item.getAttribute('data-column-key')===columnKey)
             : null;
+          const headers=typeof tableItem.querySelectorAll==='function' ? [...tableItem.querySelectorAll('th[data-column-key]')] : [];
+          headers.filter(item => item.getAttribute('data-column-key')===columnKey).forEach(item => {
+            item.style.width=width + 'px';
+            item.style.minWidth=width + 'px';
+          });
           if(matchingColumn && matchingColumn.style){
             matchingColumn.style.width=width + 'px';
             matchingColumn.style.minWidth=width + 'px';
@@ -6025,18 +6649,20 @@
         const dynamicWidth=Math.max(0, ...tables.map(tableItem => {
           const dynamicColumns=typeof tableItem.querySelectorAll==='function' ? [...tableItem.querySelectorAll('col[data-column-key]')] : [];
           return dynamicColumns
-            .filter(item => !['no', 'target', 'comparison'].includes(item.getAttribute && item.getAttribute('data-column-key')))
+            .filter(item => !['no', 'target', 'name', 'comparison'].includes(item.getAttribute && item.getAttribute('data-column-key')))
             .reduce((total, item) => total + (item.style && parseFloat(item.style.width) || 0), 0);
         }));
         const noWidth=getWidth('no');
         const targetWidth=getWidth('target');
+        const nameWidth=getWidth('name');
         const comparisonWidth=getWidth('comparison');
-        const fixedWidth=noWidth + targetWidth + comparisonWidth;
+        const fixedWidth=noWidth + targetWidth + nameWidth + comparisonWidth;
         const tableWidth=fixedWidth + dynamicWidth;
         const styleTargets=[...tables, shell].filter(Boolean);
         styleTargets.forEach(target => {
           target.style.setProperty('--tver-no-width', noWidth + 'px');
           target.style.setProperty('--tver-target-width', targetWidth + 'px');
+          target.style.setProperty('--tver-name-width', nameWidth + 'px');
           target.style.setProperty('--tver-comparison-width', comparisonWidth + 'px');
           target.style.setProperty('--tver-fixed-width', fixedWidth + 'px');
           target.style.setProperty('--tver-dynamic-width', dynamicWidth + 'px');
@@ -6244,7 +6870,10 @@
     const summaryContentHtml=`<div class="status-counts">${statusHtml}</div>`;
     const summaryHtml=`<div class="tver-result-summary" aria-label="チェック結果">${summaryContentHtml}</div>`;
     const diagnosticsHtml=run && run.diagnostics && run.diagnostics.length ? `<details><summary>診断コード（${run.diagnostics.length}件）</summary><pre>${escapeHtml(run.diagnostics.map(issue => issue.code || String(issue)).join('\n'))}</pre></details>` : '';
-    const mainHtml=`${horizontalHtml}${diagnosticsHtml}`;
+    const surveyParentScopeHtml=(run && run.diagnostics || []).filter(issue=>issue.code==='SURVEY_NORMAL_SP_PARENT_SCOPE_UNCONFIRMED')
+      .map(issue=>`<p class="notice" role="status" data-survey-parent-scope>${escapeHtml(issue.message)}</p>`).join('');
+    const ctvDiagnosticsHtml=(run && run.diagnostics || []).filter(issue=>String(issue.code || '').startsWith('CTV_')).map(issue=>`<p class="tver-schema-notice" role="status">CTV 要確認：${escapeHtml(tverDisplayReasonCodeMessage(issue.code) || issue.code)}</p>`).join('');
+    const mainHtml=`${horizontalHtml}${surveyParentScopeHtml}${ctvDiagnosticsHtml}${diagnosticsHtml}`;
     const html=`${summaryHtml}${mainHtml}`;
     const doc=config.document===undefined ? (typeof document!=='undefined' ? document : null) : config.document;
     if(doc && typeof doc.getElementById==='function'){
@@ -6480,7 +7109,7 @@
   }
 
   function settingParseBlockingIssue(model){
-    return (model && model.diagnostics || []).find(issue => ['SETTING_HEADER_NOT_FOUND','SETTING_HEADER_AMBIGUOUS','SETTING_BUSINESS_HEADER_MISSING','SETTING_BUSINESS_HEADER_DUPLICATE'].includes(issue.code));
+    return (model && model.diagnostics || []).find(issue => ['SETTING_HEADER_NOT_FOUND','SETTING_HEADER_AMBIGUOUS','SETTING_BUSINESS_HEADER_MISSING','SETTING_BUSINESS_HEADER_DUPLICATE','SETTING_TAG_APPEAL_ALIAS_CONFLICT'].includes(issue.code));
   }
 
   async function runTverCheck(options){
