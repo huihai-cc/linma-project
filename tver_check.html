@@ -7071,7 +7071,13 @@
     if(summary){ summary.innerHTML=''; summary.classList && summary.classList.add('hidden'); }
   }
 
-  async function setPageFiles(files, doc, options){ if(typeof getValidSession==='function' && !getValidSession()){ if(typeof checkAuth==='function'){ try{ checkAuth(); }catch(e){} } return {ok:false,message:'AUTH_REQUIRED',files:[],setting:null,csv:null}; }
+  function tverAuthAllowed(){
+    // FIX6-B: fail-closed. module missing / fn absent / expired / throws -> block.
+    if(typeof getValidSession !== 'function') return false;
+    try { if(!getValidSession()) return false; } catch(e){ return false; }
+    return true;
+  }
+  async function setPageFiles(files, doc, options){ if(!tverAuthAllowed()){ if(typeof checkAuth==='function'){ try{ checkAuth(); }catch(e){} } return {ok:false,message:'AUTH_REQUIRED',files:[],setting:null,csv:null}; }
     const incoming=Array.from(files || []).filter(Boolean);
     tverPageState.uploadFiles=[...(Array.isArray(tverPageState.uploadFiles) ? tverPageState.uploadFiles : []), ...incoming];
     tverPageState.settingFile=null;
@@ -7112,7 +7118,7 @@
     return (model && model.diagnostics || []).find(issue => ['SETTING_HEADER_NOT_FOUND','SETTING_HEADER_AMBIGUOUS','SETTING_BUSINESS_HEADER_MISSING','SETTING_BUSINESS_HEADER_DUPLICATE','SETTING_TAG_APPEAL_ALIAS_CONFLICT'].includes(issue.code));
   }
 
-  async function runTverCheck(options){ if(typeof getValidSession==='function' && !getValidSession()){ if(typeof checkAuth==='function'){ try{ checkAuth(); }catch(e){} } return {ok:false,message:'AUTH_REQUIRED'}; }
+  async function runTverCheck(options){ if(!tverAuthAllowed()){ if(typeof checkAuth==='function'){ try{ checkAuth(); }catch(e){} } return {ok:false,message:'AUTH_REQUIRED'}; }
     const config=options || {};
     const doc=config.document===undefined ? (typeof document!=='undefined' ? document : null) : config.document;
     const settingFile=config.settingFile || tverPageState.settingFile;
