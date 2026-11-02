@@ -68,9 +68,9 @@
 <div id="qcHeaderMount"></div>
 <script>
 (function(){
-  // TVer 従来どおり認証ガードは行わない（既存挙動を変えない）。
-  // ユーザー表示のみ既存の getUser() を読み取り専用で参照する。
-  var u = (typeof getUser === 'function') ? getUser() : null;
+  // FIX6：QC ポータルと同一の認証ガード（既存 qc-auth.js の guardPage を再利用）。
+  // guardPage → checkAuth：未ログイン/期限切れは index.html へ戻す。
+  var u = (typeof guardPage === 'function') ? guardPage() : null; window.__TVER_AUTH_OK = !!u;
   QCHeader.mount({
     target: '#qcHeaderMount',
     title: '2課 TVer 設定チェック',
@@ -7071,7 +7071,7 @@
     if(summary){ summary.innerHTML=''; summary.classList && summary.classList.add('hidden'); }
   }
 
-  async function setPageFiles(files, doc, options){
+  async function setPageFiles(files, doc, options){ if(typeof getValidSession==='function' && !getValidSession()){ if(typeof checkAuth==='function'){ try{ checkAuth(); }catch(e){} } return {ok:false,message:'AUTH_REQUIRED',files:[],setting:null,csv:null}; }
     const incoming=Array.from(files || []).filter(Boolean);
     tverPageState.uploadFiles=[...(Array.isArray(tverPageState.uploadFiles) ? tverPageState.uploadFiles : []), ...incoming];
     tverPageState.settingFile=null;
@@ -7112,7 +7112,7 @@
     return (model && model.diagnostics || []).find(issue => ['SETTING_HEADER_NOT_FOUND','SETTING_HEADER_AMBIGUOUS','SETTING_BUSINESS_HEADER_MISSING','SETTING_BUSINESS_HEADER_DUPLICATE','SETTING_TAG_APPEAL_ALIAS_CONFLICT'].includes(issue.code));
   }
 
-  async function runTverCheck(options){
+  async function runTverCheck(options){ if(typeof getValidSession==='function' && !getValidSession()){ if(typeof checkAuth==='function'){ try{ checkAuth(); }catch(e){} } return {ok:false,message:'AUTH_REQUIRED'}; }
     const config=options || {};
     const doc=config.document===undefined ? (typeof document!=='undefined' ? document : null) : config.document;
     const settingFile=config.settingFile || tverPageState.settingFile;
