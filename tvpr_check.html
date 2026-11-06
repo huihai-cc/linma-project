@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6課 TVPR 關鍵字生成｜惠海 QC ポータル</title>
+<link rel="stylesheet" href="qc-ui.css">
+<style>
+:root {
+  --tvpr-accent: #128e77;              /* 装飾用（枠・リング） */
+  --tvpr-accent-dim: rgba(18,142,119,.09);
+  --tvpr-accent-text: #0f5f51;         /* 白背景 7.56:1 */
+  --tvpr-accent-strong: #0f7a66;       /* 白文字を載せる面 5.26:1 */
+  --tvpr-fg: #1f2937;                  /* 14.68:1 */
+  --tvpr-fg-sub: #475569;              /* 6.95–7.58:1 */
+  --tvpr-fg-muted: #556070;            /* 5.85–6.38:1 */
+  --tvpr-line: #e5eaf0;
+  --tvpr-font: 'Microsoft JhengHei UI','Microsoft JhengHei','微軟正黑體','Yu Gothic UI','Yu Gothic','Meiryo','Noto Sans TC','Segoe UI',sans-serif;
+}
+
+html, body { margin: 0; padding: 0; }
+body { background: #f4f6f8; }
+
+#tvpr-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px 20px 56px;
+  font-family: var(--tvpr-font);
+  color: var(--tvpr-fg);
+  font-size: 15px;
+  line-height: 1.6;
+  box-sizing: border-box;
+  -webkit-text-size-adjust: 100%;
+}
+#tvpr-page *, #tvpr-page *::before, #tvpr-page *::after { box-sizing: inherit; font-family: inherit; }
+
+/* ---------- 共通パーツ ---------- */
+#tvpr-page .tvpr-panel {
+  background: #fff; border: 1px solid var(--tvpr-line); border-radius: 12px;
+  padding: 16px 18px; box-shadow: 0 1px 2px rgba(15,23,42,.04);
+}
+#tvpr-page .tvpr-panel + .tvpr-panel { margin-top: 16px; }
+#tvpr-page .tvpr-panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin-bottom: 13px;
+}
+#tvpr-page .tvpr-sec-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13.5px; font-weight: 700; letter-spacing: .05em;
+  color: #334155; margin: 0; line-height: 1.4;
+}
+#tvpr-page .tvpr-sec-title::before {
+  content: ""; width: 3px; height: 14px; border-radius: 2px;
+  background: var(--tvpr-accent-strong); flex: 0 0 auto;
+}
+#tvpr-page .tvpr-panel-sub { font-size: 13px; color: var(--tvpr-fg-sub); }
+#tvpr-page .tvpr-panel-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#tvpr-page .tvpr-sel-count {
+  font-size: 13px; font-weight: 700; color: var(--tvpr-accent-text);
+  background: var(--tvpr-accent-dim); border: 1px solid rgba(18,142,119,.25);
+  padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+}
+#tvpr-page .tvpr-mini {
+  font-size: 12.5px; padding: 4px 10px; border: 1px solid #cbd5e1; border-radius: 6px;
+  background: #fff; color: #334155; cursor: pointer; font-family: inherit; line-height: 1.4;
+}
+#tvpr-page .tvpr-mini:hover { background: #f1f5f9; border-color: #94a3b8; }
+#tvpr-page .tvpr-mini:focus-visible { outline: 2px solid var(--tvpr-accent); outline-offset: 2px; }
+
+/* ---------- 2 カラム ワークベンチ ---------- */
+#tvpr-page .tvpr-work {
+  display: grid; grid-template-columns: 336px minmax(0, 1fr); gap: 16px;
+  align-items: start;
+}
+#tvpr-page .tvpr-side { position: sticky; top: calc(var(--qc-header-h, 110px) + 14px); }
+
+/* 左カラム：入力＋主操作 */
+#tvpr-page .tvpr-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; min-width: 0; }
+#tvpr-page .tvpr-field label { font-size: 13px; font-weight: 600; color: var(--tvpr-fg-sub); line-height: 1.4; }
+#tvpr-page .tvpr-field label .tvpr-req { color: #b91c1c; margin-left: 2px; }
+#tvpr-page .tvpr-field input {
+  height: 38px; width: 100%; padding: 8px 11px; font-size: 15px; color: var(--tvpr-fg);
+  background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; line-height: 1.5;
+  transition: border-color .18s, box-shadow .18s;
+}
+#tvpr-page .tvpr-field input:focus { border-color: var(--tvpr-accent); box-shadow: 0 0 0 3px var(--tvpr-accent-dim); }
+#tvpr-page .tvpr-field input::placeholder,
+#tvpr-page .tvpr-custom-row input::placeholder,
+#tvpr-page .tvpr-plain::placeholder { color: var(--tvpr-fg-muted); opacity: 1; }
+#tvpr-page .tvpr-artist { display: grid; grid-template-columns: 1.6fr 1fr; gap: 8px; margin-bottom: 12px; }
+#tvpr-page .tvpr-artist > .tvpr-field { margin-bottom: 0; }
+#tvpr-page .tvpr-hint { font-size: 12.5px; color: var(--tvpr-fg-sub); line-height: 1.6; margin: 2px 0 12px; }
+#tvpr-page .tvpr-hint b { color: var(--tvpr-accent-text); font-weight: 700; }
+#tvpr-page .tvpr-warn { margin: 6px 0 0; font-size: 12.5px; color: #b45309; line-height: 1.6; }
+#tvpr-page .tvpr-warn[hidden] { display: none; }
+
+/* 主操作 */
+#tvpr-page .tvpr-generate { margin-top: 14px; padding-top: 14px; border-top: 1px solid #eef2f7; }
+#tvpr-page .tvpr-btn-generate {
+  width: 100%; min-height: 48px; display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 12px 16px; border-radius: 10px; cursor: pointer;
+  font-size: 16px; font-weight: 700; line-height: 1.3; font-family: inherit;
+  background: var(--tvpr-accent-strong); color: #fff; border: 1px solid var(--tvpr-accent-strong);
+  box-shadow: 0 3px 10px rgba(15,122,102,.22);
+  transition: background .16s, box-shadow .16s, transform .1s;
+}
+#tvpr-page .tvpr-btn-generate:hover { background: #0d6f5c; box-shadow: 0 4px 14px rgba(15,122,102,.30); }
+#tvpr-page .tvpr-btn-generate:active { transform: translateY(1px); }
+#tvpr-page .tvpr-btn-generate:focus-visible { outline: 3px solid #0f172a; outline-offset: 3px; }
+#tvpr-page .tvpr-generate-hint { margin-top: 8px; font-size: 12.5px; color: var(--tvpr-fg-sub); text-align: center; }
+#tvpr-page .tvpr-link {
+  display: inline-block; margin-top: 10px; padding: 2px 0; border: 0; background: transparent;
+  color: var(--tvpr-fg-sub); font-size: 13px; font-family: inherit; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+#tvpr-page .tvpr-link:hover { color: var(--tvpr-fg); }
+#tvpr-page .tvpr-link:focus-visible { outline: 2px solid var(--tvpr-accent); outline-offset: 2px; }
+
+/* 右カラム：產品 */
+#tvpr-page .tvpr-product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+#tvpr-page .tvpr-product {
+  display: grid; grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-areas: "check name" "check eng";
+  column-gap: 8px; row-gap: 2px; align-items: start;
+  padding: 9px 11px; min-height: 56px;
+  border: 1.5px solid var(--tvpr-line); border-radius: 9px; background: #fcfdfe;
+  text-align: left; cursor: pointer; font-family: inherit;
+  transition: border-color .16s, background .16s;
+}
+#tvpr-page .tvpr-product:hover { border-color: #94a3b8; }
+#tvpr-page .tvpr-product:focus-visible { outline: 2px solid var(--tvpr-accent); outline-offset: 2px; }
+#tvpr-page .tvpr-product[aria-pressed="true"] {
+  background: var(--tvpr-accent-dim); border-color: var(--tvpr-accent-strong);
+  box-shadow: inset 0 0 0 1px var(--tvpr-accent-strong);
+}
+#tvpr-page .tvpr-p-check {
+  grid-area: check; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%;
+  border: 1.5px solid #cbd5e1; background: #fff; color: transparent;
+  font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  transition: background .16s, border-color .16s, color .16s;
+}
+#tvpr-page .tvpr-product[aria-pressed="true"] .tvpr-p-check {
+  background: var(--tvpr-accent-strong); border-color: var(--tvpr-accent-strong); color: #fff;
+}
+#tvpr-page .tvpr-p-name {
+  grid-area: name; font-size: 15px; font-weight: 700; color: #0f172a; line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+#tvpr-page .tvpr-product[aria-pressed="true"] .tvpr-p-name { color: var(--tvpr-accent-text); }
+#tvpr-page .tvpr-p-eng {
+  grid-area: eng; font-size: 13px; color: var(--tvpr-fg-muted); line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+#tvpr-page .tvpr-custom-row { display: flex; gap: 9px; align-items: center; margin-top: 13px; }
+#tvpr-page .tvpr-custom-row input {
+  flex: 1; min-width: 0; height: 36px; padding: 8px 11px; font-size: 14px; color: var(--tvpr-fg);
+  border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-family: inherit;
+}
+#tvpr-page .tvpr-custom-row input:focus { border-color: var(--tvpr-accent); box-shadow: 0 0 0 3px var(--tvpr-accent-dim); }
+#tvpr-page .tvpr-btn-add {
+  height: 36px; padding: 6px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+  font-size: 13.5px; font-weight: 700; font-family: inherit;
+  background: #fff; color: #334155; border: 1px solid #cbd5e1;
+}
+#tvpr-page .tvpr-btn-add:hover { background: #f1f5f9; }
+#tvpr-page .tvpr-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+#tvpr-page .tvpr-tag {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 5px 3px 9px; border-radius: 6px;
+  background: var(--tvpr-accent-dim); border: 1px solid rgba(18,142,119,.28);
+  font-size: 13px; color: var(--tvpr-accent-text); line-height: 1.5;
+}
+#tvpr-page .tvpr-tag-x {
+  border: none; background: transparent; cursor: pointer; font-size: 12px; line-height: 1;
+  color: var(--tvpr-accent-text); opacity: .75; padding: 3px 4px; border-radius: 4px; font-family: inherit;
+}
+#tvpr-page .tvpr-tag-x:hover { opacity: 1; background: rgba(18,142,119,.16); }
+
+/* ---------- 結果 ---------- */
+#tvpr-page .tvpr-result { scroll-margin-top: calc(var(--qc-header-h, 110px) + 14px); }
+#tvpr-page .tvpr-result-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-bottom: 12px; border-bottom: 1px solid #eef2f7; margin-bottom: 12px;
+}
+#tvpr-page .tvpr-result-left { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+#tvpr-page .tvpr-result-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#resultCount { font-size: 14px; color: var(--tvpr-fg-sub); line-height: 1.5; }
+#resultCount strong { font-size: 19px; font-weight: 800; color: var(--tvpr-accent-text); }
+#resultCount .tvpr-count-warn { color: #b45309; }
+#tvpr-page .tvpr-tabs { display: flex; gap: 2px; background: #f1f5f9; border-radius: 8px; padding: 3px; }
+#tvpr-page .tvpr-tab {
+  padding: 6px 12px; border-radius: 6px; font-size: 13px; color: var(--tvpr-fg-sub); cursor: pointer;
+  border: none; background: transparent; font-family: inherit; line-height: 1.4; white-space: nowrap;
+}
+#tvpr-page .tvpr-tab[aria-selected="true"] {
+  background: #fff; color: var(--tvpr-accent-text); font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15,23,42,.08);
+}
+#tvpr-page .tvpr-tab:focus-visible { outline: 2px solid var(--tvpr-accent); outline-offset: 1px; }
+#tvpr-page .tvpr-btn-copy {
+  display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 6px 12px;
+  border-radius: 8px; font-size: 13.5px; font-weight: 700; font-family: inherit; cursor: pointer;
+  background: #fff; color: #334155; border: 1px solid #cbd5e1;
+}
+#tvpr-page .tvpr-btn-copy:hover { background: #f1f5f9; border-color: #94a3b8; }
+#tvpr-page .tvpr-btn-copy:focus-visible { outline: 2px solid var(--tvpr-accent); outline-offset: 2px; }
+#tvpr-page .tvpr-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 460px; overflow-y: auto; padding: 2px; }
+#tvpr-page .tvpr-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 7px;
+  font-size: 14px; font-family: inherit; color: #334155; text-align: left; line-height: 1.5;
+  background: #f8fafc; border: 1px solid #e2e8f0; cursor: pointer; overflow-wrap: anywhere;
+  transition: background .16s, border-color .16s;
+}
+#tvpr-page .tvpr-chip:hover { background: var(--tvpr-accent-dim); border-color: rgba(18,142,119,.35); }
+#tvpr-page .tvpr-chip:focus-visible { outline: 2px solid var(--tvpr-accent); outline-offset: 1px; }
+#tvpr-page .tvpr-chip.tvpr-chip-required { border-color: rgba(18,142,119,.30); background: rgba(18,142,119,.06); }
+#tvpr-page .tvpr-chip.tvpr-chip-standalone {
+  background: var(--tvpr-accent-strong); border-color: var(--tvpr-accent-strong); color: #fff; font-weight: 700;
+}
+#tvpr-page .tvpr-chip.tvpr-chip-standalone:hover { background: #0d6f5c; }
+#tvpr-page .tvpr-chip-prefix { color: var(--tvpr-accent-text); font-weight: 600; font-size: 13px; }
+#tvpr-page .tvpr-chip.tvpr-chip-standalone .tvpr-chip-prefix { color: #fff; }
+#tvpr-page .tvpr-chip-badge {
+  font-size: 11.5px; padding: 1px 5px; border-radius: 4px; letter-spacing: .04em;
+  background: rgba(255,255,255,.24); color: #fff;
+}
+#tvpr-page .tvpr-plain {
+  width: 100%; min-height: 240px; padding: 12px; font-size: 14px; line-height: 1.85;
+  font-family: inherit; color: var(--tvpr-fg); background: #f8fafc;
+  border: 1px solid #e2e8f0; border-radius: 10px; resize: vertical; outline: none;
+}
+#tvpr-page .tvpr-plain:focus { border-color: var(--tvpr-accent); }
+#tvpr-page .tvpr-note {
+  font-size: 14px; color: var(--tvpr-fg-sub); margin-top: 10px; padding: 10px 13px; line-height: 1.75;
+  background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 9px;
+}
+#tvpr-page .tvpr-note b { color: var(--tvpr-accent-text); }
+#tvpr-page .tvpr-stats {
+  display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid #eef2f7;
+}
+#tvpr-page .tvpr-stats[hidden] { display: none; }
+#tvpr-page .tvpr-stat { display: flex; align-items: baseline; gap: 6px; }
+#tvpr-page .tvpr-stat-label { font-size: 13px; color: var(--tvpr-fg-sub); }
+#tvpr-page .tvpr-stat-value { font-size: 14px; font-weight: 700; color: var(--tvpr-accent-text); }
+#tvpr-page .tvpr-empty { text-align: center; padding: 30px 12px; color: var(--tvpr-fg-muted); }
+#tvpr-page .tvpr-empty p { font-size: 14px; margin: 0; line-height: 1.7; }
+#tvpr-page .tvpr-empty .tvpr-empty-ic { font-size: 24px; opacity: .55; margin-bottom: 8px; }
+
+/* ルール折り畳み */
+#tvpr-page .tvpr-rules { margin-top: 16px; }
+#tvpr-page .tvpr-rules > summary {
+  cursor: pointer; font-size: 13px; color: var(--tvpr-fg-sub); font-weight: 600;
+  padding: 6px 0; list-style: none;
+}
+#tvpr-page .tvpr-rules > summary::before { content: "▸ "; color: var(--tvpr-accent-strong); }
+#tvpr-page .tvpr-rules[open] > summary::before { content: "▾ "; }
+#tvpr-page .tvpr-rules > summary::-webkit-details-marker { display: none; }
+
+/* Toast / 認証遮罩（NO005 と同じ見た目） */
+#tvprToast {
+  position: fixed; top: 16px; right: 16px; z-index: 2000;
+  padding: 11px 17px; border-radius: 9px; font-size: 14px; line-height: 1.55;
+  font-family: var(--tvpr-font);
+  background: #0f172a; color: #f8fafc; border: 1px solid #334155;
+  box-shadow: 0 8px 26px rgba(15,23,42,.28);
+  opacity: 0; transform: translateX(14px); pointer-events: none;
+  transition: opacity .22s, transform .22s; max-width: 78vw;
+}
+#tvprToast[data-show="1"] { opacity: 1; transform: translateX(0); }
+#tvprAuthBlock {
+  position: fixed; inset: 0; z-index: 1500; display: flex; align-items: center; justify-content: center;
+  background: rgba(15,23,42,.72); padding: 20px;
+}
+#tvprAuthBlock[hidden] { display: none; }
+#tvprAuthBlock .tvpr-auth-card {
+  background: #fff; border-radius: 14px; padding: 26px 28px; max-width: 460px; width: 100%;
+  text-align: center; box-shadow: 0 20px 50px rgba(15,23,42,.35);
+  font-family: var(--tvpr-font); color: var(--tvpr-fg);
+}
+#tvprAuthBlock h2 { font-size: 18px; margin: 0 0 10px; color: #b91c1c; line-height: 1.5; }
+#tvprAuthBlock p { font-size: 14px; color: var(--tvpr-fg-sub); margin: 0 0 18px; line-height: 1.75; }
+#tvprAuthBlock .tvpr-auth-link {
+  display: inline-block; padding: 10px 22px; border-radius: 8px; font-size: 14.5px; font-weight: 700;
+  background: var(--tvpr-accent-strong); color: #fff; text-decoration: none;
+}
+
+/* ---------- レスポンシブ ---------- */
+@media (max-width: 1180px) {
+  #tvpr-page .tvpr-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1080px) {
+  #tvpr-page .tvpr-work { grid-template-columns: 1fr; }
+  #tvpr-page .tvpr-side { position: static; }
+  #tvpr-page .tvpr-product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  #tvpr-page .tvpr-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  #tvpr-page .tvpr-result-top { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 640px) {
+  #tvpr-page { padding: 14px 12px 48px; }
+  #tvpr-page .tvpr-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #tvpr-page .tvpr-artist { grid-template-columns: 1fr; }
+  #tvpr-page .tvpr-result-right { width: 100%; }
+  #tvpr-page .tvpr-tabs { width: 100%; }
+  #tvpr-page .tvpr-tab { flex: 1; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== ポータル共通認証（qc-auth.js）と共通 Header（qc-header.js） ===== -->
+<script src="qc-auth.js"></script>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
+<div id="qcHeaderMount"></div>
+
+<!-- 認証不能時の全面ブロック（fail-closed）。通常時は hidden。 -->
+<div id="tvprAuthBlock" hidden>
+  <div class="tvpr-auth-card">
+    <h2>このツールは利用できません</h2>
+    <p id="tvprAuthReason">ポータルの認証情報を確認できませんでした。</p>
+    <a class="tvpr-auth-link" id="tvprAuthBack" href="index.html">ポータルへ戻る</a>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   認証ガード + 共通 Header マウント
+   ・guardPage() は qc-auth.js の既存関数（新規認証系は作らない）
+   ・qc-auth.js が読めない / 例外 / セッション無効 のいずれでも fail-closed
+   ============================================================ */
+(function () {
+  var user = null;
+  var reason = '';
+
+  try {
+    if (typeof guardPage !== 'function') {
+      reason = 'auth_module_missing';
+    } else {
+      user = guardPage();
+      if (!user) reason = 'no_session';
+    }
+  } catch (e) {
+    reason = 'auth_error';
+  }
+
+  window.__TVPR_AUTH = { ok: !!user, error: reason };
+
+  if (user && typeof QCHeader !== 'undefined' && QCHeader && typeof QCHeader.mount === 'function') {
+    QCHeader.mount({
+      target: '#qcHeaderMount',
+      title: '6課 TVPR キーワード生成',
+      iconSVG: '<svg viewBox="0 0 40 40" role="img" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#128e77"/><rect x="9" y="13" width="22" height="14" rx="3" fill="#ffffff" opacity="0.92"/><path d="M17 17.5v7l6-3.5z" fill="#128e77"/><rect x="15" y="29" width="10" height="2" rx="1" fill="#ffffff" opacity="0.75"/></svg>',
+      badges: [{ text: 'ローカル処理', tone: 'ok' }],
+      note: '番組名・商品から Google / Yahoo の検索キーワードを生成します。入力内容は外部送信しません。',
+      user: user,
+      logo: 'assets/brand/huihai-logo.png',
+      logoAlt: '惠海信息技术'
+    });
+  }
+
+  if (!user) {
+    var box = document.getElementById('tvprAuthBlock');
+    var msg = document.getElementById('tvprAuthReason');
+    if (msg) {
+      msg.textContent = (reason === 'auth_module_missing')
+        ? 'ポータル認証モジュールを読み込めませんでした。ポータルから開き直してください。'
+        : (reason === 'auth_error')
+          ? 'ポータル認証処理でエラーが発生しました。再度ログインしてください。'
+          : 'ログイン状態を確認できませんでした。ポータルから再度ログインしてください。';
+    }
+    if (box) box.hidden = false;
+
+    // 本文はマウントスクリプトより後ろにあるため、DOM 構築完了後にブロック状態を反映する
+    var applyBlock = function () {
+      var main = document.getElementById('tvpr-page');
+      if (!main) return;
+      main.setAttribute('aria-hidden', 'true');
+      main.setAttribute('data-auth-blocked', '1');
+      main.style.pointerEvents = 'none';
+      main.style.userSelect = 'none';
+      if (main.parentNode) main.parentNode.style.overflow = 'hidden';
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyBlock);
+    } else {
+      applyBlock();
+    }
+  }
+})();
+</script>
+
+<div id="tvprToast" role="status" aria-live="polite"></div>
+
+<main id="tvpr-page">
+
+  <div class="tvpr-work">
+    <!-- 左カラム：番組・出演者 ＋ 主操作（デスクトップは吸頂） -->
+    <section class="tvpr-panel tvpr-side" aria-label="節目情報と生成操作">
+      <div class="tvpr-panel-head">
+        <h2 class="tvpr-sec-title">節目與藝人</h2>
+      </div>
+
+      <div class="tvpr-field">
+        <label for="programName">節目名稱 <span class="tvpr-req">*</span></label>
+        <input type="text" id="programName" maxlength="60" placeholder="例：小姐不熙娣" autocomplete="off">
+      </div>
+      <p class="tvpr-warn" id="tvprProgWarn" role="status" hidden></p>
+
+      <div class="tvpr-artist">
+        <div class="tvpr-field">
+          <label for="artistA">置入藝人 A（全名）</label>
+          <input type="text" id="artistA" maxlength="40" placeholder="例：徐熙娣" autocomplete="off">
+        </div>
+        <div class="tvpr-field">
+          <label for="artistAShort">簡稱</label>
+          <input type="text" id="artistAShort" maxlength="20" placeholder="例：小S" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="tvpr-artist">
+        <div class="tvpr-field">
+          <label for="artistB">置入藝人 B（選填）</label>
+          <input type="text" id="artistB" maxlength="40" placeholder="例：于美人" autocomplete="off">
+        </div>
+        <div class="tvpr-field">
+          <label for="artistBShort">簡稱</label>
+          <input type="text" id="artistBShort" maxlength="20" placeholder="簡稱" autocomplete="off">
+        </div>
+      </div>
+
+      <p class="tvpr-hint">節目名稱會成為<b>獨立標籤</b>；藝人名只作為前綴，不單獨成詞。</p>
+
+      <div class="tvpr-generate">
+        <button class="tvpr-btn-generate" type="button" id="generateBtn">✨ 生成關鍵字</button>
+        <div class="tvpr-generate-hint">點擊按鈕或按 Ctrl + Enter</div>
+        <button class="tvpr-link" type="button" id="clearBtn">清除目前結果</button>
+      </div>
+    </section>
+
+    <!-- 右カラム：產品（紧凑 4 列） -->
+    <section class="tvpr-panel" aria-label="置入產品">
+      <div class="tvpr-panel-head">
+        <h2 class="tvpr-sec-title">選擇置入產品</h2>
+        <div class="tvpr-panel-tools">
+          <span class="tvpr-sel-count" id="tvprSelCount">已選擇 0 項 / 共 13 項</span>
+          <button class="tvpr-mini" type="button" id="tvprSelectAll">全選</button>
+          <button class="tvpr-mini" type="button" id="tvprClearSel">全不選</button>
+        </div>
+      </div>
+      <div class="tvpr-product-grid" id="productGrid"></div>
+      <div class="tvpr-custom-row">
+        <input type="text" id="customProdInput" maxlength="40" placeholder="輸入清單外的產品名稱後按 ＋ 新增" autocomplete="off">
+        <button class="tvpr-btn-add" type="button" id="addCustomBtn">＋ 新增</button>
+      </div>
+      <div class="tvpr-tags" id="customTags"></div>
+    </section>
+  </div>
+
+  <!-- 結果 -->
+  <section class="tvpr-panel tvpr-result" id="resultCard" aria-label="生成結果">
+    <div class="tvpr-result-top">
+      <div class="tvpr-result-left">
+        <h2 class="tvpr-sec-title">生成結果</h2>
+        <span id="resultCount"></span>
+      </div>
+      <div class="tvpr-result-right">
+        <div class="tvpr-tabs" role="tablist" aria-label="表示切替">
+          <button class="tvpr-tab" type="button" role="tab" data-tab="chips" aria-selected="true">標籤預覽</button>
+          <button class="tvpr-tab" type="button" role="tab" data-tab="google" aria-selected="false">谷歌純文字</button>
+          <button class="tvpr-tab" type="button" role="tab" data-tab="yahoo" aria-selected="false">雅虎純文字</button>
+        </div>
+        <button class="tvpr-btn-copy" type="button" id="copyGoogleBtn">📋 複製谷歌</button>
+        <button class="tvpr-btn-copy" type="button" id="copyYahooBtn">📋 複製雅虎</button>
+      </div>
+    </div>
+
+    <div id="tabChips">
+      <div class="tvpr-chips" id="keywordChips">
+        <div class="tvpr-empty"><div class="tvpr-empty-ic">🎯</div><p>填寫節目名稱、選擇產品後<br>點擊「生成關鍵字」開始</p></div>
+      </div>
+    </div>
+
+    <div id="tabGoogle" hidden>
+      <textarea class="tvpr-plain" id="plainGoogle" readonly placeholder="生成後此處顯示谷歌關鍵字（即當前結果）..."></textarea>
+    </div>
+
+    <div id="tabYahoo" hidden>
+      <textarea class="tvpr-plain" id="plainYahoo" readonly placeholder="生成後此處顯示雅虎關鍵字：谷歌關鍵字 ×2，相同關鍵字相鄰..."></textarea>
+      <div class="tvpr-note">雅虎關鍵字 = 谷歌關鍵字每組重複 2 次，且<b>相同關鍵字相鄰</b>（例：小姐不熙娣、小姐不熙娣、小姐不熙娣 推薦、小姐不熙娣 推薦…）。<br>註：<b>谷歌關鍵字已去重</b>（每組唯一、無重複）；此處雅虎為雙份提交格式。</div>
+    </div>
+
+    <div class="tvpr-stats" id="statsBar" hidden></div>
+  </section>
+
+  <!-- 規則摘要：預設折疊，避免長文占用首屏 -->
+  <details class="tvpr-rules">
+    <summary>規則摘要（點擊展開）</summary>
+    <div class="tvpr-note">
+      <b>節目名稱：</b>為必填欄位；未填寫時仍會以藝人名稱為前綴產生關鍵字（原版行為），但<b>不記錄使用次數</b>。<br><b>規則摘要：</b>節目名稱必為獨立標籤（即「小姐不熙娣」本身）；藝人名僅以組合形式出現（<b>單獨藝人名不作為關鍵字</b>）；谷歌關鍵字已自動去重（<b>每組唯一、無重複</b>）；關鍵字以繁體中文輸出；建議 35 組以上；雅虎＝谷歌 ×2（相同關鍵字相鄰，符合雙份提交格式）。
+    </div>
+  </details>
+
+</main>
+
+<script>
+/* ===================================================================
+ * TVPR 關鍵字生成器 — 門戶整合版（業務ロジックは原版と同一）
+ * ・DOM 生成は createElement / textContent のみ（innerHTML へユーザー入力を通さない）
+ * ・クリックはイベント委譲（インライン onclick 文字列を一切生成しない）
+ * ・使用回数は「明示的な生成操作 + 有効な結果」のみ送信（自動 debounce では送らない）
+ * =================================================================== */
+(function () {
+  'use strict';
+
+  /* ---------- 產品定義（原本と同一・変更禁止） ---------- */
+  var PRODUCTS = [
+    { id:'milcolla', eng:'Milcolla', name:'蜜露珂娜', nameShort:'蜜露', engShort:'ML' },
+    { id:'liftage', eng:'Liftage', name:'麗芙緹', nameShort:'', engShort:'LF' },
+    { id:'vitoas_yingrun', eng:'Vitoas', name:'蜜得絲', nameShort:'', engShort:'VT', variant:'Vitoas 經典盈潤版', isVitoas:true },
+    { id:'vitoas_qingrun', eng:'Vitoas', name:'蜜得絲', nameShort:'', engShort:'VT', variant:'Vitoas 輕潤版', isVitoas:true },
+    { id:'vitoas_jqliang', eng:'Vitoas', name:'蜜得絲', nameShort:'', engShort:'VT', variant:'Vitoas 經典+輕潤', isVitoas:true },
+    { id:'varon_jingrun', eng:'VARON', name:'汎倫', nameShort:'', engShort:'VR', variant:'VARON 經典潤澤版' },
+    { id:'varon_qingtou', eng:'VARON', name:'汎倫', nameShort:'', engShort:'VR', variant:'VARON 輕透版' },
+    { id:'vitoas_jqingtou', eng:'VARON', name:'汎倫', nameShort:'', engShort:'VR', variant:'VARON經典+輕透' },
+    { id:'royaljelly', eng:'Royal Jelly', name:'蜂王乳', nameShort:'', engShort:'RJ' },
+    { id:'dha', eng:'DHA', name:'DHA', nameShort:'', engShort:'DHA' },
+    { id:'sesameex', eng:'芝麻明EX', name:'芝麻明', nameShort:'', engShort:'EX' },
+    { id:'maca', eng:'Maca', name:'御瑪卡', nameShort:'瑪卡', engShort:'MACA' },
+    { id:'tadas', eng:'TADAS', name:'TADAS', nameShort:'', engShort:'TD' }
+  ];
+
+  /* ---------- 產品關鍵字庫（原本と同一・変更禁止） ---------- */
+  var PRODUCT_KW = {
+    milcolla: ['CP值高','Milcolla','Milcolla官網','牛乳神經醯胺','牛乳萃取神經醯胺','光速決小粉包','光速決膠原蛋白','光速小粉包','光速膠原蛋白','三得利','三得利Milcolla','三得利官網','三得利光速小粉包','三得利小粉包','三得利品牌網站','三得利蜜露','三得利蜜露珂娜','小分子光速膠原','小分子光速膠原蛋白','小分子膠原','小粉包','神經醯胺','低熱量膠原蛋白','日本光速小粉包','日本三得利','日本百年大廠','日本百年品牌','日本老品牌','日本膠原蛋白','蜜露珂娜小粉包','蜜露小粉包','膠原蛋白','膠原蛋白始祖','膠原蛋白無腥味','奶香膠原蛋白'],
+    liftage: ['麗芙緹膠原飲','喝的青春露','青春露','速決型膠原蛋白','日本美容飲','膠原精華飲','膠原蛋白飲','高效蛋白聚醣','美容飲','美容精華','低卡','神經醯胺','蛋白聚醣','金鐘影后推薦(金鐘影后是天心)','金鐘影后同款(金鐘影后是天心)','三得利','日本老品牌','日本三得利','日本百年大廠','Liftage','0脂肪膠原蛋白飲','0糖膠原蛋白飲','三得利Liftage','三得利麗芙緹','小分子','內服美容飲','無腥味膠原蛋白飲','日本製造','日本熱銷','日本膠原蛋白飲','日本水光飲','低卡膠原蛋白飲','速決型水光飲','鳳梨口味','鳳梨味膠原蛋白飲','膠原蛋白','麗芙緹'],
+    vitoas_yingrun: ['All in One','All in One透光瓶','蜜得絲透光瓶','三得利All in One','三得利透光瓶','三階段滲透','小橘瓶','透光瓶','專櫃級All in One','All in One極簡保養','一瓶抵多瓶','盈潤版vitoas','盈潤版','發光成分','發光科技','三得利','日本老品牌','日本三得利','日本百年大廠','Vitoas','三得利vitoas','三得利小橘瓶','三得利官網','三得利蜜得絲','三傳導科技','三道保養','多效極妍鎖濕菁華','官網訂購','專利發光科技','專櫃級保養品','蜜得絲官網'],
+    vitoas_qingrun: ['All in One','All in One透光瓶','蜜得絲透光瓶','三得利All in One','三得利透光瓶','三階段滲透','小橘瓶','透光瓶','專櫃級All in One','All in One極簡保養','一瓶抵多瓶','輕潤版vitoas','輕潤版','發光成分','發光科技','三得利','日本老品牌','日本三得利','日本百年大廠','Vitoas','三得利vitoas','三得利小橘瓶','三得利官網','三得利蜜得絲','三傳導科技','三道保養','多效極妍鎖濕菁華','官網訂購','專利發光科技','專櫃級保養品','蜜得絲官網'],
+    vitoas_jqliang: ['All in One','All in One透光瓶','蜜得絲透光瓶','三得利All in One','三得利透光瓶','三階段滲透','小橘瓶','透光瓶','專櫃級All in One','All in One極簡保養','一瓶抵多瓶','輕潤版vitoas','盈潤版vitoas','輕潤版','盈潤版','發光成分','發光科技','三得利','日本老品牌','日本三得利','日本百年大廠','Vitoas','三得利vitoas','三得利小橘瓶','三得利官網','三得利蜜得絲','三傳導科技','三道保養','多效極妍鎖濕菁華','官網訂購','專利發光科技','專櫃級保養品','蜜得絲官網'],
+    varon_jingrun: ['銀光瓶','日本銀光瓶','銀光瓶VARON','三得利銀光瓶','All in One','三得利All in One','日本All in One','多效活顏精華','三段式滲透','日本男性','日本男性全效保養','三得利VARON','一瓶搞定','男性護膚','男性保養','VARON','威士忌釀造桶材精粹','汎倫','日本男性保養','VARON汎倫','三得利汎倫','三得利','日本三得利'],
+    varon_qingtou: ['銀光瓶','日本銀光瓶','銀光瓶VARON','三得利銀光瓶','All in One','三得利All in One','日本All in One','多效活顏精華','三段式滲透','日本男性','日本男性全效保養','三得利VARON','一瓶搞定','男性護膚','男性保養','VARON輕透版','三得利VARON輕透版','銀光瓶輕透','輕透版','VARON','威士忌釀造桶材精粹','汎倫','日本男性保養','VARON汎倫','三得利汎倫','三得利','日本三得利'],
+    vitoas_jqingtou: ['銀光瓶','日本銀光瓶','銀光瓶VARON','三得利銀光瓶','All in One','三得利All in One','日本All in One','多效活顏精華','三段式滲透','日本男性','日本男性全效保養','三得利VARON','一瓶搞定','男性護膚','男性保養','VARON輕透版','三得利VARON輕透版','銀光瓶輕透','輕透版','VARON','威士忌釀造桶材精粹','汎倫','日本男性保養','VARON汎倫','三得利汎倫','三得利','日本三得利'],
+    royaljelly: ['日本綻齡小金瓶','芝麻素','維生素E','賽洛美','美容養顏','Royal Jelly','三得利','日本三得利','日本老品牌','日本百年大廠','日本蜂王乳','蜂王乳','熟女必備','日本蜂王乳＋芝麻明E','睡眠問題','芝麻明E','睡眠保健','S級睡眠','睡眠王者','助眠好物'],
+    dha: ['DHA芝麻素','膽固醇','魚油','DHA魚油','三得利魚油','芝麻素魚油','EPA魚油','魚油推薦','DHA多效複方','芝麻素多效複方','日本魚油','EPA','一瓶多效複方','全面健康','保健身體','亞健康','三高','肥胖群族','沉重無力','作息亂','沒精神','三得利','日本三得利','飲食不正常','作息不規律','三得利DHA','DHA','芝麻素','日本老字號','百年大廠','維生素E','維生素D'],
+    sesameex: ['睡眠問題','日本芝麻素','芝麻素','米糠油','維生素E','芝麻素始祖','改善睡眠','緩解疲勞','助眠好物','小綠人護肝','睡不著','淺眠','睡不好','真正休息','熟睡','翻來覆去','好入睡','睡飽','失眠','睡眠王者','睡眠','難入睡','日本老品牌','芝麻明EX','三得利','日本三得利'],
+    maca: ['三得利','日本老品牌','日本三得利','日本百年大廠','御瑪卡','Maca','三得利御瑪卡','三得利瑪卡','瑪卡','三得利Maca','自信心','男人自信心','日本瑪卡','日本百年大廠製造','20倍濃縮瑪卡','男性體力','巔峰實力','官網訂購','男性所需','體力提升','不漏氣','一瓶免運','牡蠣精華','持久秘密','滋補強身','不再力不從心','男性保養','男性精力聖品','男性續航力','男性滋補強身','男性精華','伴侶關係','男性營養'],
+    tadas: ['0脂肪益生菌','TADAS','一包免運','一包送','入口即化益生菌','三得利','三得利TADAS','三得利比菲禦力菌','三得利官網','三得利益生菌','小包益生菌','不嗆口益生菌','不噴粉益生菌','方便攜帶','日本三得利','日本百年大廠','日本百年老品牌','日本老品牌','日本品牌','日本家庭益生菌','日本家庭常備益生菌','日本益生菌','日本常備益生菌','日本雙重順暢配方','日本雙效益生菌','比菲德氏菌','比菲德氏龍根菌','比菲禦力菌','低卡益生菌','低熱量益生菌','排便','排便不費力','排便不順','排便順暢','幫助消化','消化順暢']
+  };
+
+  /* ---------- 全商品通用必入力（品牌詞） ---------- */
+  var UNIVERSAL_KW = ['三得利','日本老品牌','日本三得利','日本百年大廠'];
+
+  /* ---------- VT 不入力詞 ---------- */
+  var VT_EXCLUDE = new Set(['化妝水','肌膚保養','肌膚保濕','肌膚彈力','抗老','乳液','乳霜','保養','保養品','精華液','彈嫩感','自然好氣色']);
+
+  /* ---------- 全域排除（語氣詞） ---------- */
+  var GLOBAL_EXCLUDE = new Set(['的','了','是','在','和','與','或','及','也','都','就','會','要','能','可以','有','很','太','好','非常','比較','這個','那個','什麼','怎麼','為什麼','因為','所以','但是','而且','雖然','如果','應該','可能','已經','還是','真的','覺得','知道','看到','發現','大家','我們','自己','各位','一下','一點','很多','全部','超級','超','極','特','其實','然後','之後','以前','一直','一定']);
+
+  /* ---------- 入力上限（今回追加。業務ルールではない安全側の上限） ---------- */
+  var FIELD_MAX = { programName: 60, artistA: 40, artistAShort: 20, artistB: 40, artistBShort: 20 };
+  var CUSTOM_MAX_LEN = 40;
+  var CUSTOM_MAX_COUNT = 20;
+
+  /* ---------- 使用量記録の識別子（ポータル既存 sendLog 契約に従う） ---------- */
+  var USAGE_TOOL_NAME = 'TVPR关键字生成';
+
+  /* ---------- 状態 ---------- */
+  var state = {
+    selected: new Set(),
+    custom: [],
+    google: [],
+    yahoo: []
+  };
+  var toastTimer = null;
+
+  /* ================= 認証（fail-closed） ================= */
+  function tvprAuthAllowed() {
+    if (typeof getValidSession !== 'function') return false;
+    try {
+      var s = getValidSession();
+      return !!(s && s.token);
+    } catch (e) {
+      return false;
+    }
+  }
+  function denyAndStop() {
+    var box = document.getElementById('tvprAuthBlock');
+    var main = document.getElementById('tvpr-page');
+    if (box) box.hidden = false;
+    if (main) main.setAttribute('data-auth-blocked', '1');
+    showToast('ログイン状態を確認できません。ポータルから再ログインしてください。');
+    return false;
+  }
+
+  /* ================= 文字処理 ================= */
+  function sanitizeText(t) {
+    return String(t == null ? '' : t)
+      .replace(/[\u200B\u200C\u200D\uFEFF\u2060\u180E]/g, '')
+      .replace(/[\u00A0\u3000]/g, ' ')
+      .replace(/\r\n?/g, '\n')
+      .trim();
+  }
+  function escHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : s;
+    return d.innerHTML;
+  }
+  function readField(id) {
+    var el = document.getElementById(id);
+    if (!el) return '';
+    var max = FIELD_MAX[id] || 100;
+    var v = sanitizeText(el.value);
+    if (v.length > max) {
+      v = v.slice(0, max);
+      el.value = v;
+      showToast('入力が長すぎるため ' + max + ' 文字までに切り詰めました');
+    }
+    return v;
+  }
+
+  /* ================= 初期化 ================= */
+  function init() {
+    renderProductCards();
+    bindEvents();
+    updateProgramWarn();
+  }
+
+  function renderProductCards() {
+    var grid = document.getElementById('productGrid');
+    if (!grid) return;
+    var frag = document.createDocumentFragment();
+    PRODUCTS.forEach(function (p) {
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'tvpr-product';
+      card.setAttribute('data-pid', p.id);
+      card.setAttribute('aria-pressed', 'false');
+
+      var check = document.createElement('span');
+      check.className = 'tvpr-p-check';
+      check.textContent = '✓';
+      check.setAttribute('aria-hidden', 'true');
+
+      var eng = document.createElement('div');
+      eng.className = 'tvpr-p-eng';
+      eng.textContent = p.variant || p.eng || p.engShort;
+
+      var name = document.createElement('div');
+      name.className = 'tvpr-p-name';
+      name.textContent = p.name;
+
+      card.appendChild(check);
+      card.appendChild(name);
+      card.appendChild(eng);
+      frag.appendChild(card);
+    });
+    grid.appendChild(frag);
+    syncProductUI();
+  }
+
+  function bindEvents() {
+    document.getElementById('generateBtn').addEventListener('click', function () {
+      generate({ explicit: true });
+    });
+    document.getElementById('copyGoogleBtn').addEventListener('click', function () {
+      if (!tvprAuthAllowed()) { denyAndStop(); return; }
+      copyLines(state.google.map(function (k) { return k.text; }), '谷歌');
+    });
+    document.getElementById('copyYahooBtn').addEventListener('click', function () {
+      if (!tvprAuthAllowed()) { denyAndStop(); return; }
+      copyLines(state.yahoo, '雅虎');
+    });
+    document.getElementById('clearBtn').addEventListener('click', clearAll);
+
+    var tabs = document.querySelectorAll('#tvpr-page .tvpr-tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].addEventListener('click', function (e) {
+        switchTab(e.currentTarget.getAttribute('data-tab'));
+      });
+    }
+
+    // 產品カード：イベント委譲（動的 onclick 文字列は生成しない）
+    var grid = document.getElementById('productGrid');
+    grid.addEventListener('click', function (e) {
+      var card = e.target && e.target.closest ? e.target.closest('.tvpr-product') : null;
+      if (!card) return;
+      var pid = card.getAttribute('data-pid');
+      if (!pid) return;
+      if (state.selected.has(pid)) state.selected.delete(pid); else state.selected.add(pid);
+      syncProductUI();
+      generate({ explicit: false });
+    });
+
+    // チップ：イベント委譲（キーワード文字列は dataset の index で参照）
+    var chips = document.getElementById('keywordChips');
+    chips.addEventListener('click', function (e) {
+      var chip = e.target && e.target.closest ? e.target.closest('.tvpr-chip') : null;
+      if (!chip) return;
+      var idx = Number(chip.getAttribute('data-kw-index'));
+      if (!isFinite(idx) || !state.google[idx]) return;
+      if (!tvprAuthAllowed()) { denyAndStop(); return; }
+      copyLines([state.google[idx].text], '單組');
+    });
+
+    var sa = document.getElementById('tvprSelectAll');
+    if (sa) sa.addEventListener('click', function () {
+      PRODUCTS.forEach(function (p) { state.selected.add(p.id); });
+      syncProductUI();
+      generate({ explicit: false });
+    });
+    var cs = document.getElementById('tvprClearSel');
+    if (cs) cs.addEventListener('click', function () {
+      state.selected.clear();
+      syncProductUI();
+      generate({ explicit: false });
+    });
+
+    document.getElementById('addCustomBtn').addEventListener('click', addCustomProduct);
+    document.getElementById('customProdInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); addCustomProduct(); }
+    });
+
+    var debounced = debounce(function () { generate({ explicit: false }); }, 400);
+    ['programName', 'artistA', 'artistAShort', 'artistB', 'artistBShort'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', debounced);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (!tvprAuthAllowed()) { denyAndStop(); return; }
+        e.preventDefault();
+        generate({ explicit: true });
+      }
+    });
+
+    // コピー範囲限定：本ツール領域内の選択のみ text/plain に正規化する
+    var page = document.getElementById('tvpr-page');
+    if (page) {
+      page.addEventListener('copy', function (e) {
+        var sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        var text = sel.toString();
+        if (!text || !e.clipboardData) return;
+        e.preventDefault();
+        e.clipboardData.setData('text/plain', sanitizeText(text));
+      });
+    }
+  }
+
+  /* ================= 產品選択 ================= */
+  function syncProductUI() {
+    var cards = document.querySelectorAll('#tvpr-page .tvpr-product');
+    for (var i = 0; i < cards.length; i++) {
+      var on = state.selected.has(cards[i].getAttribute('data-pid'));
+      cards[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    var cnt = document.getElementById('tvprSelCount');
+    if (cnt) cnt.textContent = '已選擇 ' + state.selected.size + ' 項 / 共 ' + PRODUCTS.length + ' 項';
+  }
+  function addCustomProduct() {
+    if (!tvprAuthAllowed()) { denyAndStop(); return; }
+    var input = document.getElementById('customProdInput');
+    var name = sanitizeText(input.value);
+    if (!name) return;
+    if (name.length > CUSTOM_MAX_LEN) {
+      showToast('產品名稱は ' + CUSTOM_MAX_LEN + ' 文字までです');
+      return;
+    }
+    if (state.custom.length >= CUSTOM_MAX_COUNT) {
+      showToast('自訂產品は ' + CUSTOM_MAX_COUNT + ' 件までです');
+      return;
+    }
+    if (state.custom.some(function (c) { return c.name === name; })) {
+      showToast('此產品已存在');
+      return;
+    }
+    state.custom.push({ name: name });
+    input.value = '';
+    renderCustomTags();
+    generate({ explicit: false });
+  }
+  function removeCustomProduct(idx) {
+    if (!isFinite(idx) || idx < 0 || idx >= state.custom.length) return;
+    state.custom.splice(idx, 1);
+    renderCustomTags();
+    generate({ explicit: false });
+  }
+  function renderCustomTags() {
+    var host = document.getElementById('customTags');
+    if (!host) return;
+    while (host.firstChild) host.removeChild(host.firstChild);
+    var frag = document.createDocumentFragment();
+    state.custom.forEach(function (c, i) {
+      var tag = document.createElement('span');
+      tag.className = 'tvpr-tag';
+      var label = document.createElement('span');
+      label.textContent = c.name;
+      var x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'tvpr-tag-x';
+      x.textContent = '✕';
+      x.setAttribute('aria-label', '削除: ' + c.name);
+      x.addEventListener('click', function () { removeCustomProduct(i); });
+      tag.appendChild(label);
+      tag.appendChild(x);
+      frag.appendChild(tag);
+    });
+    host.appendChild(frag);
+  }
+
+  /* ================= 核心生成エンジン（原版と同一ロジック） ================= */
+  function generate(options) {
+    var explicit = !!(options && options.explicit);
+    if (!tvprAuthAllowed()) { denyAndStop(); return; }
+
+    var progName = readField('programName');
+
+    var prefixes = [];
+    var programMeta = null;
+    if (progName) {
+      programMeta = { text: progName, type: 'program', standalone: true };
+      prefixes.push(programMeta);
+    }
+
+    var artistA = readField('artistA');
+    var artistAS = readField('artistAShort');
+    var artistB = readField('artistB');
+    var artistBS = readField('artistBShort');
+
+    var artistTexts = [];
+    if (artistA) { prefixes.push({ text: artistA, type: 'artist', standalone: false }); artistTexts.push(artistA); }
+    if (artistAS && artistAS !== artistA) { prefixes.push({ text: artistAS, type: 'artist', standalone: false }); artistTexts.push(artistAS); }
+    if (artistB) { prefixes.push({ text: artistB, type: 'artist', standalone: false }); artistTexts.push(artistB); }
+    if (artistBS && artistBS !== artistB) { prefixes.push({ text: artistBS, type: 'artist', standalone: false }); artistTexts.push(artistBS); }
+
+    var suffixes = [];
+    var usedProducts = [];
+
+    state.selected.forEach(function (pid) {
+      var prod = null;
+      for (var i = 0; i < PRODUCTS.length; i++) { if (PRODUCTS[i].id === pid) { prod = PRODUCTS[i]; break; } }
+      if (!prod) return;
+      usedProducts.push(prod);
+      suffixes.push({ text: prod.name, product: prod, exempt: true });
+      if (prod.eng && prod.eng !== prod.name) suffixes.push({ text: prod.eng, product: prod, exempt: true });
+      if (prod.nameShort) suffixes.push({ text: prod.nameShort, product: prod, exempt: true });
+      (PRODUCT_KW[pid] || []).forEach(function (kw) {
+        if (prod.isVitoas && VT_EXCLUDE.has(kw)) return;
+        suffixes.push({ text: kw, product: prod, exempt: false });
+      });
+    });
+
+    state.custom.forEach(function (cp) {
+      suffixes.push({ text: cp.name, product: { name: cp.name }, exempt: true, custom: true });
+      usedProducts.push({ name: cp.name, custom: true });
+    });
+
+    UNIVERSAL_KW.forEach(function (uk) {
+      suffixes.push({ text: uk, product: null, exempt: false, universal: true });
+    });
+
+    var google = [];
+    var seen = new Set();
+
+    prefixes.forEach(function (prefix) {
+      if (prefix.standalone) {
+        if (!seen.has(prefix.text)) {
+          seen.add(prefix.text);
+          google.push({ text: prefix.text, prefix: prefix.text, suffix: '', required: true, standalone: true, product: null });
+        }
+      }
+      ['推薦', '介紹'].forEach(function (r) {
+        var kw = prefix.text + ' ' + r;
+        if (!seen.has(kw)) { seen.add(kw); google.push({ text: kw, prefix: prefix.text, suffix: r, required: true, product: null }); }
+      });
+      suffixes.forEach(function (s) {
+        if (s.text === '推薦' || s.text === '介紹') return;
+        if (s.text === prefix.text) return;
+        var kw = prefix.text + ' ' + s.text;
+        if (seen.has(kw)) return;
+        var cnLen = s.text.replace(/[a-zA-Z0-9\s]/g, '').length;
+        var hasEn = /[a-zA-Z]/.test(s.text);
+        if (!s.exempt) {
+          if (cnLen > 10) return;
+          if (hasEn && s.text.length > 15) return;
+        }
+        if (GLOBAL_EXCLUDE.has(s.text)) return;
+        if (s.text.length <= 1) return;
+        seen.add(kw);
+        google.push({ text: kw, prefix: prefix.text, suffix: s.text, required: false, product: s.product });
+      });
+    });
+
+    var yahoo = [];
+    google.forEach(function (k) { yahoo.push(k.text); yahoo.push(k.text); });
+
+    state.google = google;
+    state.yahoo = yahoo;
+
+    renderResults();
+    updateProgramWarn();
+
+    if (explicit) {
+      var card = document.getElementById('resultCard');
+      if (card && google.length && card.getBoundingClientRect().top > (window.innerHeight - 140)) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      recordUsage(progName, artistTexts, google, yahoo);
+    }
+  }
+
+  /* ================= 描画（DOM API のみ） ================= */
+  function renderResults() {
+    var countEl = document.getElementById('resultCount');
+    var chipsEl = document.getElementById('keywordChips');
+    var statsEl = document.getElementById('statsBar');
+
+    if (state.google.length === 0) {
+      if (countEl) countEl.textContent = '尚無關鍵字，請填寫節目名稱並選擇產品';
+      if (chipsEl) {
+        while (chipsEl.firstChild) chipsEl.removeChild(chipsEl.firstChild);
+        chipsEl.appendChild(buildEmpty());
+      }
+      document.getElementById('plainGoogle').value = '';
+      document.getElementById('plainYahoo').value = '';
+      if (statsEl) { statsEl.hidden = true; while (statsEl.firstChild) statsEl.removeChild(statsEl.firstChild); }
+      return;
+    }
+
+    var warn = state.google.length < 35;
+    if (countEl) {
+      while (countEl.firstChild) countEl.removeChild(countEl.firstChild);
+      countEl.appendChild(document.createTextNode('谷歌 '));
+      var gs = document.createElement('strong');
+      if (warn) gs.className = 'tvpr-count-warn';
+      gs.textContent = String(state.google.length);
+      countEl.appendChild(gs);
+      countEl.appendChild(document.createTextNode(' 組' + (warn ? ' ⚠️（建議35組以上）' : '') + ' ｜ 雅虎 '));
+      var ys = document.createElement('strong');
+      ys.textContent = String(state.yahoo.length);
+      countEl.appendChild(ys);
+      countEl.appendChild(document.createTextNode(' 組'));
+    }
+
+    if (chipsEl) {
+      while (chipsEl.firstChild) chipsEl.removeChild(chipsEl.firstChild);
+      var frag = document.createDocumentFragment();
+      state.google.forEach(function (kw, idx) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'tvpr-chip' + (kw.standalone ? ' tvpr-chip-standalone' : (kw.required ? ' tvpr-chip-required' : ''));
+        chip.setAttribute('data-kw-index', String(idx));
+        chip.setAttribute('title', '點擊複製');
+
+        if (kw.standalone) {
+          var t = document.createElement('span');
+          t.textContent = kw.text;
+          var badge = document.createElement('span');
+          badge.className = 'tvpr-chip-badge';
+          badge.textContent = '獨立';
+          chip.appendChild(t);
+          chip.appendChild(badge);
+        } else {
+          var pre = document.createElement('span');
+          pre.className = 'tvpr-chip-prefix';
+          pre.textContent = kw.prefix;
+          var suf = document.createElement('span');
+          suf.textContent = kw.suffix;
+          chip.appendChild(pre);
+          chip.appendChild(suf);
+        }
+        frag.appendChild(chip);
+      });
+      chipsEl.appendChild(frag);
+    }
+
+    document.getElementById('plainGoogle').value = state.google.map(function (k) { return k.text; }).join('\n');
+    document.getElementById('plainYahoo').value = state.yahoo.join('\n');
+
+    if (statsEl) {
+      var prefixCount = new Set(state.google.map(function (k) { return k.prefix; })).size;
+      var suffixCount = new Set(state.google.map(function (k) { return k.suffix; })).size;
+      var productCount = new Set(state.google.filter(function (k) { return k.product; }).map(function (k) { return k.product.name; })).size;
+      var standaloneCount = state.google.filter(function (k) { return k.standalone; }).length;
+      var requiredCount = state.google.filter(function (k) { return k.required; }).length;
+      while (statsEl.firstChild) statsEl.removeChild(statsEl.firstChild);
+      [
+        ['前綴', prefixCount],
+        ['後綴種類', suffixCount],
+        ['產品覆蓋', productCount],
+        ['獨立標籤', standaloneCount],
+        ['必入力', requiredCount]
+      ].forEach(function (pair) {
+        var item = document.createElement('div');
+        item.className = 'tvpr-stat';
+        var lb = document.createElement('span');
+        lb.className = 'tvpr-stat-label';
+        lb.textContent = pair[0];
+        var vl = document.createElement('span');
+        vl.className = 'tvpr-stat-value';
+        vl.textContent = String(pair[1]);
+        item.appendChild(lb);
+        item.appendChild(vl);
+        statsEl.appendChild(item);
+      });
+      statsEl.hidden = false;
+    }
+  }
+
+  function buildEmpty() {
+    var box = document.createElement('div');
+    box.className = 'tvpr-empty';
+    var ic = document.createElement('div');
+    ic.className = 'tvpr-empty-ic';
+    ic.textContent = '🎯';
+    var p = document.createElement('p');
+    p.appendChild(document.createTextNode('填寫節目名稱、選擇產品後'));
+    p.appendChild(document.createElement('br'));
+    p.appendChild(document.createTextNode('點擊「生成關鍵字」開始'));
+    box.appendChild(ic);
+    box.appendChild(p);
+    return box;
+  }
+
+  function switchTab(tab) {
+    var tabs = document.querySelectorAll('#tvpr-page .tvpr-tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].setAttribute('aria-selected', tabs[i].getAttribute('data-tab') === tab ? 'true' : 'false');
+    }
+    document.getElementById('tabChips').hidden = (tab !== 'chips');
+    document.getElementById('tabGoogle').hidden = (tab !== 'google');
+    document.getElementById('tabYahoo').hidden = (tab !== 'yahoo');
+  }
+
+  /* ================= 複製（純文字のみ） ================= */
+  function copyLines(lines, label) {
+    if (!lines || lines.length === 0) { showToast('尚無關鍵字可複製'); return; }
+    var text = sanitizeText(lines.join('\n'));
+    var count = lines.length;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        showToast('✅ 已複製 ' + count + ' 組' + label + '關鍵字（純文字，字體統一）');
+      }, function () {
+        legacyCopy(text, count, label);
+      });
+    } else {
+      legacyCopy(text, count, label);
+    }
+  }
+  function legacyCopy(text, count, label) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-1000px';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    if (ok) showToast('✅ 已複製 ' + count + ' 組' + label + '關鍵字（純文字，字體統一）');
+    else showToast('❌ 複製失敗，請手動選取後按 Ctrl+C');
+  }
+
+  /* ================= クリア ================= */
+  function clearAll() {
+    state.selected.clear();
+    state.custom = [];
+    state.google = [];
+    state.yahoo = [];
+    syncProductUI();
+    renderCustomTags();
+    renderResults();
+    updateProgramWarn();
+  }
+
+  /* ================= 使用量記録（ポータル既存 sendLog） ================= */
+  // 記録条件（＝「有効利用」の入り口）：
+  //   1) 明示操作（生成ボタン / Ctrl+Enter）のみ。入力 debounce・產品切替・自訂追加では送らない
+  //   2) 番組名が入力されている（原版UIで必須指定）
+  //   3) 生成結果が 1 件以上
+  // 実際の「有効利用回数」は GAS rebuildSummary が 同一日/同一人/同一ツール 15 分間隔で去重する（既存口径）。
+  // 業務データ（番組名・藝人名・生成キーワード）は送信しない。件数のみ。
+  function recordUsage(progName, artistTexts, google, yahoo) {
+    if (typeof sendLog !== 'function') return;
+    if (!progName) return;
+    if (!google.length) return;
+
+    var note = '谷歌:' + google.length + '組 雅虎:' + yahoo.length + '組';
+    try {
+      // diffCount / criticalCount は GAS logs の F/G 列（差異件数系）に直結し、
+      // summary I 列「差異件数合計」→ 看板の diff に集計される。
+      // 生成ツールに「差異」概念は無いため 0 を送る（google.length を渡すと統計を汚染する）。
+      var p = sendLog(USAGE_TOOL_NAME, 0, 0, note);
+      if (p && typeof p.then === 'function') {
+        p.then(function (res) {
+          console.info('[TVPR] 使用ログ送信結果:', res && res.ok ? 'ok' : (res && res.error));
+        }, function (err) {
+          console.warn('[TVPR] 使用ログ送信失敗（業務動作には影響なし）:', err);
+        });
+      }
+    } catch (e) {
+      console.warn('[TVPR] 使用ログ送信失敗（業務動作には影響なし）:', e && e.message);
+    }
+  }
+
+  /* ================= 番組名必須の可視化（生成は止めない＝原版挙動を維持） ================= */
+  function updateProgramWarn() {
+    var el = document.getElementById('tvprProgWarn');
+    if (!el) return;
+    var v = sanitizeText(document.getElementById('programName').value);
+    if (!v) {
+      el.hidden = false;
+      el.textContent = '⚠ 節目名稱為必填・未填寫時仍可生成，但不計入使用次數';
+    } else {
+      el.hidden = true;
+      el.textContent = '';
+    }
+  }
+
+  /* ================= 汎用 ================= */
+  function showToast(msg) {
+    var el = document.getElementById('tvprToast');
+    if (!el) return;
+    el.textContent = msg;
+    el.setAttribute('data-show', '1');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.removeAttribute('data-show'); }, 2200);
+  }
+  function debounce(fn, ms) {
+    var t = null;
+    return function () {
+      var args = arguments;
+      clearTimeout(t);
+      t = setTimeout(function () { fn.apply(null, args); }, ms);
+    };
+  }
+
+  /* ================= 起動 ================= */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // テスト・保守用の読み取り専用ハンドル（DOM からの状態確認のみ）
+  window.__TVPR = {
+    get state() {
+      return {
+        selected: Array.from(state.selected),
+        custom: state.custom.map(function (c) { return c.name; }),
+        google: state.google.map(function (k) { return k.text; }),
+        yahoo: state.yahoo.slice()
+      };
+    },
+    authAllowed: tvprAuthAllowed,
+    escHtml: escHtml
+  };
+})();
+</script>
+</body>
+</html>
