@@ -1,0 +1,2337 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6課 三得利 UTM 檢查｜惠海 QC ポータル</title>
+<link rel="stylesheet" href="qc-ui.css">
+<script src="xlsx-0.20.3.full.min.js" defer></script>
+<style>
+html, body { margin: 0; padding: 0; }
+body { background: #f4f6f8; }
+
+#suntory-page {
+  --sut-brand: #0b3d91;            /* 白背景 9.05:1 */
+  --sut-brand-strong: #0a3475;     /* 白文字を載せる面 10.6:1 */
+  --sut-fg: #1f2a37;               /* 白背景 14.4:1 */
+  --sut-fg-sub: #475569;           /* 白背景 7.58:1 */
+  --sut-fg-muted: #556070;         /* 白背景 6.38:1 */
+  --sut-line: #dfe4ea;
+  --sut-ok: #15803d;
+  --sut-ok-bg: #dcfce7;
+  --sut-warn: #92400e;             /* 白背景 6.29:1（原 #b45309 仅 4.0:1） */
+  --sut-warn-bg: #fef3c7;
+  --sut-fail: #b91c1c;
+  --sut-fail-bg: #fee2e2;
+  --sut-font: 'Microsoft JhengHei UI','Microsoft JhengHei','微軟正黑體','Yu Gothic UI','Yu Gothic','Meiryo','Noto Sans TC','Segoe UI',sans-serif;
+  max-width: 1280px; margin: 0 auto; padding: 18px 20px 56px;
+  font-family: var(--sut-font); color: var(--sut-fg); font-size: 15px; line-height: 1.6;
+  box-sizing: border-box; -webkit-text-size-adjust: 100%;
+}
+#suntory-page *, #suntory-page *::before, #suntory-page *::after { box-sizing: inherit; font-family: inherit; }
+#suntory-page .sut-panel {
+  background: #fff; border: 1px solid var(--sut-line); border-radius: 12px;
+  padding: 16px 18px; box-shadow: 0 1px 2px rgba(15,23,42,.04);
+}
+#suntory-page .sut-panel + .sut-panel { margin-top: 16px; }
+#suntory-page .sut-sec-title {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 12px;
+  font-size: 15px; font-weight: 700; color: #334155; line-height: 1.4;
+}
+#suntory-page .sut-sec-title::before {
+  content: ""; width: 3px; height: 15px; border-radius: 2px; background: var(--sut-brand); flex: 0 0 auto;
+}
+#suntory-page .sut-hint { font-size: 13px; color: var(--sut-fg-sub); line-height: 1.7; margin: 8px 0 0; }
+#suntory-page label.sut-label { display: block; font-size: 13.5px; font-weight: 700; color: #334155; margin: 0 0 6px; }
+#suntory-page textarea, #suntory-page input[type="text"], #suntory-page select {
+  width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 10px;
+  font-size: 15px; color: var(--sut-fg); background: #fff;
+}
+#suntory-page textarea { min-height: 132px; resize: vertical; font-family: Consolas, 'MS Gothic', monospace; font-size: 14px; line-height: 1.55; }
+#suntory-page textarea:focus, #suntory-page input[type="text"]:focus, #suntory-page select:focus {
+  outline: 2px solid rgba(11,61,145,.35); outline-offset: 1px; border-color: var(--sut-brand);
+}
+#suntory-page .sut-btn {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent;
+  border-radius: 8px; padding: 9px 16px; font-size: 14.5px; font-weight: 700; cursor: pointer;
+  background: var(--sut-brand-strong); color: #fff; line-height: 1.35;
+}
+#suntory-page .sut-btn:hover { background: #08295c; }
+#suntory-page .sut-btn[disabled] { background: #94a3b8; cursor: not-allowed; }
+#suntory-page .sut-btn.ghost { background: #fff; color: var(--sut-brand); border-color: #9db2d4; font-weight: 600; }
+#suntory-page .sut-btn.ghost:hover { background: #eef3fb; }
+#suntory-page .sut-btn.sm { padding: 6px 12px; font-size: 13.5px; }
+#suntory-page .sut-btn.danger { background: #fff; color: var(--sut-fail); border-color: #fca5a5; font-weight: 600; }
+#suntory-page .sut-btn.danger:hover { background: #fef2f2; }
+#suntory-page .sut-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+#suntory-page .sut-row.mt { margin-top: 12px; }
+
+#suntory-page .sut-work { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 16px; align-items: start; }
+#suntory-page .sut-work > div, #suntory-page .sut-work > aside { min-width: 0; }
+#suntory-page .sut-side { position: static; }
+@media (max-width: 1024px) {
+  #suntory-page .sut-work { grid-template-columns: 1fr; }
+}
+#suntory-page .sut-preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+#suntory-page .sut-preset-grid .sut-preset-item { margin-bottom: 0; }
+#suntory-page .sut-preset-adv { margin-top: 12px; border: 1px solid var(--sut-line); border-radius: 10px; padding: 10px 12px; background: #f8fafc; }
+#suntory-page .sut-preset-adv > summary { color: #334155; font-weight: 600; }
+#suntory-page .sut-preset-adv .sut-preset-item { margin-top: 10px; }
+@media (max-width: 640px) {
+  #suntory-page .sut-preset-grid { grid-template-columns: 1fr; }
+}
+
+#suntory-page .sut-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+#suntory-page .sut-tab {
+  padding: 9px 16px; border: 1px solid var(--sut-line); background: #fff; border-radius: 9px;
+  cursor: pointer; font-size: 14.5px; font-weight: 600; color: #334155;
+}
+#suntory-page .sut-tab[aria-selected="true"] { background: var(--sut-brand); color: #fff; border-color: var(--sut-brand); }
+#suntory-page .sut-panel-tab[hidden] { display: none; }
+
+#suntory-page .sut-pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+#suntory-page .sut-pill.PASS { background: var(--sut-ok-bg); color: var(--sut-ok); }
+#suntory-page .sut-pill.WARN { background: var(--sut-warn-bg); color: var(--sut-warn); }
+#suntory-page .sut-pill.FAIL { background: var(--sut-fail-bg); color: var(--sut-fail); }
+#suntory-page .sut-counts { font-size: 14px; margin: 0 0 10px; color: var(--sut-fg); }
+#suntory-page .sut-ok-t { color: var(--sut-ok); font-weight: 700; }
+#suntory-page .sut-warn-t { color: var(--sut-warn); font-weight: 700; }
+#suntory-page .sut-fail-t { color: var(--sut-fail); font-weight: 700; }
+#suntory-page .sut-muted { color: var(--sut-fg-muted); }
+#suntory-page .sut-bigbad, #suntory-page .sut-bigok, #suntory-page .sut-bigwarn {
+  border-radius: 9px; padding: 10px 12px; margin: 8px 0; font-size: 14px; font-weight: 700; line-height: 1.6;
+}
+#suntory-page .sut-bigbad { background: var(--sut-fail-bg); border: 1px solid #fca5a5; color: var(--sut-fail); }
+#suntory-page .sut-bigok { background: var(--sut-ok-bg); border: 1px solid #86efac; color: #14532d; }
+#suntory-page .sut-bigwarn { background: var(--sut-warn-bg); border: 1px solid #fcd34d; color: var(--sut-warn); }
+#suntory-page .sut-info-banner { background: #eef3fb; border: 1px solid #c7d2fe; border-radius: 9px; padding: 9px 12px; font-size: 13.5px; color: #1e3a8a; margin: 8px 0; }
+
+#suntory-page .sut-table-wrap { overflow-x: auto; margin-top: 10px; }
+#suntory-page table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+#suntory-page th, #suntory-page td { border: 1px solid var(--sut-line); padding: 7px 9px; text-align: left; vertical-align: top; line-height: 1.5; }
+#suntory-page th { background: #f1f5fb; color: #334155; font-weight: 700; white-space: nowrap; }
+#suntory-page .sut-sum th, #suntory-page .sut-sum td { font-size: 13px; padding: 5px 7px; }
+#suntory-page tr.sut-rowbad td { background: var(--sut-fail-bg); }
+#suntory-page tr.sut-rowgood td { background: #f0fdf4; }
+#suntory-page td.sut-cellgood { background: var(--sut-ok-bg); color: #14532d; font-weight: 600; }
+#suntory-page td.sut-cellbad { background: var(--sut-fail-bg); color: var(--sut-fail); font-weight: 700; }
+#suntory-page .sut-st-ok { color: var(--sut-ok); font-weight: 700; }
+#suntory-page .sut-st-warn { color: var(--sut-warn); font-weight: 700; }
+#suntory-page .sut-st-fail { color: var(--sut-fail); font-weight: 700; }
+#suntory-page .sut-st-info { color: var(--sut-fg-muted); font-weight: 600; }
+
+#suntory-page .sut-card { border: 1px solid var(--sut-line); border-radius: 10px; padding: 14px 16px; margin-top: 12px; background: #fff; }
+#suntory-page .sut-card-head { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
+#suntory-page .sut-card-url { font-size: 13.5px; color: var(--sut-fg-sub); word-break: break-all; line-height: 1.6; min-width: 0; flex: 1 1 320px; }
+#suntory-page .sut-chips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+#suntory-page .sut-chip {
+  display: inline-flex; flex-direction: column; background: #eef3fb; border: 1px solid #c7d2fe;
+  border-radius: 8px; padding: 4px 9px; font-size: 13px; line-height: 1.45;
+}
+#suntory-page .sut-chip b { font-size: 13.5px; color: var(--sut-brand); }
+#suntory-page .sut-chip.bad { background: var(--sut-fail-bg); border-color: #fca5a5; }
+#suntory-page .sut-chip.bad b { color: var(--sut-fail); }
+#suntory-page .sut-issues { margin-top: 10px; border-top: 1px dashed var(--sut-line); padding-top: 9px; }
+#suntory-page .sut-issues b { font-size: 13.5px; }
+#suntory-page .sut-iss { font-size: 13.5px; padding: 3px 0; line-height: 1.6; }
+#suntory-page .sut-iss.FAIL { color: var(--sut-fail); }
+#suntory-page .sut-iss.WARN { color: var(--sut-warn); }
+#suntory-page .sut-filterbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
+#suntory-page .sut-filter { padding: 6px 12px; border: 1px solid var(--sut-line); background: #fff; border-radius: 8px; font-size: 13.5px; cursor: pointer; color: #334155; font-weight: 600; }
+#suntory-page .sut-filter[aria-pressed="true"] { background: var(--sut-brand); color: #fff; border-color: var(--sut-brand); }
+#suntory-page details { margin-top: 10px; }
+#suntory-page summary { cursor: pointer; font-size: 13.5px; color: var(--sut-brand); font-weight: 600; line-height: 1.6; word-break: break-all; }
+#suntory-page details.sut-checkfocus { margin-top: 16px; border: 1px solid var(--sut-line); border-radius: 10px; background: #fff; padding: 10px 14px; }
+#suntory-page details.sut-checkfocus > summary { font-size: 14.5px; font-weight: 700; color: #334155; }
+#suntory-page details.sut-checkfocus[open] > summary { margin-bottom: 8px; }
+
+#suntory-page .sut-preset-item { margin-bottom: 10px; }
+#suntory-page .sut-preset-item label { display: block; font-size: 13px; color: var(--sut-fg-sub); font-weight: 600; margin-bottom: 4px; }
+#suntory-page .sut-preset-item select, #suntory-page .sut-preset-item input { font-size: 14px; padding: 7px 8px; }
+#suntory-page .sut-banner { background: #eef3fb; border: 1px solid #c7d2fe; border-radius: 9px; padding: 8px 10px; font-size: 13px; margin: 0 0 10px; color: #1e3a8a; line-height: 1.6; }
+#suntory-page .sut-checkline { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: #334155; }
+#suntory-page .sut-rules-meta { font-size: 13px; color: var(--sut-fg-sub); background: #f8fafc; border: 1px solid var(--sut-line); border-radius: 8px; padding: 9px 11px; line-height: 1.75; }
+#suntory-page .sut-rules-meta code { font-family: Consolas, monospace; font-size: 12.5px; word-break: break-all; }
+#suntory-page .sut-msg { font-size: 13.5px; margin-top: 8px; line-height: 1.7; }
+#suntory-page .sut-msg.bad { color: var(--sut-fail); font-weight: 600; }
+#suntory-page .sut-msg.good { color: var(--sut-ok); font-weight: 600; }
+#suntory-page .sut-msg ul { margin: 6px 0 0; padding-left: 20px; }
+#suntory-page .sut-empty { font-size: 13.5px; color: var(--sut-fg-sub); background: #fff; border: 1px dashed var(--sut-line); border-radius: 10px; padding: 16px; text-align: center; }
+
+#sutToast {
+  position: fixed; right: 18px; bottom: 18px; z-index: 1400; background: #1f2a37; color: #fff;
+  padding: 11px 16px; border-radius: 9px; font-size: 13.5px; font-family: var(--sut-font);
+  box-shadow: 0 8px 26px rgba(15,23,42,.28); opacity: 0; transform: translateY(10px);
+  pointer-events: none; transition: opacity .2s, transform .2s; max-width: 78vw;
+}
+#sutToast[data-show="1"] { opacity: 1; transform: translateY(0); }
+
+#suntoryAuthBlock {
+  position: fixed; inset: 0; z-index: 1500; display: flex; align-items: center; justify-content: center;
+  background: rgba(15,23,42,.72); padding: 20px;
+}
+#suntoryAuthBlock[hidden] { display: none; }
+#suntoryAuthBlock .sut-auth-card {
+  background: #fff; border-radius: 14px; padding: 26px 28px; max-width: 460px; width: 100%;
+  text-align: center; box-shadow: 0 20px 50px rgba(15,23,42,.35);
+  font-family: var(--sut-font); color: var(--sut-fg);
+}
+#suntoryAuthBlock h2 { font-size: 18px; margin: 0 0 10px; color: #b91c1c; line-height: 1.5; }
+#suntoryAuthBlock p { font-size: 14px; color: var(--sut-fg-sub); margin: 0 0 18px; line-height: 1.75; }
+#suntoryAuthBlock .sut-auth-link {
+  display: inline-block; padding: 10px 22px; border-radius: 8px; font-size: 14.5px; font-weight: 700;
+  background: var(--sut-brand-strong); color: #fff; text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  #suntory-page { padding: 14px 12px 48px; }
+  #suntory-page .sut-tabs { width: 100%; }
+  #suntory-page .sut-tab { flex: 1 1 0; text-align: center; }
+  #suntory-page .sut-btn { width: 100%; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== ポータル共通認証（qc-auth.js）と共通 Header（qc-header.js） ===== -->
+<script src="qc-auth.js"></script>
+<script src="tool_logos.js"></script>
+<script src="qc-header.js"></script>
+<div id="qcHeaderMount"></div>
+
+<div id="suntoryAuthBlock" hidden>
+  <div class="sut-auth-card">
+    <h2>このツールは利用できません</h2>
+    <p id="suntoryAuthReason">ポータルの認証情報を確認できませんでした。</p>
+    <a class="sut-auth-link" href="index.html">ポータルへ戻る</a>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   認証ガード + 共通 Header マウント（TVPR と同一契約）
+   ・guardPage() は qc-auth.js の既存関数（新規認証系は作らない）
+   ・qc-auth.js が読めない / 例外 / セッション無効 のいずれでも fail-closed
+   ============================================================ */
+(function () {
+  var user = null;
+  var reason = '';
+
+  try {
+    if (typeof guardPage !== 'function') {
+      reason = 'auth_module_missing';
+    } else {
+      user = guardPage();
+      if (!user) reason = 'no_session';
+    }
+  } catch (e) {
+    reason = 'auth_error';
+  }
+
+  window.__SUNTORY_AUTH = { ok: !!user, error: reason };
+
+  if (user && typeof QCHeader !== 'undefined' && QCHeader && typeof QCHeader.mount === 'function') {
+    QCHeader.mount({
+      target: '#qcHeaderMount',
+      title: '6課 三得利 UTM 檢查',
+      iconSVG: '<svg viewBox="0 0 40 40" role="img" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#0b3d91"/><path d="M11 21.5h5l2.5-6 3 12 2.5-6h5" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      badges: [{ text: 'ローカル処理', tone: 'ok' }],
+      note: '貼上 UTM 長鏈，逐項比對本批正確條件並匯出 CSV。輸入內容不送外部伺服器。',
+      user: user,
+      logo: 'assets/brand/huihai-logo.png',
+      logoAlt: '惠海信息技术'
+    });
+  }
+
+  if (!user) {
+    var box = document.getElementById('suntoryAuthBlock');
+    var msg = document.getElementById('suntoryAuthReason');
+    if (msg) {
+      msg.textContent = (reason === 'auth_module_missing')
+        ? 'ポータル認証モジュールを読み込めませんでした。ポータルから開き直してください。'
+        : (reason === 'auth_error')
+          ? 'ポータル認証処理でエラーが発生しました。再度ログインしてください。'
+          : 'ログイン状態を確認できませんでした。ポータルから再度ログインしてください。';
+    }
+    if (box) box.hidden = false;
+
+    var applyBlock = function () {
+      var main = document.getElementById('suntory-page');
+      if (!main) return;
+      main.setAttribute('aria-hidden', 'true');
+      main.setAttribute('data-auth-blocked', '1');
+      main.style.pointerEvents = 'none';
+      main.style.userSelect = 'none';
+      if (main.parentNode) main.parentNode.style.overflow = 'hidden';
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyBlock);
+    } else {
+      applyBlock();
+    }
+  }
+})();
+</script>
+
+<div id="sutToast" role="status" aria-live="polite"></div>
+
+<main id="suntory-page" aria-label="三得利 UTM 檢查">
+
+  <div class="sut-tabs" role="tablist" aria-label="功能頁籤">
+    <button type="button" class="sut-tab" role="tab" id="sutTabBtn-batch" data-tab="batch" aria-selected="true" aria-controls="sutPanel-batch">① 批量檢查</button>
+    <button type="button" class="sut-tab" role="tab" id="sutTabBtn-extract" data-tab="extract" aria-selected="false" aria-controls="sutPanel-extract">② 提取 URL</button>
+    <button type="button" class="sut-tab" role="tab" id="sutTabBtn-rules" data-tab="rules" aria-selected="false" aria-controls="sutPanel-rules">③ 更新規則</button>
+  </div>
+
+  <div class="sut-work">
+    <div>
+      <!-- ① 批量檢查 -->
+      <section class="sut-panel sut-panel-tab" id="sutPanel-batch" role="tabpanel" aria-labelledby="sutTabBtn-batch">
+        <h2 class="sut-sec-title">批量檢查</h2>
+        <label class="sut-label" for="sutUrls">貼上要檢查的 URL（每行一筆；或整封郵件文字）</label>
+        <textarea id="sutUrls" placeholder="每行一個 https://wellness.suntory.com.tw/... 連結" spellcheck="false"></textarea>
+        <div class="sut-row mt">
+          <button type="button" class="sut-btn" data-act="check">批量檢查</button>
+          <button type="button" class="sut-btn ghost sm" data-act="check-extract">從文字自動提取 URL 再檢查</button>
+          <button type="button" class="sut-btn ghost sm" data-act="export-csv">匯出 CSV</button>
+          <button type="button" class="sut-btn ghost sm" data-act="export-json">匯出 JSON</button>
+          <button type="button" class="sut-btn ghost sm" data-act="copy-fails">複製有問題的 URL</button>
+          <button type="button" class="sut-btn danger sm" data-act="clear-all">清空所有判定結果</button>
+        </div>
+        <p class="sut-hint">
+          先於右側「本批正確條件（預設）」設定本批預期值再檢查；不符預設的項目會以紅底列出。
+          「清空所有判定結果」會同時清掉輸入框與結果，避免匯出上一批資料。
+        </p>
+        <div id="sutDirty" class="sut-info-banner" hidden></div>
+      </section>
+
+      <!-- ② 提取 URL -->
+      <section class="sut-panel sut-panel-tab" id="sutPanel-extract" role="tabpanel" aria-labelledby="sutTabBtn-extract" hidden>
+        <h2 class="sut-sec-title">提取 URL</h2>
+        <label class="sut-label" for="sutExtractText">貼上含有連結的文字（郵件 / 聊天記錄）</label>
+        <textarea id="sutExtractText" placeholder="貼上整段文字..." spellcheck="false"></textarea>
+        <div class="sut-row mt">
+          <label class="sut-checkline"><input type="checkbox" id="sutExtractDedup" checked> 去重</label>
+          <label class="sut-checkline"><input type="checkbox" id="sutExtractOpen"> 提取後自動開啟外部連結（預設關閉）</label>
+          <button type="button" class="sut-btn" data-act="extract">提取 URL</button>
+          <span class="sut-hint" id="sutExtractCount" style="margin:0"></span>
+        </div>
+        <label class="sut-label" for="sutExtractOut" style="margin-top:12px">提取結果</label>
+        <textarea id="sutExtractOut" readonly style="min-height:140px"></textarea>
+        <div class="sut-row mt">
+          <button type="button" class="sut-btn ghost sm" data-act="copy-extract">複製</button>
+          <button type="button" class="sut-btn ghost sm" data-act="download-extract">下載 .txt</button>
+          <button type="button" class="sut-btn ghost sm" data-act="send-to-batch">送到批量檢查 ▶</button>
+          <button type="button" class="sut-btn ghost sm" data-act="open-external">開啟外部連結</button>
+        </div>
+        <p class="sut-hint">
+          非 <code>wellness.suntory.com.tw</code> 的連結一律標為「外部連結」，不會自動開啟；
+          按下「開啟外部連結」會先列出目標網域與筆數，確認後才開分頁。短鏈跳轉後的長鏈請手動複製回「① 批量檢查」。
+          短鏈允許網域清單尚未經業務裁定（HOLD），因此不做任何自動放行。
+        </p>
+      </section>
+
+      <!-- ③ 更新規則 -->
+      <section class="sut-panel sut-panel-tab" id="sutPanel-rules" role="tabpanel" aria-labelledby="sutTabBtn-rules" hidden>
+        <h2 class="sut-sec-title">更新規則</h2>
+        <div class="sut-rules-meta" id="sutRulesMeta"></div>
+
+        <h3 class="sut-label" style="margin-top:16px">方法一：貼上 rules JSON 覆蓋（先完整驗證，成功才切換）</h3>
+        <textarea id="sutJsonRules" placeholder='{"version":"1.0", ...}' spellcheck="false"></textarea>
+        <div class="sut-row mt">
+          <button type="button" class="sut-btn" data-act="apply-json">驗證並套用</button>
+          <button type="button" class="sut-btn ghost sm" data-act="reset-rules">還原內嵌規則</button>
+        </div>
+        <div class="sut-msg" id="sutJsonMsg"></div>
+
+        <h3 class="sut-label" style="margin-top:18px">目前生效規則（唯讀預覽）</h3>
+        <textarea id="sutRulesView" readonly style="min-height:220px"></textarea>
+
+        <h3 class="sut-label" style="margin-top:18px">方法二：讀取 UTM.xlsx（僅預覽，尚未套用規則）</h3>
+        <input type="file" id="sutXlsxFile" accept=".xlsx">
+        <div class="sut-msg" id="sutXlsxMsg"></div>
+        <p class="sut-hint">
+          XLSX → 規則的映射**尚未實作**：本功能只讀取列數與前幾列內容供人工核對，
+          不會更新規則、也不會寫入任何檔案。完整映射需原規則 Excel「惠海作成UTM.xlsx」與業務確認後另行開發。
+        </p>
+      </section>
+
+    </div>
+
+    <!-- 右側：本批正確條件 -->
+    <aside class="sut-side">
+      <section class="sut-panel">
+        <h2 class="sut-sec-title">本批正確條件（預設）</h2>
+        <div class="sut-banner" id="sutPresetBanner" hidden></div>
+        <p class="sut-hint" style="margin-top:0">留「不指定」則只做詞彙 / 格式檢查。設定後工具會逐項比對並標紅不符者。</p>
+        <div id="sutPresetPanel"></div>
+        <div class="sut-row mt">
+          <button type="button" class="sut-btn ghost sm" data-act="clear-preset">清除預設</button>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- 結果：全寬獨立於右側預設，位於工作區下方 -->
+  <div id="sutResult"></div>
+
+  <details class="sut-checkfocus">
+    <summary>檢查重點與規則說明（點擊展開）</summary>
+    <div class="sut-card">
+      <ul class="sut-hint" style="margin:0;line-height:1.9">
+        <li>域名固定 wellness.suntory.com.tw</li>
+        <li>lp=直購（須有 adv=1&amp;qty=1）/ contents=一般（不可有）</li>
+        <li>整條 URL 只能有 1 個「?」</li>
+        <li>親級 LPID（路徑末段 P 開頭）與子級 LPID（urlid）末碼：1=博報堂(hh) / 2=大廣(dk)</li>
+        <li>LPID 需含商品別縮寫</li>
+        <li>一般 LP 的 contents/4 碼：0002=博報堂 / 0003=大廣</li>
+        <li>utm_source / utm_medium / utm_campaign 必填</li>
+        <li>campaign 6 段：代理店_商品別_走期_媒體來源縮寫_廣告形式_群組</li>
+        <li>走期 YYMM 須為當月或未來月份（月份須 01–12）</li>
+        <li>utm_term：小寫英文+數字共 5 碼（或以 urlid 小寫填入）</li>
+        <li>utm_funnel：upper→cpm/cpv、middle→cpc、lower→cpa/cps/cpu</li>
+      </ul>
+      <p class="sut-hint" style="margin-top:8px;color:var(--sut-fg-muted)">說明僅供參考，與實際判定一致；未經業務確認的規則（如 LPID 的 P 前綴強校驗）仍以原判定口徑處理。</p>
+    </div>
+  </details>
+</main>
+
+<!-- ============================================================
+     唯一規則源：rules.json 原文（與規則檔逐位元組一致，LF 正規化）
+     邏輯層由此文字 JSON.parse 取得 RULES，程式中不再另存一份規則物件。
+     ============================================================ -->
+<script type="application/json" id="suntoryRulesSrc">
+{
+  "version": "1.0",
+  "note": "三得利(Suntory) 台灣 UTM 校驗規則。來源：惠海作成UTM.xlsx（Sheet1）。A列標●者為惠海判斷基準。",
+  "domain": "wellness.suntory.com.tw",
+  "required": [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign"
+  ],
+  "optional": [
+    "utm_term",
+    "utm_funnel",
+    "utm_option",
+    "utm_custom"
+  ],
+  "purchase_form": {
+    "label": "廣告購買形式 (路徑)",
+    "values": [
+      {
+        "code": "lp",
+        "name": "直購LP (/lp/)"
+      },
+      {
+        "code": "contents",
+        "name": "一般LP (/contents/)"
+      }
+    ]
+  },
+  "urlid": {
+    "label": "子級LPID (?urlid=)",
+    "note": "需存在；末碼數字需與代理店匹配 (1=博報堂hh / 2=大廣dk)"
+  },
+  "lpid": {
+    "label": "LPID 末碼 ↔ 代理店",
+    "digit_agency": {
+      "1": "hh",
+      "2": "dk"
+    },
+    "note": "親級LPID（路徑末段、P 開頭）與 子級LPID（?urlid=）的『最末尾數字』都要與代理店一致。末尾 1 = 博報堂 hh，末尾 2 = 大廣 dk。"
+  },
+  "contents_lpid_map": {
+    "label": "一般LP contents/4碼 ↔ 代理店 ↔ LPID 末碼",
+    "0002": {
+      "agency": "hh",
+      "digit": "1"
+    },
+    "0003": {
+      "agency": "dk",
+      "digit": "2"
+    },
+    "note": "購買方式為一般LP時，判斷 contents/ 後的四位數字；0002=博報堂(親級/子級LPID 應以 1 結尾)、0003=大廣(LPID 應以 2 結尾)。"
+  },
+  "url_structure": {
+    "single_question_mark": true,
+    "note": "整條 URL 只允許出現 1 個「?」，出現 2 個以上視為 URL 有問題。"
+  },
+  "utm_source": {
+    "label": "utm_source (來源/媒體)",
+    "required": true,
+    "values": [
+      "google",
+      "facebook",
+      "yahoo",
+      "line",
+      "popin",
+      "taboola",
+      "tiktok"
+    ]
+  },
+  "utm_medium": {
+    "label": "utm_medium (行銷目的 / 版位)",
+    "required": true,
+    "values": [
+      "cpm",
+      "cpv",
+      "cpc",
+      "cpa",
+      "cps",
+      "cpu"
+    ],
+    "labels": {
+      "cpm": "曝光 / 圖片 (FB·UP)",
+      "cpv": "視頻 / 觀看 (FB·UP)",
+      "cpc": "點擊 (FB·MID)",
+      "cpa": "購買 / 獲客 (FB·LOWER)",
+      "cps": "by session 優化",
+      "cpu": "by user 優化"
+    },
+    "note": "FB：UP=圖片cpm / 視頻cpv，MID=點擊cpc，LOWER=購買cpa。GSA：VVC(UP)=cpm，DGC/LIS(MID)=cpc，LIS/GSA/PSA(LOWER)=cpa。cps/cpu 為以 session/user 優化的版位。"
+  },
+  "utm_campaign": {
+    "label": "utm_campaign (活動代號 = 代理店_商品別_走期_媒體來源縮寫_廣告形式_群組)",
+    "required": true,
+    "segments": [
+      {
+        "pos": 1,
+        "key": "agency",
+        "label": "代理店",
+        "mark": true,
+        "values": [
+          {
+            "code": "hh",
+            "name": "博報堂"
+          },
+          {
+            "code": "dk",
+            "name": "大廣"
+          }
+        ]
+      },
+      {
+        "pos": 2,
+        "key": "product",
+        "label": "商品別",
+        "mark": true,
+        "values": [
+          {
+            "code": "ex",
+            "name": "SSEX"
+          },
+          {
+            "code": "rj",
+            "name": "RJ"
+          },
+          {
+            "code": "dha",
+            "name": "DHA"
+          },
+          {
+            "code": "sab",
+            "name": "元沛"
+          },
+          {
+            "code": "mc",
+            "name": "Maca"
+          },
+          {
+            "code": "ml",
+            "name": "Milcolla"
+          },
+          {
+            "code": "lf",
+            "name": "Liftage"
+          },
+          {
+            "code": "vt",
+            "name": "Vitoas"
+          },
+          {
+            "code": "vts",
+            "name": "Vitoas輕潤版"
+          },
+          {
+            "code": "vr",
+            "name": "Varon"
+          },
+          {
+            "code": "vrs",
+            "name": "Varon輕透版"
+          },
+          {
+            "code": "ts",
+            "name": "Tadas"
+          },
+          {
+            "code": "gre",
+            "name": "青汁"
+          },
+          {
+            "code": "nm",
+            "name": "內美容組合"
+          },
+          {
+            "code": "wm",
+            "name": "外美容組合"
+          },
+          {
+            "code": "mr",
+            "name": "美容組合"
+          },
+          {
+            "code": "ss",
+            "name": "睡眠組合"
+          }
+        ]
+      },
+      {
+        "pos": 3,
+        "key": "period",
+        "label": "走期",
+        "mark": true,
+        "format": "YYMM",
+        "note": "應為當月或未發生月份 (>= 當前YYMM)"
+      },
+      {
+        "pos": 4,
+        "key": "mediasrc",
+        "label": "媒體來源縮寫",
+        "mark": true,
+        "values": [
+          {
+            "code": "ggl",
+            "name": "google"
+          },
+          {
+            "code": "fbk",
+            "name": "facebook"
+          },
+          {
+            "code": "yah",
+            "name": "yahoo"
+          },
+          {
+            "code": "lin",
+            "name": "line"
+          },
+          {
+            "code": "pop",
+            "name": "popin"
+          },
+          {
+            "code": "tbl",
+            "name": "taboola"
+          },
+          {
+            "code": "ttk",
+            "name": "tiktok"
+          }
+        ]
+      },
+      {
+        "pos": 5,
+        "key": "format",
+        "label": "廣告形式",
+        "mark": true,
+        "values": [
+          {
+            "code": "sch",
+            "name": "listing關鍵字"
+          },
+          {
+            "code": "kol",
+            "name": "藝人/KOL KOC"
+          },
+          {
+            "code": "shp",
+            "name": "shopping ads"
+          },
+          {
+            "code": "slk",
+            "name": "sitelink"
+          },
+          {
+            "code": "sms",
+            "name": "sms簡訊"
+          },
+          {
+            "code": "mms",
+            "name": "mms多媒體"
+          },
+          {
+            "code": "anw",
+            "name": "anw聯播網"
+          },
+          {
+            "code": "dgc",
+            "name": "google dgc"
+          },
+          {
+            "code": "pmx",
+            "name": "google pmx"
+          },
+          {
+            "code": "psa",
+            "name": "google psa"
+          },
+          {
+            "code": "yt",
+            "name": "google yt"
+          },
+          {
+            "code": "bn",
+            "name": "Banner"
+          },
+          {
+            "code": "vd",
+            "name": "Video"
+          }
+        ]
+      },
+      {
+        "pos": 6,
+        "key": "group",
+        "label": "群組",
+        "mark": true,
+        "values": [
+          {
+            "code": "asc",
+            "name": "asc"
+          },
+          {
+            "code": "at",
+            "name": "at"
+          },
+          {
+            "code": "rtg",
+            "name": "rtg"
+          },
+          {
+            "code": "lal",
+            "name": "lal"
+          },
+          {
+            "code": "bra",
+            "name": "bra品牌字"
+          },
+          {
+            "code": "prd",
+            "name": "prd產品字"
+          },
+          {
+            "code": "gen",
+            "name": "gen一般字"
+          },
+          {
+            "code": "tvp",
+            "name": "tvpr"
+          },
+          {
+            "code": "oth",
+            "name": "oth其他"
+          },
+          {
+            "code": "kol",
+            "name": "kol群組"
+          }
+        ]
+      }
+    ]
+  },
+  "utm_term": {
+    "label": "utm_term (素材編碼)",
+    "required": false,
+    "pattern": "^[a-z0-9]{5}$",
+    "format_text": "小寫英文+數字共5碼；大寫需與擔當確認"
+  },
+  "utm_funnel": {
+    "label": "utm_funnel (漏斗目標)",
+    "required": false,
+    "values": [
+      "upper",
+      "middle",
+      "lower"
+    ],
+    "cross": {
+      "upper": ["cpm", "cpv"],
+      "middle": ["cpc"],
+      "lower": ["cpa", "cps", "cpu"]
+    }
+  },
+  "utm_option": {
+    "label": "utm_option (購買方式)",
+    "required": false,
+    "values": [
+      "single",
+      "regular"
+    ]
+  },
+  "utm_custom": {
+    "label": "utm_custom (對象)",
+    "required": false,
+    "values": [
+      "new",
+      "old"
+    ]
+  },
+  "source_abbrev_map": {
+    "google": "ggl",
+    "facebook": "fbk",
+    "yahoo": "yah",
+    "line": "lin",
+    "popin": "pop",
+    "taboola": "tbl",
+    "tiktok": "ttk"
+  },
+  "adv_qty": {
+    "note": "adv=1&qty=1 只應出現在直購LP(/lp/)；一般LP(/contents/)出現則有問題"
+  },
+  "non_utm_info": [
+    "urlid",
+    "goods_id",
+    "adv",
+    "qty",
+    "telno"
+  ]
+}
+</script>
+
+<script>
+/* ============================================================
+   三得利 UTM 檢查 — 邏輯層（不依賴 DOM 佈局，可獨立測試）
+   修正對照：F01 重複參數 / F02 走期月份 / F03 單一判定來源 / F05 CSV schema
+             F07 規則原子切換與派生一致 / F08 Unicode 提取 / F09 CSV 公式中和
+             F10 外部連結分類 / F11 XLSX 僅預覽 / F12 無 CDN・剪貼簿失敗回報
+   ============================================================ */
+(function (global) {
+  'use strict';
+
+  var RULES_SOURCE = {
+    file: 'rules.json',
+    versionDeclared: '1.0',
+    /* rules.json 原檔（CRLF）SHA256 */
+    sha256File: '12884c9b670d54c957d04a50ae9f7ebc302857402c18f4115d75729e671d4704',
+    /* 內嵌原文（LF 正規化）SHA256；測試以此比對內嵌與規則檔是否漂移 */
+    sha256TextLf: '320c43fb3e12726f1affa053e7c5e998afb1c09b5810a5060f2b5deda8037380'
+  };
+
+  var MAX_URL_LEN = 8192;
+  var MAX_TEXT_LEN = 2000000;
+  var MAX_RULES_TEXT_LEN = 262144;
+  var LIMITS = { maxValues: 500, maxSegments: 12, maxPatternLen: 200, maxLinksOpen: 20 };
+  /* diffCount 的判定級別（LOG_CONTRACT_HOLD：WARN 是否計入尚未裁定；改此陣列即可切換） */
+  var DIFF_LEVELS = ['FAIL'];
+  var USAGE_TOOL_NAME = '三得利UTM檢查';
+
+  var RULES = null;
+  var RULES_ERROR = '';
+  var RULES_STATE = 'EMBEDDED';
+  var RULES_UPDATED_AT = '';
+  var COMPILED = { utmTerm: null };
+
+  /* ---------------- 基礎判定 ---------------- */
+  function isObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+  function isStr(v) { return typeof v === 'string'; }
+  function isNonEmptyStr(v) { return isStr(v) && v.trim() !== ''; }
+  function isStrArr(v) { return Array.isArray(v) && v.length > 0 && v.every(isStr); }
+  function isCodeNameArr(v) {
+    return Array.isArray(v) && v.length > 0 && v.every(function (o) {
+      return isObj(o) && isNonEmptyStr(o.code) && isStr(o.name);
+    });
+  }
+  function clone(v) { return JSON.parse(JSON.stringify(v)); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  /* ---------------- 規則 schema 驗證（F07） ---------------- */
+  function validateRulesObject(obj) {
+    var E = [];
+    if (!isObj(obj)) return { ok: false, errors: ['規則必須為 JSON 物件（object）'] };
+    var raw;
+    try { raw = JSON.stringify(obj); } catch (e) { return { ok: false, errors: ['規則無法序列化為 JSON'] }; }
+    if (raw.length > MAX_RULES_TEXT_LEN) {
+      return { ok: false, errors: ['規則過大（' + raw.length + ' 字元，上限 ' + MAX_RULES_TEXT_LEN + '）'] };
+    }
+
+    if (!isNonEmptyStr(obj.domain)) E.push('domain 必須為非空字串');
+    if (!isStrArr(obj.required)) E.push('required 必須為非空字串陣列');
+    if (obj.optional != null && !Array.isArray(obj.optional)) E.push('optional 必須為陣列');
+
+    if (!isObj(obj.purchase_form) || !isCodeNameArr(obj.purchase_form.values)) {
+      E.push('purchase_form.values 必須為 [{code,name}] 陣列');
+    }
+    if (!isObj(obj.lpid) || !isObj(obj.lpid.digit_agency) || !Object.keys(obj.lpid.digit_agency).length) {
+      E.push('lpid.digit_agency 必須為非空物件');
+    } else {
+      Object.keys(obj.lpid.digit_agency).forEach(function (d) {
+        if (!/^\d$/.test(d) || !isNonEmptyStr(obj.lpid.digit_agency[d])) {
+          E.push('lpid.digit_agency 鍵須為單一數字、值為非空字串（違反：' + d + '）');
+        }
+      });
+    }
+    if (!isObj(obj.contents_lpid_map)) {
+      E.push('contents_lpid_map 必須為物件');
+    } else {
+      Object.keys(obj.contents_lpid_map).forEach(function (k) {
+        if (k === 'note' || k === 'label') return;
+        var v = obj.contents_lpid_map[k];
+        if (!isObj(v) || !isNonEmptyStr(v.agency) || !isNonEmptyStr(v.digit)) {
+          E.push('contents_lpid_map["' + k + '"] 必須為 {agency,digit}');
+        }
+      });
+    }
+    if (obj.url_structure != null && !isObj(obj.url_structure)) E.push('url_structure 必須為物件');
+
+    if (!isObj(obj.utm_source) || !isStrArr(obj.utm_source.values)) E.push('utm_source.values 必須為非空字串陣列');
+    if (!isObj(obj.utm_medium) || !isStrArr(obj.utm_medium.values)) E.push('utm_medium.values 必須為非空字串陣列');
+
+    if (!isObj(obj.utm_campaign) || !Array.isArray(obj.utm_campaign.segments)) {
+      E.push('utm_campaign.segments 必須為陣列');
+    } else {
+      var segs = obj.utm_campaign.segments;
+      var expectKeys = ['agency', 'product', 'period', 'mediasrc', 'format', 'group'];
+      if (segs.length !== 6) E.push('utm_campaign.segments 必須為 6 段（目前 ' + segs.length + ' 段）');
+      if (segs.length > LIMITS.maxSegments) E.push('utm_campaign.segments 超過上限 ' + LIMITS.maxSegments);
+      var seenKey = {};
+      segs.forEach(function (s, i) {
+        if (!isObj(s)) { E.push('segments[' + i + '] 必須為物件'); return; }
+        if (!isNonEmptyStr(s.key)) E.push('segments[' + i + '].key 必須為非空字串');
+        if (!isNonEmptyStr(s.label)) E.push('segments[' + i + '].label 必須為非空字串');
+        if (isNonEmptyStr(s.key)) {
+          if (seenKey[s.key]) E.push('segments key 重複：' + s.key);
+          seenKey[s.key] = true;
+          if (expectKeys.indexOf(s.key) < 0) E.push('segments[' + i + '].key 不在允許集合：' + s.key);
+        }
+        if (s.key === 'period') {
+          /* period 僅宣告 format:"YYMM"，values 選填（原則上無 values） */
+          if (s.values != null) {
+            if (!isCodeNameArr(s.values)) E.push('segments[' + i + '].values 必須為 [{code,name}] 陣列');
+            else if (s.values.length > LIMITS.maxValues) E.push('segments[' + i + '].values 超過上限 ' + LIMITS.maxValues);
+          }
+        } else {
+          /* 業務必需五段（agency/product/mediasrc/format/group）values 為必填，缺失/ null / 型別錯誤一律拒絕（修正 applyJson 誤報「未變更」） */
+          if (!isCodeNameArr(s.values)) E.push('segments[' + i + ']（' + (s.key || '?') + '）的 values 必須為非空 [{code,name}] 陣列');
+          else if (s.values.length > LIMITS.maxValues) E.push('segments[' + i + ']（' + (s.key || '?') + '）的 values 超過上限 ' + LIMITS.maxValues);
+        }
+        if (s.key === 'period' && s.format !== 'YYMM') E.push('period 段必須宣告 format:"YYMM"');
+      });
+      if (segs.length === 6) {
+        var segsAllObj = true;
+        for (var si = 0; si < segs.length; si++) { if (!isObj(segs[si])) { segsAllObj = false; break; } }
+        if (segsAllObj) expectKeys.forEach(function (k, i) { if (segs[i].key !== k) E.push('segments[' + i + '] 應為 ' + k + '（順序不可交換）'); });
+      }
+    }
+
+    if (!isObj(obj.utm_term) || !isNonEmptyStr(obj.utm_term.pattern)) {
+      E.push('utm_term.pattern 必須為非空字串');
+    } else {
+      var pat = obj.utm_term.pattern;
+      if (pat.length > LIMITS.maxPatternLen) E.push('utm_term.pattern 過長（>' + LIMITS.maxPatternLen + ' 字元）');
+      else { try { new RegExp(pat); } catch (e) { E.push('utm_term.pattern 不是有效正規表示式：' + e.message); } }
+    }
+
+    if (!isObj(obj.utm_funnel) || !isStrArr(obj.utm_funnel.values)) {
+      E.push('utm_funnel.values 必須為非空字串陣列');
+    } else if (obj.utm_funnel.cross != null) {
+      if (!isObj(obj.utm_funnel.cross)) E.push('utm_funnel.cross 必須為物件');
+      else {
+        Object.keys(obj.utm_funnel.cross).forEach(function (k) {
+          var v = obj.utm_funnel.cross[k];
+          if (!(isStr(v) || isStrArr(v))) E.push('utm_funnel.cross["' + k + '"] 必須為字串或字串陣列');
+        });
+      }
+    }
+
+    ['utm_option', 'utm_custom'].forEach(function (k) {
+      if (obj[k] != null && (!isObj(obj[k]) || !isStrArr(obj[k].values))) E.push(k + '.values 必須為非空字串陣列');
+    });
+    if (!isObj(obj.source_abbrev_map)) E.push('source_abbrev_map 必須為物件');
+    else Object.keys(obj.source_abbrev_map).forEach(function (k) {
+      if (!isNonEmptyStr(obj.source_abbrev_map[k])) E.push('source_abbrev_map["' + k + '"] 必須為非空字串');
+    });
+    if (obj.non_utm_info != null && !isStrArr(obj.non_utm_info)) E.push('non_utm_info 必須為字串陣列');
+
+    if (E.length) return { ok: false, errors: E };
+    return { ok: true, errors: [], value: clone(obj) };
+  }
+
+  function rebuildDerived() {
+    COMPILED.utmTerm = new RegExp(RULES.utm_term.pattern);
+  }
+
+  function applyRules(obj, sourceLabel) {
+    var res = validateRulesObject(obj);
+    if (!res.ok) return res;
+    /* 先驗證、後整體切換：失敗時 RULES 完全未被觸碰 */
+    RULES = res.value;
+    rebuildDerived();
+    RULES_STATE = sourceLabel || 'USER_UPDATED';
+    RULES_UPDATED_AT = new Date().toISOString();
+    return { ok: true, errors: [] };
+  }
+
+  /* 所有派生映射一律即時由 RULES 讀取，避免常數與規則不同步（F07b） */
+  function digitAgency(d) {
+    var m = (RULES && RULES.lpid && RULES.lpid.digit_agency) || {};
+    return Object.prototype.hasOwnProperty.call(m, d) ? m[d] : null;
+  }
+  function agencyDigit(a) {
+    var m = (RULES && RULES.lpid && RULES.lpid.digit_agency) || {};
+    for (var k in m) { if (Object.prototype.hasOwnProperty.call(m, k) && m[k] === a) return k; }
+    return null;
+  }
+  function agencyName(a) {
+    var segs = (RULES && RULES.utm_campaign && RULES.utm_campaign.segments) || [];
+    for (var i = 0; i < segs.length; i++) {
+      if (segs[i].key === 'agency' && Array.isArray(segs[i].values)) {
+        for (var j = 0; j < segs[i].values.length; j++) {
+          if (segs[i].values[j].code === a) return segs[i].values[j].name;
+        }
+      }
+    }
+    return a;
+  }
+  function agLabel(a) { return a ? a + '（' + agencyName(a) + '）' : ''; }
+  function contentsInfo(code) {
+    var m = (RULES && RULES.contents_lpid_map) || {};
+    var v = Object.prototype.hasOwnProperty.call(m, code) ? m[code] : null;
+    return (isObj(v) && isNonEmptyStr(v.agency) && isNonEmptyStr(v.digit)) ? v : null;
+  }
+  function sourceAbbr(src) {
+    var m = (RULES && RULES.source_abbrev_map) || {};
+    return Object.prototype.hasOwnProperty.call(m, src) ? m[src] : null;
+  }
+  function segSpec(key) {
+    var segs = (RULES && RULES.utm_campaign && RULES.utm_campaign.segments) || [];
+    for (var i = 0; i < segs.length; i++) { if (segs[i].key === key) return segs[i]; }
+    return null;
+  }
+
+  function curYYMM(nowMs) {
+    var n = (typeof nowMs === 'number') ? new Date(nowMs) : new Date();
+    return String(n.getFullYear() % 100).padStart(2, '0') + String(n.getMonth() + 1).padStart(2, '0');
+  }
+  function matchValue(val, list) {
+    if (list.indexOf(val) >= 0) return 'ok';
+    var low = String(val).toLowerCase();
+    for (var i = 0; i < list.length; i++) { if (String(list[i]).toLowerCase() === low) return 'warn'; }
+    return 'err';
+  }
+
+  /* ---------------- URL 解析（F01：保留全部鍵值與順序） ---------------- */
+  function parseUrl(rawUrl) {
+    var u = String(rawUrl == null ? '' : rawUrl).trim();
+    if (!u) return { ok: false, code: 'EMPTY', detail: '空字串' };
+    if (u.length > MAX_URL_LEN) return { ok: false, code: 'TOO_LONG', detail: '輸入長度 ' + u.length + ' 超過上限 ' + MAX_URL_LEN };
+    var sm = /^([a-z][a-z0-9+.\-]*):\/\//i.exec(u);
+    var scheme = sm ? sm[1].toLowerCase() : '';
+    if (scheme && scheme !== 'http' && scheme !== 'https') {
+      return { ok: false, code: 'NON_HTTP', detail: '僅接受 http/https，實際協議為 ' + scheme };
+    }
+    var target = scheme ? u : ('https://' + u);
+    var p;
+    try { p = new URL(target); } catch (e) { return { ok: false, code: 'INVALID_URL', detail: 'URL 解析失敗' }; }
+
+    var pairs = [];
+    p.searchParams.forEach(function (v, k) { pairs.push([k, v]); });
+
+    var rec = {}, order = [];
+    pairs.forEach(function (pair) {
+      var k = pair[0], v = pair[1];
+      if (!Object.prototype.hasOwnProperty.call(rec, k)) { rec[k] = { count: 0, values: [], conflict: false }; order.push(k); }
+      var r = rec[k];
+      r.count++;
+      if (r.count === 1) r.values.push(v);
+      else { r.values.push(v); if (r.values[0] !== v) r.conflict = true; }
+    });
+
+    var dup = {}, dupKeys = [], params = {};
+    order.forEach(function (k) {
+      if (rec[k].count > 1) { dup[k] = rec[k]; dupKeys.push(k); }
+      params[k] = rec[k].values[0];
+    });
+
+    return {
+      ok: true, url: u, protocol: p.protocol.replace(':', ''), domain: p.hostname,
+      path: p.pathname, pairs: pairs, params: params, dup: dup, dupKeys: dupKeys
+    };
+  }
+
+  /* ---------------- 判定 ---------------- */
+  function newChecks() {
+    var list = [];
+    return {
+      list: list,
+      add: function (group, label, expect, actual, status, note) {
+        list.push({
+          group: group, label: label,
+          expect: (expect == null ? '' : String(expect)),
+          actual: (actual == null ? '' : String(actual)),
+          status: status, note: note || ''
+        });
+      }
+    };
+  }
+  function finalize(url, ok, list, fields, extra) {
+    var level = 'PASS';
+    list.forEach(function (c) {
+      if (c.status === 'fail') level = 'FAIL';
+      else if (c.status === 'warn' && level !== 'FAIL') level = 'WARN';
+    });
+    var issues = list.filter(function (c) { return c.status === 'fail' || c.status === 'warn'; })
+      .map(function (c) { return { field: c.label, level: c.status === 'fail' ? 'FAIL' : 'WARN', msg: c.note || '' }; });
+    var out = { url: url, ok: ok, level: level, checks: list, issues: issues, fields: fields };
+    if (extra) { for (var k in extra) { if (Object.prototype.hasOwnProperty.call(extra, k)) out[k] = extra[k]; } }
+    return out;
+  }
+
+  function checkUrl(rawUrl, preset, nowMs) {
+    var p = preset || {};
+    var C = newChecks();
+    var add = C.add;
+    var fields = {
+      domain: '', protocol: '', purchaseForm: '', urlid: '', goods_id: '', advQty: '', telno: '',
+      utm_source: '', utm_medium: '', utm_campaign: '', campaignSegs: null,
+      utm_term: '', utm_funnel: '', utm_option: '', utm_custom: '',
+      qmark: 0, parentLpid: '', childLpid: '', contentsCode: ''
+    };
+    var urlText = String(rawUrl == null ? '' : rawUrl);
+
+    if (!RULES) {
+      add('url', '規則', '已載入規則', '未載入', 'fail', RULES_ERROR || '規則未載入，無法判定');
+      return finalize(urlText, false, C.list, fields);
+    }
+
+    var parsed = parseUrl(rawUrl);
+    if (!parsed.ok) {
+      add('url', 'URL 解析', '可解析的 http/https URL', '無法解析', 'fail', parsed.detail + '（' + parsed.code + '）');
+      return finalize(urlText, false, C.list, fields);
+    }
+
+    var params = parsed.params;
+    var hasKey = function (k) { return Object.prototype.hasOwnProperty.call(params, k); };
+
+    fields.domain = parsed.domain;
+    fields.protocol = parsed.protocol;
+    fields.qmark = (urlText.match(/\?/g) || []).length;
+    fields.childLpid = hasKey('urlid') ? params.urlid : '';
+    fields.goods_id = hasKey('goods_id') ? params.goods_id : '';
+    fields.telno = hasKey('telno') ? params.telno : '';
+    fields.utm_source = hasKey('utm_source') ? params.utm_source : '';
+    fields.utm_medium = hasKey('utm_medium') ? params.utm_medium : '';
+    fields.utm_campaign = hasKey('utm_campaign') ? params.utm_campaign : '';
+    fields.utm_term = hasKey('utm_term') ? params.utm_term : '';
+    fields.utm_funnel = hasKey('utm_funnel') ? params.utm_funnel : '';
+    fields.utm_option = hasKey('utm_option') ? params.utm_option : '';
+    fields.utm_custom = hasKey('utm_custom') ? params.utm_custom : '';
+
+    var pf = '其他';
+    if (/\/lp($|\/)/.test(parsed.path)) pf = 'lp';
+    else if (/\/contents\//.test(parsed.path)) pf = 'contents';
+    fields.purchaseForm = pf;
+
+    var pathSegs = parsed.path.split('/').filter(Boolean);
+    var lastSeg = pathSegs.length ? pathSegs[pathSegs.length - 1] : '';
+    if (/^[Pp]/.test(lastSeg)) fields.parentLpid = lastSeg;
+    else if (pathSegs.length >= 2) fields.parentLpid = lastSeg;
+    if (pf === 'contents') fields.contentsCode = pathSegs[1] || '';
+
+    var hasAdv = hasKey('adv'), hasQty = hasKey('qty');
+    var hasAQ = hasAdv && hasQty && params.adv === '1' && params.qty === '1';
+    fields.advQty = (hasAdv && hasQty) ? (hasAQ ? '符合' : '不符合') : '無';
+
+    /* campaign 6 段（先算，供 LPID 末碼比對） */
+    var segs = String(fields.utm_campaign || '').split('_');
+    var spec = (RULES.utm_campaign && RULES.utm_campaign.segments) || [];
+    var segOk = (fields.utm_campaign !== '') && segs.length === spec.length;
+    if (segOk) {
+      fields.campaignSegs = {};
+      spec.forEach(function (s, i) { fields.campaignSegs[s.key] = segs[i]; });
+    }
+    var agencyActual = segOk ? (fields.campaignSegs.agency || '') : '';
+    var contentsKnown = (pf === 'contents') && !!contentsInfo(fields.contentsCode);
+
+    /* ---- 1) 域名 ---- */
+    if (fields.domain === RULES.domain) add('url', '域名', RULES.domain, fields.domain, 'ok', '');
+    else add('url', '域名', RULES.domain, fields.domain, 'fail', '域名應為 ' + RULES.domain + '，實際為 ' + fields.domain);
+
+    /* ---- 2) 協議 ---- */
+    if (fields.protocol === 'https') add('url', '協議', 'https', fields.protocol, 'ok', '');
+    else if (fields.protocol === 'http') add('url', '協議', 'http / https', fields.protocol, 'info', 'HTTP 連線；是否允許 HTTP 尚待業務裁定，本次不影響判定');
+    else add('url', '協議', 'http / https', fields.protocol, 'fail', '僅接受 http/https');
+
+    /* ---- 3) 「?」數量 ---- */
+    if (fields.qmark === 1) add('url', '「?」數量', 1, fields.qmark, 'ok', '只允許 1 個');
+    else if (fields.qmark === 0) add('url', '「?」數量', 1, 0, 'fail', 'URL 沒有「?」，缺少參數分隔符');
+    else add('url', '「?」數量', 1, fields.qmark, 'fail', '出現 ' + fields.qmark + ' 個「?」，請確認是否重複貼上或參數串接錯誤');
+
+    /* ---- 4) 購買方式 ---- */
+    if (pf === 'lp') add('url', '購買方式(路徑)', '/lp/ 或 /contents/', '直購LP (/lp/)', 'ok', '');
+    else if (pf === 'contents') add('url', '購買方式(路徑)', '/lp/ 或 /contents/', '一般LP (/contents/)', 'ok', '');
+    else add('url', '購買方式(路徑)', '/lp/ 或 /contents/', parsed.path, 'fail', '路徑無法識別為 /lp/ 或 /contents/（需人工確認；業務未裁定前不得視為通過）');
+
+    /* ---- 5) 親級 LPID ---- */
+    if (!fields.parentLpid) {
+      add('url', '親級LPID', '路徑末段 P 開頭 LPID', '(空)', 'warn', '未抓到路徑中的 P 開頭 LPID，請人工確認');
+    } else if (!contentsKnown) {
+      var pd = fields.parentLpid.slice(-1), pexp = digitAgency(pd);
+      if (!pexp) add('url', '親級LPID', '末碼 1(hh) / 2(dk)', fields.parentLpid, 'warn', '末碼「' + pd + '」不是 1 或 2，無法對應代理店');
+      else if (agencyActual && pexp !== agencyActual) add('url', '親級LPID', agLabel(agencyActual), fields.parentLpid, 'fail', '末碼 ' + pd + '＝' + agLabel(pexp) + '，與 campaign 代理店 ' + agLabel(agencyActual) + ' 不符');
+      else add('url', '親級LPID', '末碼 ' + (agencyActual ? agencyDigit(agencyActual) : '1/2'), fields.parentLpid, 'ok', '末碼 ' + pd + '＝' + agLabel(pexp));
+    } else {
+      add('url', '親級LPID', '末碼 ' + contentsInfo(fields.contentsCode).digit, fields.parentLpid, 'info', '末碼一致性由下方 contents 檢查判定');
+    }
+
+    /* ---- 6) 子級 LPID（urlid） ---- */
+    if (!hasKey('urlid')) {
+      add('url', '子級LPID(urlid)', '必填', '(缺少)', 'fail', '缺少 urlid（子級LPID）');
+    } else if (String(params.urlid).trim() === '') {
+      add('url', '子級LPID(urlid)', '非空值', '(空值)', 'fail', 'urlid 為空值（= 缺少子級LPID）');
+    } else if (!contentsKnown) {
+      var cd = fields.childLpid.slice(-1), cexp = digitAgency(cd);
+      if (!cexp) add('url', '子級LPID(urlid)', '末碼 1(hh) / 2(dk)', fields.childLpid, 'warn', '末碼「' + cd + '」不是 1 或 2，無法對應代理店');
+      else if (agencyActual && cexp !== agencyActual) add('url', '子級LPID(urlid)', agLabel(agencyActual), fields.childLpid, 'fail', '末碼 ' + cd + '＝' + agLabel(cexp) + '，與 campaign 代理店 ' + agLabel(agencyActual) + ' 不符');
+      else add('url', '子級LPID(urlid)', '末碼 ' + (agencyActual ? agencyDigit(agencyActual) : '1/2'), fields.childLpid, 'ok', '末碼 ' + cd + '＝' + agLabel(cexp));
+    } else {
+      add('url', '子級LPID(urlid)', '末碼 ' + contentsInfo(fields.contentsCode).digit, fields.childLpid, 'info', '末碼一致性由下方 contents 檢查判定');
+    }
+
+    /* ---- 7) adv=1&qty=1 ---- */
+    if (pf === 'lp') {
+      if (hasAQ) add('url', 'adv=1&qty=1', '須出現', fields.advQty, 'ok', '符合直購LP');
+      else add('url', 'adv=1&qty=1', '須出現', fields.advQty, 'fail', '直購LP(/lp/) 路徑應有 adv=1&qty=1');
+    } else if (pf === 'contents') {
+      if (hasAQ) add('url', 'adv=1&qty=1', '不可出現', fields.advQty, 'fail', '一般LP(/contents/) 不應出現 adv=1&qty=1');
+      else add('url', 'adv=1&qty=1', '不可出現', fields.advQty, 'ok', '未出現（一般LP 可無）');
+    } else {
+      add('url', 'adv=1&qty=1', '—', fields.advQty, 'info', '路徑不明，無法判斷');
+    }
+
+    /* ---- 8) contents 編號（僅一般LP） ---- */
+    if (pf === 'contents') {
+      var info = contentsInfo(fields.contentsCode);
+      var code = fields.contentsCode || '';
+      if (!info) {
+        add('url', 'contents 編號', '0002 / 0003', code || '(空)', 'warn', 'contents 編號「' + (code || '(空)') + '」不在對應表，需人工確認');
+      } else {
+        if (agencyActual && agencyActual !== info.agency) {
+          add('url', 'contents→代理店', agLabel(info.agency), agLabel(agencyActual), 'fail', 'contents/' + code + ' 應為 ' + agLabel(info.agency) + '，與 campaign 代理店 ' + agLabel(agencyActual) + ' 不符');
+        } else {
+          add('url', 'contents→代理店', agLabel(info.agency), agencyActual ? agLabel(agencyActual) : '(未取得)', 'ok', 'contents/' + code + ' 對應 ' + agLabel(info.agency));
+        }
+        ['parentLpid', 'childLpid'].forEach(function (k) {
+          var lab = (k === 'parentLpid') ? 'contents→親級LPID末碼' : 'contents→子級LPID末碼';
+          var v = fields[k] || '';
+          if (!v) { add('url', lab, info.digit, '(空)', 'warn', '缺少 LPID，無法比對末碼'); return; }
+          var m = v.slice(-1);
+          if (m !== info.digit) add('url', lab, info.digit, m + '（' + v + '）', 'fail', 'contents/' + code + '（' + agLabel(info.agency) + '）對應末碼應為 ' + info.digit + '，實際「' + v + '」末碼 ' + m);
+          else add('url', lab, info.digit, m + '（' + v + '）', 'ok', '');
+        });
+      }
+    }
+
+    /* ---- 9) 重複參數（F01） ---- */
+    if (parsed.dupKeys.length) {
+      var conflictKeys = parsed.dupKeys.filter(function (k) { return parsed.dup[k].conflict; });
+      var detail = parsed.dupKeys.map(function (k) {
+        var r = parsed.dup[k];
+        return k + '=' + r.values.map(function (v) { return v === '' ? '(空)' : v; }).join('|') + '（' + r.count + ' 次）';
+      }).join('；');
+      if (conflictKeys.length) {
+        add('param', '重複參數', '每個參數最多 1 次且值一致', '重複且衝突：' + conflictKeys.join('、'), 'fail',
+          '同一參數出現多次且值不同，無法判定應採用哪一個（' + detail + '）。請修正 URL 後重檢。');
+      } else {
+        add('param', '重複參數', '每個參數最多 1 次', '重複同值：' + parsed.dupKeys.join('、'), 'warn',
+          '同一參數重複出現但值相同（' + detail + '）；已保留原始順序，不視為通過條件。');
+      }
+    } else {
+      add('param', '重複參數', '每個參數最多 1 次', '無重複', 'ok', '');
+    }
+
+    /* ---- 10) utm_source ---- */
+    if (!hasKey('utm_source')) add('param', 'utm_source', '必填', '(缺少)', 'fail', '缺少 utm_source（必填）');
+    else {
+      var ss = matchValue(fields.utm_source, RULES.utm_source.values);
+      if (ss === 'err') add('param', 'utm_source', RULES.utm_source.values.join('/'), fields.utm_source, 'fail', 'utm_source「' + fields.utm_source + '」不在允許清單');
+      else if (ss === 'warn') add('param', 'utm_source', RULES.utm_source.values.join('/'), fields.utm_source, 'warn', 'utm_source「' + fields.utm_source + '」大小寫不符');
+      else add('param', 'utm_source', RULES.utm_source.values.join('/'), fields.utm_source, 'ok', '');
+    }
+
+    /* ---- 11) utm_medium ---- */
+    if (!hasKey('utm_medium')) add('param', 'utm_medium', '必填', '(缺少)', 'fail', '缺少 utm_medium（必填）');
+    else {
+      var ms = matchValue(fields.utm_medium, RULES.utm_medium.values);
+      if (ms === 'err') add('param', 'utm_medium', RULES.utm_medium.values.join('/'), fields.utm_medium, 'fail', 'utm_medium「' + fields.utm_medium + '」不在允許清單');
+      else if (ms === 'warn') add('param', 'utm_medium', RULES.utm_medium.values.join('/'), fields.utm_medium, 'warn', 'utm_medium「' + fields.utm_medium + '」大小寫不符');
+      else add('param', 'utm_medium', RULES.utm_medium.values.join('/'), fields.utm_medium, 'ok', '');
+    }
+
+    /* ---- 12) utm_campaign 6 段 ---- */
+    if (!hasKey('utm_campaign')) {
+      add('campaign', 'utm_campaign', '必填（6 段）', '(缺少)', 'fail', '缺少 utm_campaign（必填）');
+    } else if (!segOk) {
+      add('campaign', 'utm_campaign 段數', spec.length + ' 段', segs.length + ' 段', 'fail',
+        '活動代號應為 ' + spec.length + ' 段（' + spec.map(function (s) { return s.label; }).join('_') + '），目前為 ' + segs.length + ' 段');
+    } else {
+      spec.forEach(function (seg) {
+        var v = fields.campaignSegs[seg.key];
+        var lab = seg.label + '(' + seg.pos + ')';
+        if (seg.key === 'period') {
+          var cur = curYYMM(nowMs);
+          if (!/^\d{4}$/.test(v)) {
+            add('campaign', lab, 'YYMM 4 碼', v || '(空)', 'fail', '走期「' + v + '」格式應為 YYMM（4 碼數字）');
+          } else {
+            var mm = parseInt(v.slice(2), 10);
+            if (!(mm >= 1 && mm <= 12)) add('campaign', lab, 'MM=01–12', v, 'fail', '走期「' + v + '」月份不合法（' + v.slice(2) + '；須為 01–12）');
+            else if (v < cur) add('campaign', lab, '>= ' + cur, v, 'fail', '走期「' + v + '」為過去月份（當前 ' + cur + '）');
+            else add('campaign', lab, '>= ' + cur, v, 'ok', '');
+          }
+          return;
+        }
+        if (seg.key === 'mediasrc') {
+          var codes = seg.values.map(function (x) { return x.code; });
+          var expectAbbr = sourceAbbr(fields.utm_source);
+          var inList = codes.indexOf(v) >= 0;
+          if (!inList) { add('campaign', lab, codes.join('/'), v || '(空)', 'fail', seg.label + '「' + v + '」不在允許清單'); return; }
+          if (expectAbbr && v !== expectAbbr) { add('campaign', lab, expectAbbr, v, 'fail', seg.label + '「' + v + '」與 utm_source「' + fields.utm_source + '」不符（應為 ' + expectAbbr + '）'); return; }
+          add('campaign', lab, expectAbbr || codes.join('/'), v, 'ok', '');
+          return;
+        }
+        var list = seg.values.map(function (x) { return x.code; });
+        var st = matchValue(v, list);
+        if (st === 'err') add('campaign', lab, list.join('/'), v || '(空)', 'fail', seg.label + '「' + v + '」不在允許清單');
+        else if (st === 'warn') add('campaign', lab, list.join('/'), v, 'warn', seg.label + '「' + v + '」大小寫不符');
+        else add('campaign', lab, list.join('/'), v, 'ok', '');
+      });
+    }
+
+    /* ---- 13) utm_term ---- */
+    if (hasKey('utm_term')) {
+      var t = fields.utm_term;
+      var ok5 = COMPILED.utmTerm ? COMPILED.utmTerm.test(t) : false;
+      var uidLower = (fields.childLpid !== '') && (t === String(fields.childLpid).toLowerCase());
+      if (ok5) add('param', 'utm_term', RULES.utm_term.pattern, t, 'ok', '');
+      else if (uidLower) add('param', 'utm_term', RULES.utm_term.pattern, t, 'ok', '以 urlid 小寫填入（既有例外，業務規則差異待擔當確認）');
+      else if (/[A-Z]/.test(t)) add('param', 'utm_term', RULES.utm_term.pattern, t, 'warn', 'utm_term「' + t + '」含大寫，應為小寫英文+數字共 5 碼（或填 urlid 小寫）');
+      else add('param', 'utm_term', RULES.utm_term.pattern, t, 'warn', 'utm_term「' + t + '」格式應為小寫英文+數字共 5 碼（或填 urlid 小寫）');
+    }
+
+    /* ---- 14) utm_funnel ---- */
+    if (hasKey('utm_funnel')) {
+      var fv = fields.utm_funnel;
+      if (RULES.utm_funnel.values.indexOf(fv) < 0) add('param', 'utm_funnel', RULES.utm_funnel.values.join('/'), fv, 'warn', 'utm_funnel「' + fv + '」不在 ' + RULES.utm_funnel.values.join('/'));
+      else if (hasKey('utm_medium')) {
+        var exp = RULES.utm_funnel.cross ? RULES.utm_funnel.cross[fv] : null;
+        var expArr = Array.isArray(exp) ? exp : (exp ? [exp] : []);
+        if (expArr.length && expArr.indexOf(fields.utm_medium) < 0) {
+          add('param', 'utm_funnel×utm_medium', expArr.join('/'), fields.utm_medium, 'fail', 'utm_funnel=' + fv + ' 應搭配 utm_medium∈{' + expArr.join('/') + '}，實際為 ' + fields.utm_medium);
+        } else add('param', 'utm_funnel', expArr.join('/'), fv, 'ok', '');
+      } else add('param', 'utm_funnel', RULES.utm_funnel.values.join('/'), fv, 'ok', '');
+    }
+
+    /* ---- 15) utm_option / utm_custom ---- */
+    if (hasKey('utm_option')) {
+      var ov = fields.utm_option;
+      if (RULES.utm_option && RULES.utm_option.values.indexOf(ov) < 0) add('param', 'utm_option', RULES.utm_option.values.join('/'), ov, 'warn', 'utm_option「' + ov + '」不在 ' + RULES.utm_option.values.join('/'));
+      else add('param', 'utm_option', '—', ov, 'ok', '');
+    }
+    if (hasKey('utm_custom')) {
+      var cv = fields.utm_custom;
+      if (RULES.utm_custom && RULES.utm_custom.values.indexOf(cv) < 0) add('param', 'utm_custom', RULES.utm_custom.values.join('/'), cv, 'warn', 'utm_custom「' + cv + '」不在 ' + RULES.utm_custom.values.join('/'));
+      else add('param', 'utm_custom', '—', cv, 'ok', '');
+    }
+
+    /* ---- 16) 預設核對 ---- */
+    presetChecks(fields, p).forEach(function (c) { C.list.push(c); });
+
+    return finalize(urlText, true, C.list, fields);
+  }
+
+  /* 預設核對（group='preset'）：只比較使用者已指定的項目 */
+  function presetChecks(fields, p) {
+    var out = [];
+    function add(label, expect, actual, ok, note) {
+      out.push({ group: 'preset', label: label, expect: String(expect == null ? '' : expect), actual: String(actual == null ? '' : actual), status: ok ? 'ok' : 'fail', note: note || '' });
+    }
+    function eq(label, expect, actual) {
+      if (expect === '' || expect == null) return;
+      var good = (actual !== '' && actual != null) && String(actual) === String(expect);
+      add(label, expect, (actual === '' || actual == null) ? '(空)' : actual, good, good ? '' : '預設不符：應為「' + expect + '」，實際「' + ((actual === '' || actual == null) ? '(空)' : actual) + '」');
+    }
+    var sg = fields.campaignSegs || null;
+    eq('購買方式', p.purchaseForm, fields.purchaseForm);
+    eq('utm_source', p.utm_source, fields.utm_source);
+    eq('utm_medium', p.utm_medium, fields.utm_medium);
+    if (sg) {
+      eq('代理店', p.agency, sg.agency);
+      eq('商品別', p.product, sg.product);
+      eq('走期(YYMM)', p.period, sg.period);
+      eq('媒體來源縮寫', p.mediasrc, sg.mediasrc);
+      eq('廣告形式', p.format, sg.format);
+      eq('群組', p.group, sg.group);
+    }
+    eq('utm_funnel', p.utm_funnel, fields.utm_funnel);
+    eq('utm_option', p.utm_option, fields.utm_option);
+    eq('utm_custom', p.utm_custom, fields.utm_custom);
+
+    if (p.agency) {
+      var d = agencyDigit(p.agency);
+      if (d) {
+        [['parentLpid', '親級LPID', '親級LPID末碼'], ['childLpid', '子級LPID(urlid)', '子級LPID末碼']].forEach(function (x) {
+          var v = fields[x[0]] || '';
+          var m = v.slice(-1);
+          var good = (m !== '' && m === d);
+          add(x[2], d, m ? (m + '（' + v + '）') : '(空)', good,
+            good ? '' : '預設代理店 ' + agLabel(p.agency) + ' 對應 ' + x[1] + ' 末碼應為 ' + d + '，實際「' + (v || '(空)') + '」末碼 ' + (m || '(無)'));
+        });
+      }
+    }
+    var abbr = String((p.lpidProduct || '') || (p.product || '')).trim();
+    if (abbr) {
+      var a = abbr.toLowerCase();
+      [['parentLpid', '親級LPID', '親級LPID含商品縮寫'], ['childLpid', '子級LPID(urlid)', '子級LPID含商品縮寫']].forEach(function (x) {
+        var v = fields[x[0]] || '';
+        var good = v !== '' && v.toLowerCase().indexOf(a) >= 0;
+        add(x[2], abbr, v || '(空)', good,
+          good ? '' : x[1] + '「' + (v || '(空)') + '」未包含商品縮寫「' + abbr + '」。若 LPID 使用其他縮寫，請在「LPID商品縮寫」欄位手動填寫。');
+      });
+    }
+    return out;
+  }
+
+  /* ---------------- 批次狀態（F06：原子更新 + 快照） ---------------- */
+  function buildState(urls, preset, opts) {
+    var o = opts || {};
+    var nowMs = (typeof o.nowMs === 'number') ? o.nowMs : Date.now();
+    var results = urls.map(function (u) { return checkUrl(u, preset, nowMs); });
+    var presetSet = Object.keys(preset || {}).some(function (k) { return String(preset[k] || '').trim() !== ''; });
+    return {
+      results: results, urls: urls.slice(), preset: clone(preset || {}), presetSet: presetSet,
+      createdAt: nowMs, rulesVersion: RULES ? RULES.version : '',
+      rulesState: RULES_STATE, inputText: (o.inputText == null ? urls.join('\n') : String(o.inputText))
+    };
+  }
+  function counts(state) {
+    var c = { PASS: 0, WARN: 0, FAIL: 0, problems: 0, diff: 0, presetBad: 0 };
+    if (!state) return c;
+    state.results.forEach(function (r) {
+      c[r.level] = (c[r.level] || 0) + 1;
+      if (r.level !== 'PASS') c.problems++;
+      if (DIFF_LEVELS.indexOf(r.level) >= 0) c.diff++;
+      if (r.checks.some(function (x) { return x.group === 'preset' && x.status === 'fail'; })) c.presetBad++;
+    });
+    return c;
+  }
+
+  /* ---------------- CSV（F05 schema / F09 公式中和） ---------------- */
+  function presetVerdict(r, state) {
+    if (!state.presetSet) return '未設預設';
+    return r.checks.some(function (c) { return c.group === 'preset' && c.status === 'fail'; }) ? '不符合' : '符合';
+  }
+  function presetBadLabels(r) {
+    return r.checks.filter(function (c) { return c.group === 'preset' && c.status === 'fail'; })
+      .map(function (c) { return c.label; }).join('、');
+  }
+  function csvCell(v) {
+    var s = String(v == null ? '' : v);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  var CSV_SCHEMA = [
+    { label: 'URL', get: function (r) { return r.url; } },
+    { label: '域名', get: function (r) { return r.fields.domain; } },
+    { label: '購買方式', get: function (r) { return r.fields.purchaseForm; } },
+    { label: '「?」數量', get: function (r) { return r.fields.qmark; } },
+    { label: '親級LPID', get: function (r) { return r.fields.parentLpid; } },
+    { label: '子級LPID(urlid)', get: function (r) { return r.fields.childLpid; } },
+    { label: 'goods_id', get: function (r) { return r.fields.goods_id; } },
+    { label: 'telno', get: function (r) { return r.fields.telno; } },
+    { label: 'adv=1&qty=1核驗', get: function (r) { return r.fields.advQty; } },
+    { label: 'utm_source', get: function (r) { return r.fields.utm_source; } },
+    { label: 'utm_medium', get: function (r) { return r.fields.utm_medium; } },
+    { label: 'utm_campaign', get: function (r) { return r.fields.utm_campaign; } },
+    { label: 'utm_term', get: function (r) { return r.fields.utm_term; } },
+    { label: 'utm_funnel', get: function (r) { return r.fields.utm_funnel; } },
+    { label: 'utm_option', get: function (r) { return r.fields.utm_option; } },
+    { label: 'utm_custom', get: function (r) { return r.fields.utm_custom; } },
+    { label: '校驗結果', get: function (r) { return r.level; } },
+    { label: '問題明細', get: function (r) { return r.issues.map(function (i) { return '[' + i.level + '] ' + i.field + '：' + i.msg; }).join(' | '); } },
+    { label: '預設符合', get: function (r, s) { return presetVerdict(r, s); } },
+    { label: '預設不符項目', get: function (r) { return presetBadLabels(r); } }
+  ];
+  function csvText(state) {
+    var lines = [CSV_SCHEMA.map(function (f) { return csvCell(f.label); }).join(',')];
+    state.results.forEach(function (r) {
+      lines.push(CSV_SCHEMA.map(function (f) { return csvCell(f.get(r, state)); }).join(','));
+    });
+    return '\uFEFF' + lines.join('\r\n');
+  }
+
+  /* ---------------- 提取 URL（F08 Unicode / F10 分類） ---------------- */
+  var LINK_STOP = '\\s<>"\'`\u3000\u3001\u3002\uFF0C\uFF1B\uFF1A\uFF01\uFF1F\u201C\u201D\u2018\u2019\uFF08\uFF09\u3010\u3011\u300C\u300D\u300E\u300F\u300A\u300B';
+  var LINK_RE = new RegExp('(?:https?:\\/\\/|ftp:\\/\\/|www\\.)[^' + LINK_STOP + ']+', 'gi');
+
+  function trimLinkTail(u) {
+    var s = u;
+    /* 去掉句尾標點；括號只在不成對時才去尾 */
+    for (var guard = 0; guard < 40; guard++) {
+      var last = s.slice(-1);
+      if (/[.,;:!?]/.test(last)) { s = s.slice(0, -1); continue; }
+      if (last === ')' || last === ']' || last === '}') {
+        var open = last === ')' ? '(' : last === ']' ? '[' : '{';
+        var nOpen = s.split(open).length - 1;
+        var nClose = s.split(last).length - 1;
+        if (nClose > nOpen) { s = s.slice(0, -1); continue; }
+      }
+      break;
+    }
+    return s;
+  }
+  function extractUrls(text, dedup) {
+    var t = String(text == null ? '' : text);
+    if (t.length > MAX_TEXT_LEN) t = t.slice(0, MAX_TEXT_LEN);
+    var found = t.match(LINK_RE) || [];
+    var clean = found.map(function (u) {
+      var s = trimLinkTail(u.trim());
+      if (/^www\./i.test(s)) s = 'https://' + s;
+      return s;
+    }).filter(function (s) { return s.length > 0; });
+    if (dedup === false) return clean;
+    var seen = {}, out = [];
+    clean.forEach(function (s) { if (!seen[s]) { seen[s] = true; out.push(s); } });
+    return out;
+  }
+  function classifyLink(u) {
+    var s = String(u == null ? '' : u).trim();
+    var sm = /^([a-z][a-z0-9+.\-]*):\/\//i.exec(s);
+    var scheme = sm ? sm[1].toLowerCase() : '';
+    if (scheme && scheme !== 'http' && scheme !== 'https') return { kind: 'unsupported', host: '', scheme: scheme };
+    var host = '';
+    try { host = new URL(scheme ? s : ('https://' + s)).hostname; } catch (e) { return { kind: 'invalid', host: '', scheme: scheme }; }
+    if (!host) return { kind: 'invalid', host: '', scheme: scheme };
+    if (host === RULES.domain) return { kind: 'official', host: host, scheme: scheme || 'https' };
+    return { kind: 'external', host: host, scheme: scheme || 'https' };
+  }
+
+  /* ---------------- 對外 API ---------------- */
+  function loadEmbeddedRulesText() {
+    var el = (typeof document !== 'undefined') ? document.getElementById('suntoryRulesSrc') : null;
+    var txt = el ? String(el.textContent || '') : '';
+    if (!txt.trim()) throw new Error('RULE_SOURCE_MISSING：找不到內嵌規則源（#suntoryRulesSrc）');
+    var obj;
+    try { obj = JSON.parse(txt); } catch (e) { throw new Error('RULE_SOURCE_NOT_JSON：' + e.message); }
+    var res = validateRulesObject(obj);
+    if (!res.ok) throw new Error('RULE_SOURCE_INVALID：' + res.errors.join('；'));
+    return obj;
+  }
+
+  var api = {
+    RULES_SOURCE: RULES_SOURCE,
+    LIMITS: LIMITS,
+    MAX: { url: MAX_URL_LEN, text: MAX_TEXT_LEN, rulesText: MAX_RULES_TEXT_LEN },
+    DIFF_LEVELS: DIFF_LEVELS,
+    USAGE_TOOL_NAME: USAGE_TOOL_NAME,
+    esc: esc,
+    getRules: function () { return clone(RULES); },
+    getRulesError: function () { return RULES_ERROR; },
+    getRulesMeta: function () {
+      return {
+        version: RULES ? RULES.version : '', state: RULES_STATE, updatedAt: RULES_UPDATED_AT,
+        source: RULES_SOURCE, error: RULES_ERROR
+      };
+    },
+    /* 原子快照／還原：供 UI 層在「驗證通過但介面重建失敗」時真實還原規則與編譯狀態，
+       而非僅改提示詞。_tag 限定只接受本函式產生的快照，避免外部灌入任意物件。 */
+    snapshotRules: function () {
+      return {
+        _tag: 'SUNTORY_RULES_SNAPSHOT',
+        rules: clone(RULES), state: RULES_STATE, updatedAt: RULES_UPDATED_AT,
+        error: RULES_ERROR, utmTerm: COMPILED.utmTerm
+      };
+    },
+    restoreRules: function (snap) {
+      if (!isObj(snap) || snap._tag !== 'SUNTORY_RULES_SNAPSHOT') return false;
+      RULES = clone(snap.rules);
+      RULES_STATE = snap.state;
+      RULES_UPDATED_AT = snap.updatedAt;
+      RULES_ERROR = snap.error;
+      COMPILED.utmTerm = snap.utmTerm;   // 真實還原已編譯的正則，不重新依新規則編譯
+      return true;
+    },
+    validateRules: function (obj) { return validateRulesObject(obj); },
+    applyRules: function (obj, label) { return applyRules(obj, label); },
+    loadEmbeddedRules: function () {
+      try {
+        RULES = loadEmbeddedRulesText();
+        rebuildDerived();
+        RULES_STATE = 'EMBEDDED';
+        RULES_ERROR = '';
+        return { ok: true };
+      } catch (e) {
+        RULES = null; RULES_ERROR = e.message;
+        return { ok: false, error: e.message };
+      }
+    },
+    parseUrl: parseUrl,
+    checkUrl: checkUrl,
+    buildState: buildState,
+    counts: counts,
+    presetChecks: presetChecks,
+    csvCell: csvCell,
+    csvSchema: CSV_SCHEMA,
+    csvText: csvText,
+    extractUrls: extractUrls,
+    classifyLink: classifyLink,
+    curYYMM: curYYMM,
+    agencyDigit: agencyDigit,
+    digitAgency: digitAgency,
+    contentsInfo: contentsInfo,
+    sourceAbbr: sourceAbbr,
+    trimLinkTail: trimLinkTail
+  };
+
+  global.SUNTORY = api;
+})(window);
+</script>
+
+<script>
+/* ============================================================
+   UI 層：DOM 綁線與渲染（所有插值一律 esc()，動態事件用委派，不用 inline onclick）
+   ============================================================ */
+(function (global) {
+  'use strict';
+  var S = global.SUNTORY;
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = S.esc;
+
+  var STATE = null;          // 當前批次結果（null = 無有效結果）
+  var FILTER = 'all';
+  var PRESET_FIELDS = [];
+
+  /* ---------------- 小工具 ---------------- */
+  var toastTimer = null;
+  function toast(msg) {
+    var el = $('sutToast');
+    if (!el) return;
+    el.textContent = String(msg);
+    el.setAttribute('data-show', '1');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.setAttribute('data-show', '0'); }, 2600);
+  }
+  function copyText(text, okMsg) {
+    var s = String(text == null ? '' : text);
+    var done = function (via) { toast(okMsg + '（' + via + '）'); };
+    var fail = function (why) {
+      var ta = document.createElement('textarea');
+      ta.value = s;
+      ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      if (ok) done('備援複製');
+      else toast('複製失敗：' + why + '。請手動全選複製。');
+    };
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      navigator.clipboard.writeText(s).then(function () { done('剪貼簿 API'); }, function (e) { fail((e && e.message) || '權限被拒'); });
+    } else {
+      fail('瀏覽器未提供剪貼簿 API');
+    }
+  }
+  function download(filename, content, mime) {
+    var blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  function stamp() {
+    var d = new Date();
+    return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '_' +
+      String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+  }
+  function splitLines(t) {
+    return String(t == null ? '' : t).split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+
+  /* ---------------- tabs ---------------- */
+  function switchTab(name) {
+    ['batch', 'extract', 'rules'].forEach(function (n) {
+      var btn = $('sutTabBtn-' + n), panel = $('sutPanel-' + n);
+      var on = (n === name);
+      if (btn) btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (panel) panel.hidden = !on;
+    });
+  }
+
+  /* ---------------- 預設面板 ---------------- */
+  /* 可傳入「待套用」的規則物件預先構造 UI 資料（提交前驗證用），預設讀目前生效規則 */
+  function buildPresetFields(R) {
+    R = R || S.getRules();
+    if (!R) return [];
+    var f = [];
+    f.push({ id: 'purchaseForm', label: '購買方式', type: 'select', opts: R.purchase_form.values.map(function (v) { return [v.code, v.name]; }) });
+    f.push({ id: 'utm_source', label: 'utm_source', type: 'select', opts: R.utm_source.values.map(function (v) { return [v, v]; }) });
+    f.push({ id: 'utm_medium', label: 'utm_medium', type: 'select', opts: R.utm_medium.values.map(function (v) { return [v, (R.utm_medium.labels && R.utm_medium.labels[v]) || v]; }) });
+    f.push({ id: 'agency', label: '代理店', type: 'select', opts: R.utm_campaign.segments[0].values.map(function (v) { return [v.code, v.name]; }) });
+    f.push({ id: 'product', label: '商品別', type: 'select', opts: R.utm_campaign.segments[1].values.map(function (v) { return [v.code, v.name]; }) });
+    f.push({ id: 'lpidProduct', label: 'LPID商品縮寫（選填，留空＝用商品別代碼）', type: 'text', ph: '例如 ts / lf' });
+    f.push({ id: 'period', label: '走期(YYMM)', type: 'text', ph: '例如 2611' });
+    f.push({ id: 'mediasrc', label: '媒體來源縮寫', type: 'select', opts: R.utm_campaign.segments[3].values.map(function (v) { return [v.code, v.name]; }) });
+    f.push({ id: 'format', label: '廣告形式', type: 'select', opts: R.utm_campaign.segments[4].values.map(function (v) { return [v.code, v.name]; }) });
+    f.push({ id: 'group', label: '群組', type: 'select', opts: R.utm_campaign.segments[5].values.map(function (v) { return [v.code, v.name]; }) });
+    f.push({ id: 'utm_funnel', label: 'utm_funnel', type: 'select', opts: R.utm_funnel.values.map(function (v) { return [v, v]; }) });
+    if (R.utm_option && Array.isArray(R.utm_option.values)) {
+      f.push({ id: 'utm_option', label: 'utm_option', type: 'select', opts: R.utm_option.values.map(function (v) { return [v, v]; }) });
+    }
+    if (R.utm_custom && Array.isArray(R.utm_custom.values)) {
+      f.push({ id: 'utm_custom', label: 'utm_custom', type: 'select', opts: R.utm_custom.values.map(function (v) { return [v, v]; }) });
+    }
+    return f;
+  }
+  function renderPreset(keepValues, prebuiltFields) {
+    var host = $('sutPresetPanel');
+    if (!host) return;
+    var prev = keepValues ? readPreset() : {};
+    PRESET_FIELDS = prebuiltFields || buildPresetFields();
+    var ADV = { lpidProduct: 1, utm_funnel: 1, utm_option: 1, utm_custom: 1 };
+    var grid = document.createElement('div'); grid.className = 'sut-preset-grid';
+    var adv = document.createElement('details'); adv.className = 'sut-preset-adv';
+    var advSum = document.createElement('summary'); advSum.textContent = '進階條件（選填）';
+    adv.appendChild(advSum);
+    PRESET_FIELDS.forEach(function (f) {
+      var wrap = document.createElement('div');
+      wrap.className = 'sut-preset-item';
+      var lab = document.createElement('label');
+      lab.setAttribute('for', 'sutPreset_' + f.id);
+      lab.textContent = f.label;
+      wrap.appendChild(lab);
+      var el;
+      if (f.type === 'select') {
+        el = document.createElement('select');
+        var opts = ['<option value="">不指定</option>'].concat(f.opts.map(function (o) {
+          return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '（' + esc(o[0]) + '）</option>';
+        }));
+        el.innerHTML = opts.join('');
+      } else {
+        el = document.createElement('input');
+        el.type = 'text';
+        el.placeholder = f.ph || '';
+      }
+      el.id = 'sutPreset_' + f.id;
+      if (prev[f.id] != null) { try { el.value = prev[f.id]; } catch (e) {} }
+      el.addEventListener('change', onPresetChange);
+      el.addEventListener('input', onPresetChange);
+      wrap.appendChild(el);
+      if (ADV[f.id]) adv.appendChild(wrap); else grid.appendChild(wrap);
+    });
+    host.innerHTML = '';
+    host.appendChild(grid);
+    host.appendChild(adv);
+    var srcEl = $('sutPreset_utm_source');
+    if (srcEl) {
+      srcEl.addEventListener('change', function () { linkSourceAbbr(); onPresetChange(); });
+    }
+    refreshPresetBanner();
+  }
+  function readPreset() {
+    var p = {};
+    PRESET_FIELDS.forEach(function (f) {
+      var el = $('sutPreset_' + f.id);
+      p[f.id] = el ? String(el.value || '').trim() : '';
+    });
+    return p;
+  }
+  function linkSourceAbbr() {
+    var src = $('sutPreset_utm_source');
+    if (!src || !src.value) return;
+    var abbr = S.sourceAbbr(src.value);
+    var m = $('sutPreset_mediasrc');
+    if (abbr && m) m.value = abbr;
+  }
+  function presetActiveLabels() {
+    var p = readPreset();
+    return PRESET_FIELDS.filter(function (f) { return p[f.id] !== ''; })
+      .map(function (f) { return f.label + '=' + p[f.id]; });
+  }
+  function refreshPresetBanner() {
+    var b = $('sutPresetBanner');
+    if (!b) return;
+    var act = presetActiveLabels();
+    if (!act.length) { b.hidden = true; b.innerHTML = ''; }
+    else { b.hidden = false; b.innerHTML = '<b>已設預設：</b>' + act.map(function (a) { return '<code>' + esc(a) + '</code>'; }).join(' '); }
+    var advSum = document.querySelector('#sutPresetPanel .sut-preset-adv > summary');
+    if (advSum) {
+      var p = readPreset();
+      var advSet = PRESET_FIELDS.filter(function (f) { return ['lpidProduct', 'utm_funnel', 'utm_option', 'utm_custom'].indexOf(f.id) >= 0 && p[f.id] !== ''; }).length;
+      advSum.textContent = '進階條件（選填）' + (advSet ? ' — 已設定 ' + advSet + ' 項' : '');
+    }
+  }
+  function onPresetChange() {
+    refreshPresetBanner();
+    /* 預設變更 → 以「檢查當下的輸入快照」重算，不寄送使用記錄（LOG 只由顯式批檢觸發） */
+    if (STATE) {
+      STATE = S.buildState(STATE.urls, readPreset(), { nowMs: STATE.createdAt, inputText: STATE.inputText });
+      renderResult();
+    }
+    updateDirty();
+  }
+
+  /* ---------------- 狀態提示 ---------------- */
+  function updateDirty() {
+    var box = $('sutDirty');
+    if (!box) return;
+    var cur = $('sutUrls') ? String($('sutUrls').value || '') : '';
+    if (!STATE) { box.hidden = true; box.innerHTML = ''; return; }
+    if (cur.trim() === String(STATE.inputText || '').trim()) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    box.textContent = '輸入框內容已變更：下方結果仍對應上一次檢查的 ' + STATE.urls.length + ' 筆，請重新「批量檢查」後再匯出。';
+  }
+
+  /* ---------------- 渲染結果 ---------------- */
+  function statusMark(st) {
+    if (st === 'ok') return '<span class="sut-st-ok">OK</span>';
+    if (st === 'warn') return '<span class="sut-st-warn">注意</span>';
+    if (st === 'fail') return '<span class="sut-st-fail">FAIL</span>';
+    return '<span class="sut-st-info">資訊</span>';
+  }
+  function rowsOf(r, groups) {
+    return r.checks.filter(function (c) { return groups.indexOf(c.group) >= 0; });
+  }
+  function checkTable(rows, headLabel) {
+    if (!rows.length) return '';
+    var body = rows.map(function (c) {
+      var cls = (c.status === 'fail') ? ' class="sut-rowbad"' : (c.status === 'ok' ? ' class="sut-rowgood"' : '');
+      return '<tr' + cls + '><td>' + esc(c.label) + '</td><td>' + esc(c.expect || '—') + '</td><td>' + esc(c.actual === '' ? '—' : c.actual) + '</td><td style="white-space:nowrap">' + statusMark(c.status) + '</td><td>' + esc(c.note) + '</td></tr>';
+    }).join('');
+    return '<div class="sut-table-wrap"><table><thead><tr><th style="width:170px">' + esc(headLabel) + '</th><th style="width:140px">期望/規則</th><th style="width:170px">實際</th><th style="width:64px">結果</th><th>說明</th></tr></thead><tbody>' + body + '</tbody></table></div>';
+  }
+  function chips(r) {
+    var sg = r.fields.campaignSegs;
+    if (!sg) return '';
+    var R = S.getRules();
+    var spec = (R && R.utm_campaign.segments) || [];
+    var html = spec.map(function (seg) {
+      var code = sg[seg.key] || '';
+      var found = null;
+      if (seg.values) { for (var i = 0; i < seg.values.length; i++) { if (seg.values[i].code === code) { found = seg.values[i]; break; } } }
+      var name = found ? found.name : (seg.key === 'period' ? 'YYMM' : '');
+      var bad = seg.values ? !found : false;
+      return '<span class="sut-chip' + (bad ? ' bad' : '') + '"><span>' + esc(seg.label) + '</span><b>' + esc(code || '?') + '</b><span>' + esc(name) + '</span></span>';
+    }).join('');
+    return '<div class="sut-chips">' + html + '</div>';
+  }
+  function resultCard(r) {
+    var presetRows = rowsOf(r, ['preset']);
+    var baseRows = rowsOf(r, ['url', 'param', 'campaign']);
+    var presetPill = presetRows.some(function (c) { return c.status === 'fail'; })
+      ? ' <span class="sut-pill FAIL">預設不符</span>' : '';
+    var issues = r.issues.length
+      ? r.issues.map(function (i) { return '<div class="sut-iss ' + esc(i.level) + '">[' + esc(i.level) + '] ' + esc(i.field) + '：' + esc(i.msg) + '</div>'; }).join('')
+      : '<div class="sut-iss" style="color:var(--sut-ok)">無問題，全部通過。</div>';
+    return '<div class="sut-card">' +
+      '<div class="sut-card-head"><div class="sut-card-url">' + esc(r.url) + '</div>' +
+      '<span class="sut-pill ' + esc(r.level) + '">' + esc(r.level) + '</span></div>' +
+      (presetRows.length ? '<div style="margin-top:10px"><b style="font-size:13.5px">預設核對：</b>' + checkTable(presetRows, '預設項目') + '</div>' : '') +
+      '<div style="margin-top:10px"><b style="font-size:13.5px">URL 結構與參數核驗：</b>' + checkTable(baseRows, '核驗項目') + '</div>' +
+      chips(r) +
+      '<div class="sut-issues"><b>問題明細：</b>' + issues + '</div>' +
+      '</div>';
+  }
+
+  function renderResult() {
+    var box = $('sutResult');
+    if (!box) return;
+    if (!STATE) {
+      box.innerHTML = '<div class="sut-empty">尚未執行檢查（或已清空）。貼上 URL 後按「批量檢查」。</div>';
+      return;
+    }
+    var c = S.counts(STATE);
+    var p = readPreset();
+    var html = '<div class="sut-panel" style="margin-top:16px">';
+    html += '<div class="sut-counts">共 ' + STATE.results.length + ' 筆 ｜ <span class="sut-ok-t">PASS ' + c.PASS + '</span> ｜ <span class="sut-warn-t">WARN ' + c.WARN + '</span> ｜ <span class="sut-fail-t">FAIL ' + c.FAIL + '</span>' +
+      (STATE.presetSet ? ' ｜ <span class="' + (c.presetBad ? 'sut-fail-t' : 'sut-ok-t') + '">預設不符 ' + c.presetBad + '</span>' : '') + '</div>';
+    var act = presetActiveLabels();
+    if (c.FAIL > 0) {
+      html += '<div class="sut-bigbad">本批整體狀態：<b>有 ' + c.FAIL + ' 筆規則 FAIL</b>，請見下方明細；「本批正確條件」相符不代表可採用。</div>';
+    }
+    if (STATE.presetSet) {
+      html += c.presetBad
+        ? '<div class="sut-bigbad">本批正確條件：' + esc(act.join('、')) + '<br>共 ' + STATE.results.length + ' 筆，其中 ' + c.presetBad + ' 筆「不符預設」，請勿採用。</div>'
+        : '<div class="sut-bigok">本批正確條件：' + esc(act.join('、')) + '　→ ' + STATE.results.length + ' 筆全部符合預設。' +
+          (c.FAIL > 0 ? '（僅指上列預設欄位相符；本批仍有 ' + c.FAIL + ' 筆規則 FAIL，請看下方明細）' : '') + '</div>';
+    } else {
+      html += '<div class="sut-info-banner">尚未設定預設。右側「本批正確條件」設定後，工具會逐項比對並標紅不符者。</div>';
+    }
+
+    /* 彙總表 */
+    var cols = [
+      ['購買方式', function (r) { return r.fields.purchaseForm; }, 'purchaseForm'],
+      ['utm_source', function (r) { return r.fields.utm_source; }, 'utm_source'],
+      ['utm_medium', function (r) { return r.fields.utm_medium; }, 'utm_medium'],
+      ['代理店', function (r) { return r.fields.campaignSegs ? r.fields.campaignSegs.agency : ''; }, 'agency'],
+      ['商品別', function (r) { return r.fields.campaignSegs ? r.fields.campaignSegs.product : ''; }, 'product'],
+      ['走期', function (r) { return r.fields.campaignSegs ? r.fields.campaignSegs.period : ''; }, 'period'],
+      ['媒體來源縮寫', function (r) { return r.fields.campaignSegs ? r.fields.campaignSegs.mediasrc : ''; }, 'mediasrc'],
+      ['廣告形式', function (r) { return r.fields.campaignSegs ? r.fields.campaignSegs.format : ''; }, 'format'],
+      ['群組', function (r) { return r.fields.campaignSegs ? r.fields.campaignSegs.group : ''; }, 'group'],
+      ['utm_term', function (r) { return r.fields.utm_term; }, ''],
+      ['utm_funnel', function (r) { return r.fields.utm_funnel; }, 'utm_funnel'],
+      ['utm_option', function (r) { return r.fields.utm_option; }, 'utm_option'],
+      ['utm_custom', function (r) { return r.fields.utm_custom; }, 'utm_custom'],
+      ['telno', function (r) { return r.fields.telno; }, '']
+    ];
+    var sum = '<tr><th>彙總</th>';
+    cols.forEach(function (col) {
+      var name = col[0], get = col[1], pkey = col[2];
+      var vals = STATE.results.map(get).filter(function (v) { return v !== '' && v != null; });
+      var uniq = vals.filter(function (v, i) { return vals.indexOf(v) === i; });
+      var exp = (pkey && p[pkey]) ? p[pkey] : '';
+      if (exp !== '') {
+        var okN = STATE.results.filter(function (r) { var v = get(r); return v !== '' && v != null && String(v) === String(exp); }).length;
+        if (okN === STATE.results.length) sum += '<td class="sut-cellgood">✓ 全部符合預設<br>' + esc(exp) + '</td>';
+        else sum += '<td class="sut-cellbad">✗ 不符預設 ' + (STATE.results.length - okN) + '/' + STATE.results.length + ' 筆<br>應為 ' + esc(exp) + '<br>實際 ' + esc(uniq.slice(0, 3).join(' / ')) + (uniq.length > 3 ? '…' : '') + '</td>';
+        return;
+      }
+      if (!uniq.length) sum += '<td class="sut-muted">無</td>';
+      else if (uniq.length === 1) sum += '<td class="sut-cellgood">全部一致：' + esc(uniq[0]) + '</td>';
+      else sum += '<td class="sut-cellbad">不一致 ' + uniq.length + ' 種：' + esc(uniq.slice(0, 3).join(' / ')) + (uniq.length > 3 ? '…' : '') + '</td>';
+    });
+    sum += '</tr>';
+    html += '<div class="sut-table-wrap sut-sum"><table><thead><tr><th>項目</th>' + cols.map(function (c2) { return '<th>' + esc(c2[0]) + '</th>'; }).join('') + '</tr></thead><tbody>' + sum + '</tbody></table></div>';
+    html += '<p class="sut-hint" style="margin-top:4px">表格欄位較多時可在表格內橫向捲動（不影響頁面寬度）。</p>';
+
+    /* 篩選 */
+    var presetBad = c.presetBad;
+    var filters = [['all', '全部 (' + STATE.results.length + ')'], ['FAIL', '僅 FAIL (' + c.FAIL + ')'], ['WARN', '僅 WARN (' + c.WARN + ')'], ['PASS', '僅 PASS (' + c.PASS + ')']];
+    if (STATE.presetSet) filters.push(['preset', '僅不符預設 (' + presetBad + ')']);
+    html += '<div class="sut-filterbar">' + filters.map(function (f) {
+      return '<button type="button" class="sut-filter" data-filter="' + esc(f[0]) + '" aria-pressed="' + (FILTER === f[0] ? 'true' : 'false') + '">' + esc(f[1]) + '</button>';
+    }).join('') + '</div>';
+
+    var pick = STATE.results.filter(function (r) {
+      if (FILTER === 'all') return r.level !== 'PASS';
+      if (FILTER === 'preset') return r.checks.some(function (x) { return x.group === 'preset' && x.status === 'fail'; });
+      return r.level === FILTER;
+    });
+    var title = FILTER === 'all' ? '有問題的 URL' : FILTER === 'preset' ? '不符預設的 URL' : '符合篩選（' + FILTER + '）的 URL';
+    html += '</div><div class="sut-panel" style="margin-top:16px"><b>' + esc(title) + '（' + pick.length + ' 筆）</b>';
+    if (!pick.length) html += '<div class="sut-iss sut-muted">此條件下無資料。</div>';
+    pick.forEach(function (r) {
+      var open = (r.level === 'FAIL' || r.checks.some(function (x) { return x.group === 'preset' && x.status === 'fail'; })) ? ' open' : '';
+      html += '<details' + open + '><summary>' + esc(r.url.length > 90 ? r.url.slice(0, 90) + ' …' : r.url) +
+        ' <span class="sut-pill ' + esc(r.level) + '">' + esc(r.level) + '</span>' +
+        (r.checks.some(function (x) { return x.group === 'preset' && x.status === 'fail'; }) ? ' <span class="sut-pill FAIL">預設不符</span>' : '') +
+        '</summary>' + resultCard(r) + '</details>';
+    });
+    html += '</div>';
+    box.innerHTML = html;
+  }
+
+  /* ---------------- 使用記錄（門戶既有 sendLog 合約） ---------------- */
+  function recordUsage(state) {
+    if (typeof sendLog !== 'function') return;
+    var c = S.counts(state);
+    if (!state.results.length) return;
+    var note = '檢查:' + state.results.length + '筆 PASS:' + c.PASS + ' WARN:' + c.WARN + ' FAIL:' + c.FAIL;
+    try {
+      /* diffCount = 存在問題的 URL 行數（每行最多一次；DIFF_LEVELS 目前只計 FAIL，WARN 歸類待裁定）
+         criticalCount 目前不參與 summary/看板聚合，固定送 0，避免污染統計 */
+      var p = sendLog(S.USAGE_TOOL_NAME, c.diff, 0, note);
+      if (p && typeof p.then === 'function') {
+        p.then(function (res) {
+          console.info('[SUNTORY] 使用ログ送信結果:', res && res.ok ? 'ok' : (res && res.error));
+        }, function (err) {
+          console.warn('[SUNTORY] 使用ログ送信失敗（業務動作には影響なし）:', err);
+        });
+      }
+    } catch (e) {
+      console.warn('[SUNTORY] 使用ログ送信失敗（業務動作には影響なし）:', e && e.message);
+    }
+  }
+
+  /* ---------------- 主動作 ---------------- */
+  function runCheck(autoExtract) {
+    var box = $('sutUrls');
+    if (!box) return;
+    var text = String(box.value || '');
+    if (text.length > S.MAX.text) {
+      STATE = null; renderResult(); updateDirty();
+      toast('輸入過長（' + text.length + ' 字元，上限 ' + S.MAX.text + '），請分批檢查。');
+      return;
+    }
+    if (autoExtract) {
+      var dedup = $('sutExtractDedup') ? $('sutExtractDedup').checked : true;
+      text = S.extractUrls(text, dedup).join('\n');
+      box.value = text;
+    }
+    var urls = splitLines(text);
+    if (!urls.length) {
+      /* F06：空批次原子清空，不能沿用舊結果 */
+      STATE = null;
+      FILTER = 'all';
+      renderResult(); updateDirty();
+      toast('沒有可檢查的 URL。');
+      return;
+    }
+    if (urls.length > 5000) {
+      STATE = null; renderResult(); updateDirty();
+      toast('一次最多 5000 筆，請分批。');
+      return;
+    }
+    STATE = S.buildState(urls, readPreset(), { inputText: text });
+    FILTER = 'all';
+    renderResult(); updateDirty();
+    recordUsage(STATE);
+  }
+
+  function clearAll() {
+    ['sutUrls', 'sutExtractText', 'sutExtractOut', 'sutJsonRules', 'sutRulesView'].forEach(function (id) {
+      var el = $(id); if (el) el.value = (id === 'sutRulesView') ? JSON.stringify(S.getRules(), null, 2) : '';
+    });
+    ['sutJsonMsg', 'sutXlsxMsg', 'sutResult'].forEach(function (id) { var el = $(id); if (el) el.innerHTML = ''; });
+    var cnt = $('sutExtractCount'); if (cnt) cnt.textContent = '';
+    var xf = $('sutXlsxFile'); if (xf) xf.value = '';
+    STATE = null; FILTER = 'all';
+    renderResult(); updateDirty();
+    toast('已清空輸入與判定結果。');
+  }
+
+  function exportCsv() {
+    if (!STATE) { toast('請先執行批量檢查（目前沒有有效結果）。'); return; }
+    download('suntory_utm_check_' + stamp() + '.csv', S.csvText(STATE), 'text/csv;charset=utf-8');
+  }
+  function exportJson() {
+    if (!STATE) { toast('請先執行批量檢查（目前沒有有效結果）。'); return; }
+    var out = {
+      tool: S.USAGE_TOOL_NAME, generated: new Date().toISOString(),
+      rules: S.getRulesMeta(), preset: STATE.preset, results: STATE.results
+    };
+    download('suntory_utm_check_' + stamp() + '.json', JSON.stringify(out, null, 2), 'application/json');
+  }
+  function copyFails() {
+    if (!STATE) { toast('請先執行批量檢查（目前沒有有效結果）。'); return; }
+    var urls = STATE.results.filter(function (r) { return r.level !== 'PASS'; }).map(function (r) { return r.url; });
+    if (!urls.length) { toast('沒有有問題的 URL。'); return; }
+    copyText(urls.join('\n'), '已複製 ' + urls.length + ' 筆有問題的 URL');
+  }
+
+  /* ---------------- 提取 ---------------- */
+  function doExtract() {
+    var src = $('sutExtractText');
+    var out = $('sutExtractOut');
+    if (!src || !out) return;
+    var text = String(src.value || '');
+    if (text.length > S.MAX.text) { toast('輸入過長（上限 ' + S.MAX.text + ' 字元）。'); return; }
+    var dedup = $('sutExtractDedup') ? $('sutExtractDedup').checked : true;
+    var urls = S.extractUrls(text, dedup);
+    out.value = urls.join('\n');
+    var ext = urls.filter(function (u) { return S.classifyLink(u).kind === 'external'; });
+    var official = urls.length - ext.length;
+    var cnt = $('sutExtractCount');
+    if (cnt) {
+      cnt.textContent = '共 ' + urls.length + ' 筆' + (dedup ? '（已去重）' : '（保留重複）') +
+        '：官方域 ' + official + ' 筆、外部連結 ' + ext.length + ' 筆';
+    }
+    if (ext.length && $('sutExtractOpen') && $('sutExtractOpen').checked) {
+      openExternal(ext);
+    }
+  }
+  function openExternal(list) {
+    var urls = (list || []).filter(function (u) {
+      var c = S.classifyLink(u);
+      return c.kind === 'external' && (c.scheme === 'http' || c.scheme === 'https' || c.scheme === '');
+    });
+    if (!urls.length) { toast('沒有可開啟的外部連結（僅支援 http/https）。'); return; }
+    var hosts = [];
+    urls.forEach(function (u) { var h = S.classifyLink(u).host; if (hosts.indexOf(h) < 0) hosts.push(h); });
+    var head = urls.length > S.LIMITS.maxLinksOpen ? '（超過 ' + S.LIMITS.maxLinksOpen + ' 筆，僅開啟前 ' + S.LIMITS.maxLinksOpen + ' 筆）' : '';
+    var msg = '將開啟 ' + Math.min(urls.length, S.LIMITS.maxLinksOpen) + ' 個外部連結' + head + '\n網域：' + hosts.slice(0, 5).join('、') + (hosts.length > 5 ? ' 等 ' + hosts.length + ' 個' : '') + '\n\n確定要開啟嗎？';
+    if (!global.confirm(msg)) { toast('已取消開啟外部連結。'); return; }
+    var opened = 0, blocked = 0;
+    urls.slice(0, S.LIMITS.maxLinksOpen).forEach(function (u) {
+      var w = null;
+      try { w = global.open(u, '_blank', 'noopener'); } catch (e) { w = null; }
+      if (w) opened++; else blocked++;
+    });
+    toast('已開啟 ' + opened + ' 筆；被瀏覽器阻擋 ' + blocked + ' 筆。');
+  }
+
+  /* ---------------- 規則 ---------------- */
+  function renderRulesMeta() {
+    var box = $('sutRulesMeta');
+    if (!box) return;
+    var m = S.getRulesMeta();
+    var stateText = m.state === 'EMBEDDED' ? '內嵌原始規則' : '使用者套用（非原始）';
+    box.innerHTML =
+      '規則來源：<code>' + esc(m.source.file) + '</code>（唯一規則源：頁面內嵌原文）<br>' +
+      '版本：<b>' + esc(m.version || '(未載入)') + '</b> ｜ 狀態：<b>' + esc(stateText) + '</b>' +
+      (m.updatedAt ? ' ｜ 套用時間：' + esc(m.updatedAt) : '') + '<br>' +
+      '內嵌原文 SHA256（LF）：<code>' + esc(m.source.sha256TextLf) + '</code><br>' +
+      '規則檔 SHA256（CRLF）：<code>' + esc(m.source.sha256File) + '</code>' +
+      (m.error ? '<br><b class="sut-fail-t">規則載入失敗：' + esc(m.error) + '</b>' : '');
+  }
+  function applyJson() {
+    var ta = $('sutJsonRules');
+    var msg = $('sutJsonMsg');
+    if (!ta || !msg) return;
+    var txt = String(ta.value || '').trim();
+    if (!txt) { msg.className = 'sut-msg bad'; msg.textContent = '請先貼上規則 JSON。'; return; }
+    if (txt.length > S.MAX.rulesText) {
+      msg.className = 'sut-msg bad';
+      msg.textContent = '規則過大（' + txt.length + ' 字元，上限 ' + S.MAX.rulesText + '），已拒絕。';
+      return;
+    }
+    var obj;
+    try { obj = JSON.parse(txt); } catch (e) {
+      msg.className = 'sut-msg bad';
+      msg.textContent = 'JSON 解析失敗：' + e.message + '（原有規則與結果均未變更）';
+      return;
+    }
+
+    /* ---- 階段 1：提交前完成「驗證 + 編譯 + UI 資料構造」，全部不改變任何生效狀態 ---- */
+    var pre = S.validateRules(obj);
+    if (!pre.ok) {
+      msg.className = 'sut-msg bad';
+      msg.innerHTML = '規則驗證失敗，已保留原有規則（未變更）：<ul>' + pre.errors.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul>';
+      return;
+    }
+    var nextFields;
+    try {
+      /* 預編譯正則（不寫入 COMPILED）＋ 用「待套用規則」預先構造預設欄位（不改 PRESET_FIELDS） */
+      new RegExp(pre.value.utm_term.pattern);
+      nextFields = buildPresetFields(pre.value);
+      if (!nextFields.length) throw new Error('UI_FIELDS_EMPTY');
+    } catch (e) {
+      msg.className = 'sut-msg bad';
+      msg.textContent = '規則通過驗證，但無法建立預設條件：' + (e && e.message) + '（已拒絕套用，原有規則、結果、預設與篩選均未變更）。';
+      return;   /* 規則 / 編譯 / PRESET_FIELDS / STATE 完全未動 */
+    }
+
+    /* ---- 階段 2：完整狀態快照（提交前） ---- */
+    var snap = {
+      rules: S.snapshotRules(),
+      state: STATE, filter: FILTER,
+      fields: PRESET_FIELDS.slice(),
+      preset: readPreset(),
+      urls: (function () { var el = $('sutUrls'); return el ? el.value : ''; })(),
+      rulesView: (function () { var el = $('sutRulesView'); return el ? el.value : ''; })(),
+      rulesMeta: (function () { var el = $('sutRulesMeta'); return el ? el.innerHTML : ''; })(),
+      result: (function () { var el = $('sutResult'); return el ? el.innerHTML : ''; })(),
+      presetHtml: (function () { var el = $('sutPresetPanel'); return el ? el.innerHTML : ''; })(),
+      banner: (function () { var el = $('sutPresetBanner'); return el ? { hidden: el.hidden, html: el.innerHTML } : null; })(),
+      dirty: (function () { var el = $('sutDirty'); return el ? { hidden: el.hidden, text: el.textContent } : null; })()
+    };
+
+    /* ---- 階段 3：原子提交（規則 + 編譯 + 來源狀態一次切換） ---- */
+    var res = S.applyRules(obj, 'USER_UPDATED');
+    if (!res.ok) {   /* 理論上不會：階段 1 已用同一 obj 驗證通過；仍保留防禦 */
+      msg.className = 'sut-msg bad';
+      msg.innerHTML = '規則驗證失敗，已保留原有規則（未變更）：<ul>' + res.errors.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + '</ul>';
+      return;
+    }
+
+    /* ---- 階段 4：切換後 UI 重建（用預構造欄位） ---- */
+    try {
+      STATE = null;
+      renderPreset(false, nextFields);
+      renderRulesMeta();
+      var rv = $('sutRulesView'); if (rv) rv.value = JSON.stringify(S.getRules(), null, 2);
+      renderResult(); updateDirty();
+      msg.className = 'sut-msg good';
+      msg.textContent = '已套用新規則（版本 ' + S.getRules().version + '）。既有檢查結果已失效，請重新批量檢查。';
+    } catch (e) {
+      /* ---- 階段 5：真實回滾（非僅改提示詞）----
+         還原：規則 / 已編譯正則 / RULES_STATE / updatedAt、PRESET_FIELDS、預設值、
+               STATE、結果顯示、篩選、dirty、規則檢視、預設面板、輸入框。 */
+      restoreFromSnapshot(snap);
+      msg.className = 'sut-msg bad';
+      msg.textContent = '新規則已驗證通過，但介面刷新失敗：' + (e && e.message) + '（已撤銷本次套用，原有規則、結果、預設與篩選保持不變，請重新整理頁面或回報）。';
+    }
+  }
+
+  /* 真實還原：優先重建面板（保留事件綁定）；若重建亦失敗，退化為寫回快照 HTML。
+     所有可見區塊一律以快照值寫回，不重新依「已撤銷的新規則」計算。 */
+  function restoreFromSnapshot(s) {
+    S.restoreRules(s.rules);
+    STATE = s.state;
+    FILTER = s.filter;
+    PRESET_FIELDS = s.fields.slice();
+    var host = $('sutPresetPanel');
+    if (host) {
+      var rebuilt = false;
+      try { renderPreset(false, s.fields.slice()); rebuilt = true; } catch (e) { rebuilt = false; }
+      if (!rebuilt && s.presetHtml != null) { try { host.innerHTML = s.presetHtml; } catch (e2) {} }
+      Object.keys(s.preset).forEach(function (id) {
+        var el = $('sutPreset_' + id);
+        if (el) { try { el.value = s.preset[id]; } catch (e3) {} }
+      });
+    }
+    var rm = $('sutRulesMeta'); if (rm) rm.innerHTML = s.rulesMeta;
+    var rv = $('sutRulesView'); if (rv) rv.value = s.rulesView;
+    var rr = $('sutResult'); if (rr) rr.innerHTML = s.result;
+    var ui = $('sutUrls'); if (ui) ui.value = s.urls;
+    if (s.banner) { var pb = $('sutPresetBanner'); if (pb) { pb.hidden = s.banner.hidden; pb.innerHTML = s.banner.html; } }
+    if (s.dirty) { var db = $('sutDirty'); if (db) { db.hidden = s.dirty.hidden; db.textContent = s.dirty.text; } }
+    try { updateDirty(); } catch (e4) {}
+  }
+  function resetRules() {
+    var res = S.loadEmbeddedRules();
+    var msg = $('sutJsonMsg');
+    if (!res.ok) {
+      if (msg) { msg.className = 'sut-msg bad'; msg.textContent = '無法還原內嵌規則：' + res.error; }
+      return;
+    }
+    STATE = null;
+    renderPreset(false);
+    renderRulesMeta();
+    var rv = $('sutRulesView'); if (rv) rv.value = JSON.stringify(S.getRules(), null, 2);
+    renderResult(); updateDirty();
+    if (msg) { msg.className = 'sut-msg good'; msg.textContent = '已還原為內嵌原始規則（版本 ' + S.getRules().version + '）。'; }
+  }
+  function applyXlsx(ev) {
+    var msg = $('sutXlsxMsg');
+    if (!msg) return;
+    if (typeof XLSX === 'undefined') {
+      msg.className = 'sut-msg bad';
+      msg.textContent = '未載入本地 SheetJS 資源（xlsx-0.20.3.full.min.js 缺失或離線）：Excel 讀取不可用，請改用「方法一」貼上 JSON。';
+      return;
+    }
+    var file = ev && ev.target && ev.target.files ? ev.target.files[0] : null;
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var wb = XLSX.read(e.target.result, { type: 'array' });
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        var preview = rows.slice(0, 3).map(function (r) {
+          return (r || []).slice(0, 6).map(function (c) { return String(c == null ? '' : c); }).join(' | ');
+        }).join('\n');
+        msg.className = 'sut-msg';
+        msg.innerHTML = '僅預覽，<b>尚未套用規則</b>：讀到 Sheet「' + esc(wb.SheetNames[0]) + '」共 ' + rows.length + ' 列。<br>' +
+          '<code style="display:block;white-space:pre-wrap;margin-top:6px">' + esc(preview) + '</code>' +
+          '<br>XLSX → 規則映射未實作；目前生效規則未變更。需原規則 Excel 與業務確認後另行開發。';
+      } catch (e2) {
+        msg.className = 'sut-msg bad';
+        msg.textContent = '讀取失敗：' + e2.message;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  /* ---------------- 事件委派 ---------------- */
+  var ACTIONS = {
+    'check': function () { runCheck(false); },
+    'check-extract': function () { runCheck(true); },
+    'export-csv': exportCsv,
+    'export-json': exportJson,
+    'copy-fails': copyFails,
+    'clear-all': clearAll,
+    'extract': doExtract,
+    'copy-extract': function () {
+      var v = $('sutExtractOut') ? $('sutExtractOut').value : '';
+      if (!v) { toast('沒有可複製的內容。'); return; }
+      copyText(v, '已複製提取結果');
+    },
+    'download-extract': function () {
+      var v = $('sutExtractOut') ? $('sutExtractOut').value : '';
+      if (!v) { toast('沒有可下載的內容。'); return; }
+      download('extracted_urls.txt', v, 'text/plain;charset=utf-8');
+    },
+    'send-to-batch': function () {
+      var v = $('sutExtractOut') ? $('sutExtractOut').value : '';
+      if (!v.trim()) { toast('沒有可送出的內容。'); return; }
+      var box = $('sutUrls'); if (box) box.value = v;
+      switchTab('batch');
+      runCheck(false);
+    },
+    'open-external': function () {
+      var v = $('sutExtractOut') ? $('sutExtractOut').value : '';
+      var urls = splitLines(v).filter(function (u) { return S.classifyLink(u).kind === 'external'; });
+      if (!urls.length) { toast('沒有外部連結可開啟。'); return; }
+      openExternal(urls);
+    },
+    'apply-json': applyJson,
+    'reset-rules': resetRules,
+    'clear-preset': function () {
+      PRESET_FIELDS.forEach(function (f) { var el = $('sutPreset_' + f.id); if (el) el.value = ''; });
+      onPresetChange();
+      toast('已清除預設。');
+    }
+  };
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    while (t && t !== document) {
+      if (t.getAttribute) {
+        var act = t.getAttribute('data-act');
+        if (act && ACTIONS[act]) { ev.preventDefault(); ACTIONS[act](); return; }
+        var tab = t.getAttribute('data-tab');
+        if (tab) { ev.preventDefault(); switchTab(tab); return; }
+        var f = t.getAttribute('data-filter');
+        if (f) {
+          ev.preventDefault();
+          FILTER = f;
+          renderResult();
+          return;
+        }
+      }
+      t = t.parentNode;
+    }
+  });
+
+  document.addEventListener('change', function (ev) {
+    var t = ev.target;
+    if (!t || !t.id) return;
+    if (t.id === 'sutExtractDedup' || t.id === 'sutExtractOpen') { /* no-op */ return; }
+  });
+  document.addEventListener('input', function (ev) {
+    var t = ev.target;
+    if (t && t.id === 'sutUrls') updateDirty();
+  });
+
+  /* ---------------- 初始化 ---------------- */
+  function init() {
+    var boot = S.loadEmbeddedRules();
+    renderPreset(false);
+    renderRulesMeta();
+    var rv = $('sutRulesView');
+    if (rv && S.getRules()) rv.value = JSON.stringify(S.getRules(), null, 2);
+    var xf = $('sutXlsxFile');
+    if (xf) xf.addEventListener('change', applyXlsx);
+    renderResult();
+    if (!boot.ok) {
+      var msg = $('sutJsonMsg');
+      if (msg) { msg.className = 'sut-msg bad'; msg.textContent = '規則載入失敗：' + boot.error; }
+      toast('規則載入失敗，請勿使用本頁結果。');
+    }
+    if (typeof XLSX === 'undefined') {
+      var xm = $('sutXlsxMsg');
+      if (xm) xm.innerHTML = '<span class="sut-muted">未載入本地 SheetJS 資源（xlsx-0.20.3.full.min.js 缺失或離線）；Excel 預覽不可用，其餘功能不受影響。</span>';
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+
+  /* 測試與除錯用（唯讀）：暴露 UI 狀態查詢，不提供寫入業務資料的後門 */
+  global.__SUNTORY_UI = {
+    state: function () { return STATE; },
+    filter: function () { return FILTER; },
+    readPreset: readPreset,
+    switchTab: switchTab
+  };
+})(window);
+</script>
+</body>
+</html>

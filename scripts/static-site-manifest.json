@@ -72,7 +72,7 @@
     {
       "path": "index.html",
       "source": "workspace",
-      "sha256": "ce6e811d86795bc272a7a0194b7ba0cd640429f90e398a2afb5793b1fa8e3458"
+      "sha256": "b59c0d9b99e5c61b6b0fb256b125413045e2c3d776476c81326e529b1cd9e7f0"
     },
     {
       "path": "jszip.min.js",
@@ -188,6 +188,11 @@
       "path": "tvpr_check.html",
       "source": "workspace",
       "sha256": "764250f8cc2bf2f8ca69eee7b07081fa371ad943cf5e06a797dcde1b3abda07d"
+    },
+    {
+      "path": "suntory_utm_check.html",
+      "source": "workspace",
+      "sha256": "f737b0f32a1e08b7a6d4af368c158290d7f098c4f5b452f2d4813549802f0e7b"
     }
   ]
 }
