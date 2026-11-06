@@ -154,6 +154,23 @@
       '<path d="M8 14 L20 20 L20 32 L8 26 Z" fill="#94A3B8"/>' +
       '<path d="M32 14 L20 20 L20 32 L32 26 Z" fill="#B9C4CF"/>'),
 
+    // ---- TVPR：テレビ画面＋キーワードタグ／小文字線 ----
+    tvpr: wrap('#0E4F45',
+      '<path d="M13.5 6.5 L20 11 L26.5 6.5" fill="none" stroke="#5EEAD4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<rect x="6.5" y="11.5" width="27" height="17.5" rx="3" fill="#07332D" stroke="#5EEAD4" stroke-width="1.6"/>' +
+      '<rect x="9.5" y="15" width="11" height="5.6" rx="2.8" fill="#5EEAD4"/>' +
+      '<circle cx="12.4" cy="17.8" r="1.25" fill="#07332D"/>' +
+      '<path d="M15.2 17.8h3.6" stroke="#07332D" stroke-width="1.5" stroke-linecap="round"/>' +
+      '<path d="M9.5 24h13M9.5 26.8h8.5" stroke="#A7F3D0" stroke-width="1.6" stroke-linecap="round"/>' +
+      '<path d="M14 32.5h12" stroke="#5EEAD4" stroke-width="2" stroke-linecap="round"/>'),
+
+    // ---- 三得利 UTM：リンク鎖＋チェックマーク ----
+    suntoryUtm: wrap('#0B3D91',
+      '<ellipse cx="14.5" cy="19" rx="5.2" ry="7.4" fill="none" stroke="#93C5FD" stroke-width="2.5" transform="rotate(-35 14.5 19)"/>' +
+      '<ellipse cx="23.5" cy="21.5" rx="5.2" ry="7.4" fill="none" stroke="#ffffff" stroke-width="2.5" transform="rotate(-35 23.5 21.5)"/>' +
+      '<circle cx="30" cy="30" r="6.2" fill="#34D399"/>' +
+      '<path d="M27.1 30 L29.2 32.1 L33 28" fill="none" stroke="#0B3D91" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'),
+
     // ---- 汎用（未定義 id 用） ----
     generic: wrap('#334155',
       '<rect x="9" y="9" width="9" height="9" rx="2" fill="#94A3B8"/>' +

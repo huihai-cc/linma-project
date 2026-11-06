@@ -504,12 +504,12 @@ var TOOLS=[
   {group:'ka2',icon:'🎯',logo:'target',name:'ターゲット推薦ツール',name_ja:'ターゲット推薦ツール',desc:'SEM見積向けターゲティング推薦',desc_ja:'SEM見積向けターゲティング推薦',href:'ターゲット推薦ツール 2.html',badge:''},
   {group:'ka2',icon:'📺',logo:'tver',name:'TVer',name_ja:'TVer',desc:'TVer設定校正',desc_ja:'TVer設定チェック',href:'tver_check.html',badge:''},
   {group:'ka3',icon:'🔬',logo:'check3',name:'3課チェック用ツール',name_ja:'3課チェック用ツール',desc:'符号检查・画像解析・URL抽出',desc_ja:'記号チェック・画像解析・URL抽出',href:'3ka_check_tool.html',badge:''},
-  {group:'ka3',icon:'📋',logo:'report',name:'3課 残タスク生成ツール',name_ja:'3課 残タスク生成ツール',desc:'残タスク連絡文を自動生成',desc_ja:'残タスク連絡文を自動生成',href:'3ka_remaining_task.html',badge:'new'},
+  {group:'ka3',icon:'📋',logo:'report',name:'3課 残タスク生成ツール',name_ja:'3課 残タスク生成ツール',desc:'残タスク連絡文を自動生成',desc_ja:'残タスク連絡文を自動生成',href:'3ka_remaining_task.html',badge:''},
   {group:'ka3',icon:'📦',logo:'soon',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
   {group:'ka4',icon:'📦',logo:'soon',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
   {group:'ka5',icon:'📦',logo:'soon',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
-  {group:'ka6',icon:'📺',logo:'generic',name:'TVPR 关键字生成',name_ja:'TVPR キーワード生成',desc:'テレビ番組広告の検索キーワード生成（繁体字・Google/Yahoo）',desc_ja:'テレビ番組広告の検索キーワード生成（繁体字・Google/Yahoo）',href:'tvpr_check.html',badge:'new'},
-  {group:'ka6',icon:'🔗',logo:'generic',name:'三得利 UTM 檢查',name_ja:'三得利 UTM チェック',desc:'UTM 長鏈的參數・campaign 六段・LPID 末碼與本批條件比對，可匯出 CSV',desc_ja:'UTM 長鏈のパラメータ・campaign 6 段・LPID 末碼を本批条件と照合し CSV 出力',href:'suntory_utm_check.html',badge:'new'},
+  {group:'ka6',icon:'📺',logo:'tvpr',name:'TVPR 关键字生成',name_ja:'TVPR キーワード生成',desc:'テレビ番組広告の検索キーワード生成（繁体字・Google/Yahoo）',desc_ja:'テレビ番組広告の検索キーワード生成（繁体字・Google/Yahoo）',href:'tvpr_check.html',badge:''},
+  {group:'ka6',icon:'🔗',logo:'suntoryUtm',name:'三得利 UTM 檢查',name_ja:'三得利 UTM チェック',desc:'UTM 長鏈的參數・campaign 六段・LPID 末碼與本批條件比對，可匯出 CSV',desc_ja:'UTM 長鏈のパラメータ・campaign 6 段・LPID 末碼を本批条件と照合し CSV 出力',href:'suntory_utm_check.html',badge:''},
   {group:'report',icon:'📋',logo:'report',name:'BPO定例会 報告書',name_ja:'BPO定例会 報告書',desc:'年度目标・効率指標・核心成果・工作计划',desc_ja:'年度目標・効率指標・核心成果・業務計画',href:'bpo_weekly_report_malin.html',badge:'',perm:'管理者'},
   {group:'admin',icon:'📊',logo:'usage',name:'工具使用状况管理',name_ja:'ツール使用状況管理',desc:'课室・月度・日度・人员・工具别使用统计（管理者专用）',desc_ja:'課室・月次・日次・人員・ツール別の利用統計（管理者専用）',href:'usage_dashboard.html',badge:'',perm:'管理者',permDeniedName:'管理者専用',permDeniedDesc:'ツール使用状況管理は管理者のみ閲覧可能です'}
 ];
@@ -529,7 +529,7 @@ var GROUPS=[
   {id:'report',color:'#1a252f',labelKey:'report',label:'報告',expanded:false},
   {id:'admin',color:'#475569',labelKey:'adminMenu',label:'管理',expanded:false}
 ];
-var BADGE_MAP={'new':{cls:'badge-new',zh:'NEW',ja:'NEW'},'update':{cls:'badge-update',zh:'更新',ja:'更新'},'dev':{cls:'badge-dev',zh:'开发中',ja:'開発中'},'soon':{cls:'badge-soon',zh:'准备中',ja:'準備中'},'local':{cls:'badge-local',zh:'本地处理',ja:'ローカル'}};
+var BADGE_MAP={'update':{cls:'badge-update',zh:'更新',ja:'更新'},'dev':{cls:'badge-dev',zh:'开发中',ja:'開発中'},'soon':{cls:'badge-soon',zh:'准备中',ja:'準備中'},'local':{cls:'badge-local',zh:'本地处理',ja:'ローカル'}};
 
 // ==================== Complete UPDATE_LOG ====================
 var UPDATE_LOG=[
