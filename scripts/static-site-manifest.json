@@ -52,7 +52,7 @@
     {
       "path": "excel_compare.html",
       "source": "workspace",
-      "sha256": "9cde86927150c55bdabb1fb999e449f9de1acd85d9f67c521ea4ce66a31a12ad"
+      "sha256": "53ef4ae9bbe9c3f3437e3519e07a9a53df809abc395ac99485066f7eb38263fd"
     },
     {
       "path": "excel_formula_cleaner.html",
@@ -72,7 +72,7 @@
     {
       "path": "index.html",
       "source": "workspace",
-      "sha256": "07a6262861d084d831b8325afa5e185638196a05b2ed1e99caee776ce316ed7e"
+      "sha256": "0a6ba4e97b34f2415d73a2e91d7ab1403be376bf2f7557548a35ce24bb0ba7f1"
     },
     {
       "path": "jszip.min.js",
