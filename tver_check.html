@@ -299,11 +299,12 @@
     return !metadata || !metadata.Hidden;
   }
 
-  function getSheetRows(workbook, sheetName){
+  function getSheetRows(workbook, sheetName, expandMerges=true){
     const sheet=workbook && workbook.Sheets ? workbook.Sheets[sheetName] : null;
     if(Array.isArray(sheet)) return sheet;
     if(typeof XLSX!=='undefined' && XLSX.utils && sheet){
-      return expandMergedRows(XLSX.utils.sheet_to_json(sheet, { header:1, defval:'', raw:false }), sheet['!merges'] || []);
+      const rows=XLSX.utils.sheet_to_json(sheet, { header:1, defval:'', raw:false });
+      return expandMerges ? expandMergedRows(rows, sheet['!merges'] || []) : rows;
     }
     return [];
   }
@@ -977,7 +978,41 @@
     return { urls:members.map(member => member.url), members };
   }
 
-  function buildMeasurementTagIndex(rows, fileName, sheetName, diagnostics){
+  // NEW FMT Start: only the observed vendor block 「タグベンダー / vendor / 0%地点」.
+  // Index it independently: the same appeal label can be used at a different progress point.
+  function collectTverStartTags(index, rows, start, header, end, fileName, sheetName){
+    const text=value=>String(value ?? '').trim();
+    const source=(r,c,label)=>({ ...makeSettingSource(fileName,sheetName,r+1,label,rows[r][c] ?? ''),columnNumber:c+1 });
+    const vendorRows=[];
+    for(let r=start;r<header;r+=1){
+      (rows[r] || []).forEach((value,c)=>{
+        if(text(value)==='タグベンダー') vendorRows.push({r,c,point:text(rows[r][c+2]),vendor:text(rows[r][c+1])});
+      });
+    }
+    const zero=vendorRows.filter(record=>record.point==='0%地点');
+    if(!zero.length) return;
+    const points=vendorRows.map(({r,c})=>source(r,c+2,'計測地点'));
+    const columns=label=>(rows[header] || []).flatMap((value,c)=>text(value)===label ? [c] : []);
+    const appealCols=columns('タグ訴求'), urlCols=columns('タグ');
+    const uniqueBlock=vendorRows.length===1 && !!zero[0].vendor && !zero[0].vendor.includes(',')
+      && appealCols.length===1 && urlCols.length===1 && !columns('計測地点').length && !columns('計測場所').length;
+    for(let r=header+1;r<end;r+=1){
+      const row=rows[r] || [];
+      if(row.some(value=>text(value)==='タグベンダー' || text(value)==='設定用タグセット')) break;
+      const appealSources=appealCols.map(c=>source(r,c,'タグ訴求'));
+      const urls=urlCols.map(c=>source(r,c,'タグ'));
+      const sources=[...points,...appealSources,...urls];
+      for(const appeal of new Set(appealSources.map(s=>text(s.rawValue)).filter(Boolean))){
+        const previous=index.get(appeal);
+        const ambiguous=!!previous || !uniqueBlock;
+        const urlSource=!ambiguous && text(urls[0].rawValue) ? urls[0] : null;
+        index.set(appeal,{state:ambiguous ? 'ambiguous' : urlSource ? 'available' : 'not_provided',
+          urlSource,sources:[...(previous ? previous.sources : []),...sources]});
+      }
+    }
+  }
+
+  function buildMeasurementTagIndex(rows, fileName, sheetName, diagnostics, startIndex, physicalRows){
     const indexByAppeal={};
     const section=locateSection(rows, '計測タグ');
     if(!section) return indexByAppeal;
@@ -1002,6 +1037,7 @@
     candidates.forEach((header, blockIndex) => {
       const dataEnd=blockIndex+1<candidates.length ? candidates[blockIndex+1].rowIndex : section.endRowIndex;
       const blockStart=blockIndex===0 ? section.rowIndex+1 : candidates[blockIndex-1].rowIndex+1;
+      if(startIndex) collectTverStartTags(startIndex, physicalRows, blockStart, header.rowIndex, dataEnd, fileName, sheetName);
       const vendorHeader=measurementTagHeaderValue(header.headers, MEASUREMENT_TAG_VENDOR_LABELS);
       const measurementPointHeader=measurementTagHeaderValue(header.headers, ['計測地点', '計測場所']);
       const newOrReuseHeader=measurementTagHeaderValue(header.headers, ['新規/流用']);
@@ -1095,7 +1131,8 @@
       tracking_url_third_quartile:missing('SETTING_SOURCE_NOT_PROVIDED'),
       tracking_url_complete:missing('SETTING_SOURCE_NOT_PROVIDED'),
     };
-    if(tag){
+    // A 0%-only main column can still be the legacy identity input, never the source of Complete.
+    if(tag && (!sourceRefs.tagAppeal || sourceRefs.tagAppeal.columnName!==SETTING_TAG_APPEAL_SECONDARY_HEADERS[0])){
       if(tag.state==='ambiguous'){
         tracking.tracking_url_complete={ state:'ambiguous', value:null, reason:'SETTING_MEASUREMENT_TAG_AMBIGUOUS', sourceRef:sourceRefs.tagAppeal || null, mappings:tag.mappings, derivedFrom:uniqueSourceRefs([sourceRefs.tagAppeal]) };
       }else if(completeTrackingPoint(tag.measurementPoint) && String(tag.tagUrl ?? '').trim()!==''){
@@ -1558,11 +1595,14 @@
     const ads=[];
     const campaignBySignature=new Map();
     const adGroupBySignature=new Map();
+    const startTagIndex=headerIndex[SETTING_TAG_APPEAL_SECONDARY_HEADERS[0]]===undefined ? null : new Map();
+    // A merged タグ header is one physical column. Do not count its expanded copies as sources.
+    const physicalRows=startTagIndex ? getSheetRows(workbook, candidate.sheetName, false) : null;
     const sourceIndex={
       targetingByNumber:buildTargetingIndex(rows, fileName, candidate.sheetName, diagnostics),
       creativeByMaterial:buildCreativeIndex(rows, fileName, candidate.sheetName, diagnostics),
       uploadUrlByLandingPage:buildUploadUrlIndex(rows, fileName, candidate.sheetName, diagnostics),
-      measurementTagByAppeal:buildMeasurementTagIndex(rows, fileName, candidate.sheetName, diagnostics),
+      measurementTagByAppeal:buildMeasurementTagIndex(rows, fileName, candidate.sheetName, diagnostics, startTagIndex, physicalRows),
       evidenceBlocks:buildEvidenceBlocks(rows, fileName, candidate.sheetName),
     };
      const fieldHeaders={ campaignName:'発注CPN名', campaignAppeal:'CPN訴求', campaignBudget:'CPN予算', startDateTime:'開始日時(yyyy/mm/dd hh:mm)', endDateTime:'終了日時(yyyy/mm/dd hh:mm)', initialDailyBudget:'初期設定日予算', otherSettings:'その他設定', changeHistory:'変更履歴' };
@@ -1673,6 +1713,11 @@
         sourceEvidence:{ fields:Object.fromEntries(Object.entries(adSourceRefs).map(([field, source]) => [field, uniqueSourceRefs([source])])), derived:{ creativeFileName:{ derivedFrom:creativeDerivedFrom, primarySource:adSourceRefs.creativeFileName || null }, landingPageUrl:{ derivedFrom:landingPageDerivedFrom, primarySource:adSourceRefs.landingPageUrl || null } } },
         expectedName:creative && creative.state==='unique' ? creative.fileName : null, nameRuleId:'TVER_260605_AD_CREATIVE_LINK', nameComponents:{ materialName, creativeFileName:creative && creative.state==='unique' ? creative.fileName : null },
       };
+      if(startTagIndex){
+        const column=headerIndex[SETTING_TAG_APPEAL_SECONDARY_HEADERS[0]];
+        const appealSource={ ...makeSettingSource(fileName,candidate.sheetName,rowNumber,SETTING_TAG_APPEAL_SECONDARY_HEADERS[0],(physicalRows[rowIndex] || [])[column] ?? ''),columnNumber:column+1 };
+        ad.trackingStart={appealSource,mapping:startTagIndex.get(String(appealSource.rawValue).trim()) || null};
+      }
       ads.push(ad);
     }
     const model={ campaigns, adGroups, ads, diagnostics, sourceIndex, templateVersion:'260605' };
@@ -4820,6 +4865,30 @@
     return evidence.length ? evidence : uniqueSourceRefs([fallbackSource]);
   }
 
+  function addTverStartTrackingInput(inputs,base,setting,csv,parsedCsv){
+    const field='tracking_url_start';
+    const {appealSource,mapping}=setting.trackingStart;
+    const urlSource=mapping && mapping.urlSource;
+    const settingState=mapping ? mapping.state : 'not_provided';
+    const rows=csv.rawRows || [];
+    const csvEvidence=collectFieldEvidence(rows,field);
+    const values=new Set(csvEvidence.map(s=>String(s.rawValue ?? '')));
+    const csvState=!tverCsvSchemaHasField(parsedCsv,field) || !rows.length || rows.some(row=>!row.sourceRefs || !row.sourceRefs[field])
+      ? 'unavailable' : values.size>1 ? 'ambiguous' : 'available';
+    const csvValue=csvState==='available' ? String(csvEvidence[0].rawValue ?? '') : '';
+    // A blank, unresolved appeal plus a blank CSV has no demonstrated expectation.
+    if(!String(appealSource.rawValue).trim() && ![...values].some(value=>value.trim()!=='')) return;
+    const reason=settingState!=='available' ? 'TRACKING_START_SETTING_UNCONFIRMED'
+      : csvState==='ambiguous' ? 'TRACKING_START_CSV_CONFLICT'
+      : csvState==='unavailable' ? 'TRACKING_START_CSV_UNAVAILABLE' : null;
+    const settingEvidence=[...new Map([appealSource,...(mapping ? mapping.sources : [])].map(source=>[source.rowNumber+":"+source.columnNumber,source])).values()];
+    addFieldResult(inputs,base,field,urlSource ? urlSource.rawValue : '',csvValue,urlSource,csvState==='available' ? csvEvidence[0] : null,{
+      ruleBasis:'TVER_NEW_FMT_TRACKING_START_0_PERCENT',settingEvidenceState:settingState,csvEvidenceState:csvState,
+      comparable:!reason,alwaysDisplay:true,comparisonStatus:reason ? '需确认' : undefined,conservativeReason:reason,
+      sourceEvidence:{setting:settingEvidence,csv:csvEvidence,derivedFrom:settingEvidence},
+    });
+  }
+
   function entrySourceEvidence(setting, settingField, settingSource, csv, csvField, csvSource, derivedFrom){
     const derived=uniqueSourceRefs(derivedFrom || []);
     return {
@@ -5356,6 +5425,10 @@
           // 不参与行聚合、GUI 不显示空字段）——両側无可比较数据，非「一致」也非「要確認」。
           // CASE B（Setting 有值+CSV 空）与 CASE C（Setting missing+CSV 有值）维持正式比较/保守判定。
           Object.keys(resolved.tracking).forEach(field => {
+            if(field==='tracking_url_start' && setting.trackingStart){
+              addTverStartTrackingInput(inputs,base,setting,csv,parsedCsv);
+              return;
+            }
             const tracking=resolved.tracking[field];
             const csvValue=csvField(csv, field.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()), field);
             const trackingCompleteBothEmpty=field==='tracking_url_complete' && tracking.state==='missing' && !String(csvValue ?? '').trim();
@@ -6001,6 +6074,9 @@
   }
 
   const TVER_DISPLAY_REASON_MESSAGES={
+    TRACKING_START_SETTING_UNCONFIRMED:'0%のタグ訴求・計測地点・タグURLを一意に確認できません',
+    TRACKING_START_CSV_CONFLICT:'同一広告のCSV行で0%の計測URLが競合しています',
+    TRACKING_START_CSV_UNAVAILABLE:'0%の計測URLを比較するCSV列または行の根拠がありません',
     CTV_EXPANSION_RULE_UNCONFIRMED:'CTVアップロード拡張率の期待値は手順に明示されていないため要確認です',
     CTV_NOT_REQUIRED_FIELD_PRESENT:'CTV手順で設定不要とされる項目にCSV値があります。禁止値とは断定せず適用範囲を確認してください',
     CTV_CSV_IDENTITY_CONFLICT:'CTVのCSVで同じIDの親Campaign／GPまたは役割・素材の識別値が競合しています。先頭行だけで一致とせず、構造を確認してください',
