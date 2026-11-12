@@ -96,7 +96,33 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 #xlcomp-unified-location { overflow-wrap:anywhere;color:#e2edf6; }
 .xlcomp-result-message,.xlcomp-mode-limit { padding:12px 16px;margin:0 0 12px;border-radius:6px;
   background:#e5f6ed;color:#17563c;border:1px solid #a8d4b8;font-size:14px; }
-.xlcomp-mode-limit,.xlcomp-result-message[data-incomplete] { background:#fff0d8;color:#784106;border-color:#ddbc86; }
+.xlcomp-mode-limit{ background:#eef2f7;color:#37474f;border-color:#c3ccd6; }
+.xlcomp-result-message[data-state="skipped"],.xlcomp-result-message[data-state="unsupported"]
+  { background:#eef2f7;color:#37474f;border-color:#c3ccd6; }
+.xlcomp-result-message[data-state="failed"] { background:#fdeaea;color:#8a2027;border-color:#e3b4b4; }
+.xlcomp-result-message[data-state="partial"] { background:#fff0d8;color:#784106;border-color:#ddbc86; }
+.xlcomp-incomplete { background:#fff0d8;color:#784106;border:1px solid #ddbc86;border-radius:6px;
+  padding:12px 16px;margin:0 0 12px;font-size:14px; }
+.xlcomp-incomplete-title { margin:0 0 6px;font-weight:bold;font-size:15px; }
+.xlcomp-incomplete-summary { margin:0 0 4px; }
+.xlcomp-incomplete-note { margin:0 0 10px; }
+.xlcomp-incomplete-toggle { background:#fff;color:#784106;border:1px solid #c08a3a;border-radius:4px;
+  padding:5px 12px;font-size:14px;cursor:pointer; }
+.xlcomp-incomplete-toggle:hover { background:#fffaf0; }
+.xlcomp-incomplete-toggle:focus-visible { outline:3px solid #a9d8ff;outline-offset:2px; }
+.xlcomp-limit { margin-top:10px;background:#fff;border:1px solid #cbd5df;border-radius:6px;color:#253746; }
+.xlcomp-limit[hidden] { display:none; }
+.xlcomp-limit table { border-collapse:collapse;width:100%;font-size:14px; }
+.xlcomp-limit caption { padding:10px 12px;text-align:left;font-weight:bold; }
+.xlcomp-limit th,.xlcomp-limit td { padding:8px 10px;text-align:left;vertical-align:top;
+  border-bottom:1px solid #e0e7ef; }
+.xlcomp-limit thead th { background:#edf2f7; }
+.xlcomp-limit td { overflow-wrap:anywhere; }
+.xlcomp-limit-unknown { color:#7a5000; }
+.xlcomp-limit-hint { font-size:13px;color:#546e7a; }
+.xlcomp-limit-note { padding:10px 12px 0;margin:0;font-size:13px;color:#546e7a; }
+.xlcomp-color-note { font-size:13px;color:#37474f;margin-left:4px;cursor:help; }
+@media(max-width:640px){ .xlcomp-limit th,.xlcomp-limit td { padding:7px 6px;font-size:13px; } }
 .xlcomp-border-detail { background:white;border:1px solid #cbd5df;border-radius:8px;overflow:hidden;color:#253746; }
 .xlcomp-border-detail table { border-collapse:collapse;width:100%;font-size:14px; }
 .xlcomp-border-detail caption { padding:12px 14px;text-align:left;font-weight:bold; }
@@ -343,8 +369,8 @@ function qcHeaderLang(lang){
     <span data-xlcomp-label="advanced">高级选项 · 选择 Sheet</span>
   </label>
   <span id="xlcomp-option-unsupported-note" class="xl-fast-disabled-note" style="display:none;"></span>
-  <span id="xlcomp-color-note" style="display:none;font-size:0.72rem;color:#e67e22;margin-left:4px;"
-        title="颜色对比以单元格直接设置的样式为准，条件格式产生的显示颜色可能无法识别。" data-xlcomp-title="colorNoteTitle" data-i18n="compareColorNote">⚠ 条件格式颜色可能无法识别</span>
+  <span id="xlcomp-color-note" class="xlcomp-color-note" style="display:none"
+        data-xlcomp-title="colorNoteTitle"><span data-xlcomp-label="colorNoteLabel">ⓘ 颜色检查范围</span></span>
   <button id="btn-exp-xlcomp" onclick="exportXlComp()"
           style="display:none;background:#8e44ad;color:white;border:none;border-radius:4px;
                  padding:8px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;margin-left:auto;"
@@ -452,6 +478,11 @@ function xlcompEscapeAttr(s){ return esc(s).replace(/"/g,'&quot;'); }
 let xlcompFileA = null, xlcompFileB = null;
 let xlcompCmpBorder=true, xlcompStandardBusy=false;
 let xlcompBorderDiffs=[], xlcompCategoryIssues={};
+// 检查限制明细（结构化）：限制类型 / 文件 / Sheet / 范围 / 是否可精确定位 / 覆盖状态
+let xlcompLimits=[], xlcompLimitPanelOpen=null;
+const XLCOMP_LIMIT_MAX_RANGES=100;   // 单 Sheet 行默认样式逐条记录上限，超出改为汇总
+const XLCOMP_LIMIT_GROUP_MAX=40;     // 明细表最多显示的汇总组数
+const XLCOMP_LIMIT_RANGE_SHOW=8;     // 每组最多列出的范围数
 let xlcompZipReport=null;
 let xlcompWbA   = null, xlcompWbB   = null;
 let xlcompResults = null;
@@ -931,6 +962,27 @@ function xlcompBorderColor(node,wb,palette){
     return xlcompBorderTint(rgb,tint);
 }
 
+// 列番号(1-based) → Excel 列范围文本（只转写 min/max，不虚构地址）
+function xlcompColumnSpanText(from,to){
+    const start=XLSX.utils.encode_col(Math.max(1,from)-1);
+    const end=XLSX.utils.encode_col(Math.max(from,to||from)-1);
+    return start+':'+end;
+}
+
+// 标准模式上限之外的“实际未比较部分”。
+// 行带=下方整宽、列带=右侧仅已比较的行 → 行列同时超限时两者不重叠、不重复计数。
+function xlcompClipRanges(range,maxRows,maxCols){
+    if(!range) return [];
+    const lastRow=Math.min(range.e.r,range.s.r+maxRows-1);
+    const lastCol=Math.min(range.e.c,range.s.c+maxCols-1);
+    const out=[];
+    if(range.e.r>lastRow) out.push(XLSX.utils.encode_range(
+        {s:{r:lastRow+1,c:range.s.c},e:{r:range.e.r,c:range.e.c}}));
+    if(range.e.c>lastCol) out.push(XLSX.utils.encode_range(
+        {s:{r:range.s.r,c:lastCol+1},e:{r:lastRow,c:range.e.c}}));
+    return out;
+}
+
 function xlcompReadBorderTable(styles,wb){
     const palette=xlcompXmlChildren(xlcompXmlChild(xlcompXmlChild(styles,'colors'),'indexedColors'),'rgbColor')
         .map(node=>xlcompNormalizeColor({rgb:node.getAttribute('rgb')},'font',wb));
@@ -976,7 +1028,8 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
     const {zip,bookPart,relationships,sheets}=await xlcompXmlWorkbook(wb,fileOrBuf);
     const map=new Map();
     const borderMap=new Map();
-    let table=null, borderError=null, borderLimited=false;
+    const borderLimitsBySheet=wb._borderLimitsBySheet||new Map();
+    let table=null, borderError=null;
     if(needBorders){
         try{
             const rel=relationships.find(el=>el.getAttribute('Type')?.endsWith('/styles'));
@@ -992,21 +1045,30 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
         map.set(sheetName,cellMap);
         borderMap.set(sheetName,sheetBorders);
         if(!rel.getAttribute('Type')?.endsWith('/worksheet')){
-            if(needBorders) borderLimited=true;
+            if(needBorders) borderLimitsBySheet.set(sheetName,[{type:'unsupportedSheet',
+                sheet:sheetName,range:'',precise:false,coverage:'notChecked',count:1}]);
             continue;
         }
         const root=await xlcompReadXml(zip,xlcompRelationshipPath(bookPart,rel.getAttribute('Target')),'worksheet');
         const rows=xlcompXmlChildren(xlcompXmlChild(root,'sheetData'),'row');
         const view=xlcompXmlChild(xlcompXmlChild(root,'sheetViews'),'sheetView');
         const rtl=['1','true'].includes(view?.getAttribute('rightToLeft'));
-        let rowNumber=0;
+        let rowNumber=0, invalidRefs=0;
+        const rowStyleHits=[];
         for(const row of rows){
             rowNumber=Number(row.getAttribute('r')??rowNumber+1);
+            if(needBorders&&table&&!borderError){
+                const rowStyle=row.getAttribute('s');
+                if(rowStyle){
+                    try{ if(Object.keys(table.resolve(rowStyle,rtl)).length) rowStyleHits.push(rowNumber); }
+                    catch(err){ borderError=err; }
+                }
+            }
             let column=0;
             for(const cell of xlcompXmlChildren(row,'c')){
                 const ref=cell.getAttribute('r');
                 if(ref!==null&&!/^[A-Z]{1,3}[1-9]\d{0,6}$/.test(ref)){
-                    if(needBorders) borderLimited=true;
+                    if(needBorders) invalidRefs++;
                     continue;
                 }
                 if(ref) column=XLSX.utils.decode_cell(ref).c;
@@ -1021,28 +1083,61 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
                 }
             }
         }
+        if(!needBorders) continue;
+        const sheetLimits=[];
+        if(invalidRefs) sheetLimits.push({type:'invalidRef',sheet:sheetName,range:'',
+            precise:false,coverage:'notChecked',count:1,cells:invalidRefs});
         if(table&&!borderError){
             try{
-                const hasBorder=id=>Object.keys(table.resolve(id,rtl)).length>0;
+                const visibleStyle=id=>Object.keys(table.resolve(id,rtl)).length>0;
+                // 工作表既定の書式：個別スタイルを持たないセルはこの罫線を継承するため未比較。
+                if(visibleStyle('0')) sheetLimits.push({type:'sheetDefault',sheet:sheetName,
+                    range:'',precise:true,coverage:'notChecked',count:1,wholeSheet:true});
+                // 行/列の既定書式：個別に書式を持つセルだけを比較済みのため、残りは未確認。
+                if(rowStyleHits.length<=XLCOMP_LIMIT_MAX_RANGES){
+                    rowStyleHits.forEach(rowNo=>sheetLimits.push({type:'rowDefault',sheet:sheetName,
+                        range:rowNo+':'+rowNo,precise:true,coverage:'partial',count:1}));
+                }else{
+                    // 已取得全部行号，但不逐个列出 → 汇总显示，不写成“无法精确定位”。
+                    sheetLimits.push({type:'rowDefault',sheet:sheetName,range:'',precise:false,
+                        aggregated:true,coverage:'partial',count:rowStyleHits.length,
+                        first:rowStyleHits[0],last:rowStyleHits[rowStyleHits.length-1],
+                        sample:rowStyleHits.slice(0,XLCOMP_LIMIT_RANGE_SHOW)});
+                }
                 const cols=xlcompXmlChildren(xlcompXmlChild(root,'cols'),'col');
-                // Whole-row/column defaults and conditional formatting may affect cells
-                // without a direct style record. Do not mark those sheets fully checked.
-                borderLimited ||= hasBorder('0')||
-                    rows.some(row=>row.hasAttribute('s')&&hasBorder(row.getAttribute('s')))||
-                    cols.some(col=>col.hasAttribute('style')&&hasBorder(col.getAttribute('style')))||
-                    xlcompXmlChildren(root,'conditionalFormatting').some(group=>
-                        xlcompXmlChildren(group,'cfRule').some(rule=>{
-                            const id=rule.getAttribute('dxfId');
-                            return id!==null&&!!xlcompXmlChild(table.dxfs[Number(id)],'border');
-                        }));
+                const colSpans=new Set();
+                for(const col of cols){
+                    const style=col.getAttribute('style');
+                    if(!style||!visibleStyle(style)) continue;
+                    const from=Number(col.getAttribute('min')||0);
+                    const to=Number(col.getAttribute('max')||0)||from;
+                    if(from>0) colSpans.add(xlcompColumnSpanText(from,to));
+                }
+                for(const span of colSpans) sheetLimits.push({type:'colDefault',
+                    sheet:sheetName,range:span,precise:true,coverage:'partial',count:1});
+                // 条件付き書式：ルールの適用範囲のみ取得。実際の表示結果は計算していない。
+                for(const group of xlcompXmlChildren(root,'conditionalFormatting')){
+                    const rules=xlcompXmlChildren(group,'cfRule').filter(rule=>{
+                        const id=rule.getAttribute('dxfId');
+                        return id!==null&&!!xlcompXmlChild(table.dxfs[Number(id)],'border');
+                    });
+                    if(!rules.length) continue;
+                    const sqref=(group.getAttribute('sqref')||'').trim();
+                    const same=sqref&&sheetLimits.find(item=>item.type==='condFormatBorder'&&item.range===sqref);
+                    if(same){ same.rules+=rules.length; continue; }
+                    sheetLimits.push({type:'condFormatBorder',sheet:sheetName,range:sqref,
+                        precise:!!sqref,coverage:'rangeOnly',count:1,rules:rules.length});
+                }
             }catch(err){ borderError=err; }
         }
+        borderLimitsBySheet.set(sheetName,sheetLimits);
     }
     wb._cellStyleMap=map;
     if(needBorders){
         wb._borderStyleMap=borderMap;
         wb._borderStyleError=borderError;
-        wb._borderStyleLimited=borderLimited;
+        wb._borderLimitsBySheet=borderLimitsBySheet;
+        wb._borderStyleLimited=sheetNames.some(name=>(borderLimitsBySheet.get(name)||[]).length>0);
     }
 }
 
@@ -1694,7 +1789,14 @@ async function doXlComp(selected){
                     if(workbooks.some(wb=>wb._borderStyleError)) xlcompCategoryIssues.border='failed';
                     else{
                         xlcompBorderDiffs=xlcompCompareBorders(xlcompWbA,xlcompWbB,common);
-                        if(workbooks.some(wb=>wb._borderStyleLimited)) xlcompCategoryIssues.border='borderLimited';
+                        [[xlcompWbA,'A'],[xlcompWbB,'B']].forEach(([wb,file])=>{
+                            common.forEach(sheet=>{
+                                (wb._borderLimitsBySheet?.get(sheet)||[]).forEach(item=>
+                                    xlcompLimits.push(Object.assign({category:'border',file},item)));
+                            });
+                        });
+                        if(xlcompLimits.some(item=>item.category==='border'))
+                            xlcompCategoryIssues.border='borderLimited';
                     }
                 }
             }catch(err){
@@ -1705,16 +1807,25 @@ async function doXlComp(selected){
 
         xlcompResults=Object.create(null);
         selected.forEach(name=>{ xlcompResults[name]=compareSheet(name); });
-        if(Object.values(xlcompResults).some(result=>result.clipped)){
+        const clippedSheets=Object.entries(xlcompResults).filter(([,result])=>result.clipped);
+        if(clippedSheets.length){
             for(const category of ['cell','bgcolor','fontcolor','numfmt']){
                 xlcompCategoryIssues[category]??='clipped';
             }
+            clippedSheets.forEach(([sheet,result])=>{
+                (result.clipRanges||[]).forEach(range=>xlcompLimits.push({category:'cell',
+                    categories:['cell','bgcolor','fontcolor','numfmt'],type:'clippedRange',
+                    file:'AB',sheet,range,precise:true,coverage:'notChecked',count:1}));
+            });
         }
         if(xlcompCmpFormula){
             try{
                 if(!xmlFiles&&common.length){
                     xlcompExtMapA=[]; xlcompExtMapB=[];
                     xlcompCategoryIssues.formula='externalLimited';
+                    if(!xlcompLimits.some(item=>item.category==='formula'))
+                        xlcompLimits.push({category:'formula',type:'externalTarget',file:'AB',
+                            sheet:'',range:'',precise:false,coverage:'notChecked',count:1});
                 }
                 await prepareFormulaComparison();
             }catch(err){ xlcompCategoryIssues.formula='failed'; }
@@ -1784,6 +1895,8 @@ function compareSheet(name){
 
     const clipped=!!unifiedRange&&(unifiedRange.e.r-unifiedRange.s.r+1>XLCOMP_MAX_ROWS||
         unifiedRange.e.c-unifiedRange.s.c+1>XLCOMP_MAX_COLS);
+    // 未检查范围 = 实际未进入比较的部分（不是整个原始范围）
+    const clipRanges=clipped?xlcompClipRanges(unifiedRange,XLCOMP_MAX_ROWS,XLCOMP_MAX_COLS):[];
     const truncated=rawRowsA>XLCOMP_MAX_ROWS||rawRowsB>XLCOMP_MAX_ROWS;
     const truncateArgs=truncated?[rawRowsA.toLocaleString(),rawRowsB.toLocaleString(),XLCOMP_MAX_ROWS.toLocaleString()]:[];
 
@@ -1918,6 +2031,7 @@ function compareSheet(name){
     return { status:'both', rows, colHeaders, diffCount, addCount, delCount,
              bgDiffCount, fontDiffCount, numFmtDiffCount,
              totalA:countContentRows(arrA), totalB:countContentRows(arrB), truncated, truncateArgs, clipped,
+             clipRanges,
              cmpBg:xlcompCmpBg, cmpFont:xlcompCmpFont, cmpNumFmt:xlcompCmpNumFmt };
 }
 
@@ -2546,8 +2660,9 @@ const XLCOMP_LOCAL_TEXT={
     fastReport:['Excel对比报告（高速模式）','Excel 比較レポート（高速モード）'],
     alwaysCheck:['始终检查','常に比較する'], alwaysSelected:['始终选中','常に選択'], autoCheck:['自动检查','自動で比較する'],
     compareOptions:['对比项目','比較項目'],
-    colorNoteTitle:['颜色对比以单元格直接设置的样式为准，条件格式产生的显示颜色可能无法识别。',
-        'セルに直接設定された色を比較します。条件付き書式で表示される色は検出できない場合があります。'],
+    colorNoteTitle:['背景色和字体色主要比较单元格直接设置的颜色。条件格式产生的显示颜色不属于完整检查范围。',
+        '背景色と文字色は、主にセルに直接設定された色を比較します。条件付き書式によって表示される色は、完全な比較の対象外です。'],
+    colorNoteLabel:['ⓘ 颜色检查范围','ⓘ 色の比較範囲'],
     encryptedTitle:['检测到加密的Excel文件','パスワードで保護された Excel ファイルが検出されました'],
     encryptedHelp:['该文件已设置<b>密码保护</b>，工具无法直接读取。<br>请先在Excel中<b>解除密码</b>，再重新上传。',
         'このファイルは<b>パスワードで保護</b>されているため読み込めません。<br>Excel で<b>パスワードを解除</b>してから、アップロードし直してください。'],
@@ -2594,7 +2709,7 @@ const XLCOMP_LOCAL_TEXT={
     top:['上边框','上罫線'], bottom:['下边框','下罫線'], left:['左边框','左罫線'], right:['右边框','右罫線'],
     diagonalUp:['上升斜线 ↗','右上がり斜線 ↗'], diagonalDown:['下降斜线 ↘','右下がり斜線 ↘'],
     added:['新增','追加'], removed:['删除','削除'], lineStyle:['线型','線種'], color:['颜色','色'],
-    pass:['无差异','差異なし'], diff:['有差异','差異あり'], incomplete:['有未完成项目','未完了の項目あり'],
+    pass:['无差异','差異なし'], diff:['有差异','差異あり'], incomplete:['检查不完整','比較が不完全'],
     failed:['检查失败','比較失敗'], skipped:['未检查 · 未选择此项目','未比較 · 項目が未選択'],
     fileUnsupported:['未检查 · 该项目需要 XLSX 或 XLSM','未比較 · XLSX または XLSM が必要'],
     borderLimited:['部分检查 · 行列默认样式或条件格式等未检查','一部比較 · 行列の既定書式や条件付き書式などは未比較'],
@@ -2620,7 +2735,40 @@ const XLCOMP_LOCAL_TEXT={
     zipCompare:['⏳ 正在对比 {0} 个同名文件...','⏳ 同名ファイル {0} 件を比較中…'],
     zipStyles:['⏳ 正在解析样式信息...','⏳ 書式情報を解析中…'],
     zipFailed:['❌ 失败：','❌ 処理に失敗しました：'],
-    report:['Excel 对比报告','Excel比較レポート'], allCheckedPass:['已检查的项目无差异','比較済みの項目に差異なし']
+    report:['Excel 对比报告','Excel比較レポート'], allCheckedPass:['已检查的项目无差异','比較済みの項目に差異なし'],
+    incompleteTitle:['检查不完整','比較が不完全'],
+    viewReasons:['查看原因与位置','理由と位置を表示'],
+    hideReasons:['收起原因与位置','理由と位置を閉じる'],
+    limitSummary:['已确认差异 {0} 项 · 另有 {1} 个范围尚未完整检查','確認済みの差異 {0} 件 · 別に {1} 件の範囲が未確認'],
+    limitNotDiff:['尚未完整检查的范围不计入差异，请人工确认。','未確認の範囲は差異に含めていません。目視でご確認ください。'],
+    limitNoDetail:['没有可定位的详细原因。','特定できる詳細な理由はありません。'],
+    limitNoAddress:['无法精确定位','正確な位置を特定できません'],
+    limitMoreRanges:['…另 {0} 个范围','…ほか {0} 件'],
+    limitMoreGroups:['另有 {0} 组原因未显示，已按原因汇总。','ほか {0} グループは省略し、理由ごとに集約しています。'],
+    limitRangeCount:['{0} 个范围','{0} 件の範囲'],
+    limitRowSpan:['（第 {0}～{1} 行，共 {2} 个范围）','（{0}～{1} 行、全 {2} 件）'],
+    limitTableTitle:['检查限制明细 · {0} 个范围需要确认','比較制限の明細 · {0} 件の範囲で確認が必要'],
+    limitFile:['文件','ファイル'], limitSheet:['Sheet','シート'], limitRange:['范围','範囲'],
+    wholeSheet:['整个工作表','シート全体'],
+    limitAggregated:['涉及 {0} 行，已汇总显示','{0} 行が該当、集約して表示'],
+    limitAggregatedSample:['例：第 {0} 行 …（省略 {1} 行）','例：{0} 行目 …（{1} 行省略）'],
+    limitAggregatedSpan:['首行 {0} / 末行 {1}','先頭行 {0} / 最終行 {1}'],
+    limitReason:['原因','理由'], limitCoverage:['检查覆盖状态','比較の状況'],
+    bothFiles:['文件 A / 文件 B','ファイル A / ファイル B'],
+    sheetDefault:['工作表默认样式（整表继承的边框）','シート既定の書式（全体に継承される罫線）'],
+    rowDefault:['行默认样式（该行未单独设格式的单元格）','行の既定書式（書式を個別に持たないセル）'],
+    colDefault:['列默认样式（该列未单独设格式的单元格）','列の既定書式（書式を個別に持たないセル）'],
+    condFormatBorder:['条件格式的边框规则','条件付き書式の罫線ルール'],
+    unsupportedSheet:['非工作表类型的 Sheet','ワークシート以外のシート'],
+    invalidRef:['无法解析的单元格引用','解析できないセル参照'],
+    clippedRange:['超出标准模式对比范围','標準モードの比較範囲外'],
+    externalTarget:['外部参照目标','外部参照先'],
+    coverageNotChecked:['未检查','未比較'],
+    coveragePartial:['部分检查（该范围内有独立格式的单元格已比较）','一部比較（書式を個別に持つセルは比較済み）'],
+    coverageRangeOnly:['已取得范围，未判定实际显示','範囲のみ取得・実際の表示は未判定'],
+    condFormatNote:['条件格式只读取了规则适用范围，未计算实际显示效果，因此不计入差异。','条件付き書式は適用範囲のみ取得しており、実際の表示は計算していません。差異には計上しません。'],
+    modeLimitLabel:['未执行说明','未実行の説明'],
+    borderLimited:['部分检查 · 详见下方原因与位置','一部比較 · 理由と位置は下記を参照'],
 };
 
 function xlcompText(key,...args){
@@ -2695,7 +2843,8 @@ function xlcompShowUnifiedNav(){
         const label=xlcompCategoryLabel(item.key,item);
         btn.textContent=item.state==='pass'?xlcompText(item.key)+' · ✓ 0':label;
         btn.setAttribute('aria-label',label);
-        btn.title=item.issue?xlcompText(item.issue):label;
+        btn.title=item.issue?(item.state==='partial'?xlcompText('partial')+' · '+xlcompText('viewReasons'):
+            xlcompText(item.issue)):label;
         btn.onclick=()=>xlcompSwitchView(item.key);
         return btn;
     }));
@@ -2784,10 +2933,131 @@ function xlcompUnifiedNav(dir){
     xlcompUpdateUnifiedPosition();
 }
 
+function xlcompCategoryLimits(view){
+    return (xlcompLimits||[]).filter(item=>item.category===view||
+        (Array.isArray(item.categories)&&item.categories.includes(view)));
+}
+
+function xlcompLimitRangeCount(view){
+    return xlcompCategoryLimits(view).reduce((total,item)=>total+(item.count||1),0);
+}
+
+// 同一（原因・Sheet・文件）合并为一组，范围列表封顶，避免大表把页面拖死。
+function xlcompLimitGroups(view){
+    const groups=new Map();
+    for(const item of xlcompCategoryLimits(view)){
+        const key=[item.type,item.sheet||'',item.file||''].join('\u0001');
+        let group=groups.get(key);
+        if(!group){
+            group={type:item.type,sheet:item.sheet||'',file:item.file||'',ranges:[],count:0,
+                precise:item.precise!==false,coverage:item.coverage||'notChecked',
+                wholeSheet:!!item.wholeSheet,aggregated:false,sample:[],first:null,last:null};
+            groups.set(key,group);
+        }
+        group.count+=item.count||1;
+        if(item.precise===false) group.precise=false;
+        if(item.wholeSheet) group.wholeSheet=true;
+        if(item.aggregated){
+            group.aggregated=true;
+            if(Array.isArray(item.sample)) group.sample=item.sample.slice(0,XLCOMP_LIMIT_RANGE_SHOW);
+        }
+        if(item.range&&!group.ranges.includes(item.range)) group.ranges.push(item.range);
+        if(item.first!==undefined&&item.first!==null) group.first=item.first;
+        if(item.last!==undefined&&item.last!==null) group.last=item.last;
+    }
+    return [...groups.values()];
+}
+
+function xlcompLimitFileLabel(file){
+    return xlcompText(file==='A'?'fileA':file==='B'?'fileB':'bothFiles');
+}
+
+function xlcompLimitCoverageKey(coverage){
+    return 'coverage'+coverage.charAt(0).toUpperCase()+coverage.slice(1);
+}
+
+function xlcompLimitTableHtml(view){
+    const groups=xlcompLimitGroups(view);
+    if(!groups.length) return `<p class="xlcomp-limit-note">${xlcompText('limitNoDetail')}</p>`;
+    const rows=groups.slice(0,XLCOMP_LIMIT_GROUP_MAX).map(group=>{
+        const shown=group.ranges.slice(0,XLCOMP_LIMIT_RANGE_SHOW);
+        let location;
+        if(group.wholeSheet){
+            location=`<td>${xlcompText('wholeSheet')}</td>`;
+        }else if(group.aggregated){
+            // 已取得全部行号但汇总显示：明确「已汇总」+ 举例 + 省略数量 + 首末行，不写成连续区间。
+            const shownRows=group.sample.map(rowNo=>String(rowNo)).join('、');
+            const omitted=Math.max(0,group.count-group.sample.length);
+            location=`<td>${xlcompText('limitAggregated',group.count)}
+                ${shownRows?`<div class="xlcomp-limit-hint">${xlcompText('limitAggregatedSample',shownRows,omitted)}</div>`:''}
+                <div class="xlcomp-limit-hint">${xlcompText('limitAggregatedSpan',group.first,group.last)}</div></td>`;
+        }else if(group.precise&&shown.length){
+            const rest=group.ranges.length-shown.length;
+            const more=rest>0?' '+xlcompText('limitMoreRanges',rest):
+                group.count>shown.length?' · '+xlcompText('limitRangeCount',group.count):'';
+            location=`<td>${shown.map(esc).join('、')}${more}</td>`;
+        }else{
+            const hint=group.first!==null?
+                ' <span class="xlcomp-limit-hint">'+
+                xlcompText('limitRowSpan',group.first,group.last??group.first,group.count)+'</span>':
+                group.count>1?' <span class="xlcomp-limit-hint">'+
+                xlcompText('limitRangeCount',group.count)+'</span>':'';
+            location=`<td class="xlcomp-limit-unknown">${xlcompText('limitNoAddress')}${hint}</td>`;
+        }
+        return `<tr><td>${esc(xlcompLimitFileLabel(group.file))}</td>
+            <td>${group.sheet?esc(group.sheet):'—'}</td>${location}
+            <td>${esc(xlcompText(group.type))}</td>
+            <td>${esc(xlcompText(xlcompLimitCoverageKey(group.coverage)))}</td></tr>`;
+    }).join('');
+    const hidden=groups.length>XLCOMP_LIMIT_GROUP_MAX
+        ?`<p class="xlcomp-limit-note">${xlcompText('limitMoreGroups',groups.length-XLCOMP_LIMIT_GROUP_MAX)}</p>`:'';
+    const condNote=groups.some(group=>group.type==='condFormatBorder')
+        ?`<p class="xlcomp-limit-note">${xlcompText('condFormatNote')}</p>`:'';
+    return `${condNote}<div class="xlcomp-limit-table"><table>
+      <caption>${xlcompText('limitTableTitle',xlcompLimitRangeCount(view))}</caption>
+      <thead><tr><th scope="col">${xlcompText('limitFile')}</th><th scope="col">${xlcompText('limitSheet')}</th>
+      <th scope="col">${xlcompText('limitRange')}</th><th scope="col">${xlcompText('limitReason')}</th>
+      <th scope="col">${xlcompText('limitCoverage')}</th></tr></thead><tbody>${rows}</tbody></table></div>${hidden}`;
+}
+
+function xlcompIncompleteHtml(view,count){
+    const rangeCount=xlcompLimitRangeCount(view);
+    const open=xlcompLimitPanelOpen===view;
+    return `<div class="xlcomp-incomplete" data-state="partial">
+      <p class="xlcomp-incomplete-title">⚠ ${xlcompText('incompleteTitle')} · ${esc(xlcompText(view))}</p>
+      <p class="xlcomp-incomplete-summary">${xlcompText('limitSummary',count||0,rangeCount)}</p>
+      <p class="xlcomp-incomplete-note">${xlcompText('limitNotDiff')}</p>
+      <button type="button" class="xlcomp-incomplete-toggle" aria-expanded="${open}"
+        aria-controls="xlcomp-limit-${view}"
+        onclick="xlcompToggleLimitPanel('${view}')">${xlcompText(open?'hideReasons':'viewReasons')}</button>
+      <div class="xlcomp-limit" id="xlcomp-limit-${view}"${open?'':' hidden'}>
+        ${xlcompLimitTableHtml(view)}</div>
+    </div>`;
+}
+
+function xlcompToggleLimitPanel(view){
+    const panel=document.getElementById('xlcomp-limit-'+view);
+    if(!panel) return;
+    const open=panel.hasAttribute('hidden');
+    if(open) panel.removeAttribute('hidden');
+    else panel.setAttribute('hidden','');
+    xlcompLimitPanelOpen=open?view:null;
+    const btn=document.querySelector('#xlcomp-result .xlcomp-incomplete-toggle');
+    if(btn){
+        btn.setAttribute('aria-expanded',String(open));
+        btn.textContent=xlcompText(open?'hideReasons':'viewReasons');
+    }
+}
+
 function xlcompStatusHtml(view){
-    const {count,issue}=xlcompCategoryState(view);
+    const {count,issue,state}=xlcompCategoryState(view);
     if(!issue&&count) return '';
-    return `<p class="xlcomp-result-message" ${issue?'data-incomplete':''}>${xlcompText(issue||'pass')}</p>`;
+    if(state==='partial'&&xlcompCategoryLimits(view).length) return xlcompIncompleteHtml(view,count);
+    if(state==='partial') return `<p class="xlcomp-result-message" data-state="partial">${xlcompText(issue||'partial')}</p>`;
+    if(state==='failed') return `<p class="xlcomp-result-message" data-state="failed">${xlcompText(issue||'failed')}</p>`;
+    if(state==='skipped') return `<p class="xlcomp-result-message" data-state="skipped">${xlcompText(issue||'skipped')}</p>`;
+    if(state==='unsupported') return `<p class="xlcomp-result-message" data-state="unsupported">${xlcompText(issue||'fileUnsupported')}</p>`;
+    return `<p class="xlcomp-result-message">${xlcompText(issue||'pass')}</p>`;
 }
 
 function xlcompBorderHtml(){
@@ -2856,6 +3126,8 @@ function xlcompClearResult(){
     xlcompExtMapA=null;
     xlcompExtMapB=null;
     xlcompBorderDiffs=[];
+    xlcompLimits=[];
+    xlcompLimitPanelOpen=null;
     xlcompCategoryIssues={};
     xlcompZipReport=null;
     xlcompUnifiedIndex=null;
@@ -2891,7 +3163,7 @@ function xlcompRefreshLocalLanguage(){
 }
 
 function xlcompModeLimitHtml(mode){
-    return `<p class="xlcomp-mode-limit">${xlcompText('border')} · ${xlcompText('unchecked')} ·
+    return `<p class="xlcomp-mode-limit">${xlcompText('modeLimitLabel')} · 
         ${xlcompText(mode==='zip'?'zipUnsupported':'fastUnsupported')}</p>`;
 }
 
@@ -3407,6 +3679,8 @@ function exportXlComp(){
         report=`<p>${xlcompText('checkedRange')} · ${sheets}</p><ul>${list}</ul>`;
         for(const view of xlcompCategories()){
             _xlcompRenderCurrentView(pane,view);
+            pane.querySelectorAll('.xlcomp-incomplete-toggle').forEach(node=>node.remove());
+            pane.querySelectorAll('.xlcomp-limit[hidden]').forEach(node=>node.removeAttribute('hidden'));
             report+=`<section><h3>${xlcompText(view)}</h3>${pane.innerHTML}</section>`;
         }
     }else{
@@ -3428,7 +3702,12 @@ function exportXlComp(){
         th,td{padding:6px 10px;border:1px solid #ddd;text-align:left;vertical-align:top;}
         th{background:#edf2f7;} caption{text-align:left;padding:8px 0;} h3{margin-top:22px;}
         .xlcomp-border-detail ul{list-style:none;margin:0;padding:0;}
-        [data-incomplete],.xlcomp-mode-limit{color:#784106;background:#fff0d8;padding:8px;}
+.xlcomp-mode-limit{color:#37474f;background:#eef2f7;padding:8px;border:1px solid #c3ccd6;}
+        .xlcomp-incomplete{color:#784106;background:#fff0d8;padding:10px;border:1px solid #ddbc86;}
+        .xlcomp-result-message{color:#17563c;background:#e5f6ed;padding:8px;}
+        .xlcomp-result-message[data-state="failed"]{color:#8a2027;background:#fdeaea;}
+        .xlcomp-limit-unknown{color:#7a5000;} .xlcomp-limit-hint{font-size:13px;color:#546e7a;}
+        .xlcomp-limit caption{text-align:left;padding:8px 0;font-weight:bold;}
     </style></head><body>
     <h2>${xlcompText('report')} · ${esc(new Date().toLocaleString())}</h2>
     <p>${xlcompText('fileA')} · ${esc(xlcompFileA.name)} ／ ${xlcompText('fileB')} · ${esc(xlcompFileB.name)}</p>
