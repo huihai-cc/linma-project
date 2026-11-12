@@ -122,6 +122,52 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 .xlcomp-limit-hint { font-size:13px;color:#546e7a; }
 .xlcomp-limit-note { padding:10px 12px 0;margin:0;font-size:13px;color:#546e7a; }
 .xlcomp-color-note { font-size:13px;color:#37474f;margin-left:4px;cursor:help; }
+/* NO009 Sheet 检查结果サマリー（比較完了後に既定表示） */
+.xlcomp-sheet-summary { background:#fff;border:1px solid #cbd5df;border-radius:8px;
+  color:#253746;margin:0 0 14px;padding:10px 12px;font-size:14px;
+  font-family:'Microsoft JhengHei UI','Microsoft JhengHei','Yu Gothic UI','Yu Gothic','Meiryo','Segoe UI',sans-serif; }
+.xlcomp-sheet-summary-head { display:flex;gap:6px 12px;align-items:baseline;flex-wrap:wrap; }
+.xlcomp-sheet-summary-title { font-size:15px;color:#253746; }
+.xlcomp-sheet-summary-count { font-weight:bold;color:#0f5f51;font-size:15px; }
+.xlcomp-sheet-summary-objects,.xlcomp-sheet-summary-note { font-size:13px;color:#546e7a; }
+.xlcomp-sheet-summary-hint { font-size:13px;color:#546e7a;margin:3px 0 8px; }
+.xlcomp-sheet-summary-list { display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 8px; }
+.xlcomp-sheet-summary-item { min-width:0; }
+.xlcomp-sheet-summary-row { display:flex;gap:6px;align-items:center;justify-content:space-between;
+  width:100%;box-sizing:border-box;padding:4px 8px;min-height:26px;
+  background:#f8fafc;color:#253746;border:1px solid #dde5ed;border-left:3px solid #7b8b99;
+  border-radius:4px;font-size:13px;line-height:1.35;cursor:pointer;text-align:left; }
+.xlcomp-sheet-summary-row:hover { background:#eef4fa; }
+.xlcomp-sheet-summary-row:focus-visible { outline:3px solid #a9d8ff;outline-offset:1px; }
+.xlcomp-sheet-summary-item[data-state="pass"] .xlcomp-sheet-summary-row { border-left-color:#0f7a66; }
+.xlcomp-sheet-summary-item[data-state="diff"] .xlcomp-sheet-summary-row { border-left-color:#c0392b; }
+.xlcomp-sheet-summary-item[data-state="partial"] .xlcomp-sheet-summary-row { border-left-color:#b9770e; }
+.xlcomp-sheet-summary-item[data-state="failed"] .xlcomp-sheet-summary-row { border-left-color:#8a2027; }
+.xlcomp-sheet-summary-item[data-state="onlyA"] .xlcomp-sheet-summary-row,
+.xlcomp-sheet-summary-item[data-state="onlyB"] .xlcomp-sheet-summary-row { border-left-color:#2b6ca3; }
+.xlcomp-sheet-summary-row[aria-pressed="true"] { background:#e8f1fb;border-color:#2b6ca3; }
+.xlcomp-sheet-summary-name { min-width:0;overflow-wrap:anywhere;font-weight:600; }
+.xlcomp-sheet-summary-state { flex:none;font-size:13px;white-space:nowrap; }
+.xlcomp-sheet-summary-more { margin-top:8px;background:#fff;color:#2b6ca3;
+  border:1px solid #b8cbdc;border-radius:4px;padding:4px 10px;font-size:13px;cursor:pointer; }
+.xlcomp-sheet-summary-more:hover { background:#eef4fa; }
+.xlcomp-sheet-summary-more:focus-visible { outline:3px solid #a9d8ff;outline-offset:1px; }
+.xlcomp-sheet-summary-attention { margin-top:6px;font-size:13px;font-weight:600;color:#8a2027;
+  background:#fdeaea;border:1px solid #e3b4b4;border-radius:4px;padding:5px 8px; }
+.xlcomp-sheet-summary-detail { margin:4px 0 6px;padding:8px 10px;background:#f4f8fc;
+  border:1px solid #d5e2ee;border-radius:4px; }
+.xlcomp-sheet-summary-detail-title { font-size:13px;font-weight:bold;color:#253746;margin-bottom:6px;overflow-wrap:anywhere; }
+.xlcomp-sheet-summary-cats { display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:3px 8px; }
+.xlcomp-sheet-summary-cat { display:flex;gap:4px;justify-content:space-between;font-size:13px; }
+.xlcomp-sheet-summary-cat-name { color:#374b58; }
+.xlcomp-sheet-summary-cat-state { font-weight:600; }
+.xlcomp-sheet-summary-cat[data-state="pass"] .xlcomp-sheet-summary-cat-state { color:#0f5f51; }
+.xlcomp-sheet-summary-cat[data-state="diff"] .xlcomp-sheet-summary-cat-state { color:#8a2027; }
+.xlcomp-sheet-summary-cat[data-state="partial"] .xlcomp-sheet-summary-cat-state,
+.xlcomp-sheet-summary-cat[data-state="unchecked"] .xlcomp-sheet-summary-cat-state { color:#784106; }
+.xlcomp-sheet-summary-cat[data-state="failed"] .xlcomp-sheet-summary-cat-state { color:#8a2027; }
+.xlcomp-sheet-summary-detail-none { color:#546e7a; }
+@media(max-width:640px){ .xlcomp-sheet-summary-list,.xlcomp-sheet-summary-cats { grid-template-columns:1fr; } }
 @media(max-width:640px){ .xlcomp-limit th,.xlcomp-limit td { padding:7px 6px;font-size:13px; } }
 .xlcomp-border-detail { background:white;border:1px solid #cbd5df;border-radius:8px;overflow:hidden;color:#253746; }
 .xlcomp-border-detail table { border-collapse:collapse;width:100%;font-size:14px; }
@@ -489,6 +535,15 @@ let xlcompResults = null;
 let xlcompSheetStructureDiff = { onlyA: [], onlyB: [], count: 0 };
 let xlcompHideEq  = false;
 let xlcompMode    = 'excel';
+// ===== NO009 Sheet 检查結果サマリー状態 =====
+const XLCOMP_SUMMARY_VISIBLE = 8;
+let xlcompSummaryRows = [];
+let xlcompSummaryExpanded = false;
+let xlcompSummaryFocus = -1;
+// NO009 Gate 补正①：异常 Sheet 优先显示；同状态内保留原 Sheet 顺序。
+// 仅改变汇总的「显示顺序」，不改 Excel 实际比较顺序 / Sheet 原始顺序 / 统一差异索引。
+const XLCOMP_SUMMARY_PRIORITY = { failed:0, diff:1, partial:2, onlyA:3, onlyB:3, notSelected:4, pass:5 };
+const XLCOMP_SUMMARY_ATTENTION = new Set(['failed','diff','partial','onlyA','onlyB','notSelected']);
 
 // ===== 高速モード状態変数 =====
 let xlcompFastMode    = false;   // 高速モードON/OFF
@@ -2769,6 +2824,29 @@ const XLCOMP_LOCAL_TEXT={
     condFormatNote:['条件格式只读取了规则适用范围，未计算实际显示效果，因此不计入差异。','条件付き書式は適用範囲のみ取得しており、実際の表示は計算していません。差異には計上しません。'],
     modeLimitLabel:['未执行说明','未実行の説明'],
     borderLimited:['部分检查 · 详见下方原因与位置','一部比較 · 理由と位置は下記を参照'],
+    sheetSummaryTitle:['Sheet 检查结果','シート比較結果'],
+    sheetSummaryChecked:['已检查 Sheet：{0}/{1}','比較済みシート：{0}/{1}'],
+    sheetSummaryObjects:['检查对象 {0} 个','比較対象 {0} 件'],
+    sheetSummaryJump:['点击 Sheet 名称查看该 Sheet 的检查结果','シート名をクリックするとこのシートの比較結果を表示します'],
+    sheetSummaryHidden:['另有 {0} 个 Sheet 未显示','ほか {0} 件のシートは非表示'],
+    sheetSummaryExpand:['展开全部 {0} 个','全 {0} 件を表示'],
+    sheetSummaryCollapse:['收起','折りたたむ'],
+    sheetSummaryAttention:['⚠ 另有 {0} 个需关注的 Sheet 未显示，请展开全部','⚠ 注意が必要なシートがほか {0} 件未表示です。全件を表示してください'],
+    sheetSummaryOnly:['仅单文件','片方のみ'],
+    sheetSummaryDetail:['8 类检查结果','8項目の比較結果'],
+    sheetSummaryNoResult:['本次未检查（未选择 / 仅存在于单个文件），没有比较结果','今回は未比較（未選択／片方のファイルのみ）のため、比較結果はありません'],
+    sheetStatePass:['✅ 无差异','✅ 差異なし'],
+    sheetStateDiff:['🔴 {0} 处差异','🔴 差異 {0} 件'],
+    sheetStatePartial:['部分检查','一部比較'],
+    sheetStateFailed:['检查失败','比較失敗'],
+    sheetStateNotSelected:['未选择','未選択'],
+    sheetStateOnlyA:['仅文件 A 有','ファイル A のみ'],
+    sheetStateOnlyB:['仅文件 B 有','ファイル B のみ'],
+    sheetSummaryCat_pass:['✓ 无差异','✓ 差異なし'],
+    sheetSummaryCat_diff:['{0} 处差异','差異 {0} 件'],
+    sheetSummaryCat_partial:['部分检查','一部比較'],
+    sheetSummaryCat_failed:['检查失败','比較失敗'],
+    sheetSummaryCat_unchecked:['未检查','未比較'],
 };
 
 function xlcompText(key,...args){
@@ -2820,6 +2898,229 @@ function xlcompCategoryLabel(category,{count,state}){
     const unit=typeof getLanguage==='function'&&getLanguage()==='ja-JP'?'件':category==='cell'?'行':'处';
     const shortState={pass:'pass',diff:'diff',failed:'failed',skipped:'unchecked',unsupported:'unchecked',partial:'partial'}[state];
     return xlcompText(category)+' · '+xlcompText(shortState)+(count||state==='pass'?' '+count+unit:'');
+}
+
+// ===== NO009 Sheet 检查結果サマリー（比較完了後に既定表示） =====
+// 仅复用既有 xlcompResults / xlcompUnifiedIndex / xlcompSheetStructureDiff /
+// xlcompLimits / xlcompCategoryIssues / 已选择 Sheet 状态，不修改比较引擎。
+function xlcompSheetSummaryData(){
+    const results = xlcompResults || Object.create(null);
+    const selected = Array.isArray(window._xlcompSelectedSheets)
+        ? window._xlcompSelectedSheets
+        : [...document.querySelectorAll('.xlcomp-sheet-cb:checked')].map(cb => cb.dataset.sheet);
+    const selectedSet = new Set(selected);
+    const namesA = Array.isArray(xlcompWbA?.SheetNames) ? xlcompWbA.SheetNames : [];
+    const namesB = Array.isArray(xlcompWbB?.SheetNames) ? xlcompWbB.SheetNames : [];
+    const setA = new Set(namesA), setB = new Set(namesB);
+    const allNames = [...new Set([...namesA, ...namesB, ...Object.keys(results)])];
+
+    // 8 类差异按 Sheet 聚合（统一差异索引，不只靠单元格内容判断）
+    const diffBySheet = new Map();
+    (xlcompUnifiedIndex?.items || []).forEach(item => {
+        let map = diffBySheet.get(item.sheet);
+        if(!map){ map = Object.create(null); diffBySheet.set(item.sheet, map); }
+        map[item.category] = (map[item.category] || 0) + 1;
+    });
+
+    // NO009 Gate 补正②：检查限制按「Sheet + category」建立精确映射。
+    // 只读 xlcompLimits，不改其数据来源与比较算法：
+    //   sheetCats          —— Sheet 级证据：sheet -> Set(category)
+    //   globalCats         —— 全局限制（sheet:''）涉及的分类，作用于所有实际参与比较的 Sheet
+    //   noPreciseScopeCats —— 分类整体为 partial/skipped/unsupported 但完全没有 Sheet 级
+    //                        范围证据时，缺乏精确范围，保守对全体生效
+    const sheetCats = new Map();
+    const globalCats = new Set();
+    const sheetCatEvidence = new Set();
+    (xlcompLimits || []).forEach(limit => {
+        const cats = [limit.category, ...(Array.isArray(limit.categories) ? limit.categories : [])].filter(Boolean);
+        if(!cats.length) return;
+        const sheet = limit.sheet || '';
+        if(sheet){
+            let set = sheetCats.get(sheet);
+            if(!set){ set = new Set(); sheetCats.set(sheet, set); }
+            cats.forEach(c => { set.add(c); sheetCatEvidence.add(c); });
+        }else{
+            cats.forEach(c => globalCats.add(c));
+        }
+    });
+
+    const catState = new Map(xlcompCategories().map(c => [c, xlcompCategoryState(c).state]));
+    const globalFailed = xlcompCategories().some(c => catState.get(c) === 'failed');
+    const noPreciseScopeCats = new Set(xlcompCategories().filter(c =>
+        ['partial','skipped','unsupported'].includes(catState.get(c)) && !sheetCatEvidence.has(c)));
+
+    // 某 Sheet 的某分类是否受限：Sheet 级精确证据 > 全局限制 > 缺乏精确范围时的保守兜底
+    const isCatLimited = (name, category) =>
+        !!sheetCats.get(name)?.has(category) || globalCats.has(category) || noPreciseScopeCats.has(category);
+
+    const rows = allNames.map(name => {
+        const r = results[name];
+        const counts = diffBySheet.get(name) || Object.create(null);
+        const diffTotal = xlcompCategories().reduce((sum,c) => sum + (counts[c] || 0), 0);
+        const inA = setA.has(name), inB = setB.has(name);
+        const isSelected = selectedSet.has(name);
+        const limitedCats = (isSelected && r && inA && inB)
+            ? xlcompCategories().filter(c => isCatLimited(name, c)) : [];
+        let status;
+        if(!inA && inB) status = 'onlyB';
+        else if(inA && !inB) status = 'onlyA';
+        else if(!isSelected) status = 'notSelected';
+        else if(!r || globalFailed) status = 'failed';
+        else if(r.clipped || limitedCats.length) status = 'partial';
+        else if(diffTotal > 0) status = 'diff';
+        else status = 'pass';
+        return { name, status, counts, diffTotal, inA, inB, limitedCats };
+    });
+
+    const tally = { pass:0, diff:0, partial:0, failed:0, notSelected:0, onlyA:0, onlyB:0 };
+    rows.forEach(row => { tally[row.status]++; });
+    // 已检查数量 = 实际完整处理完成的 Sheet（无差异 / 有差异），不含部分检查 / 失败 / 未选择 / 单文件
+    const checked = tally.pass + tally.diff;
+    const diffTotal = rows.reduce((sum,row) => sum + row.diffTotal, 0);
+    const globalIncomplete = noPreciseScopeCats.size > 0 || globalCats.size > 0;
+    return { rows, total: rows.length, checked, tally, diffTotal,
+        sheetCats: Object.fromEntries([...sheetCats].map(([s,set]) => [s, [...set]])),
+        globalCats: [...globalCats], noPreciseScopeCats: [...noPreciseScopeCats],
+        globalFailed, globalIncomplete };
+}
+
+function xlcompSheetCategoryState(data, row, category){
+    const count = row.counts[category] || 0;
+    const state = xlcompCategoryState(category).state;
+    if(state === 'failed') return { key:'failed', count };
+    if(state === 'skipped' || state === 'unsupported') return { key:'unchecked', count };
+    // 补正②：只按「该 Sheet × 该分类」的精确映射判定，不再用 Sheet 名集合，
+    // 避免 A Sheet 的边框限制误影响公式分类、或不同 Sheet 的限制互相污染。
+    if((row.limitedCats || []).includes(category)) return { key:'partial', count };
+    // 分类整体为 partial 且缺乏精确范围证据时，保守标部分检查（不得擅自认定无差异）
+    if(state === 'partial' && (data.noPreciseScopeCats || []).includes(category))
+        return { key:'partial', count };
+    return count ? { key:'diff', count } : { key:'pass', count };
+}
+
+function xlcompSheetSummaryStateText(row){
+    switch(row.status){
+        case 'pass': return xlcompText('sheetStatePass');
+        case 'diff': return xlcompText('sheetStateDiff', row.diffTotal);
+        case 'partial': return xlcompText('sheetStatePartial') +
+            (row.diffTotal ? ' · ' + xlcompText('sheetStateDiff', row.diffTotal) : '');
+        case 'failed': return xlcompText('sheetStateFailed');
+        case 'notSelected': return xlcompText('sheetStateNotSelected');
+        case 'onlyA': return xlcompText('sheetStateOnlyA');
+        case 'onlyB': return xlcompText('sheetStateOnlyB');
+        default: return '';
+    }
+}
+
+function xlcompSheetSummaryDetailHtml(data, row){
+    if(['notSelected','onlyA','onlyB'].includes(row.status))
+        return `<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">${esc(xlcompText('sheetSummaryNoResult'))}</div>`;
+    const cells = xlcompCategories().map(category => {
+        const st = xlcompSheetCategoryState(data, row, category);
+        const text = st.key === 'diff'
+            ? xlcompText('sheetSummaryCat_diff', st.count)
+            : xlcompText('sheetSummaryCat_' + st.key);
+        return `<span class="xlcomp-sheet-summary-cat" data-state="${st.key}">
+            <span class="xlcomp-sheet-summary-cat-name">${esc(xlcompText(category))}</span>
+            <span class="xlcomp-sheet-summary-cat-state">${esc(text)}</span>
+        </span>`;
+    }).join('');
+    return `<div class="xlcomp-sheet-summary-detail">
+        <div class="xlcomp-sheet-summary-detail-title">${esc(xlcompText('sheetSummaryDetail'))} · ${esc(row.name)}</div>
+        <div class="xlcomp-sheet-summary-cats">${cells}</div></div>`;
+}
+
+function xlcompSheetSummaryHtml(){
+    const data = xlcompSheetSummaryData();
+    xlcompSummaryRows = data.rows;
+    if(xlcompSummaryFocus >= data.rows.length) xlcompSummaryFocus = -1;
+    // 补正①：异常 Sheet 优先显示；同状态内保留原 Sheet 顺序（稳定排序）。
+    // 只生成「显示顺序」，data.rows 本身仍保持原始顺序，统一差异索引完全不动。
+    const ordered = data.rows.map((row, originIdx) => ({ row, originIdx }))
+        .sort((a,b) => (XLCOMP_SUMMARY_PRIORITY[a.row.status] ?? 9) - (XLCOMP_SUMMARY_PRIORITY[b.row.status] ?? 9)
+            || a.originIdx - b.originIdx);
+    const visible = xlcompSummaryExpanded ? ordered.length : Math.min(XLCOMP_SUMMARY_VISIBLE, ordered.length);
+    const shown = ordered.slice(0, visible);
+    const hidden = ordered.length - shown.length;
+    // 异常 Sheet 数量超过可见上限时，明确提示还有多少个需关注的 Sheet 未显示
+    const attentionHidden = ordered.slice(visible)
+        .filter(entry => XLCOMP_SUMMARY_ATTENTION.has(entry.row.status)).length;
+
+    const notes = [];
+    if(data.tally.partial) notes.push(xlcompText('sheetStatePartial') + ' ' + data.tally.partial);
+    if(data.tally.failed) notes.push(xlcompText('sheetStateFailed') + ' ' + data.tally.failed);
+    if(data.tally.notSelected) notes.push(xlcompText('sheetStateNotSelected') + ' ' + data.tally.notSelected);
+    const only = data.tally.onlyA + data.tally.onlyB;
+    if(only) notes.push(xlcompText('sheetSummaryOnly') + ' ' + only);
+    const noteHtml = notes.length
+        ? `<span class="xlcomp-sheet-summary-note">${esc(notes.join(' · '))}</span>` : '';
+
+    const rowsHtml = shown.map(({ row, originIdx }) => {
+        const isOpen = xlcompSummaryFocus === originIdx;
+        return `<div class="xlcomp-sheet-summary-item" data-state="${row.status}">
+            <button type="button" class="xlcomp-sheet-summary-row" data-xlcomp-sheet-idx="${originIdx}"
+                title="${xlcompEscapeAttr(row.name)}"
+                onclick="xlcompSummarySelectSheet(${originIdx})" aria-pressed="${isOpen}">
+                <span class="xlcomp-sheet-summary-name">${esc(row.name)}</span>
+                <span class="xlcomp-sheet-summary-state">${esc(xlcompSheetSummaryStateText(row))}</span>
+            </button>
+            ${isOpen ? xlcompSheetSummaryDetailHtml(data, row) : ''}
+        </div>`;
+    }).join('');
+
+    const attentionHtml = (!xlcompSummaryExpanded && attentionHidden > 0)
+        ? `<div class="xlcomp-sheet-summary-attention">${esc(xlcompText('sheetSummaryAttention', attentionHidden))}</div>` : '';
+    const more = hidden > 0
+        ? `<button type="button" class="xlcomp-sheet-summary-more" onclick="xlcompSummaryToggleAll()">${esc(xlcompText('sheetSummaryHidden', hidden) + ' · ' + xlcompText('sheetSummaryExpand', data.total))}</button>`
+        : (xlcompSummaryExpanded && ordered.length > XLCOMP_SUMMARY_VISIBLE
+            ? `<button type="button" class="xlcomp-sheet-summary-more" onclick="xlcompSummaryToggleAll()">${esc(xlcompText('sheetSummaryCollapse'))}</button>` : '');
+
+    return `<section id="xlcomp-sheet-summary" class="xlcomp-sheet-summary" aria-label="${xlcompEscapeAttr(xlcompText('sheetSummaryTitle'))}">
+      <div class="xlcomp-sheet-summary-head">
+        <strong class="xlcomp-sheet-summary-title">${esc(xlcompText('sheetSummaryTitle'))}</strong>
+        <span class="xlcomp-sheet-summary-count">${esc(xlcompText('sheetSummaryChecked', data.checked, data.total))}</span>
+        <span class="xlcomp-sheet-summary-objects">${esc(xlcompText('sheetSummaryObjects', data.total))}</span>
+        ${noteHtml}
+      </div>
+      <div class="xlcomp-sheet-summary-hint">${esc(xlcompText('sheetSummaryJump'))}</div>
+      <div class="xlcomp-sheet-summary-list">${rowsHtml}</div>
+      ${attentionHtml}${more}
+    </section>`;
+}
+
+function xlcompSummaryToggleAll(){
+    xlcompSummaryExpanded = !xlcompSummaryExpanded;
+    _xlcompRenderCurrentView();
+    document.getElementById('xlcomp-sheet-summary')?.scrollIntoView({block:'nearest'});
+}
+
+// 点击 Sheet 名称：只切换既有视图 / 统一差异导航，不重新读取 Excel、不重新执行比较。
+function xlcompSummarySelectSheet(idx){
+    const data = xlcompSheetSummaryData();
+    const row = data.rows[idx];
+    if(!row) return;
+    xlcompSummaryFocus = idx;
+    if(!['notSelected','onlyA','onlyB'].includes(row.status)){
+        const first = (xlcompUnifiedIndex?.items || []).find(item => item.sheet === row.name);
+        const targetView = first ? first.view : 'cell';
+        if(xlcompCurrentView !== targetView) xlcompSwitchView(targetView, false);
+        else _xlcompRenderCurrentView();
+
+        const list = document.getElementById('xlcomp-nav-sheet');
+        xlcompPopulateResultSheets(row.name);
+        list.value = [...list.options].some(o => o.value === row.name) ? row.name : '';
+        if(first){
+            xlcompUnifiedIdx = xlcompUnifiedIndex.items.indexOf(first);
+            xlcompHighlight(first, false);
+        }else{
+            xlcompUnifiedIdx = -1;
+            xlcompHighlight(null, false);
+        }
+        xlcompUpdateUnifiedPosition();
+    }else{
+        _xlcompRenderCurrentView();
+    }
+    document.getElementById('xlcomp-sheet-summary')?.scrollIntoView({block:'nearest'});
 }
 
 function xlcompShowUnifiedNav(){
@@ -3092,6 +3393,9 @@ function _xlcompRenderCurrentView(result=document.getElementById('xlcomp-result'
         if(view==='structure') result.innerHTML=xlcompRenderSheetStructureDiffHtml(xlcompSheetStructureDiff);
     }
     if(!count||state!=='diff') result.insertAdjacentHTML('afterbegin',xlcompStatusHtml(view));
+    // NO009：结果区域顶部默认显示 Sheet 汇总；仅页面主结果容器（导出用离屏容器不受影响）
+    if(result===document.getElementById('xlcomp-result')&&xlcompResults&&xlcompUnifiedIndex)
+        result.insertAdjacentHTML('afterbegin',xlcompSheetSummaryHtml());
 }
 
 function xlcompSwitchView(view,restore=true){
@@ -3136,6 +3440,9 @@ function xlcompClearResult(){
     xlcompFocusedRow=null;
     xlcompUnifiedTarget=null;
     xlcompViewPositions.clear();
+    xlcompSummaryRows=[];
+    xlcompSummaryExpanded=false;
+    xlcompSummaryFocus=-1;
     document.getElementById('xlcomp-unified-nav').hidden=true;
     document.getElementById('xlcomp-nav-all').checked=false;
     document.getElementById('xlcomp-nav-sheet').replaceChildren();
