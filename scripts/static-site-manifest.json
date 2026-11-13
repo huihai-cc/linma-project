@@ -6,7 +6,8 @@
     "ROUND16：TVer 已按授权把 FIX4-B 封板业务逻辑 + 统一 Header 作为正式版（workspace 源）。ROUND20：excel_formula_cleaner.html 已按授权接入 Header ONLY 候选（workspace 源，仅顶部 UI，业务脚本与 Worker 未改）；XLSM 未验收变更不随输出。V20：worker 与 workbench_concept 改为从 workspace 源读取（字节与固定 Git 基线 bf6cf5a 逐字节一致，仅改 source 字段以兼容 Vercel 浅克隆构建）。",
     "每项SHA256固定；版本更新需独立审核、重建清单及测试。",
     "TVer公开性/既有认证、XLSM候选业务验收（候选仅保留在工作区，不随本清单发布）、Excel Header ONLY 的真人QA和实际Vercel配置仍是阻断项。",
-    "V21 (2026-11-06 NO007): 6課 TVPR（NO006 UI/UX 再設計版 59551B / 764250f8…）を正式公開。index.html は 6課「準備中」を TVPR 登録へ置換し UPDATE_LOG に 1 件追記。tvpr_check.html を 1 件追加（35→36）。残り34件の SHA は不変。"
+    "V21 (2026-11-06 NO007): 6課 TVPR（NO006 UI/UX 再設計版 59551B / 764250f8…）を正式公開。index.html は 6課「準備中」を TVPR 登録へ置換し UPDATE_LOG に 1 件追記。tvpr_check.html を 1 件追加（35→36）。残り34件の SHA は不変。",
+    "NO012 RELEASE (2026-11-13): excel_compare.html 由已通过 Gate 的候选替换（原 83f2192c…）。其余 36 项 SHA 不变。"
   ],
   "files": [
     {
@@ -52,7 +53,7 @@
     {
       "path": "excel_compare.html",
       "source": "workspace",
-      "sha256": "83f2192c67ceaf205fece7ae18e61822e0335c04c5b71a3b165af782af52c823"
+      "sha256": "aed5eb1fd1b9f1c60a6d81f3da3c5a84d57a89130e7fc40a7cbdfc7eb61b4553"
     },
     {
       "path": "excel_formula_cleaner.html",

@@ -1038,6 +1038,45 @@ function xlcompClipRanges(range,maxRows,maxCols){
     return out;
 }
 
+// NO010：默认样式边框属性签名（用于 A/B 一致性判定，仅影响限制提示，不参与差异计数）
+function xlcompBorderSig(border){
+    if(!border) return '';
+    return XLCOMP_BORDER_SIDES.map(side=>{
+        const edge=border[side];
+        return side+'='+(edge?(edge.style||'')+'/'+String(edge.color??''):'-');
+    }).join('|');
+}
+
+// NO012 Gate 补正：行默认样式汇总签名。
+// 必须同时体现「实际行号」与「边框属性」：
+//   仅用边框属性会在 A/B 行号错位但样式相同时被误判为一致，从而抑制 rowDefault 限制项
+//   （等于降低边框检查标准）。
+// 行集合与属性完全一致时才视为一致 → 可抑制重复的部分检查提示。
+// 长度超过上限时改用固定长度摘要（仍由「行号+属性」序列算出），避免汇总项占用过多内存。
+function xlcompRowSigDigest(hits){
+    if(!Array.isArray(hits)||!hits.length) return '';
+    const groups=new Map();
+    hits.forEach(hit=>{
+        const key=hit.sig||'';
+        if(!groups.has(key)) groups.set(key,[]);
+        groups.get(key).push(hit.row);
+    });
+    const parts=Array.from(groups.entries())
+        .map(([sig,rows])=>sig+'@'+rows.slice().sort((a,b)=>a-b).join(','))
+        .sort();
+    const full='n='+hits.length+';'+parts.join(';');
+    if(full.length<=20000) return full;
+    let h1=0x811c9dc5>>>0, h2=0x01000193>>>0;
+    const seq=hits.slice().sort((a,b)=>a.row-b.row)
+        .map(hit=>hit.row+':'+(hit.sig||'')).join('|');
+    for(let i=0;i<seq.length;i++){
+        const c=seq.charCodeAt(i);
+        h1=Math.imul(h1^c,0x01000193)>>>0;
+        h2=Math.imul(h2+c+(i&255),0x85ebca6b)>>>0;
+    }
+    return 'n='+hits.length+';d='+h1.toString(16).padStart(8,'0')+h2.toString(16).padStart(8,'0');
+}
+
 function xlcompReadBorderTable(styles,wb){
     const palette=xlcompXmlChildren(xlcompXmlChild(xlcompXmlChild(styles,'colors'),'indexedColors'),'rgbColor')
         .map(node=>xlcompNormalizeColor({rgb:node.getAttribute('rgb')},'font',wb));
@@ -1109,13 +1148,20 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
         const view=xlcompXmlChild(xlcompXmlChild(root,'sheetViews'),'sheetView');
         const rtl=['1','true'].includes(view?.getAttribute('rightToLeft'));
         let rowNumber=0, invalidRefs=0;
+        // NO010：统计「有 <c> 元素但无显式 s 属性」的单元格数量。
+        // 这些单元格继承行/列默认样式，其显示效果不在逐单元格比较范围内。
+        let implicitCells=0;
         const rowStyleHits=[];
         for(const row of rows){
             rowNumber=Number(row.getAttribute('r')??rowNumber+1);
             if(needBorders&&table&&!borderError){
                 const rowStyle=row.getAttribute('s');
                 if(rowStyle){
-                    try{ if(Object.keys(table.resolve(rowStyle,rtl)).length) rowStyleHits.push(rowNumber); }
+                    try{
+                        const resolved=table.resolve(rowStyle,rtl);
+                        if(Object.keys(resolved).length)
+                            rowStyleHits.push({row:rowNumber,sig:xlcompBorderSig(resolved)});
+                    }
                     catch(err){ borderError=err; }
                 }
             }
@@ -1130,6 +1176,7 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
                 const addr=ref??XLSX.utils.encode_cell({r:rowNumber-1,c:column});
                 column++;
                 const style=cell.getAttribute('s');
+                if(style===null) implicitCells++;
                 const xf=wb.Styles?.CellXf?.[style];
                 if(xf) cellMap.set(addr,{fillId:xf.fillId??0,fontId:xf.fontId??0});
                 if(table&&!borderError){
@@ -1147,29 +1194,38 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
                 const visibleStyle=id=>Object.keys(table.resolve(id,rtl)).length>0;
                 // 工作表既定の書式：個別スタイルを持たないセルはこの罫線を継承するため未比較。
                 if(visibleStyle('0')) sheetLimits.push({type:'sheetDefault',sheet:sheetName,
-                    range:'',precise:true,coverage:'notChecked',count:1,wholeSheet:true});
+                    range:'',precise:true,coverage:'notChecked',count:1,wholeSheet:true,
+                    sig:xlcompBorderSig(table.resolve('0',rtl))});
                 // 行/列の既定書式：個別に書式を持つセルだけを比較済みのため、残りは未確認。
                 if(rowStyleHits.length<=XLCOMP_LIMIT_MAX_RANGES){
-                    rowStyleHits.forEach(rowNo=>sheetLimits.push({type:'rowDefault',sheet:sheetName,
-                        range:rowNo+':'+rowNo,precise:true,coverage:'partial',count:1}));
+                    rowStyleHits.forEach(hit=>sheetLimits.push({type:'rowDefault',sheet:sheetName,
+                        range:hit.row+':'+hit.row,precise:true,coverage:'partial',count:1,sig:hit.sig}));
                 }else{
                     // 已取得全部行号，但不逐个列出 → 汇总显示，不写成“无法精确定位”。
+                    const rowNumbers=rowStyleHits.map(hit=>hit.row);
+                    // NO012 Gate 补正：汇总签名必须同时含「实际行号」与「边框属性」，
+                    // 否则 A/B 行号错位但样式相同时会被误判为一致（降低检查标准）。
                     sheetLimits.push({type:'rowDefault',sheet:sheetName,range:'',precise:false,
                         aggregated:true,coverage:'partial',count:rowStyleHits.length,
-                        first:rowStyleHits[0],last:rowStyleHits[rowStyleHits.length-1],
-                        sample:rowStyleHits.slice(0,XLCOMP_LIMIT_RANGE_SHOW)});
+                        first:rowNumbers[0],last:rowNumbers[rowNumbers.length-1],
+                        sample:rowNumbers.slice(0,XLCOMP_LIMIT_RANGE_SHOW),
+                        sig:xlcompRowSigDigest(rowStyleHits)});
                 }
                 const cols=xlcompXmlChildren(xlcompXmlChild(root,'cols'),'col');
-                const colSpans=new Set();
+                const colSpans=new Map();
                 for(const col of cols){
                     const style=col.getAttribute('style');
                     if(!style||!visibleStyle(style)) continue;
                     const from=Number(col.getAttribute('min')||0);
                     const to=Number(col.getAttribute('max')||0)||from;
-                    if(from>0) colSpans.add(xlcompColumnSpanText(from,to));
+                    if(from>0){
+                        const spanText=xlcompColumnSpanText(from,to);
+                        if(!colSpans.has(spanText))
+                            colSpans.set(spanText,xlcompBorderSig(table.resolve(style,rtl)));
+                    }
                 }
-                for(const span of colSpans) sheetLimits.push({type:'colDefault',
-                    sheet:sheetName,range:span,precise:true,coverage:'partial',count:1});
+                for(const [span,sig] of colSpans) sheetLimits.push({type:'colDefault',
+                    sheet:sheetName,range:span,precise:true,coverage:'partial',count:1,sig});
                 // 条件付き書式：ルールの適用範囲のみ取得。実際の表示結果は計算していない。
                 for(const group of xlcompXmlChildren(root,'conditionalFormatting')){
                     const rules=xlcompXmlChildren(group,'cfRule').filter(rule=>{
@@ -1186,6 +1242,11 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
             }catch(err){ borderError=err; }
         }
         borderLimitsBySheet.set(sheetName,sheetLimits);
+        if(needBorders){
+            const implicitMap=wb._borderImplicitCells||new Map();
+            implicitMap.set(sheetName,implicitCells);
+            wb._borderImplicitCells=implicitMap;
+        }
     }
     wb._cellStyleMap=map;
     if(needBorders){
@@ -1694,6 +1755,31 @@ function _showEncryptedDialog(fileName){
 // ===== シート選択表示 =====
 const XLCOMP_MAX_ROWS = 50000;
 const XLCOMP_MAX_COLS = 100;
+// NO010 自适应列范围（不改变既有比较口径）：
+// 仅当该 Sheet 的真实有效区域因列数超过 XLCOMP_MAX_COLS 而被裁剪时，才在安全预算内放宽到完整有效区域；
+// 预算不足时保持原裁剪行为，并继续由 xlcompClipRanges 精确报告未检查范围。
+// NO012 Gate 补正（性能保守降级）：单 Sheet 放宽预算由 500000 收紧到 150000。
+// 依据实测拐点（phase5d_budget_sweep.json）：预算 <=300000 时宽表全部走安全裁剪路径，
+// 单表耗时/内存回落到 ~2.1s/38MB、多表 ~5.0s/95MB；预算 500000 时可达 ~10s/176MB 与 ~29s/449MB。
+// 收紧只影响「超大宽表」的展开范围，超限部分仍由 xlcompClipRanges 精确报告未检查范围，
+// 属于保守降级，不降低任何检查标准（不跳过内容/格式/颜色/数字格式比较）。
+const XLCOMP_EXPAND_CELL_BUDGET = 150000;      // 单 Sheet 允许放宽展开的单元格数预算（含格式/颜色/数字格式副本）
+const XLCOMP_EXPAND_CELL_BUDGET_TOTAL = 300000; // 单次比较（全部选中 Sheet 合计）允许放宽的单元格数上限
+const XLCOMP_MAX_COLS_HARD = 16384;      // Excel 最大列数（XFD）硬上限
+// NO012 Gate 补正：本次比较已消耗的放宽格数（跨 Sheet 累计），防止多张宽表连续比较时内存累积。
+let xlcompExpandBudgetUsed = 0;
+function xlcompResolveColLimit(unifiedRange){
+    if(!unifiedRange) return {maxCols:XLCOMP_MAX_COLS,expanded:false,fullCols:0,expandCells:0};
+    const fullCols=unifiedRange.e.c-unifiedRange.s.c+1;
+    if(fullCols<=XLCOMP_MAX_COLS) return {maxCols:XLCOMP_MAX_COLS,expanded:false,fullCols,expandCells:0};
+    const rows=Math.min(unifiedRange.e.r-unifiedRange.s.r+1,XLCOMP_MAX_ROWS);
+    const needCells=fullCols*rows;
+    // 累计余量：单次比较合计不得超过 XLCOMP_EXPAND_CELL_BUDGET_TOTAL
+    const remainTotal=Math.max(0,XLCOMP_EXPAND_CELL_BUDGET_TOTAL-xlcompExpandBudgetUsed);
+    if(fullCols<=XLCOMP_MAX_COLS_HARD && needCells<=XLCOMP_EXPAND_CELL_BUDGET && needCells<=remainTotal)
+        return {maxCols:fullCols,expanded:true,fullCols,expandCells:needCells};
+    return {maxCols:XLCOMP_MAX_COLS,expanded:false,fullCols,expandCells:0};
+}
 
 function xlcompGetActualRange(ws){
     if(!ws) return null;
@@ -1844,10 +1930,33 @@ async function doXlComp(selected){
                     if(workbooks.some(wb=>wb._borderStyleError)) xlcompCategoryIssues.border='failed';
                     else{
                         xlcompBorderDiffs=xlcompCompareBorders(xlcompWbA,xlcompWbB,common);
+                        // NO010：默认样式（工作表/行/列）的边框属性若在 A/B 同一位置完全一致，
+                        // 则未比较部分（继承默认样式的单元格）两侧显示相同，不构成差异来源，
+                        // 不再产生无条件部分检查提示。条件格式等无法证明一致的来源仍然保留。
+                        const defaultSigA=new Map();
+                        const defaultSigB=new Map();
+                        [[xlcompWbA,defaultSigA],[xlcompWbB,defaultSigB]].forEach(([wb,sigMap])=>{
+                            common.forEach(sheet=>{
+                                (wb._borderLimitsBySheet?.get(sheet)||[]).forEach(item=>{
+                                    if(item.sig) sigMap.set(item.type+'|'+sheet+'|'+(item.range||''),item.sig);
+                                });
+                            });
+                        });
+                        // 只有 A/B 同一 key 都存在且签名完全相等时，才允许认定默认样式属性一致。
+                        // 任一侧缺失或签名不同 → 保留该限制项（不降低检查标准）。
+                        const resolvedDefaultKeys=new Set();
+                        defaultSigA.forEach((sig,key)=>{
+                            if(!sig) return;
+                            const other=defaultSigB.get(key);
+                            if(other&&other===sig) resolvedDefaultKeys.add(key);
+                        });
                         [[xlcompWbA,'A'],[xlcompWbB,'B']].forEach(([wb,file])=>{
                             common.forEach(sheet=>{
-                                (wb._borderLimitsBySheet?.get(sheet)||[]).forEach(item=>
-                                    xlcompLimits.push(Object.assign({category:'border',file},item)));
+                                (wb._borderLimitsBySheet?.get(sheet)||[]).forEach(item=>{
+                                    const key=item.type+'|'+sheet+'|'+(item.range||'');
+                                    if(item.sig&&resolvedDefaultKeys.has(key)) return;
+                                    xlcompLimits.push(Object.assign({category:'border',file},item));
+                                });
                             });
                         });
                         if(xlcompLimits.some(item=>item.category==='border'))
@@ -1861,6 +1970,8 @@ async function doXlComp(selected){
         }
 
         xlcompResults=Object.create(null);
+        // NO012 Gate 补正：每次比较重置累计放宽预算，保证单次比较内多张宽表不会无限放宽。
+        xlcompExpandBudgetUsed=0;
         selected.forEach(name=>{ xlcompResults[name]=compareSheet(name); });
         const clippedSheets=Object.entries(xlcompResults).filter(([,result])=>result.clipped);
         if(clippedSheets.length){
@@ -1941,17 +2052,21 @@ function compareSheet(name){
     const startRow=unifiedRange?unifiedRange.s.r:0;
     const startCol=unifiedRange?unifiedRange.s.c:0;
 
-    const resA=sheetTo2D(wsA, XLCOMP_MAX_ROWS, XLCOMP_MAX_COLS, xlcompWbA, needColors, needNumFmt, name, unifiedRange);
-    const resB=sheetTo2D(wsB, XLCOMP_MAX_ROWS, XLCOMP_MAX_COLS, xlcompWbB, needColors, needNumFmt, name, unifiedRange);
+    // NO010：按真实有效区域自适应放宽列上限；未放宽时与既有行为完全一致。
+    // NO012 Gate 补正：放宽成功后累计消耗预算，超出累计上限的后续 Sheet 自动回到安全裁剪路径。
+    const colLimit=xlcompResolveColLimit(unifiedRange);
+    if(colLimit.expanded) xlcompExpandBudgetUsed+=colLimit.expandCells||0;
+    const resA=sheetTo2D(wsA, XLCOMP_MAX_ROWS, colLimit.maxCols, xlcompWbA, needColors, needNumFmt, name, unifiedRange);
+    const resB=sheetTo2D(wsB, XLCOMP_MAX_ROWS, colLimit.maxCols, xlcompWbB, needColors, needNumFmt, name, unifiedRange);
     const arrA=resA.data, arrB=resB.data;
     const colorsA=resA.colors, colorsB=resB.colors;
     const fmtsA=resA.fmts, fmtsB=resB.fmts;
     const rawRowsA=resA.rawRows, rawRowsB=resB.rawRows;
 
     const clipped=!!unifiedRange&&(unifiedRange.e.r-unifiedRange.s.r+1>XLCOMP_MAX_ROWS||
-        unifiedRange.e.c-unifiedRange.s.c+1>XLCOMP_MAX_COLS);
+        unifiedRange.e.c-unifiedRange.s.c+1>colLimit.maxCols);
     // 未检查范围 = 实际未进入比较的部分（不是整个原始范围）
-    const clipRanges=clipped?xlcompClipRanges(unifiedRange,XLCOMP_MAX_ROWS,XLCOMP_MAX_COLS):[];
+    const clipRanges=clipped?xlcompClipRanges(unifiedRange,XLCOMP_MAX_ROWS,colLimit.maxCols):[];
     const truncated=rawRowsA>XLCOMP_MAX_ROWS||rawRowsB>XLCOMP_MAX_ROWS;
     const truncateArgs=truncated?[rawRowsA.toLocaleString(),rawRowsB.toLocaleString(),XLCOMP_MAX_ROWS.toLocaleString()]:[];
 
@@ -2785,6 +2900,16 @@ const XLCOMP_LOCAL_TEXT={
     zipMatched:['≈ 匹配到：','≈ 対応ファイル：'], diffRows:['差异 {0} 行','差異 {0} 行'],
     zipModified:['修改 {0}','変更 {0}'], zipAdded:['新增 {0}','追加 {0}'], zipRemoved:['删除 {0}','削除 {0}'],
     zipRowTotals:['A共{0}行 B共{1}行','A：{0} 行 / B：{1} 行'],
+    zipPartialCheck:['部分检查','一部比較'],
+    zipUncheckedRange:['未检查范围：{0}','未比較範囲：{0}'],
+    zipPartialNotDiffNote:['部分检查不等于发现差异：未检查范围请人工确认。','一部比較は差異の検出を意味しません。未比較の範囲は目視でご確認ください。'],
+    zipDetailNotShown:['已检查但明细未显示','検査済み・明細は非表示'],
+    zipCheckedScope:['检查规模：{0} 行 × {1} 列（{2}）','検査規模：{0} 行 × {1} 列（{2}）'],
+    zipScopeFull:['完整检查','完全な検査'],
+    zipScopePartial:['部分检查','一部比較'],
+    zipRenderLimited:['比较已完成，但详细表格因显示容量限制而省略。','比較は完了しましたが、表示容量の制限により詳細テーブルを省略しました。'],
+    zipRenderLimitedNote:['差异数量与检查范围状态已保留，单元格明细未显示。','差異数と検査範囲の状態は保持されていますが、セル明細は表示されていません。'],
+    zipSummaryTitle:['轻量结果汇总','軽量結果サマリー'],
     prevArrow:['⬆ 上一差异','⬆ 前の差異'], nextArrow:['下一差异 ⬇','次の差異 ⬇'],
     zipUnpack:['⏳ 正在解压并读取...','⏳ 展開して読み込み中…'],
     zipCompare:['⏳ 正在对比 {0} 个同名文件...','⏳ 同名ファイル {0} 件を比較中…'],
@@ -2833,15 +2958,24 @@ const XLCOMP_LOCAL_TEXT={
     sheetSummaryCollapse:['收起','折りたたむ'],
     sheetSummaryAttention:['⚠ 另有 {0} 个需关注的 Sheet 未显示，请展开全部','⚠ 注意が必要なシートがほか {0} 件未表示です。全件を表示してください'],
     sheetSummaryOnly:['仅单文件','片方のみ'],
+    sheetSummaryFull:['完整检查','完全比較'],
+    sheetSummaryUnchecked:['未检查','未比較'],
     sheetSummaryDetail:['8 类检查结果','8項目の比較結果'],
     sheetSummaryNoResult:['本次未检查（未选择 / 仅存在于单个文件），没有比较结果','今回は未比較（未選択／片方のファイルのみ）のため、比較結果はありません'],
+    sheetSummaryNotSelectedNote:['该 Sheet 未被勾选，本次未参与比较。',
+        'このシートは選択されていないため、今回の比較対象ではありません。'],
     sheetStatePass:['✅ 无差异','✅ 差異なし'],
     sheetStateDiff:['🔴 {0} 处差异','🔴 差異 {0} 件'],
     sheetStatePartial:['部分检查','一部比較'],
     sheetStateFailed:['检查失败','比較失敗'],
     sheetStateNotSelected:['未选择','未選択'],
-    sheetStateOnlyA:['仅文件 A 有','ファイル A のみ'],
-    sheetStateOnlyB:['仅文件 B 有','ファイル B のみ'],
+    sheetStateOnlyA:['仅文件 A 有（未比较）','ファイル A のみ（未比較）'],
+    sheetStateOnlyB:['仅文件 B 有（未比较）','ファイル B のみ（未比較）'],
+    sheetStateEmpty:['空白（无内容）','空白（内容なし）'],
+    sheetSummaryEmptyNote:['该 Sheet 在两个文件中都没有单元格内容，因此没有比较结果。',
+        'このシートは両ファイルともセル内容がありません。比較結果は発生していません。'],
+    sheetSummaryOnlyNote:['该 Sheet 只存在于其中一个文件，未进行内容比较。',
+        'このシート、片方のファイルにのみ存在するため、内容は比較していません。'],
     sheetSummaryCat_pass:['✓ 无差异','✓ 差異なし'],
     sheetSummaryCat_diff:['{0} 处差异','差異 {0} 件'],
     sheetSummaryCat_partial:['部分检查','一部比較'],
@@ -2961,6 +3095,10 @@ function xlcompSheetSummaryData(){
         const isSelected = selectedSet.has(name);
         const limitedCats = (isSelected && r && inA && inB)
             ? xlcompCategories().filter(c => isCatLimited(name, c)) : [];
+        // NO010：空白 Sheet（两侧都没有任何有值单元格）单独标注，不计入差异也不显示为「无差异」。
+        // NO012 Gate 补正：只有「完整检查后确认无有效内容」才允许标空白。
+        // 裁剪 / 未检查范围 / 部分检查 / 失败 一律不得标空白，
+        // 否则会掩盖真实存在的未检查范围（内容可能在裁剪区之外）。
         let status;
         if(!inA && inB) status = 'onlyB';
         else if(inA && !inB) status = 'onlyA';
@@ -2969,7 +3107,11 @@ function xlcompSheetSummaryData(){
         else if(r.clipped || limitedCats.length) status = 'partial';
         else if(diffTotal > 0) status = 'diff';
         else status = 'pass';
-        return { name, status, counts, diffTotal, inA, inB, limitedCats };
+        // 内容证据：裁剪范围外或未检查范围内可能存在内容 → 不得标空白（保守判定）
+        const hasClipScope=!!(r&&(r.clipped||(Array.isArray(r.clipRanges)&&r.clipRanges.length)));
+        const empty=!!(r&&inA&&inB&&isSelected&&status==='pass'&&!hasClipScope
+            &&!r.totalA&&!r.totalB);
+        return { name, status, counts, diffTotal, inA, inB, limitedCats, empty };
     });
 
     const tally = { pass:0, diff:0, partial:0, failed:0, notSelected:0, onlyA:0, onlyB:0 };
@@ -3000,7 +3142,7 @@ function xlcompSheetCategoryState(data, row, category){
 
 function xlcompSheetSummaryStateText(row){
     switch(row.status){
-        case 'pass': return xlcompText('sheetStatePass');
+        case 'pass': return row.empty?xlcompText('sheetStateEmpty'):xlcompText('sheetStatePass');
         case 'diff': return xlcompText('sheetStateDiff', row.diffTotal);
         case 'partial': return xlcompText('sheetStatePartial') +
             (row.diffTotal ? ' · ' + xlcompText('sheetStateDiff', row.diffTotal) : '');
@@ -3014,7 +3156,12 @@ function xlcompSheetSummaryStateText(row){
 
 function xlcompSheetSummaryDetailHtml(data, row){
     if(['notSelected','onlyA','onlyB'].includes(row.status))
-        return `<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">${esc(xlcompText('sheetSummaryNoResult'))}</div>`;
+        return `<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">${esc(xlcompText('sheetSummaryNoResult'))}
+            <div class="xlcomp-limit-hint">${esc(xlcompText(row.status==='notSelected'?'sheetSummaryNotSelectedNote':'sheetSummaryOnlyNote'))}</div></div>`;
+    // NO012 Gate 补正：空白提示只在「完整检查且确认无内容」时出现，
+    // 绝不覆盖部分检查 / 失败 / 未检查范围的说明。
+    if(row.empty&&row.status==='pass')
+        return `<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">${esc(xlcompText('sheetSummaryEmptyNote'))}</div>`;
     const cells = xlcompCategories().map(category => {
         const st = xlcompSheetCategoryState(data, row, category);
         const text = st.key === 'diff'
@@ -3047,11 +3194,14 @@ function xlcompSheetSummaryHtml(){
         .filter(entry => XLCOMP_SUMMARY_ATTENTION.has(entry.row.status)).length;
 
     const notes = [];
-    if(data.tally.partial) notes.push(xlcompText('sheetStatePartial') + ' ' + data.tally.partial);
+    // NO010：明确区分「完整检查 / 部分检查 / 未检查」三类数量（不改变既有 checked 口径）。
+    // 三类互斥且可加总核对：checked(=pass+diff) + partial + unchecked(=notSelected+onlyA+onlyB) + failed = total
+    // 未检查 = 未选择 + 仅单文件（本次没有比较对象）；检查失败单独列出，不并入未检查。
+    const unchecked=data.tally.notSelected+data.tally.onlyA+data.tally.onlyB;
+    notes.push(xlcompText('sheetSummaryFull')+' '+data.checked
+        +' · '+xlcompText('sheetStatePartial')+' '+data.tally.partial
+        +' · '+xlcompText('sheetSummaryUnchecked')+' '+unchecked);
     if(data.tally.failed) notes.push(xlcompText('sheetStateFailed') + ' ' + data.tally.failed);
-    if(data.tally.notSelected) notes.push(xlcompText('sheetStateNotSelected') + ' ' + data.tally.notSelected);
-    const only = data.tally.onlyA + data.tally.onlyB;
-    if(only) notes.push(xlcompText('sheetSummaryOnly') + ' ' + only);
     const noteHtml = notes.length
         ? `<span class="xlcomp-sheet-summary-note">${esc(notes.join(' · '))}</span>` : '';
 
@@ -4053,6 +4203,11 @@ async function runZipComp(){
     // 色比較オプションをチェックボックスから同期
     xlcompOnCompareOptChange();
     xlcompClearResult();
+    // NO012 Gate 最终微修复：每次独立启动 ZIP 比较时重置累计放宽预算。
+    // 否则重复运行同一 ZIP 比较会继承上一次的消耗，导致同一份文件的检查范围前后不一致。
+    // 重置只发生在这里一次 —— 同一次 ZIP 比较中的全部工作簿与全部 Sheet
+    // 仍共用同一份 XLCOMP_EXPAND_CELL_BUDGET_TOTAL(300000) 累计预算，不按文件单独重置。
+    xlcompExpandBudgetUsed=0;
     const progress=document.getElementById('xlcomp-progress');
     progress.textContent=xlcompText('zipUnpack');
     progress.classList.add('show');
@@ -4143,12 +4298,95 @@ async function runZipComp(){
     }
 }
 
+// ===== NO012 发布前渲染安全保护（ZIP 结果渲染容量） =====
+// 依据真实 Chrome 实测（evidence/phase8_render_capacity_probe.json / phase8_fixture_scale_probe.json）：
+//   · V8 最大字符串长度 = 536,870,888 字符（实测 536,000,000 可用，537,000,000 起抛 Invalid string length）。
+//   · 单张 200 列×500 行（开启颜色/字体色/数字格式比较）的表格 HTML 约 250,206,302 字符。
+//   · 4 张同类 Sheet 累计约 1.0e9 字符 → renderZipCompResult 拼接时抛 "Invalid string length"，DOM 长度为 0。
+//   · DOM innerHTML 赋值实测到 200,116,940 字符（2,198,000 个 td）仍成功，约 2.4s。
+// 因此在构建大规模 HTML 之前先估算输出规模；超阈值时保留比较结果与检查范围状态，改显示轻量汇总。
+// 阈值只影响「显示」，不改变比较引擎与差异计数口径。
+const XLCOMP_RENDER_ROW_LIMIT = 500;              // 与 renderSheetTable 的行渲染上限一致
+const XLCOMP_RENDER_CHARS_PER_CELL_COLOR = 2600;  // 开启颜色/字体色比较时每单元格实测约 2.5k 字符（取上界）
+const XLCOMP_RENDER_CHARS_PER_CELL_PLAIN = 500;   // 未开启颜色比较时每单元格实测约 0.43k 字符（取上界）
+const XLCOMP_RENDER_CHAR_BUDGET = 120000000;      // 单次 ZIP 结果的估算输出规模上限（保守；约为 V8 上限的 22%）
+const XLCOMP_RENDER_CHAR_HARD_CAP = 300000000;    // 构建期硬上限；超过则该 Sheet 起改为轻量汇总
+
+/** 估算单个 Sheet 的表格渲染规模（与 renderSheetTable 的渲染规则保持一致）。 */
+function xlcompEstimateSheetRender(r){
+    const rows=(r&&r.rows)||[];
+    const cols=(r&&r.colHeaders&&r.colHeaders.length)||0;
+    // renderSheetTable：ZIP 路径把 xlcompHideEq 强制为 false；行数超限时只渲染前 limit 行的差异行
+    let rendered=rows;
+    if(rows.length>XLCOMP_RENDER_ROW_LIMIT){
+        rendered=rows.filter(x=>x.status!=='eq').slice(0,XLCOMP_RENDER_ROW_LIMIT);
+    }
+    const nRows=rendered.length;
+    const cells=nRows*cols;
+    const colored=!!(r&&(r.cmpBg||r.cmpFont));
+    let valueChars=0;
+    for(let i=0;i<nRows;i++){
+        const cs=(rendered[i]&&rendered[i].cells)||[];
+        for(let j=0;j<cs.length;j++){
+            const c=cs[j];
+            if(!c) continue;
+            if(c.vA!=null) valueChars+=String(c.vA).length;
+            if(c.vB!=null) valueChars+=String(c.vB).length;
+        }
+    }
+    const base=cells*(colored?XLCOMP_RENDER_CHARS_PER_CELL_COLOR:XLCOMP_RENDER_CHARS_PER_CELL_PLAIN);
+    return { nRows, cols, cells, estChars: base+valueChars*4 };
+}
+
+/** 轻量结果汇总块：保留文件/Sheet/真实差异数量/检查范围状态，不生成单元格 HTML。 */
+function xlcompRenderSheetSummaryBlock(r,sheetName){
+    const est=xlcompEstimateSheetRender(r);
+    const clipped=!!r.clipped;
+    const clip=(Array.isArray(r.clipRanges)?r.clipRanges:[]).filter(Boolean);
+    const scope=clipped?xlcompLabel('zipScopePartial'):xlcompLabel('zipScopeFull');
+    return `<div style="padding:10px 16px;background:#f7f9fb;border-left:4px solid #90a4ae;font-size:0.83rem;color:#37474f;">
+        <div style="font-weight:bold;margin-bottom:4px;">📋 ${esc(sheetName)} · ${xlcompLabel('zipDetailNotShown')}</div>
+        <div>${xlcompLabel('zipModified',r.diffCount||0)} ／ ${xlcompLabel('zipAdded',r.addCount||0)} ／ ${xlcompLabel('zipRemoved',r.delCount||0)} · ${xlcompLabel('zipRowTotals',r.totalA||0,r.totalB||0)}</div>
+        <div style="color:#546e7a;">${xlcompLabel('zipCheckedScope',est.nRows,est.cols,scope)}</div>
+        ${clipped?`<div style="color:#8a5a00;">${xlcompLabel('zipUncheckedRange',clip.join(' / '))}</div>
+        <div style="font-size:0.78rem;color:#a06a00;">${xlcompLabel('zipPartialNotDiffNote')}</div>`:''}
+    </div>`;
+}
+
 function renderZipCompResult(zipResult){
     const result=document.getElementById('xlcomp-result');
     const totalFiles=Object.keys(zipResult.files).length;
     const diffFiles=Object.values(zipResult.files).filter(xlcompZipFileHasDiff).length;
     const totalDiffAll=Object.values(zipResult.files).reduce((s,f)=>s+(f.totalDiff||0),0);
     const totalStructureDiffAll=Object.values(zipResult.files).reduce((s,f)=>s+(f.sheetStructureDiff?.count||0),0);
+
+    // NO012 发布前渲染安全保护：构建大规模 HTML 之前先估算输出规模并预先决定每个 Sheet
+    // 是「完整表格」还是「轻量汇总」。比较已完成，本步骤只影响显示，不影响差异数量。
+    let _totalEstChars=0;
+    Object.values(zipResult.files).forEach(fd=>{
+        if(fd.status!=='both') return;
+        (fd.sheetNames||[]).forEach(sn=>{
+            const r=fd.sheets&&fd.sheets[sn];
+            if(r&&r.status==='both') _totalEstChars+=xlcompEstimateSheetRender(r).estChars;
+        });
+    });
+    const _summaryMode=_totalEstChars>XLCOMP_RENDER_CHAR_BUDGET;
+    const _plan=Object.create(null);
+    let _estSoFar=0;
+    Object.entries(zipResult.files).forEach(([name,fd])=>{
+        const p={ omitted:false, sheets:Object.create(null) };
+        _plan[name]=p;
+        if(fd.status!=='both') return;
+        (fd.sheetNames||[]).forEach(sn=>{
+            const r=fd.sheets&&fd.sheets[sn];
+            if(!r||r.status!=='both') return;
+            const e=xlcompEstimateSheetRender(r).estChars;
+            const omit=_summaryMode||(_estSoFar+e>XLCOMP_RENDER_CHAR_HARD_CAP);
+            _estSoFar+=e;
+            if(omit){ p.omitted=true; p.sheets[sn]=true; }
+        });
+    });
+    if(Object.values(_plan).some(p=>p.omitted)) zipResult.__xlcompOmitted=true;
 
     let html=`${xlcompModeLimitHtml('zip')}
     <div style="background:#2c3e50;color:white;border-radius:8px 8px 0 0;
@@ -4181,12 +4419,18 @@ function renderZipCompResult(zipResult){
         </div>
     </div>
     <div style="border:1px solid #ddd;border-top:none;border-radius:0 0 8px 8px;overflow:hidden;">`;
+    const _noticeSlot='<!--XLCOMP_RENDER_NOTICE-->';
+    html+=_noticeSlot;
 
     Object.entries(zipResult.files).forEach(([name,fileData],fileIdx)=>{
         const hasDiff=xlcompZipFileHasDiff(fileData);
-        const statusIcon=hasDiff?'⚠️':'✅';
-        const statusColor=fileData.status==='only_a'?'#f39c12':fileData.status==='only_b'?'#27ae60':hasDiff?'#e74c3c':'#27ae60';
-        const rowBg=hasDiff?'#fff8f8':'#f8fff8';
+        // NO012 Gate 最终微修复：文件级「部分检查」判定（存在被裁剪的 Sheet）。
+        // 注意：部分检查 ≠ 发现真实差异 —— hasDiff 仍只按真实差异判定，差异数量口径完全不变。
+        const fileClipped=fileData.status==='both'&&!!fileData.sheetNames
+            &&fileData.sheetNames.some(n=>fileData.sheets[n]&&fileData.sheets[n].clipped);
+        const statusIcon=hasDiff?'⚠️':(fileClipped?'⚠️':'✅');
+        const statusColor=fileData.status==='only_a'?'#f39c12':fileData.status==='only_b'?'#27ae60':hasDiff?'#e74c3c':(fileClipped?'#e67e22':'#27ae60');
+        const rowBg=hasDiff?'#fff8f8':(fileClipped?'#fffaf0':'#f8fff8');
 
         html+=`
         <div style="border-bottom:1px solid #eee;">
@@ -4202,7 +4446,7 @@ function renderZipCompResult(zipResult){
                 ${fileData.status==='only_b'?`<span style="background:#27ae60;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">${xlcompLabel('onlyZipB')}</span>`:''}
                 ${fileData.status==='both'&&fileData.sheetStructureDiff?.count>0?`<span style="background:#f39c12;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">${xlcompLabel('compareSheetStructureDiff')} ${fileData.sheetStructureDiff.count}件</span>`:''}
                 ${fileData.status==='both'&&hasDiff&&fileData.totalDiff>0?`<span style="background:#e74c3c;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">${xlcompLabel('diffRows',fileData.totalDiff)}</span>`:''}
-                ${fileData.status==='both'&&!hasDiff?`<span style="background:#27ae60;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">✅ ${xlcompLabel('allCheckedPass')}</span>`:''}
+                ${fileData.status==='both'&&!hasDiff&&!fileClipped&&!(_plan[name]&&_plan[name].omitted)?`<span style="background:#27ae60;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">✅ ${xlcompLabel('allCheckedPass')}</span>`:''}${fileData.status==='both'&&fileClipped?`<span style="background:#e67e22;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">${xlcompLabel('zipPartialCheck')}</span>`:''}${fileData.status==='both'&&_plan[name]&&_plan[name].omitted?`<span style="background:#78909c;color:white;border-radius:4px;padding:2px 8px;font-size:0.75rem;">${xlcompLabel('zipDetailNotShown')}</span>`:''}
                 <span style="color:#aaa;font-size:0.8rem;">▼</span>
             </div>
             <div id="xlzip-detail-${fileIdx}" style="display:none;">`;
@@ -4226,16 +4470,34 @@ function renderZipCompResult(zipResult){
                     <span style="background:#e74c3c;border-radius:8px;padding:1px 8px;font-size:0.75rem;">${xlcompLabel('zipModified',r.diffCount)}</span>
                     <span style="background:#27ae60;border-radius:8px;padding:1px 8px;font-size:0.75rem;">${xlcompLabel('zipAdded',r.addCount)}</span>
                     <span style="background:#c0392b;border-radius:8px;padding:1px 8px;font-size:0.75rem;">${xlcompLabel('zipRemoved',r.delCount)}</span>
-                    <span style="background:#7f8c8d;border-radius:8px;padding:1px 8px;font-size:0.75rem;">${xlcompLabel('zipRowTotals',r.totalA||0,r.totalB||0)}</span>`;
+                    <span style="background:#7f8c8d;border-radius:8px;padding:1px 8px;font-size:0.75rem;">${xlcompLabel('zipRowTotals',r.totalA||0,r.totalB||0)}</span>${r.clipped?`<span style="background:#e67e22;border-radius:8px;padding:1px 8px;font-size:0.75rem;">${xlcompLabel('zipPartialCheck')}</span>`:''}`;
                 html+=`</div>`;
 
                 if(r.status!=='only_a'&&r.status!=='only_b'&&r.rows&&r.rows.length>0){
-                    const _hide=xlcompHideEq;
-                    xlcompHideEq=false;
-                    html+=renderSheetTable(r, sheetName);
-                    xlcompHideEq=_hide;
-                } else if(r.status!=='only_a'&&r.status!=='only_b'){
+                    // NO012 发布前渲染安全保护：预规划判定为「省略明细」的 Sheet 改为轻量汇总
+                    // （保留差异数量与检查范围状态，不生成单元格 HTML）。
+                    const _omit=!!(_plan[name]&&_plan[name].sheets[sheetName]);
+                    if(_omit){
+                        html+=xlcompRenderSheetSummaryBlock(r, sheetName);
+                    } else {
+                        const _hide=xlcompHideEq;
+                        xlcompHideEq=false;
+                        html+=renderSheetTable(r, sheetName);
+                        xlcompHideEq=_hide;
+                    }
+                } else if(r.status!=='only_a'&&r.status!=='only_b'&&!r.clipped){
                     html+=`<div style="padding:12px 16px;background:#eafaf1;color:#27ae60;font-size:0.85rem;text-align:center;">✅ ${xlcompLabel('allCheckedPass')}</div>`;
+                }
+                // NO012 Gate 最终微修复：被裁剪的 Sheet 必须明确提示「部分检查」与未检查范围；
+                // 即使已检查部分没有差异，也不得显示「完全一致」。
+                // 部分检查不等于发现真实差异 —— 此处不计入任何差异数量。
+                if(r.status!=='only_a'&&r.status!=='only_b'&&r.clipped){
+                    const _clip=(Array.isArray(r.clipRanges)?r.clipRanges:[]).filter(Boolean);
+                    html+=`<div style="padding:10px 16px;background:#fff8e8;border-left:4px solid #e67e22;font-size:0.83rem;color:#8a5a00;">
+                        <div style="font-weight:bold;margin-bottom:4px;">${xlcompLabel('zipPartialCheck')}</div>
+                        ${_clip.length?`<div>${xlcompLabel('zipUncheckedRange',_clip.join(' / '))}</div>`:''}
+                        <div style="font-size:0.78rem;color:#a06a00;margin-top:4px;">${xlcompLabel('zipPartialNotDiffNote')}</div>
+                    </div>`;
                 }
                 html+=`</div>`;
             });
@@ -4244,6 +4506,21 @@ function renderZipCompResult(zipResult){
     });
 
     html+=`</div>`;
+
+    // NO012 发布前渲染安全保护：仅在确实省略了明细时才插入容量提示。
+    // 提示进入 DOM —— ZIP 模式的 HTML 导出是 DOM 快照，因此导出既不会重建超大 HTML，
+    // 也不会漏掉容量限制说明。
+    let _notice='';
+    if(zipResult.__xlcompOmitted){
+        _notice=`<div style="background:#fff8e8;border:1px solid #f39c12;border-left:4px solid #e67e22;
+                    padding:10px 16px;margin:10px 0;font-size:0.85rem;color:#8a5a00;">
+            <div style="font-weight:bold;margin-bottom:4px;">${xlcompLabel('zipSummaryTitle')}</div>
+            <div>${xlcompLabel('zipRenderLimited')}</div>
+            <div style="font-size:0.78rem;color:#a06a00;margin-top:4px;">${xlcompLabel('zipRenderLimitedNote')}</div>
+        </div>`;
+    }
+    html=html.replace(_noticeSlot,_notice);
+
     result.innerHTML=html;
 
 
