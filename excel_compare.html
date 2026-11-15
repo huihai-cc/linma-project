@@ -110,6 +110,30 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
   padding:5px 12px;font-size:14px;cursor:pointer; }
 .xlcomp-incomplete-toggle:hover { background:#fffaf0; }
 .xlcomp-incomplete-toggle:focus-visible { outline:3px solid #a9d8ff;outline-offset:2px; }
+#xlcomp-unified-counts button[data-display-level="info"]:not([data-state="diff"]){background:#eef2f7;color:#435867;border-color:#c3ccd6;}
+#xlcomp-unified-counts button[data-display-level="warning"]:not([data-state="diff"]){background:#fff0d8;color:#784106;border-color:#ddbc86;}
+#xlcomp-overall[data-display-level="info"]{color:#d9e6ef;}
+.xlcomp-display-summary-content,.xlcomp-display-summary-stats{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:4px 0 8px;}
+.xlcomp-display-stat{display:inline-block;border:1px solid #d4dde5;border-radius:5px;padding:5px 9px;background:#f8fafc;color:#37474f;font-size:13px;font-weight:600;}
+.xlcomp-display-stat[data-level="diff"]{color:#8a2027;background:#ffe5e5;border-color:#e5b6b6;}
+.xlcomp-display-stat[data-level="warning"]{color:#784106;background:#fff0d8;border-color:#ddbc86;}
+.xlcomp-display-stat[data-level="unchecked"]{color:#546e7a;background:#eef2f7;border-color:#c3ccd6;}
+.xlcomp-display-card{width:100%;box-sizing:border-box;border:1px solid #c3ccd6;border-radius:6px;padding:10px 12px;background:#eef2f7;color:#37474f;font-size:14px;}
+.xlcomp-display-card[data-level="warning"]{background:#fff0d8;border-color:#ddbc86;color:#784106;}
+.xlcomp-display-card>strong,.xlcomp-display-card>span{margin-right:10px;}
+.xlcomp-display-card>p{margin:5px 0;}.xlcomp-display-card details{margin-top:7px;}.xlcomp-display-card summary{cursor:pointer;font-weight:600;}
+.xlcomp-display-detail-category{margin-top:8px;}.xlcomp-display-detail-category h4{margin:8px 0 3px;}
+.xlcomp-display-caution{margin:4px 0 8px;padding:7px 10px;border-left:3px solid #78909c;background:#f4f7f9;color:#435867;font-size:13px;}
+.xlcomp-result-confirmed-diff{margin:0 0 8px;padding:8px 10px;border-left:3px solid #c0392b;background:#fff0f0;color:#8a2027;font-weight:700;}
+.xlcomp-sheet-summary-item[data-display-level="info"]:not([data-has-diff="true"]) .xlcomp-sheet-summary-row{border-left-color:#607d8b;}
+.xlcomp-sheet-summary-item[data-display-level="warning"] .xlcomp-sheet-summary-row{border-left-color:#b9770e;}
+.xlcomp-sheet-summary-item[data-has-diff="true"] .xlcomp-sheet-summary-row{border-left-color:#c0392b;}
+.xlcomp-sheet-summary-cat[data-state="partial"][data-display-level="info"] .xlcomp-sheet-summary-cat-state{color:#435867;}
+.xlcomp-sheet-summary-cat[data-state="partial"][data-display-level="warning"] .xlcomp-sheet-summary-cat-state{color:#784106;}
+.xlcomp-sheet-summary-attention-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.xlcomp-sheet-summary-attention-item{display:inline-block;padding:4px 8px;border-radius:4px;font-size:13px;font-weight:600;background:#eef2f7;color:#435867;border:1px solid #c3ccd6;}
+.xlcomp-sheet-summary-attention-item[data-level="warning"]{background:#fff0d8;color:#784106;border-color:#ddbc86;}
+.xlcomp-sheet-summary-attention-item[data-level="diff"]{background:#ffe5e5;color:#8a2027;border-color:#e3b4b4;}
 .xlcomp-limit { margin-top:10px;background:#fff;border:1px solid #cbd5df;border-radius:6px;color:#253746; }
 .xlcomp-limit[hidden] { display:none; }
 .xlcomp-limit table { border-collapse:collapse;width:100%;font-size:14px; }
@@ -122,6 +146,7 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 .xlcomp-limit-hint { font-size:13px;color:#546e7a; }
 .xlcomp-limit-note { padding:10px 12px 0;margin:0;font-size:13px;color:#546e7a; }
 .xlcomp-color-note { font-size:13px;color:#37474f;margin-left:4px;cursor:help; }
+.xlcomp-xlsb-note { margin:8px 0 0;padding:8px 10px;border:1px solid #c7d2de;background:#f4f7fa;color:#33475b;font-size:13px;line-height:1.5;border-radius:6px; }
 /* NO009 Sheet 检查结果サマリー（比較完了後に既定表示） */
 .xlcomp-sheet-summary { background:#fff;border:1px solid #cbd5df;border-radius:8px;
   color:#253746;margin:0 0 14px;padding:10px 12px;font-size:14px;
@@ -417,6 +442,7 @@ function qcHeaderLang(lang){
   <span id="xlcomp-option-unsupported-note" class="xl-fast-disabled-note" style="display:none;"></span>
   <span id="xlcomp-color-note" class="xlcomp-color-note" style="display:none"
         data-xlcomp-title="colorNoteTitle"><span data-xlcomp-label="colorNoteLabel">ⓘ 颜色检查范围</span></span>
+  <div id="xlcomp-xlsb-note" class="xlcomp-xlsb-note" style="display:none" role="note"></div>
   <button id="btn-exp-xlcomp" onclick="exportXlComp()"
           style="display:none;background:#8e44ad;color:white;border:none;border-radius:4px;
                  padding:8px 18px;font-size:0.88rem;font-weight:bold;cursor:pointer;margin-left:auto;"
@@ -456,6 +482,7 @@ function qcHeaderLang(lang){
     <button id="xlcomp-report-export" type="button" onclick="exportXlComp()" data-xlcomp-label="export">导出 HTML</button>
   </div>
   <div id="xlcomp-unified-counts" role="group"></div>
+  <div id="xlcomp-display-summary" aria-live="polite"></div>
   <div class="xlcomp-result-actions xlcomp-location-tools">
     <button id="xlcomp-nav-prev" type="button" onclick="xlcompUnifiedNav(-1)" data-xlcomp-label="prev">上一差异</button>
     <strong id="xlcomp-unified-position" aria-live="polite">0 / 0</strong>
@@ -494,6 +521,13 @@ const LibLoader = {
             return new Promise((resolve, reject) => {
                 const s = document.createElement('script');
                 s.src = urlList[0];
+                const integrity={
+                    './xlsx-0.20.3.full.min.js':'sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT',
+                    './jszip.min.js':'sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG'
+                };
+                if(!integrity[urlList[0]]){ reject(new Error('Unapproved library')); return; }
+                s.integrity=integrity[urlList[0]];
+                s.crossOrigin='anonymous';
                 s.onload = resolve;
                 s.onerror = () => tryLoad(urlList.slice(1)).then(resolve).catch(reject);
                 document.head.appendChild(s);
@@ -503,17 +537,10 @@ const LibLoader = {
         return this._cache[name];
     },
     loadXLSX() {
-        return this.load('xlsx', [
-            './xlsx.full.min.js',
-            'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-        ]);
+        return this.load('xlsx', ['./xlsx-0.20.3.full.min.js']);
     },
     loadJSZip() {
-        return this.load('jszip', [
-            './jszip.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
-        ]);
+        return this.load('jszip', ['./jszip.min.js']);
     },
 };
 
@@ -523,7 +550,8 @@ function xlcompEscapeAttr(s){ return esc(s).replace(/"/g,'&quot;'); }
 // ===== 状态変数 =====
 let xlcompFileA = null, xlcompFileB = null;
 let xlcompCmpBorder=true, xlcompStandardBusy=false;
-let xlcompBorderDiffs=[], xlcompCategoryIssues={};
+let xlcompBorderDiffs=[], xlcompCategoryIssues={}, xlcompCfGroupCount=0;
+let xlcompCfDisplayGroupByCat={};
 // 检查限制明细（结构化）：限制类型 / 文件 / Sheet / 范围 / 是否可精确定位 / 覆盖状态
 let xlcompLimits=[], xlcompLimitPanelOpen=null;
 const XLCOMP_LIMIT_MAX_RANGES=100;   // 单 Sheet 行默认样式逐条记录上限，超出改为汇总
@@ -1046,7 +1074,116 @@ function xlcompBorderSig(border){
         return side+'='+(edge?(edge.style||'')+'/'+String(edge.color??''):'-');
     }).join('|');
 }
-
+function xlcompCfScope(root,table,sheet){
+    // v24 P0: identify CF ranges whose final display cannot be proven by static style comparison.
+    // Scope-only detection: never evaluates rule conditions, never signs semantic equivalence.
+    const children=el=>Array.from(el?.children||[]);
+    const descendants=el=>Array.from(el?.getElementsByTagName('*')||[]);
+    const main='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+    const x14='http://schemas.microsoft.com/office/spreadsheetml/2009/9/main';
+    const known=new Set(['expression','cellIs','colorScale','dataBar','iconSet','top10',
+        'uniqueValues','duplicateValues','containsText','notContainsText','beginsWith',
+        'endsWith','containsBlanks','notContainsBlanks','containsErrors','notContainsErrors',
+        'timePeriod','aboveAverage']);
+    const validRange=raw=>{
+        const col=s=>{let n=0;for(const c of s)n=n*26+c.charCodeAt(0)-64;return n;};
+        const token=s=>{
+            let m=s.match(/^\$?([A-Z]{1,3})\$?([1-9]\d{0,6})(?::\$?([A-Z]{1,3})\$?([1-9]\d{0,6}))?$/);
+            if(m)return col(m[1])<=16384&&+m[2]<=1048576&&(!m[3]||(col(m[3])<=16384&&+m[4]<=1048576&&col(m[1])<=col(m[3])&&+m[2]<=+m[4]));
+            m=s.match(/^\$?([A-Z]{1,3}):\$?([A-Z]{1,3})$/);
+            if(m)return col(m[1])<=col(m[2])&&col(m[2])<=16384;
+            m=s.match(/^\$?([1-9]\d{0,6}):\$?([1-9]\d{0,6})$/);
+            return !!m&&+m[1]<=+m[2]&&+m[2]<=1048576;
+        };
+        return !!raw&&raw.split(/\s+/).every(token);
+    };
+    // Fail closed on unrecognised descendants, including referenced/inline dxf extensions.
+    const elements=new Set(['formula','f','dxf','font','name','charset','family','b','i',
+        'strike','outline','shadow','condense','extend','color','sz','u','vertAlign','scheme',
+        'numFmt','fill','patternFill','fgColor','bgColor','gradientFill','stop','border',
+        'left','right','top','bottom','diagonal','vertical','horizontal','start','end',
+        'alignment','protection','colorScale','cfvo','dataBar','iconSet','cfIcon']);
+    const unknownDescendant=el=>descendants(el).some(node=>
+        ![main,x14,'http://schemas.microsoft.com/office/excel/2006/main'].includes(node.namespaceURI)||
+        !elements.has(node.localName));
+    const result=[];
+    const addBorder=(range,rules,unknown=false)=>result.push({type:'condFormatBorder',sheet,
+        range,precise:validRange(range),wholeSheet:unknown&&!range,
+        coverage:'rangeOnly',count:1,rules,cfUnverified:true,cfUnknown:unknown});
+    const addDisplay=(range,cats,families,unknown=false)=>result.push({
+        type:unknown?'condFormatDisplayUnknown':'condFormatDisplay',sheet,range,
+        precise:validRange(range),wholeSheet:unknown&&!range,coverage:'rangeOnly',count:1,
+        categories:Array.from(new Set(cats)).sort(),families:Array.from(new Set(families)).sort(),
+        cfUnverified:true,cfUnknown:unknown});
+    const groups=descendants(root).filter(el=>el.localName==='conditionalFormatting');
+    for(const group of groups){
+        const ranges=[group.getAttribute('sqref'),...children(group).filter(el=>el.localName==='sqref').map(el=>el.textContent)].filter(Boolean);
+        const range=ranges.join(' ').trim();
+        const rules=children(group).filter(el=>el.localName==='cfRule');
+        let borderAffected=false;
+        let unknown=![main,x14].includes(group.namespaceURI)||rules.length===0;
+        const cats=new Set(), fams=new Set();
+        let displayUnknown=false;
+        for(const rule of rules){
+            if(![main,x14].includes(rule.namespaceURI)||!known.has(rule.getAttribute('type'))||unknownDescendant(rule)){unknown=true;displayUnknown=true;}
+            let dxf=null;
+            const id=rule.getAttribute('dxfId');
+            if(id!==null){
+                dxf=/^(0|[1-9]\d*)$/.test(id)?table.dxfs[Number(id)]:null;
+                if(!dxf){unknown=true;displayUnknown=true;}
+                else if(unknownDescendant(dxf)){unknown=true;displayUnknown=true;}
+            }
+            const inlineDxfs=children(rule).filter(el=>el.localName==='dxf');
+            if(inlineDxfs.length){
+                if(inlineDxfs.length!==1||rule.namespaceURI!==x14||inlineDxfs[0].namespaceURI!==x14||dxf){
+                    unknown=true;displayUnknown=true;
+                }else dxf=inlineDxfs[0];
+            }
+            if(dxf){
+                for(const kid of children(dxf)){
+                    if(kid.localName==='font'){cats.add('fontcolor');fams.add('font');}
+                    else if(kid.localName==='fill'||kid.localName==='patternFill'){cats.add('bgcolor');fams.add('fill');}
+                    else if(kid.localName==='numFmt'){cats.add('numfmt');fams.add('numFmt');}
+                    else if(kid.localName==='border'){borderAffected=true;fams.add('border');}
+                    else {displayUnknown=true;}
+                }
+                if(descendants(dxf).some(el=>el.localName==='border'))borderAffected=true;
+            }
+            if(descendants(rule).some(el=>el.localName==='border'))borderAffected=true;
+            if(descendants(rule).some(el=>el.localName==='colorScale')){cats.add('bgcolor');fams.add('colorScale');}
+            if(descendants(rule).some(el=>el.localName==='dataBar')){cats.add('bgcolor');fams.add('dataBar');}
+            if(descendants(rule).some(el=>el.localName==='iconSet')){cats.add('bgcolor');fams.add('iconSet');}
+            if(children(rule).some(el=>!['formula','f','dxf','colorScale','dataBar','iconSet'].includes(el.localName))){unknown=true;displayUnknown=true;}
+        }
+        if(children(group).some(el=>!['cfRule','sqref'].includes(el.localName))){unknown=true;displayUnknown=true;}
+        if(unknown)displayUnknown=true;
+        if(displayUnknown){cats.add('fontcolor');cats.add('bgcolor');cats.add('numfmt');fams.add('unknown');}
+        if(borderAffected||unknown)addBorder(range,rules.length,unknown);
+        if(cats.size)addDisplay(range,cats,fams,displayUnknown);
+        // Nested extension may carry an independent scope; parent sqref cannot cover it.
+        if(children(group).some(el=>el.localName==='extLst')){
+            addBorder('',0,true);
+            addDisplay('',['fontcolor','bgcolor','numfmt'],['unknown'],true);
+        }
+    }
+    const extLists=descendants(root).filter(el=>el.localName==='extLst'&&el.parentElement===root);
+    for(const list of extLists){
+        for(const ext of children(list))for(const item of children(ext)){
+            // Known non-CF families do not belong to the CF scope.
+            if(['dataValidations','sparklineGroups','slicerList','timelineRefs','ignoredErrors'].includes(item.localName)&&item.namespaceURI===x14)continue;
+            if(item.localName==='conditionalFormattings'&&item.namespaceURI===x14){
+                if(children(item).some(el=>el.localName!=='conditionalFormatting')){
+                    addBorder('',0,true);
+                    addDisplay('',['fontcolor','bgcolor','numfmt'],['unknown'],true);
+                }
+                continue;
+            }
+            addBorder('',0,true);
+            addDisplay('',['fontcolor','bgcolor','numfmt'],['unknown'],true);
+        }
+    }
+    return result;
+}
 // NO012 Gate 补正：行默认样式汇总签名。
 // 必须同时体现「实际行号」与「边框属性」：
 //   仅用边框属性会在 A/B 行号错位但样式相同时被误判为一致，从而抑制 rowDefault 限制项
@@ -1116,20 +1253,30 @@ function xlcompReadBorderTable(styles,wb){
     return {resolve,dxfs};
 }
 
-async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBorders=false){
+async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBorders=false,needCfScope=needBorders){
     if(wb._cellStyleMap&&sheetNames.every(name=>wb._cellStyleMap.has(name))&&
-        (!needBorders||sheetNames.every(name=>wb._borderStyleMap?.has(name)))) return;
+        (!needBorders||sheetNames.every(name=>wb._borderStyleMap?.has(name)))&&
+        (!needCfScope||wb._cfScopeReady||wb._cfScopeError)) return;
     const {zip,bookPart,relationships,sheets}=await xlcompXmlWorkbook(wb,fileOrBuf);
     const map=new Map();
     const borderMap=new Map();
     const borderLimitsBySheet=wb._borderLimitsBySheet||new Map();
-    let table=null, borderError=null;
-    if(needBorders){
-        try{
-            const rel=relationships.find(el=>el.getAttribute('Type')?.endsWith('/styles'));
-            const styles=rel?await xlcompReadXml(zip,xlcompRelationshipPath(bookPart,rel.getAttribute('Target')),'styleSheet'):null;
-            table=xlcompReadBorderTable(styles,wb);
-        }catch(err){ borderError=err; }
+    let table=null, cfTable=null, borderError=null, cfScopeError=null;
+    if(needBorders||needCfScope){
+        const rel=relationships.find(el=>el.getAttribute('Type')?.endsWith('/styles'));
+        let styles=null;
+        if(rel){
+            try{ styles=await xlcompReadXml(zip,xlcompRelationshipPath(bookPart,rel.getAttribute('Target')),'styleSheet'); }
+            catch(err){ borderError=err; if(needCfScope) cfScopeError=err; }
+        }
+        if(!rel||styles){
+            try{
+                const dxfs=xlcompXmlChildren(xlcompXmlChild(styles,'dxfs'),'dxf');
+                cfTable={dxfs};
+            }catch(err){ if(needCfScope) cfScopeError=err; }
+            try{ table=xlcompReadBorderTable(styles,wb); }
+            catch(err){ borderError??=err; }
+        }
     }
     for(const sheetName of sheetNames){
         const rel=sheets.get(sheetName);
@@ -1179,17 +1326,17 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
                 if(style===null) implicitCells++;
                 const xf=wb.Styles?.CellXf?.[style];
                 if(xf) cellMap.set(addr,{fillId:xf.fillId??0,fontId:xf.fontId??0});
-                if(table&&!borderError){
+                if(needBorders&&table&&!borderError){
                     try{ sheetBorders.set(addr,table.resolve(style??'0',rtl)); }
                     catch(err){ borderError=err; }
                 }
             }
         }
-        if(!needBorders) continue;
+        if(!needBorders&&!needCfScope) continue;
         const sheetLimits=[];
         if(invalidRefs) sheetLimits.push({type:'invalidRef',sheet:sheetName,range:'',
             precise:false,coverage:'notChecked',count:1,cells:invalidRefs});
-        if(table&&!borderError){
+        if(needBorders&&table&&!borderError){
             try{
                 const visibleStyle=id=>Object.keys(table.resolve(id,rtl)).length>0;
                 // 工作表既定の書式：個別スタイルを持たないセルはこの罫線を継承するため未比較。
@@ -1226,20 +1373,17 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
                 }
                 for(const [span,sig] of colSpans) sheetLimits.push({type:'colDefault',
                     sheet:sheetName,range:span,precise:true,coverage:'partial',count:1,sig});
-                // 条件付き書式：ルールの適用範囲のみ取得。実際の表示結果は計算していない。
-                for(const group of xlcompXmlChildren(root,'conditionalFormatting')){
-                    const rules=xlcompXmlChildren(group,'cfRule').filter(rule=>{
-                        const id=rule.getAttribute('dxfId');
-                        return id!==null&&!!xlcompXmlChild(table.dxfs[Number(id)],'border');
-                    });
-                    if(!rules.length) continue;
-                    const sqref=(group.getAttribute('sqref')||'').trim();
-                    const same=sqref&&sheetLimits.find(item=>item.type==='condFormatBorder'&&item.range===sqref);
-                    if(same){ same.rules+=rules.length; continue; }
-                    sheetLimits.push({type:'condFormatBorder',sheet:sheetName,range:sqref,
-                        precise:!!sqref,coverage:'rangeOnly',count:1,rules:rules.length});
-                }
+
             }catch(err){ borderError=err; }
+        }
+        if(needCfScope&&cfTable&&!cfScopeError){
+            try{
+                const cfItems=xlcompCfScope(root,cfTable,sheetName);
+                cfItems.forEach(item=>{
+                    if(item.type==='condFormatBorder'){ if(needBorders) sheetLimits.push(item); }
+                    else sheetLimits.push(item);
+                });
+            }catch(err){ cfScopeError??=err; }
         }
         borderLimitsBySheet.set(sheetName,sheetLimits);
         if(needBorders){
@@ -1249,10 +1393,13 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
         }
     }
     wb._cellStyleMap=map;
+    if(needBorders||needCfScope){
+        wb._borderLimitsBySheet=borderLimitsBySheet;
+        if(needCfScope){ wb._cfScopeReady=!cfScopeError; wb._cfScopeError=cfScopeError; }
+    }
     if(needBorders){
         wb._borderStyleMap=borderMap;
         wb._borderStyleError=borderError;
-        wb._borderLimitsBySheet=borderLimitsBySheet;
         wb._borderStyleLimited=sheetNames.some(name=>(borderLimitsBySheet.get(name)||[]).length>0);
     }
 }
@@ -1414,6 +1561,18 @@ function initXlCompDrop(side){
     });
 }
 
+function xlcompUpdateXlsbNote(){
+    const note=document.getElementById('xlcomp-xlsb-note');
+    if(!note) return;
+    if(xlcompMode!=='excel'){ note.style.display='none'; note.textContent=''; return; }
+    const na=xlcompFileA?xlcompFileA.name:'';
+    const nb=xlcompFileB?xlcompFileB.name:'';
+    const isX=name=>/\.xlsb$/i.test(name);
+    if(!isX(na)&&!isX(nb)){ note.style.display='none'; note.textContent=''; return; }
+    note.textContent=(isX(na)&&isX(nb))?xlcompText('xlsbNoteBoth'):xlcompText('xlsbNoteMixed');
+    note.style.display='block';
+}
+
 // ===== ファイル受取 =====
 function handleXlCompFile(side, file){
     document.getElementById('xlcomp-sheet-select').style.display = 'none';
@@ -1451,6 +1610,7 @@ function handleXlCompFile(side, file){
     }
 
     xlcompClearResult();
+    xlcompUpdateXlsbNote();
     if(xlcompFileA && xlcompFileB){
         // 高速モードが有効なら標準コントロールをスキップしてPhase1へ
         if(xlcompFastMode){
@@ -1601,6 +1761,7 @@ function xlcompSetMode(mode){
     }
 
     xlcompFileA=null; xlcompFileB=null;
+    xlcompUpdateXlsbNote();
     xlcompWbA=null; xlcompWbB=null; xlcompResults=null;
     xlcompSheetStructureDiff={ onlyA:[], onlyB:[], count:0 };
     xlcompFormulaResults=null;
@@ -1917,14 +2078,21 @@ async function doXlComp(selected){
     for(const [category,enabled] of Object.entries(options)){
         if(!enabled) xlcompCategoryIssues[category]='skipped';
         else if(!common.length) xlcompCategoryIssues[category]='noCommon';
-        else if(!xmlFiles&&['border','fontcolor','textbox'].includes(category)) xlcompCategoryIssues[category]='fileUnsupported';
+        else if(!xmlFiles&&['border','fontcolor','textbox','bgcolor'].includes(category)) xlcompCategoryIssues[category]='fileUnsupported';
     }
     try{
         await new Promise(resolve=>setTimeout(resolve,30));
-        if(xmlFiles&&common.length&&(xlcompCmpFont||xlcompCmpBorder)){
+        if(xmlFiles&&common.length&&(xlcompCmpFont||xlcompCmpBorder||xlcompCmpBg||xlcompCmpNumFmt)){
             try{
                 await Promise.all([xlcompWbA,xlcompWbB].map(wb=>
-                    _ensureCellStyleMap(wb,wb._rawBuf,common,xlcompCmpBorder)));
+                    _ensureCellStyleMap(wb,wb._rawBuf,common,xlcompCmpBorder,
+                        xlcompCmpBorder||xlcompCmpBg||xlcompCmpFont||xlcompCmpNumFmt)));
+                const scopeWorkbooks=[xlcompWbA,xlcompWbB];
+                if(scopeWorkbooks.some(wb=>wb._cfScopeError)){
+                    if(xlcompCmpFont) xlcompCategoryIssues.fontcolor='failed';
+                    if(xlcompCmpBg) xlcompCategoryIssues.bgcolor='failed';
+                    if(xlcompCmpNumFmt) xlcompCategoryIssues.numfmt='failed';
+                }
                 if(xlcompCmpBorder){
                     const workbooks=[xlcompWbA,xlcompWbB];
                     if(workbooks.some(wb=>wb._borderStyleError)) xlcompCategoryIssues.border='failed';
@@ -1953,18 +2121,71 @@ async function doXlComp(selected){
                         [[xlcompWbA,'A'],[xlcompWbB,'B']].forEach(([wb,file])=>{
                             common.forEach(sheet=>{
                                 (wb._borderLimitsBySheet?.get(sheet)||[]).forEach(item=>{
+                                    if(item.type==='condFormatBorder'||item.type.indexOf('condFormatDisplay')===0) return; // 条件格式范围在下方单独处理
                                     const key=item.type+'|'+sheet+'|'+(item.range||'');
                                     if(item.sig&&resolvedDefaultKeys.has(key)) return;
                                     xlcompLimits.push(Object.assign({category:'border',file},item));
                                 });
                             });
                         });
-                        if(xlcompLimits.some(item=>item.category==='border'))
-                            xlcompCategoryIssues.border='borderLimited';
+                        // C+: exact scope grouping is presentation only, never proof of rule equality.
+                        const cfGroups=new Map();
+                        [[xlcompWbA,'A'],[xlcompWbB,'B']].forEach(([wb,file])=>{
+                            common.forEach(sheet=>{
+                                (wb._borderLimitsBySheet?.get(sheet)||[]).filter(x=>x.type==='condFormatBorder').forEach(item=>{
+                                    const key=JSON.stringify([sheet,item.range,item.precise,!!item.wholeSheet]);
+                                    let group=cfGroups.get(key);
+                                    if(!group){group=Object.assign({},item,{category:'border',files:[],sourceGroups:0,cfGroup:true});cfGroups.set(key,group);}
+                                    if(!group.files.includes(file))group.files.push(file);
+                                    group.sourceGroups++;group.cfUnknown||=item.cfUnknown;
+                                });
+                            });
+                        });
+                        for(const group of cfGroups.values()){
+                            group.file=group.files.length===2?'AB':group.files[0];
+                            xlcompLimits.push(group);
+                        }
+                        xlcompCfGroupCount=cfGroups.size;
+                        const defaultBorderLimited=xlcompLimits.some(item=>item.category==='border'&&item.type!=='condFormatBorder');
+                        if(defaultBorderLimited)xlcompCategoryIssues.border='borderLimited';
+                        else if(cfGroups.size)xlcompCategoryIssues.border='cfUnverified';
                     }
+                }
+                // v24 P0: CF display-scope aggregation is independent of the border option.
+                // It only marks affected ranges as unverified; it never produces a difference.
+                if(xlcompCmpBg||xlcompCmpFont||xlcompCmpNumFmt){
+                    const displayGroups=new Map();
+                    const displayCatEnabled={fontcolor:!!xlcompCmpFont,bgcolor:!!xlcompCmpBg,numfmt:!!xlcompCmpNumFmt};
+                    [[xlcompWbA,'A'],[xlcompWbB,'B']].forEach(([wb,file])=>{
+                        common.forEach(sheet=>{
+                            (wb._borderLimitsBySheet?.get(sheet)||[]).filter(x=>x.type==='condFormatDisplay'||x.type==='condFormatDisplayUnknown').forEach(item=>{
+                                const cats=(item.categories||[]).filter(cat=>displayCatEnabled[cat]);
+                                if(!cats.length) return;
+                                const key=JSON.stringify([sheet,item.range,item.precise,!!item.wholeSheet,!!item.cfUnknown,cats.slice().sort()]);
+                                let group=displayGroups.get(key);
+                                if(!group){group=Object.assign({},item,{category:'bgcolor',categories:cats.slice().sort(),families:[],files:[],sourceGroups:0,cfGroup:true});displayGroups.set(key,group);}
+                                (item.families||[]).forEach(f=>{if(!group.families.includes(f))group.families.push(f);});
+                                if(!group.files.includes(file))group.files.push(file);
+                                group.sourceGroups++;
+                            });
+                        });
+                    });
+                    const displayCountByCat={};
+                    for(const group of displayGroups.values()){
+                        group.file=group.files.length===2?'AB':group.files[0];
+                        group.families.sort();
+                        group.categories.forEach(cat=>{
+                            xlcompLimits.push(Object.assign({},group,{category:cat,categories:[cat]}));
+                            displayCountByCat[cat]=(displayCountByCat[cat]||0)+1;
+                            if(!xlcompCategoryIssues[cat])xlcompCategoryIssues[cat]='cfUnverifiedDisplay';
+                        });
+                    }
+                    xlcompCfDisplayGroupByCat=displayCountByCat;
                 }
             }catch(err){
                 if(xlcompCmpFont) xlcompCategoryIssues.fontcolor='failed';
+                if(xlcompCmpBg) xlcompCategoryIssues.bgcolor='failed';
+                if(xlcompCmpNumFmt) xlcompCategoryIssues.numfmt='failed';
                 if(xlcompCmpBorder) xlcompCategoryIssues.border='failed';
             }
         }
@@ -2883,8 +3104,18 @@ const XLCOMP_LOCAL_TEXT={
     failed:['检查失败','比較失敗'], skipped:['未检查 · 未选择此项目','未比較 · 項目が未選択'],
     fileUnsupported:['未检查 · 该项目需要 XLSX 或 XLSM','未比較 · XLSX または XLSM が必要'],
     borderLimited:['部分检查 · 行列默认样式或条件格式等未检查','一部比較 · 行列の既定書式や条件付き書式などは未比較'],
-    externalLimited:['部分检查 · 未检查外部参照目标','一部比較 · 外部参照先は未比較'],
+    externalLimited:['部分检查 · 该文件格式不支持公式比较','一部比較 · このファイル形式は数式比較に対応していません'],
     clipped:['部分检查 · 超出标准模式比较范围','一部比較 · 標準モードの比較範囲外あり'],
+    noBusiness:['无需业务检查','調査不要'],
+    cfUnverified:['条件格式影响范围：{0}组；最终边框效果未验证','条件付き書式の影響範囲：{0}組；最終罫線表示は未検証'],
+    cfUnverifiedDisplay:['条件格式影响范围未验证：最终显示效果尚未确认','条件付き書式の影響範囲は未検証：最終表示効果は未確認'],
+    condFormatDisplay:['条件格式规则（最终显示未验证）','条件付き書式ルール（最終表示は未検証）'],
+    condFormatDisplayUnknown:['条件格式规则（未知或无法解析；最终显示未验证）','条件付き書式ルール（未知または解析不能；最終表示は未検証）'],
+    cfFamilyFont:['字体','フォント'], cfFamilyFill:['填充','塗りつぶし'], cfFamilyNumFmt:['数字格式','表示形式'],
+    cfFamilyColorScale:['色阶','カラースケール'], cfFamilyDataBar:['数据条','データバー'],
+    cfFamilyIconSet:['图标集','アイコンセット'], cfFamilyUnknown:['未知规则','未知の規則'], cfFamilyBorder:['边框','罫線'],
+    xlsbNoteBoth:['XLSB 使用说明：请先将 A/B 两份原件分别另存为 XLSX 再比较；不要用 XLSB 原件与转换后的 XLSX 直接配对。转换前保留原件；宏／外链／复杂对象／受保护文件请先人工确认；条件格式最终显示仍需在 Excel 核对；不保证通用无损转换。','XLSB のご利用：A/B 両方の原本をそれぞれ XLSX に変換してから比較してください。XLSB 原本と変換後 XLSX を直接組み合わせないでください。変換前に原本を保持し、マクロ・外部リンク・複雑なオブジェクト・保護ファイルは事前に確認してください。条件付き書式の最終表示は Excel での目視確認が必要です。汎用的な無損失変換は保証しません。'],
+    xlsbNoteMixed:['跨格式比较（XLSB 与 XLSX 等）：可靠性有限，不应用作“完全一致”判定。XLSB 请按说明先将双方分别转换后再比较。','異形式比較（XLSB と XLSX など）：信頼性は限定的で「完全一致」の判定には使用しないでください。XLSB は説明に従い双方を変換してから比較してください。'],
     fastUnsupported:['高速模式不支持数字格式、公式、文本框和边框／斜线','高速モードでは表示形式・数式・テキストボックス・罫線／斜線は未対応'],
     zipUnsupported:['ZIP 模式不支持公式、文本框和边框／斜线','ZIPモードでは数式・テキストボックス・罫線／斜線は未対応'],
     unchecked:['未检查','未比較'], partial:['部分检查','一部比較'], checkedRange:['已检查范围','比較済み範囲'],
@@ -2917,6 +3148,28 @@ const XLCOMP_LOCAL_TEXT={
     zipFailed:['❌ 失败：','❌ 処理に失敗しました：'],
     report:['Excel 对比报告','Excel比較レポート'], allCheckedPass:['已检查的项目无差异','比較済みの項目に差異なし'],
     incompleteTitle:['检查不完整','比較が不完全'],
+    tierWarningTitle:['需要关注的检查异常','要確認の検査上の制限'],
+    tierWarningSheetCount:['涉及 {0} 个需要确认的 Sheet','要確認のシート：{0} 件'],
+    tierWarningSheetUnknown:['涉及范围无法准确定位到Sheet','影響するシートを正確に特定できません'],
+    tierWarningDescription:['这些检查限制可能影响判断，需要查看原因与范围。','これらの制限は判定に影響する可能性があります。理由と範囲をご確認ください。'],
+    tierInfoTitle:['动态格式说明','動的書式に関するお知らせ'],
+    tierInfoSheetCount:['涉及 {0} 个 Sheet','対象シート：{0} 件'],
+    tierInfoSheetUnknown:['涉及的Sheet数量无法准确统计','対象シート数を正確に特定できません'],
+    tierInfoDescription:['检测到部分Sheet使用条件格式。普通格式已按支持范围比较，但条件格式的最终显示效果未验证。此提示不代表已经发现差异。','一部のシートで条件付き書式を検出しました。対応範囲の通常書式は比較済みですが、最終表示は未検証です。このお知らせは差異の検出を意味しません。'],
+    tierInfoDetails:['查看涉及的 Sheet 及范围','対象シートと範囲を表示'],
+    displayOverview:['检查结果概要','比較結果の概要'], displayConfirmedDiffs:['已确认差异','確認済みの差異'],
+    displaySheetSummary:['Sheet 检查状态','シートの比較状態'], displayCoverage:['检查级别/范围','比較レベル／範囲'], displaySheetState:['检查状态','比較状態'],
+    displayConfirmedCount:['已确认差异：{0}处','確認済みの差異：{0}件'], displayFullCount:['完整检查：{0} Sheet','完全チェック：{0} シート'],
+    displayPartialCount:['部分检查：{0} Sheet','一部比較：{0} シート'], displayFailedCount:['检查失败：{0} Sheet','比較失敗：{0} シート'],
+    displayUncheckedCount:['未检查：{0} Sheet','未比較：{0} シート'], displayNoDiff:['已检查范围内未发现差异。','比較済みの範囲内に差異はありません。'],
+    displayNoDiffIncomplete:['已检查范围内未发现差异；仍有未检查或未验证内容，不能视为文件完全一致。','比較済みの範囲では差異はありません。未比較または未検証の内容があるため、ファイル全体が一致するとは判定できません。'],
+    sheetStateDynamic:['🔵 动态格式未验证','🔵 動的書式は未検証'], sheetStateWarning:['🟡 需要确认','🟡 要確認'],
+    sheetStateMixedInfo:['🔵 动态格式未验证','🔵 動的書式は未検証'], sheetStateMixedWarning:['🟡 需要确认','🟡 要確認'],
+    sheetSummaryWarningHidden:['另有 {0} 个需要确认的 Sheet 未显示','ほか要確認のシート {0} 件は非表示'],
+    sheetSummaryDynamicHidden:['另有 {0} 个包含动态格式说明的 Sheet 未显示','ほか動的書式の説明を含むシート {0} 件は非表示'],
+    sheetSummaryDiffHidden:['另有 {0} 个有真实差异的 Sheet 未显示','ほか差異のあるシート {0} 件は非表示'],
+    sheetSummaryUncheckedHidden:['另有 {0} 个未检查的 Sheet 未显示','ほか未比較のシート {0} 件は非表示'],
+
     viewReasons:['查看原因与位置','理由と位置を表示'],
     hideReasons:['收起原因与位置','理由と位置を閉じる'],
     limitSummary:['已确认差异 {0} 项 · 另有 {1} 个范围尚未完整检查','確認済みの差異 {0} 件 · 別に {1} 件の範囲が未確認'],
@@ -2934,6 +3187,7 @@ const XLCOMP_LOCAL_TEXT={
     limitAggregatedSample:['例：第 {0} 行 …（省略 {1} 行）','例：{0} 行目 …（{1} 行省略）'],
     limitAggregatedSpan:['首行 {0} / 末行 {1}','先頭行 {0} / 最終行 {1}'],
     limitReason:['原因','理由'], limitCoverage:['检查覆盖状态','比較の状況'],
+    allRanges:['展开全部范围','全範囲を展開'],
     bothFiles:['文件 A / 文件 B','ファイル A / ファイル B'],
     sheetDefault:['工作表默认样式（整表继承的边框）','シート既定の書式（全体に継承される罫線）'],
     rowDefault:['行默认样式（该行未单独设格式的单元格）','行の既定書式（書式を個別に持たないセル）'],
@@ -2946,7 +3200,7 @@ const XLCOMP_LOCAL_TEXT={
     coverageNotChecked:['未检查','未比較'],
     coveragePartial:['部分检查（该范围内有独立格式的单元格已比较）','一部比較（書式を個別に持つセルは比較済み）'],
     coverageRangeOnly:['已取得范围，未判定实际显示','範囲のみ取得・実際の表示は未判定'],
-    condFormatNote:['条件格式只读取了规则适用范围，未计算实际显示效果，因此不计入差异。','条件付き書式は適用範囲のみ取得しており、実際の表示は計算していません。差異には計上しません。'],
+    condFormatNote:['条件格式影响范围：{0} 组。普通单元格边框已严格比较；条件格式最终显示未验证，未判定规则等价。按 Sheet 与精确范围归并，仅用于显示；展开可查看全部范围。','条件付き書式の影響範囲：{0} 組。通常セルの罫線は厳密に比較済み。条件付き書式の最終表示は未検証で、ルールの同等性は判定していません。シート・同一範囲ごとの表示用集約です。展開で全範囲を確認できます。'],
     modeLimitLabel:['未执行说明','未実行の説明'],
     borderLimited:['部分检查 · 详见下方原因与位置','一部比較 · 理由と位置は下記を参照'],
     sheetSummaryTitle:['Sheet 检查结果','シート比較結果'],
@@ -2981,6 +3235,7 @@ const XLCOMP_LOCAL_TEXT={
     sheetSummaryCat_partial:['部分检查','一部比較'],
     sheetSummaryCat_failed:['检查失败','比較失敗'],
     sheetSummaryCat_unchecked:['未检查','未比較'],
+    sheetSummaryCat_noBusiness:['无需业务检查','調査不要'],
 };
 
 function xlcompText(key,...args){
@@ -3023,14 +3278,18 @@ function xlcompCategories(){
 function xlcompCategoryState(category){
     const count=xlcompUnifiedIndex.counts[category];
     const issue=xlcompCategoryIssues[category];
-    const state=!issue?(count?'diff':'pass'):issue==='failed'?'failed':
+    // 真实差异始终可见：有差异时优先标为 diff，任何 issue（含 cfUnverified）不得覆盖真实差异。
+    if(count) return {count, issue, state:'diff'};
+    // NO021：noBusinessCheck は v2 で廃止済み（cfUnverified へ置換）のため死コード。
+    // 残る issue はすべて partial（最終効果未検証）として扱う。
+    const state=!issue?'pass':issue==='failed'?'failed':
         ['skipped','noCommon'].includes(issue)?'skipped':issue==='fileUnsupported'?'unsupported':'partial';
     return {count,issue,state};
 }
 
 function xlcompCategoryLabel(category,{count,state}){
     const unit=typeof getLanguage==='function'&&getLanguage()==='ja-JP'?'件':category==='cell'?'行':'处';
-    const shortState={pass:'pass',diff:'diff',failed:'failed',skipped:'unchecked',unsupported:'unchecked',partial:'partial'}[state];
+    const shortState={pass:'pass',diff:'diff',failed:'failed',skipped:'unchecked',unsupported:'unchecked',partial:'partial',noBusiness:'noBusiness'}[state];
     return xlcompText(category)+' · '+xlcompText(shortState)+(count||state==='pass'?' '+count+unit:'');
 }
 
@@ -3068,6 +3327,8 @@ function xlcompSheetSummaryData(){
     (xlcompLimits || []).forEach(limit => {
         const cats = [limit.category, ...(Array.isArray(limit.categories) ? limit.categories : [])].filter(Boolean);
         if(!cats.length) return;
+        // NO021：cfHidden は producers が存在しない空スイッチであり、チェック範囲を
+        // 隠せる唯一の経路だったため削除する。cfUnverified は Sheet 級「一部比較」件数に計上される。
         const sheet = limit.sheet || '';
         if(sheet){
             let set = sheetCats.get(sheet);
@@ -3104,6 +3365,8 @@ function xlcompSheetSummaryData(){
         else if(inA && !inB) status = 'onlyA';
         else if(!isSelected) status = 'notSelected';
         else if(!r || globalFailed) status = 'failed';
+        // v24 P0-2: unverified scope takes precedence over the completed-count.
+        // The real difference count is still rendered by diffTotal (partial + N differences).
         else if(r.clipped || limitedCats.length) status = 'partial';
         else if(diffTotal > 0) status = 'diff';
         else status = 'pass';
@@ -3131,113 +3394,70 @@ function xlcompSheetCategoryState(data, row, category){
     const state = xlcompCategoryState(category).state;
     if(state === 'failed') return { key:'failed', count };
     if(state === 'skipped' || state === 'unsupported') return { key:'unchecked', count };
-    // 补正②：只按「该 Sheet × 该分类」的精确映射判定，不再用 Sheet 名集合，
-    // 避免 A Sheet 的边框限制误影响公式分类、或不同 Sheet 的限制互相污染。
-    if((row.limitedCats || []).includes(category)) return { key:'partial', count };
-    // 分类整体为 partial 且缺乏精确范围证据时，保守标部分检查（不得擅自认定无差异）
+    if(state === 'noBusiness') return { key:'noBusiness', count };
+    // v24 P0: unverified range takes precedence for the Sheet-level category state.
+    // The real difference count is preserved in count and rendered together with partial.
+    if(row.limitedCats && row.limitedCats.length && row.limitedCats.includes(category))
+        return { key:'partial', count };
     if(state === 'partial' && (data.noPreciseScopeCats || []).includes(category))
         return { key:'partial', count };
     return count ? { key:'diff', count } : { key:'pass', count };
 }
-
 function xlcompSheetSummaryStateText(row){
+    if(row.status==='partial'){
+        const levels=xlcompSheetDisplayLevels(row),parts=[];
+        if(row.diffTotal)parts.push(xlcompText('sheetStateDiff',row.diffTotal));
+        levels.forEach(level=>{if(level==='warning')parts.push(xlcompText(row.diffTotal?'sheetStateMixedWarning':'sheetStateWarning'));else if(level==='info')parts.push(xlcompText(row.diffTotal?'sheetStateMixedInfo':'sheetStateDynamic'));});
+        return parts.join(' · ');
+    }
     switch(row.status){
-        case 'pass': return row.empty?xlcompText('sheetStateEmpty'):xlcompText('sheetStatePass');
-        case 'diff': return xlcompText('sheetStateDiff', row.diffTotal);
-        case 'partial': return xlcompText('sheetStatePartial') +
-            (row.diffTotal ? ' · ' + xlcompText('sheetStateDiff', row.diffTotal) : '');
-        case 'failed': return xlcompText('sheetStateFailed');
-        case 'notSelected': return xlcompText('sheetStateNotSelected');
-        case 'onlyA': return xlcompText('sheetStateOnlyA');
-        case 'onlyB': return xlcompText('sheetStateOnlyB');
-        default: return '';
+        case 'pass':return row.empty?xlcompText('sheetStateEmpty'):xlcompText('sheetStatePass');
+        case 'diff':return xlcompText('sheetStateDiff',row.diffTotal);
+        case 'failed':return xlcompText('sheetStateFailed');
+        case 'notSelected':return xlcompText('sheetStateNotSelected');
+        case 'onlyA':return row.diffTotal?xlcompText('sheetStateDiff',row.diffTotal)+' · '+xlcompText('sheetStateOnlyA'):xlcompText('sheetStateOnlyA');
+        case 'onlyB':return row.diffTotal?xlcompText('sheetStateDiff',row.diffTotal)+' · '+xlcompText('sheetStateOnlyB'):xlcompText('sheetStateOnlyB');
+        default:return '';
     }
 }
-
-function xlcompSheetSummaryDetailHtml(data, row){
-    if(['notSelected','onlyA','onlyB'].includes(row.status))
-        return `<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">${esc(xlcompText('sheetSummaryNoResult'))}
-            <div class="xlcomp-limit-hint">${esc(xlcompText(row.status==='notSelected'?'sheetSummaryNotSelectedNote':'sheetSummaryOnlyNote'))}</div></div>`;
-    // NO012 Gate 补正：空白提示只在「完整检查且确认无内容」时出现，
-    // 绝不覆盖部分检查 / 失败 / 未检查范围的说明。
-    if(row.empty&&row.status==='pass')
-        return `<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">${esc(xlcompText('sheetSummaryEmptyNote'))}</div>`;
-    const cells = xlcompCategories().map(category => {
-        const st = xlcompSheetCategoryState(data, row, category);
-        const text = st.key === 'diff'
-            ? xlcompText('sheetSummaryCat_diff', st.count)
-            : xlcompText('sheetSummaryCat_' + st.key);
-        return `<span class="xlcomp-sheet-summary-cat" data-state="${st.key}">
-            <span class="xlcomp-sheet-summary-cat-name">${esc(xlcompText(category))}</span>
-            <span class="xlcomp-sheet-summary-cat-state">${esc(text)}</span>
-        </span>`;
+function xlcompSheetSummaryDetailHtml(data,row){
+    if(['notSelected','onlyA','onlyB'].includes(row.status))return '<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">'+esc(xlcompText('sheetSummaryNoResult'))+'</div>';
+    if(row.empty&&row.status==='pass')return '<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">'+esc(xlcompText('sheetSummaryEmptyNote'))+'</div>';
+    const cells=xlcompCategories().map(category=>{
+        const categoryPresentation=xlcompSheetCategoryPresentation(category,row.name),st=xlcompSheetCategoryState(data,row,category);let text;
+        const warning=categoryPresentation.warningGroups.length||['failed','unsupported'].includes(categoryPresentation.state.state)||categoryPresentation.state.issue==='noCommon'||(st.key==='partial'&&!categoryPresentation.infoGroups.length);
+        const markers=[];
+        if(warning)markers.push(xlcompText(st.count?'sheetStateMixedWarning':'sheetStateWarning'));
+        if(categoryPresentation.infoGroups.length)markers.push(xlcompText(st.count?'sheetStateMixedInfo':'sheetStateDynamic'));
+        const tierText=markers.join(' · ');
+        if(st.key==='diff')text=xlcompText('sheetSummaryCat_diff',st.count);
+        else if(st.key==='partial'&&st.count)text=xlcompText('sheetSummaryCat_diff',st.count)+(tierText?' · '+tierText:'');
+        else if(st.key==='partial')text=tierText||xlcompText('sheetStateWarning');
+        else text=xlcompText('sheetSummaryCat_'+st.key);
+        const level=warning?'warning':categoryPresentation.infoGroups.length?'info':st.key==='diff'?'diff':'normal';
+        return '<span class="xlcomp-sheet-summary-cat" data-state="'+st.key+'" data-display-level="'+level+'"><span class="xlcomp-sheet-summary-cat-name">'+esc(xlcompText(category))+'</span><span class="xlcomp-sheet-summary-cat-state">'+esc(text)+'</span></span>';
     }).join('');
-    return `<div class="xlcomp-sheet-summary-detail">
-        <div class="xlcomp-sheet-summary-detail-title">${esc(xlcompText('sheetSummaryDetail'))} · ${esc(row.name)}</div>
-        <div class="xlcomp-sheet-summary-cats">${cells}</div></div>`;
+    return '<div class="xlcomp-sheet-summary-detail"><div class="xlcomp-sheet-summary-detail-title">'+esc(xlcompText('sheetSummaryDetail'))+' · '+esc(row.name)+'</div><div class="xlcomp-sheet-summary-cats">'+cells+'</div></div>';
 }
-
 function xlcompSheetSummaryHtml(){
-    const data = xlcompSheetSummaryData();
-    xlcompSummaryRows = data.rows;
-    if(xlcompSummaryFocus >= data.rows.length) xlcompSummaryFocus = -1;
-    // 补正①：异常 Sheet 优先显示；同状态内保留原 Sheet 顺序（稳定排序）。
-    // 只生成「显示顺序」，data.rows 本身仍保持原始顺序，统一差异索引完全不动。
-    const ordered = data.rows.map((row, originIdx) => ({ row, originIdx }))
-        .sort((a,b) => (XLCOMP_SUMMARY_PRIORITY[a.row.status] ?? 9) - (XLCOMP_SUMMARY_PRIORITY[b.row.status] ?? 9)
-            || a.originIdx - b.originIdx);
-    const visible = xlcompSummaryExpanded ? ordered.length : Math.min(XLCOMP_SUMMARY_VISIBLE, ordered.length);
-    const shown = ordered.slice(0, visible);
-    const hidden = ordered.length - shown.length;
-    // 异常 Sheet 数量超过可见上限时，明确提示还有多少个需关注的 Sheet 未显示
-    const attentionHidden = ordered.slice(visible)
-        .filter(entry => XLCOMP_SUMMARY_ATTENTION.has(entry.row.status)).length;
-
-    const notes = [];
-    // NO010：明确区分「完整检查 / 部分检查 / 未检查」三类数量（不改变既有 checked 口径）。
-    // 三类互斥且可加总核对：checked(=pass+diff) + partial + unchecked(=notSelected+onlyA+onlyB) + failed = total
-    // 未检查 = 未选择 + 仅单文件（本次没有比较对象）；检查失败单独列出，不并入未检查。
+    const data=xlcompSheetSummaryData();xlcompSummaryRows=data.rows;if(xlcompSummaryFocus>=data.rows.length)xlcompSummaryFocus=-1;
+    const ordered=data.rows.map((row,originIdx)=>({row,originIdx})).sort((a,b)=>xlcompSheetSummaryPriority(a.row)-xlcompSheetSummaryPriority(b.row)||a.originIdx-b.originIdx);
+    const visible=xlcompSummaryExpanded?ordered.length:Math.min(XLCOMP_SUMMARY_VISIBLE,ordered.length),shown=ordered.slice(0,visible),hidden=ordered.length-visible,hiddenRows=ordered.slice(visible).map(x=>x.row);
+    const hiddenCount=level=>hiddenRows.filter(row=>level==='warning'?(row.status==='failed'||xlcompSheetDisplayLevel(row)==='warning'):level==='info'?(row.status==='partial'&&xlcompSheetDisplayLevel(row)==='info'):level==='diff'?row.diffTotal>0:['notSelected','onlyA','onlyB'].includes(row.status)).length;
     const unchecked=data.tally.notSelected+data.tally.onlyA+data.tally.onlyB;
-    notes.push(xlcompText('sheetSummaryFull')+' '+data.checked
-        +' · '+xlcompText('sheetStatePartial')+' '+data.tally.partial
-        +' · '+xlcompText('sheetSummaryUnchecked')+' '+unchecked);
-    if(data.tally.failed) notes.push(xlcompText('sheetStateFailed') + ' ' + data.tally.failed);
-    const noteHtml = notes.length
-        ? `<span class="xlcomp-sheet-summary-note">${esc(notes.join(' · '))}</span>` : '';
-
-    const rowsHtml = shown.map(({ row, originIdx }) => {
-        const isOpen = xlcompSummaryFocus === originIdx;
-        return `<div class="xlcomp-sheet-summary-item" data-state="${row.status}">
-            <button type="button" class="xlcomp-sheet-summary-row" data-xlcomp-sheet-idx="${originIdx}"
-                title="${xlcompEscapeAttr(row.name)}"
-                onclick="xlcompSummarySelectSheet(${originIdx})" aria-pressed="${isOpen}">
-                <span class="xlcomp-sheet-summary-name">${esc(row.name)}</span>
-                <span class="xlcomp-sheet-summary-state">${esc(xlcompSheetSummaryStateText(row))}</span>
-            </button>
-            ${isOpen ? xlcompSheetSummaryDetailHtml(data, row) : ''}
-        </div>`;
+    const notes=[xlcompText('sheetSummaryFull')+' '+data.checked+' · '+xlcompText('sheetStatePartial')+' '+data.tally.partial+' · '+xlcompText('sheetSummaryUnchecked')+' '+unchecked];
+    if(data.tally.failed)notes.push(xlcompText('sheetStateFailed')+' '+data.tally.failed);
+    const noteHtml='<span class="xlcomp-sheet-summary-note">'+esc(notes.join(' · '))+'</span>';
+    const rowsHtml=shown.map(({row,originIdx})=>{
+        const open=xlcompSummaryFocus===originIdx,level=xlcompSheetDisplayLevel(row);
+        return '<div class="xlcomp-sheet-summary-item" data-state="'+row.status+'" data-display-level="'+level+'" data-has-diff="'+(row.diffTotal>0)+'"><button type="button" class="xlcomp-sheet-summary-row" data-xlcomp-sheet-idx="'+originIdx+'" title="'+xlcompEscapeAttr(row.name)+'" onclick="xlcompSummarySelectSheet('+originIdx+')" aria-pressed="'+open+'"><span class="xlcomp-sheet-summary-name">'+esc(row.name)+'</span><span class="xlcomp-sheet-summary-state">'+esc(xlcompSheetSummaryStateText(row))+'</span></button>'+(open?xlcompSheetSummaryDetailHtml(data,row):'')+'</div>';
     }).join('');
-
-    const attentionHtml = (!xlcompSummaryExpanded && attentionHidden > 0)
-        ? `<div class="xlcomp-sheet-summary-attention">${esc(xlcompText('sheetSummaryAttention', attentionHidden))}</div>` : '';
-    const more = hidden > 0
-        ? `<button type="button" class="xlcomp-sheet-summary-more" onclick="xlcompSummaryToggleAll()">${esc(xlcompText('sheetSummaryHidden', hidden) + ' · ' + xlcompText('sheetSummaryExpand', data.total))}</button>`
-        : (xlcompSummaryExpanded && ordered.length > XLCOMP_SUMMARY_VISIBLE
-            ? `<button type="button" class="xlcomp-sheet-summary-more" onclick="xlcompSummaryToggleAll()">${esc(xlcompText('sheetSummaryCollapse'))}</button>` : '');
-
-    return `<section id="xlcomp-sheet-summary" class="xlcomp-sheet-summary" aria-label="${xlcompEscapeAttr(xlcompText('sheetSummaryTitle'))}">
-      <div class="xlcomp-sheet-summary-head">
-        <strong class="xlcomp-sheet-summary-title">${esc(xlcompText('sheetSummaryTitle'))}</strong>
-        <span class="xlcomp-sheet-summary-count">${esc(xlcompText('sheetSummaryChecked', data.checked, data.total))}</span>
-        <span class="xlcomp-sheet-summary-objects">${esc(xlcompText('sheetSummaryObjects', data.total))}</span>
-        ${noteHtml}
-      </div>
-      <div class="xlcomp-sheet-summary-hint">${esc(xlcompText('sheetSummaryJump'))}</div>
-      <div class="xlcomp-sheet-summary-list">${rowsHtml}</div>
-      ${attentionHtml}${more}
-    </section>`;
+    const badges=[['warning','sheetSummaryWarningHidden'],['diff','sheetSummaryDiffHidden'],['info','sheetSummaryDynamicHidden'],['unchecked','sheetSummaryUncheckedHidden']]
+        .map(([level,key])=>{const n=hiddenCount(level);return n?'<span class="xlcomp-sheet-summary-attention-item" data-level="'+level+'">'+esc(xlcompText(key,n))+'</span>':''}).join('');
+    const attention=badges?'<div class="xlcomp-sheet-summary-attention-list">'+badges+'</div>':'';
+    const more=hidden>0?'<button type="button" class="xlcomp-sheet-summary-more" onclick="xlcompSummaryToggleAll()">'+esc(xlcompText('sheetSummaryHidden',hidden)+' · '+xlcompText('sheetSummaryExpand',data.total))+'</button>':(xlcompSummaryExpanded&&ordered.length>XLCOMP_SUMMARY_VISIBLE?'<button type="button" class="xlcomp-sheet-summary-more" onclick="xlcompSummaryToggleAll()">'+esc(xlcompText('sheetSummaryCollapse'))+'</button>':'');
+    return '<section id="xlcomp-sheet-summary" class="xlcomp-sheet-summary" aria-label="'+xlcompEscapeAttr(xlcompText('sheetSummaryTitle'))+'"><div class="xlcomp-sheet-summary-head"><strong class="xlcomp-sheet-summary-title">'+esc(xlcompText('sheetSummaryTitle'))+'</strong><span class="xlcomp-sheet-summary-count">'+esc(xlcompText('sheetSummaryChecked',data.checked,data.total))+'</span><span class="xlcomp-sheet-summary-objects">'+esc(xlcompText('sheetSummaryObjects',data.total))+'</span>'+noteHtml+'</div><div class="xlcomp-sheet-summary-hint">'+esc(xlcompText('sheetSummaryJump'))+'</div><div class="xlcomp-sheet-summary-list">'+rowsHtml+'</div>'+attention+more+'</section>';
 }
-
 function xlcompSummaryToggleAll(){
     xlcompSummaryExpanded = !xlcompSummaryExpanded;
     _xlcompRenderCurrentView();
@@ -3273,35 +3493,145 @@ function xlcompSummarySelectSheet(idx){
     document.getElementById('xlcomp-sheet-summary')?.scrollIntoView({block:'nearest'});
 }
 
+function xlcompIsLocatedDynamicCFGroup(group){
+    return ['condFormatDisplay','condFormatBorder'].includes(group.type)&&!group.cfUnknown&&!group.wholeSheet&&group.precise!==false&&Array.isArray(group.ranges)&&group.ranges.length>0;
+}
+function xlcompCategoryPresentation(category){
+    const state=xlcompCategoryState(category),groups=xlcompLimitGroups(category);
+    const infoGroups=groups.filter(xlcompIsLocatedDynamicCFGroup),warningGroups=groups.filter(g=>!xlcompIsLocatedDynamicCFGroup(g));
+    const warning=state.state==='failed'||state.state==='unsupported'||state.issue==='noCommon'||warningGroups.length>0||(state.state==='partial'&&!infoGroups.length);
+    return {state,level:warning?'warning':infoGroups.length?'info':state.state==='diff'?'diff':state.state==='skipped'?'unchecked':'normal',infoGroups,warningGroups};
+}
+function xlcompSheetDisplayLevel(row){
+    const levels=xlcompSheetDisplayLevels(row);
+    return levels.includes('warning')?'warning':levels[0]||'normal';
+}
+function xlcompDistinctSheetSummary(groups){
+    const sheets=new Set();let unlocated=false;
+    groups.forEach(g=>{if(g.sheet)sheets.add(g.sheet);else unlocated=true;});
+    return {sheets,count:sheets.size,unlocated};
+}
+function xlcompAllDisplayGroups(tier){
+    const groups=[];xlcompCategories().forEach(c=>{const p=xlcompCategoryPresentation(c);groups.push(...p[tier+'Groups']);});return groups;
+}
+
+function xlcompIsLocatedDynamicCFItem(item){
+    const hasRange=!!item.range||(Array.isArray(item.ranges)&&item.ranges.length>0);
+    return ['condFormatDisplay','condFormatBorder'].includes(item.type)&&!item.cfUnknown&&!item.wholeSheet&&item.precise!==false&&hasRange;
+}
+function xlcompSheetCategoryPresentation(category,sheet){
+    const state=xlcompCategoryState(category),groups=xlcompLimitGroups(category,item=>!item.sheet||item.sheet===sheet);
+    const infoGroups=groups.filter(xlcompIsLocatedDynamicCFGroup),warningGroups=groups.filter(g=>!xlcompIsLocatedDynamicCFGroup(g));
+    const warning=state.state==='failed'||state.state==='unsupported'||state.issue==='noCommon'||warningGroups.length>0||(state.state==='partial'&&!infoGroups.length);
+    return {state,level:warning?'warning':infoGroups.length?'info':state.state==='diff'?'diff':state.state==='skipped'?'unchecked':'normal',infoGroups,warningGroups};
+}
+function xlcompSheetDisplayLevels(row){
+    if(row.status==='failed')return ['warning'];
+    if(row.status==='partial'){
+        const levels=new Set();
+        (row.limitedCats||[]).forEach(category=>{
+            const p=xlcompSheetCategoryPresentation(category,row.name);
+            if(p.warningGroups.length||p.state.state==='failed'||p.state.state==='unsupported'||p.state.issue==='noCommon')levels.add('warning');
+            if(p.infoGroups.length)levels.add('info');
+        });
+        if(!levels.size)levels.add('warning');
+        return ['warning','info'].filter(level=>levels.has(level));
+    }
+    if(row.diffTotal>0)return ['diff'];
+    if(['notSelected','onlyA','onlyB'].includes(row.status))return ['unchecked'];
+    return ['normal'];
+}
+function xlcompSheetSummaryPriority(row){
+    const levels=xlcompSheetDisplayLevels(row);
+    if(row.status==='failed'||levels.includes('warning'))return 0;
+    if(row.diffTotal>0||row.status==='diff')return 1;
+    if(['notSelected','onlyA','onlyB'].includes(row.status))return 2;
+    if(row.status==='partial'&&levels.includes('info'))return 3;
+    if(row.status==='pass')return 4;
+    return 5;
+}
+function xlcompDynamicDetailsHtml(exportMode=false){
+    const all=xlcompDistinctSheetSummary(xlcompAllDisplayGroups('info'));
+    const targets=[...all.sheets].map(sheet=>({sheet,label:sheet}));
+    if(all.unlocated)targets.push({sheet:null,label:xlcompText('tierInfoSheetUnknown')});
+    return targets.map(target=>{
+        const categories=xlcompCategories().filter(category=>xlcompCategoryPresentation(category).infoGroups.some(group=>(group.sheet||null)===target.sheet));
+        const sections=categories.map(category=>'<section class="xlcomp-display-detail-category"><h4>'+esc(xlcompText(category))+'</h4>'+
+            xlcompLimitTableHtml(category,item=>xlcompIsLocatedDynamicCFItem(item)&&(item.sheet||null)===target.sheet,exportMode)+'</section>').join('');
+        return '<details class="xlcomp-display-sheet"'+(exportMode?' open':'')+'><summary>'+esc(target.label)+'</summary>'+sections+'</details>';
+    }).join('');
+}
+function xlcompOverallDisplaySummaryHtml(data=xlcompSheetSummaryData(),exportMode=false){
+    const info=xlcompAllDisplayGroups('info'),warnings=xlcompAllDisplayGroups('warning');
+    const infoSheets=xlcompDistinctSheetSummary(info),warningSheets=xlcompDistinctSheetSummary(warnings);
+    data.rows.forEach(row=>{if(xlcompSheetDisplayLevels(row).includes('warning'))warningSheets.sheets.add(row.name);});warningSheets.count=warningSheets.sheets.size;
+    const unchecked=data.tally.notSelected+data.tally.onlyA+data.tally.onlyB,stats=[];
+    if(data.diffTotal)stats.push('<span class="xlcomp-display-stat" data-level="diff">🔴 '+xlcompText('displayConfirmedCount',data.diffTotal)+'</span>');
+    stats.push('<span class="xlcomp-display-stat">✅ '+xlcompText('displayFullCount',data.checked)+'</span>');
+    stats.push('<span class="xlcomp-display-stat">'+xlcompText('displayPartialCount',data.tally.partial)+'</span>');
+    if(data.tally.failed)stats.push('<span class="xlcomp-display-stat" data-level="warning">❌ '+xlcompText('displayFailedCount',data.tally.failed)+'</span>');
+    if(unchecked)stats.push('<span class="xlcomp-display-stat" data-level="unchecked">'+xlcompText('displayUncheckedCount',unchecked)+'</span>');
+    const caution=!data.diffTotal&&(data.tally.partial||data.tally.failed||unchecked)?'<p class="xlcomp-display-caution">'+xlcompText('displayNoDiffIncomplete')+'</p>':'';
+    const warningCard=warnings.length||warningSheets.count||warningSheets.unlocated
+        ?'<section class="xlcomp-display-card" data-level="warning"><strong>⚠️ '+xlcompText('tierWarningTitle')+'</strong><span>'+
+        (warningSheets.unlocated?xlcompText('tierWarningSheetUnknown'):xlcompText('tierWarningSheetCount',warningSheets.count))+'</span><p>'+xlcompText('tierWarningDescription')+'</p></section>':'';
+    const infoDetails=xlcompDynamicDetailsHtml(exportMode);
+    const infoCard=info.length
+        ?'<section class="xlcomp-display-card" data-level="info"><strong>ⓘ '+xlcompText('tierInfoTitle')+'</strong><span>'+
+        (infoSheets.unlocated?xlcompText('tierInfoSheetUnknown'):xlcompText('tierInfoSheetCount',infoSheets.count))+'</span><p>'+
+        xlcompText('tierInfoDescription')+'</p><details '+(exportMode?'open':'')+'><summary>'+xlcompText('tierInfoDetails')+'</summary>'+
+        infoDetails+'</details></section>':'';
+    const body='<div class="xlcomp-display-summary-stats">'+stats.join(' · ')+'</div>'+caution+warningCard+infoCard;
+    return exportMode?'<section id="xlcomp-export-overview"><h3>'+esc(xlcompText('displayOverview'))+'</h3>'+body+'</section>':
+        '<div class="xlcomp-display-summary-content">'+body+'</div>';
+}
+function xlcompExportSheetSummaryHtml(data=xlcompSheetSummaryData()){
+    const ordered=data.rows.map((row,index)=>({row,index})).sort((a,b)=>xlcompSheetSummaryPriority(a.row)-xlcompSheetSummaryPriority(b.row)||a.index-b.index);
+    const unchecked=data.tally.notSelected+data.tally.onlyA+data.tally.onlyB;
+    const rows=ordered.map(({row})=>'<tr data-state="'+row.status+'" data-display-level="'+xlcompSheetDisplayLevel(row)+'" data-has-diff="'+(row.diffTotal>0)+'"><th scope="row">'+
+        esc(row.name)+'</th><td>'+esc(xlcompSheetSummaryStateText(row))+'</td><td>'+row.diffTotal+'</td><td>'+
+        esc((row.limitedCats||[]).map(c=>xlcompText(c)).join('、')||'—')+'</td></tr>').join('');
+    return '<section id="xlcomp-export-sheet-summary"><h3>'+esc(xlcompText('displaySheetSummary'))+'</h3><p>'+
+        esc(xlcompText('displayFullCount',data.checked))+' · '+esc(xlcompText('displayPartialCount',data.tally.partial))+' · '+
+        esc(xlcompText('displayFailedCount',data.tally.failed))+' · '+esc(xlcompText('displayUncheckedCount',unchecked))+
+        '</p><table><thead><tr><th>'+xlcompText('limitSheet')+'</th><th>'+xlcompText('displaySheetState')+'</th><th>'+
+        xlcompText('displayConfirmedDiffs')+'</th><th>'+xlcompText('displayCoverage')+'</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
+}
+function xlcompExportDiffSummaryHtml(data=xlcompSheetSummaryData()){
+    const items=xlcompCategories().map(c=>({category:c,count:xlcompUnifiedIndex.counts[c]||0})).filter(x=>x.count)
+        .map(x=>'<li>'+esc(xlcompCategoryLabel(x.category,{count:x.count,state:'diff'}))+'</li>').join('');
+    return '<section id="xlcomp-export-confirmed-diffs"><h3>'+esc(xlcompText('displayConfirmedDiffs'))+'</h3><p>'+
+        (data.diffTotal?xlcompText('displayConfirmedCount',data.diffTotal):xlcompText('displayNoDiff'))+'</p>'+(items?'<ul>'+items+'</ul>':'')+'</section>';
+}
+function xlcompExportWarningSummaryHtml(data=xlcompSheetSummaryData()){
+    const groups=xlcompAllDisplayGroups('warning'),sheets=xlcompDistinctSheetSummary(groups);
+    data.rows.forEach(row=>{if(xlcompSheetDisplayLevels(row).includes('warning'))sheets.sheets.add(row.name);});sheets.count=sheets.sheets.size;
+    if(!groups.length&&!sheets.count&&!sheets.unlocated)return '';
+    return '<section id="xlcomp-export-warning-summary" data-level="warning"><h3>⚠️ '+esc(xlcompText('tierWarningTitle'))+
+        '</h3><p>'+(sheets.unlocated?xlcompText('tierWarningSheetUnknown'):xlcompText('tierWarningSheetCount',sheets.count))+'</p><p>'+
+        xlcompText('tierWarningDescription')+'</p></section>';
+}
+
 function xlcompShowUnifiedNav(){
-    const bar=document.getElementById('xlcomp-unified-nav');
-    bar.hidden=false;
-    const stats=xlcompCategories().map(key=>({key,...xlcompCategoryState(key)}));
+    const bar=document.getElementById('xlcomp-unified-nav');bar.hidden=false;
+    const stats=xlcompCategories().map(key=>({key,...xlcompCategoryState(key),presentation:xlcompCategoryPresentation(key)}));
     stats.sort((a,b)=>(b.count>0)-(a.count>0)||(a.state==='pass')-(b.state==='pass'));
-    const hasIssues=stats.some(item=>item.issue);
-    const overall=xlcompUnifiedIndex.items.length?'diff':hasIssues?'incomplete':'pass';
-    const headline=document.getElementById('xlcomp-overall');
-    headline.dataset.state=overall;
-    headline.textContent=xlcompText(overall)+
-        (hasIssues&&overall==='diff'?' · '+xlcompText('incomplete'):'');
-    const group=document.getElementById('xlcomp-unified-counts');
-    group.setAttribute('aria-label',xlcompText('results'));
+    const hasIssues=stats.some(item=>item.issue),overall=xlcompUnifiedIndex.items.length?'diff':hasIssues?'incomplete':'pass',data=xlcompSheetSummaryData();
+    const headline=document.getElementById('xlcomp-overall');headline.dataset.state=overall;
+    const warning=stats.some(x=>x.presentation.level==='warning'),info=stats.some(x=>x.presentation.infoGroups.length);
+    headline.dataset.displayLevel=data.diffTotal?'diff':warning?'warning':info?'info':'normal';
+    headline.textContent=xlcompText(overall)+(hasIssues&&overall==='diff'?' · '+xlcompText('incomplete'):'');
+    const summary=document.getElementById('xlcomp-display-summary');if(summary)summary.innerHTML=xlcompOverallDisplaySummaryHtml(data,false);
+    const group=document.getElementById('xlcomp-unified-counts');group.setAttribute('aria-label',xlcompText('results'));
     group.replaceChildren(...stats.map(item=>{
-        const btn=document.createElement('button');
-        btn.type='button';
-        btn.id='xlcomp-view-'+item.key;
-        btn.dataset.state=item.state;
-        const label=xlcompCategoryLabel(item.key,item);
-        btn.textContent=item.state==='pass'?xlcompText(item.key)+' · ✓ 0':label;
-        btn.setAttribute('aria-label',label);
-        btn.title=item.issue?(item.state==='partial'?xlcompText('partial')+' · '+xlcompText('viewReasons'):
-            xlcompText(item.issue)):label;
-        btn.onclick=()=>xlcompSwitchView(item.key);
-        return btn;
+        const btn=document.createElement('button');btn.type='button';btn.id='xlcomp-view-'+item.key;btn.dataset.state=item.state;btn.dataset.displayLevel=item.presentation.level;btn.dataset.hasInfo=String(item.presentation.infoGroups.length>0);btn.dataset.hasWarning=String(item.presentation.warningGroups.length>0||item.presentation.level==='warning');btn.dataset.hasInfo=String(item.presentation.infoGroups.length>0);btn.dataset.hasWarning=String(item.presentation.warningGroups.length>0||item.presentation.level==='warning');
+        const label=xlcompCategoryLabel(item.key,item),marker=(item.presentation.warningGroups.length?' · ⚠️':'')+(item.presentation.infoGroups.length?' · ⓘ':'');
+        btn.textContent=item.state==='pass'?xlcompText(item.key)+' · ✓ 0':label+marker;
+        btn.setAttribute('aria-label',label+(marker?' · '+xlcompText(item.presentation.level==='info'?'tierInfoTitle':'tierWarningTitle'):''));btn.title=item.presentation.infoGroups.length?xlcompText('tierInfoDescription'):label;
+        btn.onclick=()=>xlcompSwitchView(item.key);return btn;
     }));
     xlcompUpdateUnifiedPosition();
 }
-
 function xlcompCurrentNavItems(){
     const all=document.getElementById('xlcomp-nav-all').checked;
     const sheet=document.getElementById('xlcomp-nav-sheet').value;
@@ -3394,18 +3724,22 @@ function xlcompLimitRangeCount(view){
 }
 
 // 同一（原因・Sheet・文件）合并为一组，范围列表封顶，避免大表把页面拖死。
-function xlcompLimitGroups(view){
+function xlcompLimitGroups(view,filterFn=null){
     const groups=new Map();
     for(const item of xlcompCategoryLimits(view)){
-        const key=[item.type,item.sheet||'',item.file||''].join('\u0001');
+        if(filterFn&&!filterFn(item)) continue;
+        const key=[item.type,item.sheet||'',item.file||'',!!item.wholeSheet,item.precise!==false,(item.families||[]).slice().sort().join(',')].join('\u0001');
         let group=groups.get(key);
         if(!group){
             group={type:item.type,sheet:item.sheet||'',file:item.file||'',ranges:[],count:0,
                 precise:item.precise!==false,coverage:item.coverage||'notChecked',
-                wholeSheet:!!item.wholeSheet,aggregated:false,sample:[],first:null,last:null};
+                wholeSheet:!!item.wholeSheet,cfUnknown:!!item.cfUnknown,aggregated:false,sample:[],first:null,last:null,
+                families:new Set()};
             groups.set(key,group);
         }
         group.count+=item.count||1;
+        (item.families||[]).forEach(f=>group.families.add(f));
+        if(item.cfUnknown) group.cfUnknown=true;
         if(item.precise===false) group.precise=false;
         if(item.wholeSheet) group.wholeSheet=true;
         if(item.aggregated){
@@ -3427,65 +3761,50 @@ function xlcompLimitCoverageKey(coverage){
     return 'coverage'+coverage.charAt(0).toUpperCase()+coverage.slice(1);
 }
 
-function xlcompLimitTableHtml(view){
-    const groups=xlcompLimitGroups(view);
-    if(!groups.length) return `<p class="xlcomp-limit-note">${xlcompText('limitNoDetail')}</p>`;
-    const rows=groups.slice(0,XLCOMP_LIMIT_GROUP_MAX).map(group=>{
-        const shown=group.ranges.slice(0,XLCOMP_LIMIT_RANGE_SHOW);
-        let location;
-        if(group.wholeSheet){
-            location=`<td>${xlcompText('wholeSheet')}</td>`;
-        }else if(group.aggregated){
-            // 已取得全部行号但汇总显示：明确「已汇总」+ 举例 + 省略数量 + 首末行，不写成连续区间。
-            const shownRows=group.sample.map(rowNo=>String(rowNo)).join('、');
-            const omitted=Math.max(0,group.count-group.sample.length);
-            location=`<td>${xlcompText('limitAggregated',group.count)}
-                ${shownRows?`<div class="xlcomp-limit-hint">${xlcompText('limitAggregatedSample',shownRows,omitted)}</div>`:''}
-                <div class="xlcomp-limit-hint">${xlcompText('limitAggregatedSpan',group.first,group.last)}</div></td>`;
+function xlcompLimitReasonText(group,category=null){
+    const base=xlcompText(group.type);
+    if(group.type!=='condFormatDisplay'&&group.type!=='condFormatDisplayUnknown') return base;
+    const map={font:'cfFamilyFont',fill:'cfFamilyFill',numFmt:'cfFamilyNumFmt',colorScale:'cfFamilyColorScale',
+        dataBar:'cfFamilyDataBar',iconSet:'cfFamilyIconSet',unknown:'cfFamilyUnknown',border:'cfFamilyBorder'};
+    const families={bgcolor:['fill','colorScale','dataBar','iconSet','unknown'],fontcolor:['font','unknown'],numfmt:['numFmt','unknown']};
+    const fams=[...group.families].filter(f=>!category||!families[category]||families[category].includes(f)).map(f=>xlcompText(map[f]||'cfFamilyUnknown')).join(' / ');
+    return fams?base+' · '+fams:base;
+}
+
+function xlcompLimitTableHtml(view,filterFn=null,exportMode=false){
+    const groups=xlcompLimitGroups(view,filterFn);
+    if(!groups.length)return '<p class="xlcomp-limit-note">'+xlcompText('limitNoDetail')+'</p>';
+    const rangeCount=groups.reduce((n,g)=>n+(g.count||1),0),open=exportMode?' open':'';
+    const rows=groups.map(group=>{
+        const shown=group.ranges.slice(0,XLCOMP_LIMIT_RANGE_SHOW);let location='';
+        if(group.wholeSheet)location='<td>'+xlcompText('wholeSheet')+'</td>';
+        else if(group.aggregated){
+            const shownRows=group.sample.map(n=>String(n)).join('、'),omitted=Math.max(0,group.count-group.sample.length);
+            location='<td>'+xlcompText('limitAggregated',group.count)+(shownRows?'<div class="xlcomp-limit-hint">'+xlcompText('limitAggregatedSample',shownRows,omitted)+'</div>':'')+'<div class="xlcomp-limit-hint">'+xlcompText('limitAggregatedSpan',group.first,group.last)+'</div></td>';
         }else if(group.precise&&shown.length){
-            const rest=group.ranges.length-shown.length;
-            const more=rest>0?' '+xlcompText('limitMoreRanges',rest):
-                group.count>shown.length?' · '+xlcompText('limitRangeCount',group.count):'';
-            location=`<td>${shown.map(esc).join('、')}${more}</td>`;
+            const rest=group.ranges.length-shown.length,more=rest>0?' '+xlcompText('limitMoreRanges',rest):group.count>shown.length?' · '+xlcompText('limitRangeCount',group.count):'';
+            location='<td>'+shown.map(esc).join('、')+more+(rest>0?'<details'+open+'><summary>'+xlcompText('allRanges')+'</summary>'+group.ranges.map(esc).join('<br>')+'</details>':'')+'</td>';
         }else{
-            const hint=group.first!==null?
-                ' <span class="xlcomp-limit-hint">'+
-                xlcompText('limitRowSpan',group.first,group.last??group.first,group.count)+'</span>':
-                group.count>1?' <span class="xlcomp-limit-hint">'+
-                xlcompText('limitRangeCount',group.count)+'</span>':'';
-            location=`<td class="xlcomp-limit-unknown">${xlcompText('limitNoAddress')}${hint}</td>`;
+            const hint=group.first!==null?' <span class="xlcomp-limit-hint">'+xlcompText('limitRowSpan',group.first,group.last??group.first,group.count)+'</span>':group.count>1?' <span class="xlcomp-limit-hint">'+xlcompText('limitRangeCount',group.count)+'</span>':'';
+            location='<td class="xlcomp-limit-unknown">'+xlcompText('limitNoAddress')+hint+'</td>';
         }
-        return `<tr><td>${esc(xlcompLimitFileLabel(group.file))}</td>
-            <td>${group.sheet?esc(group.sheet):'—'}</td>${location}
-            <td>${esc(xlcompText(group.type))}</td>
-            <td>${esc(xlcompText(xlcompLimitCoverageKey(group.coverage)))}</td></tr>`;
-    }).join('');
-    const hidden=groups.length>XLCOMP_LIMIT_GROUP_MAX
-        ?`<p class="xlcomp-limit-note">${xlcompText('limitMoreGroups',groups.length-XLCOMP_LIMIT_GROUP_MAX)}</p>`:'';
-    const condNote=groups.some(group=>group.type==='condFormatBorder')
-        ?`<p class="xlcomp-limit-note">${xlcompText('condFormatNote')}</p>`:'';
-    return `${condNote}<div class="xlcomp-limit-table"><table>
-      <caption>${xlcompText('limitTableTitle',xlcompLimitRangeCount(view))}</caption>
-      <thead><tr><th scope="col">${xlcompText('limitFile')}</th><th scope="col">${xlcompText('limitSheet')}</th>
-      <th scope="col">${xlcompText('limitRange')}</th><th scope="col">${xlcompText('limitReason')}</th>
-      <th scope="col">${xlcompText('limitCoverage')}</th></tr></thead><tbody>${rows}</tbody></table></div>${hidden}`;
+        return '<tr><td>'+esc(xlcompLimitFileLabel(group.file))+'</td><td>'+(group.sheet?esc(group.sheet):'—')+'</td>'+location+'<td>'+esc(xlcompLimitReasonText(group,view))+'</td><td>'+esc(xlcompText(xlcompLimitCoverageKey(group.coverage)))+'</td></tr>';
+    });
+    const hidden=groups.length>XLCOMP_LIMIT_GROUP_MAX?'<details class="xlcomp-limit-table"'+open+'><summary>'+xlcompText('limitMoreGroups',groups.length-XLCOMP_LIMIT_GROUP_MAX)+' · '+xlcompText('allRanges')+'</summary><table><tbody>'+rows.slice(XLCOMP_LIMIT_GROUP_MAX).join('')+'</tbody></table></details>':'';
+    const cfGroups=groups.filter(g=>g.type==='condFormatBorder');
+    const condNote=cfGroups.length?'<p class="xlcomp-limit-note">'+xlcompText('condFormatNote',cfGroups.reduce((n,g)=>n+(g.count||1),0))+'</p>':'';
+    return condNote+'<div class="xlcomp-limit-table"><table><caption>'+xlcompText('limitTableTitle',rangeCount)+'</caption><thead><tr><th scope="col">'+xlcompText('limitFile')+'</th><th scope="col">'+xlcompText('limitSheet')+'</th><th scope="col">'+xlcompText('limitRange')+'</th><th scope="col">'+xlcompText('limitReason')+'</th><th scope="col">'+xlcompText('limitCoverage')+'</th></tr></thead><tbody>'+rows.slice(0,XLCOMP_LIMIT_GROUP_MAX).join('')+'</tbody></table></div>'+hidden;
 }
-
-function xlcompIncompleteHtml(view,count){
-    const rangeCount=xlcompLimitRangeCount(view);
-    const open=xlcompLimitPanelOpen===view;
-    return `<div class="xlcomp-incomplete" data-state="partial">
-      <p class="xlcomp-incomplete-title">⚠ ${xlcompText('incompleteTitle')} · ${esc(xlcompText(view))}</p>
-      <p class="xlcomp-incomplete-summary">${xlcompText('limitSummary',count||0,rangeCount)}</p>
-      <p class="xlcomp-incomplete-note">${xlcompText('limitNotDiff')}</p>
-      <button type="button" class="xlcomp-incomplete-toggle" aria-expanded="${open}"
-        aria-controls="xlcomp-limit-${view}"
-        onclick="xlcompToggleLimitPanel('${view}')">${xlcompText(open?'hideReasons':'viewReasons')}</button>
-      <div class="xlcomp-limit" id="xlcomp-limit-${view}"${open?'':' hidden'}>
-        ${xlcompLimitTableHtml(view)}</div>
-    </div>`;
+function xlcompIncompleteHtml(view,count,filterFn=null,exportMode=false){
+    const groups=xlcompLimitGroups(view,filterFn),rangeCount=groups.reduce((n,g)=>n+(g.count||1),0),open=xlcompLimitPanelOpen===view;
+    const state=xlcompCategoryState(view);
+    return '<div class="xlcomp-incomplete" data-state="partial" data-display-level="warning"><p class="xlcomp-incomplete-title">⚠️ '+xlcompText('tierWarningTitle')+' · '+esc(xlcompText(view))+'</p>'+
+        '<p class="xlcomp-incomplete-summary">'+xlcompText('limitSummary',count||0,rangeCount)+'</p>'+
+        '<p class="xlcomp-incomplete-note">'+xlcompText(state.state==='failed'?'failed':'tierWarningDescription')+'</p>'+
+        '<button type="button" class="xlcomp-incomplete-toggle" aria-expanded="'+open+'" aria-controls="xlcomp-limit-'+view+
+        '" onclick="xlcompToggleLimitPanel(&quot;'+view+'&quot;)">'+xlcompText(open?'hideReasons':'viewReasons')+'</button>'+
+        '<div class="xlcomp-limit" id="xlcomp-limit-'+view+'"'+(open?'':' hidden')+'>'+xlcompLimitTableHtml(view,filterFn,exportMode)+'</div></div>';
 }
-
 function xlcompToggleLimitPanel(view){
     const panel=document.getElementById('xlcomp-limit-'+view);
     if(!panel) return;
@@ -3500,17 +3819,16 @@ function xlcompToggleLimitPanel(view){
     }
 }
 
-function xlcompStatusHtml(view){
-    const {count,issue,state}=xlcompCategoryState(view);
-    if(!issue&&count) return '';
-    if(state==='partial'&&xlcompCategoryLimits(view).length) return xlcompIncompleteHtml(view,count);
-    if(state==='partial') return `<p class="xlcomp-result-message" data-state="partial">${xlcompText(issue||'partial')}</p>`;
-    if(state==='failed') return `<p class="xlcomp-result-message" data-state="failed">${xlcompText(issue||'failed')}</p>`;
-    if(state==='skipped') return `<p class="xlcomp-result-message" data-state="skipped">${xlcompText(issue||'skipped')}</p>`;
-    if(state==='unsupported') return `<p class="xlcomp-result-message" data-state="unsupported">${xlcompText(issue||'fileUnsupported')}</p>`;
-    return `<p class="xlcomp-result-message">${xlcompText(issue||'pass')}</p>`;
+function xlcompStatusHtml(view,exportMode=false){
+    const {count,state,issue}=xlcompCategoryState(view),presentation=xlcompCategoryPresentation(view);let html='';
+    if(count)html+='<p class="xlcomp-result-confirmed-diff" data-state="diff" data-display-level="diff">🔴 '+xlcompText('displayConfirmedCount',count)+'</p>';
+    if(presentation.level==='warning'||state==='failed'||state==='unsupported'){
+        const filter=item=>!xlcompIsLocatedDynamicCFItem(item);
+        html+=xlcompIncompleteHtml(view,count,filter,exportMode);
+        if(!presentation.warningGroups.length)html+='<p class="xlcomp-result-message" data-state="failed" data-display-level="warning">⚠️ '+xlcompText(issue||'failed')+'</p>';
+    }else if(state==='skipped')html+='<p class="xlcomp-result-message" data-state="skipped">'+xlcompText(issue||'skipped')+'</p>';
+    return html;
 }
-
 function xlcompBorderHtml(){
     const line=side=>side?esc(side.style)+' · '+esc(side.color):xlcompText('noBorder');
     const changed=({a,b})=>!a?xlcompText('added'):!b?xlcompText('removed'):
@@ -3529,7 +3847,7 @@ function xlcompBorderHtml(){
         <th scope="col">${xlcompLabel('fileB')}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
-function _xlcompRenderCurrentView(result=document.getElementById('xlcomp-result'),view=xlcompCurrentView){
+function _xlcompRenderCurrentView(result=document.getElementById('xlcomp-result'),view=xlcompCurrentView,exportMode=false){
     const {count,state}=xlcompCategoryState(view);
     result.innerHTML='';
     if(view==='cell'&&(count||(result.isConnected&&!xlcompHideEq))) renderXlCompResult(result);
@@ -3542,7 +3860,7 @@ function _xlcompRenderCurrentView(result=document.getElementById('xlcomp-result'
         if(view==='border') result.innerHTML=xlcompBorderHtml();
         if(view==='structure') result.innerHTML=xlcompRenderSheetStructureDiffHtml(xlcompSheetStructureDiff);
     }
-    if(!count||state!=='diff') result.insertAdjacentHTML('afterbegin',xlcompStatusHtml(view));
+    result.insertAdjacentHTML('afterbegin',xlcompStatusHtml(view,exportMode));
     // NO009：结果区域顶部默认显示 Sheet 汇总；仅页面主结果容器（导出用离屏容器不受影响）
     if(result===document.getElementById('xlcomp-result')&&xlcompResults&&xlcompUnifiedIndex)
         result.insertAdjacentHTML('afterbegin',xlcompSheetSummaryHtml());
@@ -3580,6 +3898,8 @@ function xlcompClearResult(){
     xlcompExtMapA=null;
     xlcompExtMapB=null;
     xlcompBorderDiffs=[];
+    xlcompCfGroupCount=0;
+    xlcompCfDisplayGroupByCat={};
     xlcompLimits=[];
     xlcompLimitPanelOpen=null;
     xlcompCategoryIssues={};
@@ -4093,6 +4413,7 @@ function resetXlComp(){
     xlcompClearResult();
     document.getElementById('xlcomp-limit-sheets').checked=false;
     xlcompFileA=null; xlcompFileB=null;
+    xlcompUpdateXlsbNote();
     xlcompWbA=null; xlcompWbB=null;
     xlcompResults=null; xlcompHideEq=false;
     xlcompExtMapA=null; xlcompExtMapB=null;
@@ -4130,13 +4451,13 @@ function exportXlComp(){
     if(xlcompUnifiedIndex){
         const list=xlcompCategories().map(key=>{
             const state=xlcompCategoryState(key);
-            return `<li>${xlcompCategoryLabel(key,state)}${state.issue?' · '+xlcompText(state.issue):''}</li>`;
+            return `<li>${xlcompCategoryLabel(key,state)}${state.issue?' · '+xlcompText(state.issue, state.issue==='cfUnverified'?xlcompCfGroupCount:undefined):''}</li>`;
         }).join('');
         const sheets=(window._xlcompSelectedSheets||[]).map(esc).join('、');
-        report=`<p>${xlcompText('checkedRange')} · ${sheets}</p><ul>${list}</ul>`;
+        const summaryData=xlcompSheetSummaryData();report=xlcompOverallDisplaySummaryHtml(summaryData,true)+xlcompExportDiffSummaryHtml(summaryData)+xlcompExportWarningSummaryHtml(summaryData)+xlcompExportSheetSummaryHtml(summaryData)+'<section id="xlcomp-export-category-summary"><h3>'+xlcompText('results')+'</h3><p>'+xlcompText('checkedRange')+' · '+sheets+'</p><ul>'+list+'</ul></section>';
         for(const view of xlcompCategories()){
-            _xlcompRenderCurrentView(pane,view);
-            pane.querySelectorAll('.xlcomp-incomplete-toggle').forEach(node=>node.remove());
+            _xlcompRenderCurrentView(pane,view,true);
+            pane.querySelectorAll('.xlcomp-incomplete-toggle').forEach(node=>node.remove());pane.querySelectorAll('details').forEach(node=>node.open=true);
             pane.querySelectorAll('.xlcomp-limit[hidden]').forEach(node=>node.removeAttribute('hidden'));
             report+=`<section><h3>${xlcompText(view)}</h3>${pane.innerHTML}</section>`;
         }
@@ -4168,7 +4489,265 @@ function exportXlComp(){
     </style></head><body>
     <h2>${xlcompText('report')} · ${esc(new Date().toLocaleString())}</h2>
     <p>${xlcompText('fileA')} · ${esc(xlcompFileA.name)} ／ ${xlcompText('fileB')} · ${esc(xlcompFileB.name)}</p>
-    ${report}</body></html>`;
+    ${report}<details id="xlcomp-licenses" class="xlcomp-licenses" style="margin:20px auto;max-width:1100px;padding:12px;color:#334155"><summary>Third-party licenses / 第三方许可证 / サードパーティライセンス</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px">SheetJS Community Edition 0.20.3 · Apache-2.0 · https://docs.sheetjs.com/docs/miscellany/license/
+SheetJS-0.20.3-LICENSE.txt
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      &quot;License&quot; shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      &quot;Licensor&quot; shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      &quot;Legal Entity&quot; shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      &quot;control&quot; means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      &quot;You&quot; (or &quot;Your&quot;) shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      &quot;Source&quot; form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      &quot;Object&quot; form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      &quot;Work&quot; shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      &quot;Derivative Works&quot; shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      &quot;Contribution&quot; shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, &quot;submitted&quot;
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as &quot;Not a Contribution.&quot;
+
+      &quot;Contributor&quot; shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a &quot;NOTICE&quot; text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an &quot;AS IS&quot; BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets &quot;{}&quot;
+      replaced with your own identifying information. (Don&#x27;t include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same &quot;printed page&quot; as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright (C) 2012-present   SheetJS LLC
+
+   Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+JSZip-3.10.1-LICENSE.txt
+JSZip is dual licensed. At your choice you may use it under the MIT license *or* the GPLv3
+license.
+
+The MIT License
+===============
+
+Copyright (c) 2009-2016 Stuart Knightley, David Duponchel, Franz Buchinger, António Afonso
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+
+Selected license: MIT.
+
+pako-LICENSE.txt
+(The MIT License)
+
+Copyright (C) 2014-2017 by Vitaly Puzrin and Andrei Tuputcyn
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+</pre></details>
+</body></html>`;
     const a=document.createElement('a');
     const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
     a.href=url;
