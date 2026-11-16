@@ -2,7 +2,7 @@
 
 > 本文件**只写当前真实状态**：运行基线、Gate、业务模块状态、待办、有效回滚点、必要环境信息。
 > 分工：本文件 = **唯一权威当前状态**；`PORTAL_ARCHITECTURE.md` = 稳定架构与联动事实；`AGENTS.md` = AI 入口与禁改范围。**Git / Production 版本信息只在本文件维护。**
-> 最后更新：**2026-11-16 JST（NO023 TVer NO022 正式上线：Commit `1812cbc` push main→Production，Vercel `2dYCvtBozkiAyCekoG8VnEEvKYja` success；线上 tver_check.html SHA=`eed98ff622572c3a61e459930c48dc9112a38f8bbb5d5d6268941a2c9e255564` / 667510 B 逐字节一致；4 真案件回归 ALL PASS、认证门 preflight 13/13、GAS 写入 0；BUSINESS_ACCEPTANCE=PENDING。上一版 NO021 C+ v26.1 为前生产：Commit `9e417fa`、Vercel `BEnTUmubYCn2YiHgi9F9mJb5vi2d`、Excel `fa1b73b3…`（本次未动）；L3–L5 NOT_RUN）**
+> 最后更新：**2026-11-16 JST（NO026 region_check 表格显示修复正式发布：源代码 commit `738c260`；Vercel source deployment `3E9S9A1csom3vNtcpRw9KQmvtnHv` success；Production region_check.html 159749 B / SHA256 `2ebdc6dd176fe02b454e9aa1d78c856acb935ca456fcde406aa8a7333eb3f401`；回滚基线 `1812cbc` / 原 SHA `407edc91ee096cb869c081c55ae2973254304646770e196cf326a4391903c584`；L3–L5 NOT_RUN；STRICT_AUTHORIZATION_GATE=NOT_MET）**
 > 历史过程不在本文件展开；各任务的最终结论与证据位置见 §9。
 
 ---
@@ -12,15 +12,15 @@
 | 项 | 值 | 验证方式 |
 |---|---|---|
 | 本机仓库 / 分支 | `C:\Users\BPO\Desktop\my-qc-web` / `main` | — |
-| **HEAD = origin/main** | **`1812cbc0c8aae11f5ff79f256f746749124f2963`**（feat(tver): NO022 staff UAT branch - device naming & review visibility；NO023 正式上线） | GitHub main + git rev-parse（NO023，2026-11-16 JST） |
-| 批准基线 / parent | `9e417faed272019a8c44ef3d3358d22990a2a317` | NO022 的 parent（NO021）；本次 NO023 发布前完整生产基线 |
-| **Vercel Production Deployment** | **`2dYCvtBozkiAyCekoG8VnEEvKYja`**（ref=`1812cbc`，success，2026-11-16 JST 00:47:55Z；GitHub deployment `7812714953` env=Production；Push 自动触发；`target_url = vercel.com/huihaiqctool-s-projects/my-qc-web/2dYCvtBozkiAyCekoG8VnEEvKYja`） | GitHub commit status Vercel=success + 线上 SHA 复核 |
+| **HEAD / Production source** | **`738c260cf626fcca436a193f98180a4cf16f771d`**（NO026 region_check 发布 commit；后续状态记录提交不改变静态资源字节） | GitHub main；2026-11-16 JST |
+| 批准基线 / parent | `1812cbc0c8aae11f5ff79f256f746749124f2963` | NO026 发布前 Production / origin/main 基线；回滚使用该提交或 `region_check.html` SHA `407edc91ee096cb869c081c55ae2973254304646770e196cf326a4391903c584` |
+| **Vercel Production Deployment（NO026 源代码发布）** | **`3E9S9A1csom3vNtcpRw9KQmvtnHv`**（ref=`738c260`，success；2026-11-16 JST） | GitHub commit status Vercel=success；Production 下载后 target SHA 与候选一致 |
 | 线上入口 | `https://my-qc-web.vercel.app` → 200（**匿名可访问**）；`huihai-qc-tool.vercel.app` 为**另一个 Vite React 项目，非本仓库**（602 B），非生产站点 | `curl -w %{http_code}` |
-| 发布白名单 | `scripts/static-site-manifest.json`，**37 条**（7521 B，纯 CRLF 199/199；本轮仅 TVer 条目 SHA `9fc661c6…→eed98ff6…`，manifest SHA `60551acffdb8b47b4d60889295139c142a5bc47fa4f36ccdc7e1290f257e8f93`） | 清单 `files.length` + 字节核验 |
-| 构建产物 | `public/` **37 文件**，集合与清单一致，`SHA_MISMATCH=0`；与上一版逐字节比对**仅 `tver_check.html` 变化**（`OTHER_36_SHA_CHANGED=0`） | `find public -type f \| wc -l` + 发布轮逐文件比对 |
-| 线上字节一致性 | **37/37 HTTP200、下载后SHA256一致**（2026-11-16 NO023；TVer = `eed98ff6…`、Excel = `fa1b73b3…`） | `dev-materials/01_测试运行数据/acceptance/20261116_NO023_TVER_PRODUCTION_UAT/live_sha256.txt` |
+| 发布白名单 | `scripts/static-site-manifest.json`，**37 条**（7521 B；本轮仅 `region_check.html` SHA `407edc91…→2ebdc6dd…`；manifest SHA `f27d78ddd2e63642de3098cac56d6df40aac062da976a155e78aa1d73ebe0d68`） | 条目数 + bytes + SHA 核验 |
+| 构建产物 | `public/` **37 文件**，集合与清单一致，`SHA_MISMATCH=0`；本轮相对备份仅 `region_check.html` 变化，`OTHER_36_SHA_CHANGED=0` | 构建后 37/37 SHA 比对 |
+| 线上字节一致性 | **`region_check.html` 1/1 HTTP200、159749 B、SHA256 `2ebdc6dd176fe02b454e9aa1d78c856acb935ca456fcde406aa8a7333eb3f401`**（NO026 Production 验收）；其他 36 项本轮未重新下载 | `acceptance/20261116_NO026_region_check表格显示修复/evidence/production_region_check_after_commit1.html` |
 | **Excel 对比生产文件** | `excel_compare.html` = **356491 B / `fa1b73b3c300a3d11948ca2ddd8c342e7e36d84377a8cdf7903590d280b88990`**（NO021 C+ v26.1，冻结候选逐字节）；**线上浏览器内 fetch `cache:'no-store'` + `crypto.subtle` 计算一致** | `curl` + `sha256sum` + 浏览器内 `crypto.subtle`，2026-11-15 JST |
-| 其余静态资源 | NO023 相对 parent 仅改 TVer + manifest 1 条 SHA；**Excel `fa1b73b3…` 与其他 35 项 SHA 不变** | 本轮 preflight、build、online-sha |
+| 其余静态资源 | NO026 对照本地 `public_before.sha256`：其他 36 项 SHA 不变；线上本轮只验收 region_check 1/1 | NO026 acceptance 与 `_build_backup` |
 | 工作区改动（**须保护，不得清理**） | 原.gitignore修改及8项未跟踪资料原样保留；本轮仅2个批准文件入库 | NO002字节/状态清单对照 |
 | 后端 | Google Apps Script（`SHEET_ID = 1GlYrGBSwztn6dr3d70XzXiLcoBF7H9VELnWOAs5Nd5Y`）+ Sheet `users/logs/summary/case_summary` | 架构 §5 |
 | GAS 端点 | `GET <GAS_URL>` → 302 → 200 `{"ok":true,"message":"惠海QC API is running"}`（NO003 只读复核）；**不含任何日志 / 统计数据** | 只读探测，2026-11-10 |
@@ -39,7 +39,8 @@
 | 6課 0042 三得利 UTM 核对 | `suntory_utm_check.html`（113337B / `f737b0f3…`）/ `e43bbd4`（NO010） | 已上线；逻辑 164/164、真 Chrome 75/75。**HOLD**：H1–H4 业务裁定、短链允许域、WARN 计数口径、真实业务样本、L3–L5 |
 | 工具业务图标补齐 + NEW 徽章废除 | `tool_logos.js` 等 6 文件 / `6f3f5a4`（NO011） | 已上线；线上 37/37 SHA 一致；规范见架构 §3.5 |
 | 2課 TVer 設定チェック | **NO022 / `1812cbc`**；tver_check.html（667510 B / `eed98ff622572c3a61e459930c48dc9112a38f8bbb5d5d6268941a2c9e255564`） | **已正式发布（NO023，2026-11-16）：线上 SHA 与候选逐字节一致；4 真案件回归 ALL PASS（Apple 6/12/12·258/0/30、パーソル 2/4/8·112/0/18、国際医療 2/2/2·52/2/2、チヨダ 5/5/5·120/0/10）+ 认证门 preflight 13/13、GAS 写入 0。设备后缀 SP+CTV→_SPCTV、要確認/不一致可视化。上一版 FIX7 `9fc661c6…` 为回滚基线。BUSINESS_ACCEPTANCE=PENDING（现场验收未完成）。L3–L5 NOT_RUN。**
-| 其他课室既有工具 | `amazon_dsp_check.html`、`dv360_check.html`、`3ka_*`、`excel_clean.html`、`excel_formula_cleaner.html`、`image_compare.html`、`region_check.html`、`tools_text.html`、`manuscript_*`、`bpo_weekly_report_malin.html`、`usage_dashboard.html` | 长期既有、已封板；**禁改业务逻辑**（AGENTS §3.1） |
+| 6課 地域表記変換チェック | `region_check.html` / source commit `738c260` | **NO026 正式发布 PASS（2026-11-16）**。提出者：刘佳怡。Production SHA `2ebdc6dd176fe02b454e9aa1d78c856acb935ca456fcde406aa8a7333eb3f401`；真 Chrome：单行1/1、六行回归6/6、28行滚动、390×844移动端与复制 PASS；共享 `qc-ui.css` / `qc-header.js` 无遮挡。JS page error 0；Console 有一个 `/favicon.ico` 404（资源未在 manifest，未扩围修改）。回滚基线：commit `1812cbc` / 原 SHA `407edc91ee096cb869c081c55ae2973254304646770e196cf326a4391903c584`；`public` 快照见 `_build_backup/20261116_NO026_region_check表格显示修复/`；L3–L5 NOT_RUN。 |
+| 其他课室既有工具 | `amazon_dsp_check.html`、`dv360_check.html`、`3ka_*`、`excel_clean.html`、`excel_formula_cleaner.html`、`image_compare.html`、`tools_text.html`、`manuscript_*`、`bpo_weekly_report_malin.html`、`usage_dashboard.html` | 长期既有、已封板；**禁改业务逻辑**（AGENTS §3.1） |
 
 ### 2.1.1 Excel 对比（NO012 基础 + NO021 v26.1）能力边界
 
@@ -61,7 +62,6 @@
 
 | 项 | 位置 | 状态 |
 |---|---|---|
-| 6課 地域表記変換チェック（NO026） | `candidates/20261116_NO026_region_check表格显示修复/region_check.html` | **候选 READY（隔离验收済）／正式反映 HOLD**。真 Chrome：单行1/1、六行回归6/6、28行滚动；桌面1365×900 / 移动390×844；加载真实 `qc-ui.css` / `qc-header.js`；匹配、统计、复制未退化；候选 SHA `2ebdc6dd176fe02b454e9aa1d78c856acb935ca456fcde406aa8a7333eb3f401`（159749 B）。正式区 / manifest / public 未改；在线 L2 与 L3–L5 NOT_RUN；未 Commit/Push/Deploy。待 ChatGPT Gate 与用户发布授权。 |
 | 5課 0009・0018 子ツール 9 件 | `candidates/20261109_NO002_5KA_0018_SUBTOOL_PORTAL/`（未跟踪） | **候选 READY（隔离验证済）／正式反映 HOLD**。真 Chrome 45/45、隔离构建 48/48、manifest 37→48；正式区 / `public/` / 生产**无变更**。前置：0009 原件同一性确认、现场样本、L3–L5、发布授权 |
 | 正式区 5課 `TOOLS` | `index.html` | 仍为「準備中」占位（`disabled:true`），候选的 9 张直接卡片**未反映** |
 | 历史候选（保留不覆盖） | `candidates/20261106_NO005_TVPR字体可读性改善/`、`…_NO006_TVPR_UIUX再设计/`、`candidates/TVPR_6KA_CANDIDATE_01/`、`…_NO008_0042_UTM_AUDIT_FIX/`、`…_NO009_0042_UTM_UI_FIX/`、`…/20261110_NO001_Excel边框与结果导航/` | 原样保留，禁止覆盖或删除 |
@@ -126,17 +126,17 @@ EXCEL_ONLINE_FUNCTION = PASS  （生产 URL 真 Chrome 15/15；GAS 网络阻断�
 
 ```text
 STATIC_BUILD_GATE            = PASS   （37/37，清单锁定；BUILD_EXIT_CODE=0）
-PRODUCTION_BASELINE_VERIFIED = PASS   （37/37 下载后 SHA256 == manifest；NO021 线上复核）
-GIT_COMMIT_GATE              = PASS   （9e417fa；staged blob == 工作区字节，仅 2 文件）
-GIT_PUSH_GATE                = PASS   （push origin HEAD:main，53ffc5d..9e417fa）
-VERCEL_DEPLOY_GATE           = PASS   （BEnTUmubYCn2YiHgi9F9mJb5vi2d，Production success）
-PRODUCTION_L2_SHA_GATE       = PASS   （37/37 下载后 SHA256；Excel = fa1b73b3…）
+PRODUCTION_BASELINE_VERIFIED = PASS   （本轮本地 formal = manifest = public；Production target region_check 1/1 SHA matched）
+GIT_COMMIT_GATE              = PASS   （NO026 source commit `738c260`；3 个获授权文件 staged blob == 工作区字节）
+GIT_PUSH_GATE                = PASS   （push origin HEAD:main，`1812cbc..738c260`）
+VERCEL_DEPLOY_GATE           = PASS   （NO026 source deployment `3E9S9A1csom3vNtcpRw9KQmvtnHv`，Production success）
+PRODUCTION_L2_SHA_GATE       = PASS   （region_check.html 1/1，159749 B / `2ebdc6dd176fe02b454e9aa1d78c856acb935ca456fcde406aa8a7333eb3f401`）
 TVER_FIX7_PROTECTED          = YES    （tver_check.html = 9fc661c6… 未变）
 EXCEL_ONLINE_FUNCTION_GATE   = PASS   （生产 URL 真 Chrome 15/15，含 HTML 报告真实下载落盘）
 SECURITY_CODE_GATE           = PASS   （沿用已审候选；NO003 未改业务代码）
 PORTAL_INTEGRATION_GATE      = PASS
 PRE_RELEASE_GATE             = PASS
-PRODUCTION_RELEASE_GATE      = PASS   （NO021 v26.1 部署+L2+真 Chrome 15/15 PASS；L3–L5 使用日志验收仍 NOT_VERIFIED，不随发布升格）
+PRODUCTION_RELEASE_GATE      = PASS   （NO026 region_check UI；L3–L5 NOT_RUN，STRICT_AUTHORIZATION_GATE 仍 NOT_MET）
 FINAL_RELEASE_GATE           = HOLD   （v26.1 已上线；日志验收 L3–L5 未封板；STRICT_AUTHORIZATION_GATE 仍 NOT_MET）
 PORTAL_AUTH_MODEL            = FRONTEND_ONLY
 STRICT_AUTHORIZATION_GATE    = NOT_MET（匿名 GET 200；不得记为 PASS）
