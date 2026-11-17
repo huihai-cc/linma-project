@@ -167,6 +167,10 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 .xlcomp-limit-note { padding:10px 12px 0;margin:0;font-size:13px;color:#546e7a; }
 .xlcomp-color-note { font-size:13px;color:#37474f;margin-left:4px;cursor:help; }
 .xlcomp-xlsb-note { margin:8px 0 0;padding:8px 10px;border:1px solid #c7d2de;background:#f4f7fa;color:#33475b;font-size:13px;line-height:1.5;border-radius:6px; }
+.xlcomp-opt-format-tag{margin-left:4px;padding:1px 5px;border-radius:3px;background:#fff0d8;border:1px solid #ddbc86;color:#784106;font-size:11px;font-weight:600;}
+.xlcomp-compare-option.is-format-unsupported .xlcomp-option-name{color:#8a5a00;}
+.xlcomp-compare-option.is-format-unsupported input[type="checkbox"]{opacity:.55;}
+.xlcomp-format-note{margin:4px 0 8px;padding:7px 10px;border-left:3px solid #b9770e;background:#fff8ec;color:#5b3a00;font-size:13px;line-height:1.5;border-radius:4px;}
 /* NO009 Sheet 检查结果サマリー（比較完了後に既定表示） */
 .xlcomp-sheet-summary { background:#fff;border:1px solid #cbd5df;border-radius:8px;
   color:#253746;margin:0 0 14px;padding:10px 12px;font-size:14px;
@@ -1668,12 +1672,23 @@ function initXlCompDrop(side){
 
 function xlcompUpdateXlsbNote(){
     const note=document.getElementById('xlcomp-xlsb-note');
-    if(!note) return;
-    if(xlcompMode!=='excel'){ note.style.display='none'; note.textContent=''; return; }
     const na=xlcompFileA?xlcompFileA.name:'';
     const nb=xlcompFileB?xlcompFileB.name:'';
     const isX=name=>/\.xlsb$/i.test(name);
-    if(!isX(na)&&!isX(nb)){ note.style.display='none'; note.textContent=''; return; }
+    const anyX=isX(na)||isX(nb);
+    ['bgcolor','fontcolor','numfmt','formula','textbox','border'].forEach(key=>{
+        const label=document.getElementById('xlcomp-opt-label-'+key);
+        if(!label) return;
+        const bad=anyX&&['bgcolor','fontcolor','formula','textbox','border'].includes(key);
+        label.classList.toggle('is-format-unsupported',bad);
+        let tag=label.querySelector('.xlcomp-opt-format-tag');
+        if(bad){
+            if(!tag){tag=document.createElement('span');tag.className='xlcomp-opt-format-tag';label.appendChild(tag);}
+            tag.textContent=xlcompText('formatUnsupportedShort');
+        }else if(tag){tag.remove();}
+    });
+    if(!note) return;
+    if(xlcompMode!=='excel'||!anyX){note.style.display='none';note.textContent='';return;}
     note.textContent=(isX(na)&&isX(nb))?xlcompText('xlsbNoteBoth'):xlcompText('xlsbNoteMixed');
     note.style.display='block';
 }
@@ -3398,6 +3413,13 @@ const XLCOMP_LOCAL_TEXT={
     sheetStatePass:['✅ 无差异','✅ 差異なし'],
     sheetStateDiff:['🔴 {0} 处差异','🔴 差異 {0} 件'],
     sheetStatePartial:['部分检查','一部比較'],
+    sheetStateCfInfo:['已检查 · ⓘ','比較済み · ⓘ'],
+    sheetStateFormatUnsupported:['格式不支持','形式未対応'],
+    formatUnsupportedShort:['格式不支持','形式未対応'],
+    cfInfoShort:['条件格式说明','条件付き書式の説明'],
+    sheetSummaryCfInfoCount:['（其中条件格式说明 {0}）','（うち条件付き書式の説明 {0}）'],
+    formatUnsupportedItem:['{0}：当前格式（XLSB）不支持，未执行比较。','{0}：現在の形式（XLSB）では未対応のため、比較していません。'],
+    formatUnsupportedNotice:['本次比较包含 XLSB：颜色、边框、文本框、公式及条件格式显示效果未检查；0 差异仅表示已支持且实际检查的项目无差异。请保留原件，将 A/B 分别另存为 XLSX 后重新比较。','今回の比較には XLSB が含まれます。色・罫線・テキストボックス・数式・条件付き書式の表示効果は未チェックです。0件の差異は、対応済みで実際に比較した項目のみを意味します。原本を保持し、A/B をそれぞれ XLSX に変換して再比較してください。'],
     sheetStateFailed:['检查失败','比較失敗'],
     sheetStateNotSelected:['未选择','未選択'],
     sheetStateOnlyA:['仅文件 A 有（未比较）','ファイル A のみ（未比較）'],
@@ -3478,10 +3500,15 @@ function xlcompCategoryState(category){
     return {count,issue,state};
 }
 
-function xlcompCategoryLabel(category,{count,state}){
+function xlcompCategoryLabel(category,{count,state,issue}={}){
     const unit=typeof getLanguage==='function'&&getLanguage()==='ja-JP'?'件':category==='cell'?'行':'处';
     const shortState={pass:'pass',diff:'diff',failed:'failed',skipped:'unchecked',unsupported:'unchecked',partial:'partial',noBusiness:'noBusiness'}[state];
-    return xlcompText(category)+' · '+xlcompText(shortState)+(count||state==='pass'?' '+count+unit:'');
+    const nonCf=xlcompLimitGroups(category,item=>!xlcompIsConditionalFormatItem(item));
+    let text;
+    if(state==='unsupported'||issue==='fileUnsupported'||issue==='externalLimited') text=xlcompText('formatUnsupportedShort');
+    else if(state==='partial'&&issue==='cfUnverifiedDisplay'&&!nonCf.length) text=xlcompText('cfInfoShort');
+    else text=xlcompText(shortState);
+    return xlcompText(category)+' · '+text+(count||state==='pass'?' '+count+unit:'');
 }
 
 // ===== NO009 Sheet 检查結果サマリー（比較完了後に既定表示） =====
@@ -3599,10 +3626,33 @@ function xlcompSheetCategoryState(data, row, category){
         return { key:'partial', count };
     return count ? { key:'diff', count } : { key:'pass', count };
 }
-function xlcompSheetSummaryStateText(row){
+function xlcompSheetHasRealScope(row){
+    return (xlcompLimits||[]).some(item=>item.sheet===row.name&&['clippedRange','sheetDefault','rowDefault','colDefault'].includes(item.type));
+}
+function xlcompSheetIsCfInfoOnly(row){
+    if(row.status!=='partial'||xlcompSheetHasRealScope(row)) return false;
+    const levels=xlcompSheetDisplayLevels(row);
+    if(levels.includes('warning')) return false;
+    const cats=row.limitedCats||[];
+    return cats.length>0&&cats.every(category=>{const state=xlcompCategoryState(category);return state.issue==='cfUnverifiedDisplay';});
+}
+function xlcompSheetIsFormatUnsupported(row){
+    if(row.status!=='partial'||xlcompSheetHasRealScope(row)) return false;
+    const cats=row.limitedCats||[];
+    return cats.length>0&&cats.every(category=>{
+        const state=xlcompCategoryState(category);
+        return state.state==='unsupported'||state.issue==='fileUnsupported'||state.issue==='externalLimited';
+    });
+}
+function xlcompHasXlsb(){
+    return /\.xlsb$/i.test(xlcompFileA?.name||'')||/\.xlsb$/i.test(xlcompFileB?.name||'');
+}
+function xlcompSheetSummaryStateText(row,forExport=false){
     if(row.status==='partial'){
         const levels=xlcompSheetDisplayLevels(row),parts=[];
         if(row.diffTotal) parts.push(xlcompText('sheetStateDiff',row.diffTotal));
+        if(!forExport&&xlcompSheetIsCfInfoOnly(row)){parts.push(xlcompText('sheetStateCfInfo'));return parts.join(' · ');}
+        if(!forExport&&xlcompSheetIsFormatUnsupported(row)){parts.push(xlcompText('sheetStatePartial'));parts.push(xlcompText('sheetStateFormatUnsupported'));return parts.join(' · ');}
         parts.push(xlcompText('sheetStatePartial'));
         if(levels.includes('warning')) parts.push(xlcompText('sheetStateWarning'));
         else if(levels.includes('info')) parts.push('ⓘ');
@@ -3640,7 +3690,9 @@ function xlcompSheetSummaryHtml(){
     const visible=xlcompSummaryExpanded?ordered.length:Math.min(XLCOMP_SUMMARY_VISIBLE,ordered.length),shown=ordered.slice(0,visible),hidden=ordered.length-visible,hiddenRows=ordered.slice(visible).map(x=>x.row);
     const hiddenCount=level=>hiddenRows.filter(row=>level==='warning'?(row.status==='failed'||xlcompSheetDisplayLevel(row)==='warning'):level==='diff'?row.diffTotal>0:['notSelected','onlyA','onlyB'].includes(row.status)).length;
     const unchecked=data.tally.notSelected+data.tally.onlyA+data.tally.onlyB;
-    const notes=[xlcompText('sheetSummaryObjects',data.total),xlcompText('sheetSummaryFull')+' '+data.checked,xlcompText('sheetStatePartial')+' '+data.tally.partial,xlcompText('sheetSummaryUnchecked')+' '+unchecked];
+    const cfInfoCount=data.rows.filter(row=>xlcompSheetIsCfInfoOnly(row)).length;
+    const partialNote=xlcompText('sheetStatePartial')+' '+data.tally.partial+(cfInfoCount?xlcompText('sheetSummaryCfInfoCount',cfInfoCount):'');
+    const notes=[xlcompText('sheetSummaryObjects',data.total),xlcompText('sheetSummaryFull')+' '+data.checked,partialNote,xlcompText('sheetSummaryUnchecked')+' '+unchecked];
     if(data.tally.failed) notes.push(xlcompText('sheetStateFailed')+' '+data.tally.failed);
     const noteHtml='<span class="xlcomp-sheet-summary-note">'+esc(notes.join(' · '))+'</span>';
     const rowsHtml=shown.map(({row,originIdx})=>{
@@ -3846,12 +3898,13 @@ function xlcompOverallDisplaySummaryHtml(data=xlcompSheetSummaryData(),exportMod
     if(data.tally.failed) stats.push('<span class="xlcomp-display-stat" data-level="warning">❌ '+xlcompText('displayFailedCount',data.tally.failed)+'</span>');
     if(unchecked) stats.push('<span class="xlcomp-display-stat" data-level="unchecked">'+xlcompText('displayUncheckedCount',unchecked)+'</span>');
     const cfOnly=!exportMode&&xlcompOnlyCfDisplayUnverified(data);
-    const caution=cfOnly?'<p class="xlcomp-display-caution" data-level="cfInfo">'+xlcompText('displayCfOnlyUnverified')+'</p>':(!data.diffTotal&&(data.tally.partial||data.tally.failed||unchecked)?'<p class="xlcomp-display-caution">'+xlcompText('displayNoDiffIncomplete')+'</p>':'');
+    const caution=xlcompHasXlsb()?'':(cfOnly?'<p class="xlcomp-display-caution" data-level="cfInfo">'+xlcompText('displayCfOnlyUnverified')+'</p>':(!data.diffTotal&&(data.tally.partial||data.tally.failed||unchecked)?'<p class="xlcomp-display-caution">'+xlcompText('displayNoDiffIncomplete')+'</p>':''));
     const scopes=xlcompUncomparedScopeGroups(xlcompLimits||[]);
     const rangeNotice=xlcompUncomparedScopeHtml(scopes,exportMode);
     const warnings=exportMode?'':xlcompCompactWarningHtml(data,scopes);
     const conditionalFormat=exportMode?xlcompConditionalFormatHelpHtml(true):'';
-    const body='<div class="xlcomp-display-summary-stats">'+stats.join(' · ')+'</div>'+caution+rangeNotice+warnings+conditionalFormat;
+    const formatNote=xlcompHasXlsb()?'<p class="xlcomp-format-note" data-level="formatUnsupported">'+xlcompText('formatUnsupportedNotice')+'</p>':'';
+    const body='<div class="xlcomp-display-summary-stats">'+stats.join(' · ')+'</div>'+formatNote+caution+rangeNotice+warnings+conditionalFormat;
     return exportMode?'<section id="xlcomp-export-overview"><h3>'+esc(xlcompText('displayOverview'))+'</h3>'+body+'</section>':
         '<div class="xlcomp-display-summary-content">'+body+'</div>';
 }
@@ -3860,7 +3913,7 @@ function xlcompExportSheetSummaryHtml(data=xlcompSheetSummaryData()){
     const ordered=data.rows.map((row,index)=>({row,index})).sort((a,b)=>xlcompSheetSummaryPriority(a.row)-xlcompSheetSummaryPriority(b.row)||a.index-b.index);
     const unchecked=data.tally.notSelected+data.tally.onlyA+data.tally.onlyB;
     const rows=ordered.map(({row})=>'<tr data-state="'+row.status+'" data-display-level="'+xlcompSheetDisplayLevel(row)+'" data-has-diff="'+(row.diffTotal>0)+'"><th scope="row">'+
-        esc(row.name)+'</th><td>'+esc(xlcompSheetSummaryStateText(row))+'</td><td>'+row.diffTotal+'</td><td>'+
+        esc(row.name)+'</th><td>'+esc(xlcompSheetSummaryStateText(row,true))+'</td><td>'+row.diffTotal+'</td><td>'+
         esc((row.limitedCats||[]).map(c=>xlcompText(c)).join('、')||'—')+'</td></tr>').join('');
     return '<section id="xlcomp-export-sheet-summary"><h3>'+esc(xlcompText('displaySheetSummary'))+'</h3><p>'+
         esc(xlcompText('displayFullCount',data.checked))+' · '+esc(xlcompText('displayPartialCount',data.tally.partial))+' · '+
@@ -4099,6 +4152,9 @@ function xlcompScopesCoverWarnings(view){
 function xlcompStatusHtml(view,exportMode=false){
     const {count,state,issue}=xlcompCategoryState(view),presentation=xlcompCategoryPresentation(view);let html='';
     if(count)html+='<p class="xlcomp-result-confirmed-diff" data-state="diff" data-display-level="diff">🔴 '+xlcompText('displayConfirmedCount',count)+'</p>';
+    const nonCfGroups=xlcompLimitGroups(view,item=>!xlcompIsConditionalFormatItem(item));
+    const formatUnsupported=!exportMode&&(state==='unsupported'||issue==='fileUnsupported'||issue==='externalLimited')&&nonCfGroups.every(group=>!group.ranges||!group.ranges.length);
+    if(formatUnsupported) return html+'<p class="xlcomp-result-message" data-state="unsupported" data-display-level="warning">⚠️ '+xlcompText('formatUnsupportedItem',xlcompText(view))+'</p>';
     const scopeCovered=!exportMode&&xlcompScopesCoverWarnings(view)&&!['failed','unsupported'].includes(state)&&issue!=='noCommon'&&issue!=='fileUnsupported';
     if((presentation.level==='warning'||state==='failed'||state==='unsupported')&&!scopeCovered){
         const filter=item=>!xlcompIsConditionalFormatItem(item);
@@ -4730,7 +4786,8 @@ function exportXlComp(){
     if(xlcompUnifiedIndex){
         const list=xlcompCategories().map(key=>{
             const state=xlcompCategoryState(key);
-            return `<li>${xlcompCategoryLabel(key,state)}${state.issue?' · '+xlcompText(state.issue, state.issue==='cfUnverified'?xlcompCfGroupCount:undefined):''}</li>`;
+            const extra=(state.issue&&!['fileUnsupported','externalLimited','cfUnverifiedDisplay'].includes(state.issue))?' · '+xlcompText(state.issue, state.issue==='cfUnverified'?xlcompCfGroupCount:undefined):'';
+            return `<li>${xlcompCategoryLabel(key,state)}${extra}</li>`;
         }).join('');
         const sheets=(window._xlcompSelectedSheets||[]).map(esc).join('、');
         const summaryData=xlcompSheetSummaryData();report=xlcompOverallDisplaySummaryHtml(summaryData,true)+xlcompExportDiffSummaryHtml(summaryData)+xlcompExportWarningSummaryHtml(summaryData)+xlcompExportSheetSummaryHtml(summaryData)+'<section id="xlcomp-export-category-summary"><h3>'+xlcompText('results')+'</h3><p>'+xlcompText('checkedRange')+' · '+sheets+'</p><ul>'+list+'</ul></section>';
@@ -6496,6 +6553,291 @@ resetXlComp = function(){
     xlcompFastWbSlimCache = new Map();
     _xlcompSyncCompareEntryButtons();
 };
+</script>
+<script id="no033-layer">
+(function(){
+'use strict';
+const L=(zh,ja)=>(typeof getLanguage==='function'&&getLanguage()==='ja-JP')?ja:zh;
+const OPTIONS={cell:'xlcomp-cell',bgcolor:'xlcomp-bgcolor',fontcolor:'xlcomp-fontcolor',numfmt:'xlcomp-numfmt',formula:'xlcomp-formula',textbox:'xlcomp-textbox',border:'xlcomp-border',structure:'xlcomp-structure'};
+const ORDER=['cell','bgcolor','fontcolor','numfmt','formula','textbox','border','structure'];
+const CATNAME_ZH={cell:'单元格内容',bgcolor:'背景颜色',fontcolor:'字体颜色',numfmt:'数字格式',formula:'公式',textbox:'文本框',border:'边框／斜线',structure:'Sheet构成'};
+const CATNAME_JA={cell:'セル内容',bgcolor:'背景色',fontcolor:'フォント色',numfmt:'表示形式',formula:'数式',textbox:'テキストボックス',border:'罫線／斜線',structure:'シート構成'};
+function catName(c){return L(CATNAME_ZH[c]||c,CATNAME_JA[c]||c);}
+function el(id){return document.getElementById(id);}
+function box(cat){return el(OPTIONS[cat]);}
+function selectedSet(){const s=new Set(); for(const c of ORDER){const b=box(c); if(!b||b.checked) s.add(c);} return s;}
+function anySelected(){return selectedSet().size>0;}
+function syncFlags(){
+  try{ if(typeof xlcompUpdateOptionAvailability==='function') xlcompUpdateOptionAvailability(); }catch(e){}
+  if(typeof xlcompCmpBg!=='undefined'){
+    xlcompCmpBg=!!el('xlcomp-bgcolor')?.checked;
+    xlcompCmpFont=!!el('xlcomp-fontcolor')?.checked;
+    xlcompCmpNumFmt=!!el('xlcomp-numfmt')?.checked;
+    xlcompCmpFormula=!!el('xlcomp-formula')?.checked;
+    xlcompCmpTextbox=!!el('xlcomp-textbox')?.checked;
+    xlcompCmpBorder=!!el('xlcomp-border')?.checked;
+  }
+  window.xlcompCmpCell=!!el('xlcomp-cell')?.checked;
+  window.xlcompCmpStructure=!!el('xlcomp-structure')?.checked;
+  const note=el('xlcomp-color-note'); if(note) note.style.display=(el('xlcomp-bgcolor')?.checked||el('xlcomp-fontcolor')?.checked)?'inline':'none';
+  try{ if(typeof xlcompResults!=='undefined'&&xlcompResults){ xlcompClearResult(); const nav=el('xlcomp-unified-nav'); if(nav) nav.hidden=true; const bt=el('xlcomp-business-results'); if(bt) bt.innerHTML=''; const ds=el('xlcomp-display-summary'); if(ds) ds.innerHTML=''; } }catch(e){}
+}
+window.xlcompSelectAllOptions=function(v){ORDER.forEach(c=>{const b=box(c); if(b) b.checked=!!v;}); syncFlags();};
+window.xlcompResetCompareOptions=function(){ORDER.forEach(c=>{const b=box(c); if(b) b.checked=(c==='cell');}); try{xlcompFormulaResults=null;xlcompTextboxResults=null;}catch(e){} syncFlags();};
+window.xlcompResetOptions=function(){ORDER.forEach(c=>{const b=box(c); if(b) b.checked=(c==='cell');}); syncFlags();};
+window.xlcompOnCompareOptChange=syncFlags;
+
+function precheckXlsb(){
+  const names=[xlcompFileA?.name||'',xlcompFileB?.name||''];
+  if(!names.some(n=>/\.xlsb$/i.test(n))) return true;
+  const bad=['bgcolor','fontcolor','formula','textbox','border'].filter(c=>box(c)?.checked);
+  if(!bad.length) return true;
+  const msg=L('当前 XLSB 格式无法完整检查：'+bad.map(c=>catName(c)).join('、')+'。\n\n建议使用 Excel 将文件 A、文件 B 分别另存为 XLSX 格式，再重新上传比较。请保留原始文件；如存在宏、外部链接或复杂对象，请确认转换后内容是否完整。\n\n确定 = 仅比较当前支持的项目（取消上述项目）\n取消 = 返回修改检查项目', '現在の XLSB 形式では次を完全にはチェックできません：'+bad.map(c=>catName(c)).join('、')+'。\n\nExcel でファイル A/B をそれぞれ XLSX に変換してから再アップロードしてください。原本を保持し、マクロ・外部リンク・複雑なオブジェクトがある場合は変換後の内容をご確認ください。\n\nOK = 対応項目のみ比較（上記を解除）\nキャンセル = 検査項目の変更に戻る');
+  if(!confirm(msg)) return false;
+  bad.forEach(c=>{const b=box(c); if(b) b.checked=false;});
+  syncFlags();
+  return true;
+}
+const origRun=window.runXlComp;
+window.runXlComp=function(){
+  if(!anySelected()){alert(L('请至少选择一项检查项目。','検査項目を1つ以上選択してください。'));return;}
+  if(!precheckXlsb()) return;
+  if(!anySelected()){alert(L('请至少选择一项检查项目。','検査項目を1つ以上選択してください。'));return;}
+  return origRun.apply(this,arguments);
+};
+if(typeof window.xlcompFastPhase2Start==='function'){const o=window.xlcompFastPhase2Start;window.xlcompFastPhase2Start=function(){if(!anySelected()){alert(L('请至少选择一项检查项目。','検査項目を1つ以上選択してください。'));return;}return o.apply(this,arguments);};}
+if(typeof window.runZipComp==='function'){const oz=window.runZipComp;window.runZipComp=function(){if(!anySelected()){alert(L('请至少选择一项检查项目。','検査項目を1つ以上選択してください。'));return;}return oz.apply(this,arguments);};}
+
+// --- summary data filtered by selected items (internal values untouched) ---
+const origSummary=window.xlcompSheetSummaryData;
+window.xlcompSheetSummaryData=function(){
+  const data=origSummary.apply(this,arguments);
+  const sel=selectedSet();
+  const structureIssue=((xlcompUnifiedIndex&&xlcompUnifiedIndex.counts&&xlcompUnifiedIndex.counts.structure)||0)>0;
+  if(sel.size===ORDER.length){data.structureIssue=structureIssue;return data;}
+  const rows=data.rows.map(row=>{
+    const counts={};let total=0;
+    for(const c of xlcompCategories()){ if(sel.has(c)&&row.counts&&row.counts[c]){counts[c]=row.counts[c];total+=row.counts[c];} }
+    const limitedCats=(row.limitedCats||[]).filter(c=>sel.has(c));
+    let status=row.status;
+    if(!['onlyA','onlyB','notSelected','failed'].includes(row.status)){
+      const clipped=!!row.clipped&&sel.has('cell');
+      if(limitedCats.length||clipped) status='partial';
+      else if(total>0) status='diff';
+      else status='pass';
+    }
+    return Object.assign({},row,{counts,diffTotal:total,limitedCats,status});
+  });
+  const tally={pass:0,diff:0,partial:0,failed:0,notSelected:0,onlyA:0,onlyB:0};
+  rows.forEach(r=>{tally[r.status]=(tally[r.status]||0)+1;});
+  const checked=(tally.pass||0)+(tally.diff||0);
+  const diffTotal=rows.reduce((s,r)=>s+(r.diffTotal||0),0);
+  return Object.assign({},data,{rows,tally,checked,diffTotal,structureIssue});
+};
+
+const origCatState=window.xlcompCategoryState;
+window.xlcompCategoryState=function(cat){
+  const sel=selectedSet();
+  if(!sel.has(cat)) return {count:0,issue:'skipped',state:'skipped'};
+  return origCatState.apply(this,arguments);
+};
+
+const origNavItems=window.xlcompCurrentNavItems;
+window.xlcompCurrentNavItems=function(){
+  const sel=selectedSet();
+  return origNavItems.apply(this,arguments).filter(item=>sel.has(item.view));
+};
+
+function statusOf(cat){
+  const st=xlcompCategoryState(cat), count=st.count||0;
+  const nonCf=xlcompLimitGroups(cat,item=>!xlcompIsConditionalFormatItem(item));
+  const cf=xlcompLimitGroups(cat,item=>xlcompIsConditionalFormatItem(item));
+  const unsupported=st.state==='unsupported'||st.issue==='fileUnsupported'||st.issue==='externalLimited';
+  if(unsupported) return {key:'unsupported',text:L('不支持','未対応')};
+  if(count>0) return {key:'ng',text:'NG · '+count+L('处','件')+(nonCf.length?L('｜另有未检查范围','｜未比較範囲あり'):'')};
+  if(nonCf.length||st.state==='failed'||st.issue==='noCommon') return {key:'confirm',text:L('要确认','要確認')};
+  if(cf.length) return {key:'ok',text:'OK ⓘ'};
+  return {key:'ok',text:'OK'};
+}
+window.xlcompBusinessResultsHtml=function(){
+  const sel=selectedSet();
+  if(!sel.size) return '';
+  const rows=ORDER.filter(c=>sel.has(c)).map(cat=>{
+    const s=statusOf(cat);
+    let action='—';
+    if(s.key==='ng') action='<button type="button" onclick="xlcompBusinessAction(\''+cat+'\',\'diff\')">'+L('查看差异','差異を表示')+'</button>';
+    else if(s.key==='confirm') action='<button type="button" onclick="xlcompBusinessAction(\''+cat+'\',\'reason\')">'+L('查看原因','原因を表示')+'</button>';
+    else if(s.key==='unsupported') action='<button type="button" onclick="xlcompBusinessAction(\''+cat+'\',\'solution\')">'+L('查看解决方法','対処方法')+'</button>';
+    return '<tr data-state="'+s.key+'"><th scope="row">'+catName(cat)+'</th><td>'+s.text+'</td><td>'+action+'</td></tr>';
+  }).join('');
+  const safety=((xlcompUnifiedIndex&&xlcompUnifiedIndex.counts&&xlcompUnifiedIndex.counts.structure)||0)>0&&!sel.has('structure')
+    ?'<p class="xlcomp-business-safety">⚠ '+L('Sheet结构存在差异；即使未勾选 Sheet构成，也不能判定整体 OK。','シート構成に差異があります。シート構成を未選択でも全体 OK とは判定できません。')+'</p>':'';
+  return '<section id="xlcomp-business-results" class="xlcomp-business-results"><h3>'+L('检查结果（所选项目）','検査結果（選択項目）')+'</h3><table><thead><tr><th>'+L('项目','項目')+'</th><th>'+L('结果','結果')+'</th><th>'+L('操作','操作')+'</th></tr></thead><tbody>'+rows+'</tbody></table>'+safety+'</section>';
+};
+window.xlcompBusinessAction=function(cat,kind){
+  if(kind==='solution'){
+    alert(L('当前格式无法完整检查该项目。\n\n建议使用 Excel 将 A/B 分别另存为 XLSX 后重新比较；请保留原始文件。','現在の形式ではこの項目を完全にチェックできません。\n\nExcel で A/B をそれぞれ XLSX に変換して再比較してください。原本は保持してください。'));
+    return;
+  }
+  try{ xlcompSwitchView(cat,false); }catch(e){}
+  if(typeof showDetails==='function') showDetails();
+  if(kind==='reason'){
+    const panel=el('xlcomp-limit-'+cat);
+    if(panel&&panel.hasAttribute('hidden')){ try{xlcompToggleLimitPanel(cat);}catch(e){} }
+    if(!panel){ const sc=document.querySelector('.xlcomp-uncompared-scope'); if(sc){ if(!sc.open) sc.querySelector('summary').click(); sc.scrollIntoView({block:'center'}); return; } }
+  }
+  const target=el('xlcomp-result'); if(target) target.scrollIntoView({block:'start'});
+};
+
+const origShow=window.xlcompShowUnifiedNav;
+window.xlcompShowUnifiedNav=function(){
+  origShow.apply(this,arguments);
+  const sel=selectedSet();
+  ORDER.forEach(c=>{const b=el('xlcomp-view-'+c); if(b) b.style.display=sel.has(c)?'':'none';});
+  const host=el('xlcomp-business-results'); if(host) host.outerHTML=window.xlcompBusinessResultsHtml();
+  const data=xlcompSheetSummaryData();
+  const h=el('xlcomp-overall');
+  if(h){
+    if(data.structureIssue&&!sel.has('structure')){h.textContent=L('要确认（Sheet结构异常）','要確認（シート構成の差異）');h.dataset.displayLevel='warning';h.dataset.state='incomplete';}
+    else if(xlcompOnlyCfDisplayUnverified(data)){h.textContent=xlcompText('incompleteCfOnly');h.dataset.displayLevel='info';h.dataset.state='incomplete';}
+    else if(data.diffTotal>0){h.textContent=xlcompText('diff')+((data.tally.partial||data.tally.failed)?' · '+xlcompText('incomplete'):'');h.dataset.displayLevel='diff';h.dataset.state='diff';}
+    else if(data.tally.partial){h.textContent=xlcompText('incomplete');h.dataset.displayLevel='warning';h.dataset.state='incomplete';}
+    else {h.textContent=xlcompText('pass');h.dataset.displayLevel='normal';h.dataset.state='pass';}
+  }
+  const limitCats=new Set();
+  (xlcompLimits||[]).forEach(l=>{[l.category,...(Array.isArray(l.categories)?l.categories:[])].filter(Boolean).forEach(c=>limitCats.add(c));});
+  if(![...limitCats].some(c=>sel.has(c))){const sc=document.querySelector('.xlcomp-uncompared-scope');if(sc)sc.style.display='none';}
+  window.xlcompDetailsCollapsed=true;
+  hideDetails();
+  setTimeout(function(){ if(window.xlcompDetailsCollapsed) hideDetails(); },0);
+};
+
+// --- A2: unselected limits/warnings/export diff summary ---
+const origScopeGroups=window.xlcompUncomparedScopeGroups;
+window.xlcompUncomparedScopeGroups=function(limits){
+  const groups=origScopeGroups.apply(this,arguments); const sel=selectedSet();
+  if(sel.size===ORDER.length) return groups;
+  return groups.filter(g=>{const cats=[...(g.categories||[])]; if(g.category)cats.push(g.category); return cats.length>0&&cats.some(c=>sel.has(c));});
+};
+const origAllGroups=window.xlcompAllDisplayGroups;
+window.xlcompAllDisplayGroups=function(tier){
+  const groups=origAllGroups.apply(this,arguments); const sel=selectedSet();
+  if(sel.size===ORDER.length) return groups;
+  return groups.filter(g=>{const cats=[...(g.categories||[])]; if(g.category)cats.push(g.category); return cats.length>0&&cats.some(c=>sel.has(c));});
+};
+window.xlcompExportDiffSummaryHtml=function(data){
+  const sel=selectedSet();
+  const items=xlcompCategories().filter(c=>sel.has(c)).map(c=>({category:c,count:(xlcompUnifiedIndex&&xlcompUnifiedIndex.counts&&xlcompUnifiedIndex.counts[c])||0})).filter(x=>x.count)
+    .map(x=>'<li>'+esc(xlcompCategoryLabel(x.category,{count:x.count,state:'diff'}))+'</li>').join('');
+  return '<section id="xlcomp-export-confirmed-diffs"><h3>'+esc(xlcompText('displayConfirmedDiffs'))+'</h3><p>'+
+    (data.diffTotal?xlcompText('displayConfirmedCount',data.diffTotal):xlcompText('displayNoDiff'))+'</p>'+(items?'<ul>'+items+'</ul>':'')+'</section>';
+};
+
+// --- A3: collapse detail tables by default ---
+function showDetails(){
+  window.xlcompDetailsCollapsed=false;
+  document.querySelectorAll('#xlcomp-result [data-no033-hidden="1"]').forEach(el=>{el.style.display='';delete el.dataset.no033Hidden;});
+  const n=el('xlcomp-details-collapsed-note'); if(n) n.remove();
+}
+function hideDetails(){
+  window.xlcompDetailsCollapsed=true;
+  const r=el('xlcomp-result'); if(!r) return;
+  [...r.children].forEach(ch=>{
+    if(ch.id==='xlcomp-sheet-summary') return;
+    if(ch.tagName==='TABLE'||(ch.querySelector&&ch.querySelector('table'))){ch.dataset.no033Hidden='1';ch.style.display='none';}
+  });
+  if(!el('xlcomp-details-collapsed-note')){
+    const p=document.createElement('p');p.id='xlcomp-details-collapsed-note';p.className='xlcomp-details-collapsed-note';
+    p.textContent=L('明细已收起；点击结果表「查看差异」或 Sheet 名称查看。','明細は折りたたまれています。結果表の「差異を表示」またはシート名をクリックしてください。');
+    r.appendChild(p);
+  }
+}
+const origRenderCurrent=window._xlcompRenderCurrentView;
+window._xlcompRenderCurrentView=function(result,view,exportMode){
+  if(exportMode&&!selectedSet().has(view)){ if(result) result.innerHTML=''; return; }
+  const r=origRenderCurrent.apply(this,arguments);
+  if(!exportMode&&result===el('xlcomp-result')&&window.xlcompDetailsCollapsed) hideDetails();
+  return r;
+};
+window.xlcompShowDetails=showDetails; window.xlcompHideDetails=hideDetails;
+const origSummarySelect=window.xlcompSummarySelectSheet;
+window.xlcompSummarySelectSheet=function(){window.xlcompDetailsCollapsed=false;const r=origSummarySelect.apply(this,arguments);showDetails();return r;};
+const origUnifiedNav=window.xlcompUnifiedNav;
+window.xlcompUnifiedNav=function(){window.xlcompDetailsCollapsed=false;const r=origUnifiedNav.apply(this,arguments);showDetails();return r;};
+
+const origOverall=window.xlcompOverallDisplaySummaryHtml;
+window.xlcompOverallDisplaySummaryHtml=function(data,exportMode){
+  let html=origOverall.call(this,data,exportMode);
+  if(exportMode){
+    const sel=selectedSet();
+    const list=ORDER.map(c=>'<li>'+(sel.has(c)?'[x] ':'[ ] ')+catName(c)+'</li>').join('');
+    html+='<section id="xlcomp-export-options"><h3>'+L('检查项目','検査項目')+'</h3><ul>'+list+'</ul></section>';
+    if(data&&data.structureIssue&&!sel.has('structure')) html+='<section id="xlcomp-export-structure-safety" data-level="warning"><h3>⚠️ '+L('Sheet结构检查','シート構成チェック')+'</h3><p>'+L('存在 Sheet 结构差异；Sheet构成未选择，不能判定整体 OK。','シート構成に差異があります。シート構成を未選択のため、全体 OK とは判定できません。')+'</p></section>';
+  }
+  return html;
+};
+
+function clearStandardView(modeNote){
+  const b=el('xlcomp-business-results'); if(b) b.innerHTML=modeNote?'<p class="xlcomp-business-mode-note">'+modeNote+'</p>':'';
+  const s=el('xlcomp-display-summary'); if(s) s.innerHTML='';
+  const nav=el('xlcomp-unified-nav'); if(nav) nav.hidden=true;
+}
+const origSetMode=window.xlcompSetMode;
+window.xlcompSetMode=function(mode){
+  const before=xlcompMode;
+  const beforeSel=ORDER.map(c=>{const b=box(c); return b?b.checked:(c==='cell');});
+  const r=origSetMode.apply(this,arguments);
+  if(xlcompMode===before){
+    if(!xlcompIsComparisonActive()){
+      ORDER.forEach((c,i)=>{const b=box(c); if(b) b.checked=beforeSel[i];});
+      syncFlags();
+    }
+    return r;
+  }
+  if(xlcompMode!==before&&!xlcompIsComparisonActive()){
+    if(mode==='zip') clearStandardView(L('ZIP模式按现有支持范围执行；结果以ZIP页面为准。不支持的项目不会显示为OK。','ZIPモードは既存の対応範囲で実行されます。結果はZIP画面をご確認ください。未対応項目は OK 表示になりません。'));
+    else clearStandardView('');
+    window.xlcompResetOptions();
+  }
+  return r;
+};
+const origFastToggle=window.xlcompToggleFastMode;
+window.xlcompToggleFastMode=function(){
+  const before=!!xlcompFastMode;
+  const r=origFastToggle.apply(this,arguments);
+  if(!!xlcompFastMode!==before&&!xlcompIsComparisonActive()){
+    if(xlcompFastMode) clearStandardView(L('Fast模式按现有支持范围执行；结果以Fast页面为准。不支持的项目不会显示为OK。','Fastモードは既存の対応範囲で実行されます。結果はFast画面をご確認ください。未対応項目は OK 表示になりません。'));
+    else clearStandardView('');
+    window.xlcompResetOptions();
+  }
+  return r;
+};
+
+function init(){
+  const style=document.createElement('style');
+  style.textContent='#xlcomp-business-results{margin:8px 0 10px;padding:8px 10px;background:#f7fafc;border:1px solid #cbd5df;border-radius:6px;color:#253746;}#xlcomp-business-results h3{margin:0 0 6px;font-size:14px;}#xlcomp-business-results table{width:100%;border-collapse:collapse;font-size:13px;}#xlcomp-business-results th,#xlcomp-business-results td{padding:5px 8px;border-bottom:1px solid #e2e8ee;text-align:left;}#xlcomp-business-results tr[data-state="ng"] td:nth-child(2){color:#8a2027;font-weight:600;}#xlcomp-business-results tr[data-state="confirm"] td:nth-child(2){color:#784106;font-weight:600;}#xlcomp-business-results tr[data-state="unsupported"] td:nth-child(2){color:#8a5a00;font-weight:600;}#xlcomp-business-results tr[data-state="ok"] td:nth-child(2){color:#0f5f51;font-weight:600;}#xlcomp-business-results button{background:#fff;color:#2b6ca3;border:1px solid #b9cfe4;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:12px;}#xlcomp-details-collapsed-note{margin:8px 0 0;color:#546e7a;font-size:13px;}.xlcomp-business-safety{margin:6px 0 0;color:#8a2027;font-weight:600;}.xlcomp-opt-toolbar{display:inline-flex;gap:4px;margin-right:6px;}.xlcomp-opt-toolbar button{background:#eef2f7;color:#253746;border:1px solid #c3ccd6;border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer;}';
+  document.head.appendChild(style);
+  const cellOpt=[...document.querySelectorAll('#xlcomp-compare-options .xlcomp-compare-option')].find(x=>x.querySelector('[data-i18n="compareCellContentOpt"]'));
+  if(cellOpt&&!el('xlcomp-cell')) cellOpt.outerHTML='<label id="xlcomp-opt-label-cell" class="xlcomp-compare-option"><span class="xlcomp-option-name" data-i18n="compareCellContentOpt">单元格内容</span><input type="checkbox" id="xlcomp-cell" checked onchange="xlcompOnCompareOptChange()"></label>';
+  const structOpt=[...document.querySelectorAll('#xlcomp-compare-options .xlcomp-compare-option')].find(x=>x.querySelector('[data-xlcomp-label="structure"]'));
+  if(structOpt&&!el('xlcomp-structure')) structOpt.outerHTML='<label id="xlcomp-opt-label-structure" class="xlcomp-compare-option"><span class="xlcomp-option-name" data-xlcomp-label="structure">Sheet构成</span><input type="checkbox" id="xlcomp-structure" onchange="xlcompOnCompareOptChange()"></label>';
+  ['bgcolor','fontcolor','numfmt','formula','textbox','border'].forEach(c=>{const b=el('xlcomp-'+c);if(b)b.checked=false;});
+  const opts=el('xlcomp-compare-options');
+  if(opts&&!el('xlcomp-opt-toolbar')){
+    const bar=document.createElement('span');bar.id='xlcomp-opt-toolbar';bar.className='xlcomp-opt-toolbar';
+    bar.innerHTML='<button type="button" onclick="xlcompSelectAllOptions(true)">'+L('全选','全選択')+'</button><button type="button" onclick="xlcompSelectAllOptions(false)">'+L('全不选','全解除')+'</button><button type="button" onclick="xlcompResetOptions()">'+L('恢复默认','既定に戻す')+'</button>';
+    opts.parentNode.insertBefore(bar,opts);
+  }
+  const summary=el('xlcomp-display-summary');
+  if(summary&&!el('xlcomp-business-results')){
+    const div=document.createElement('div');div.id='xlcomp-business-results';div.className='xlcomp-business-results';
+    summary.parentNode.insertBefore(div,summary);
+  }
+  ['langZh','langJa'].forEach(id=>{const b=el(id); if(b&&!b.dataset.no033){b.dataset.no033='1';b.addEventListener('click',()=>setTimeout(()=>{const host=el('xlcomp-business-results'); if(host&&host.querySelector('table')) host.outerHTML=window.xlcompBusinessResultsHtml();},120));}});
+  syncFlags();
+}
+init();
+})();
 </script>
 </body>
 </html>
