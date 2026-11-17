@@ -98,6 +98,13 @@
     .qc-review-nav-floating{background:#fff8e1!important;border-color:#f1c40f!important;bottom:88px!important}
     @media (max-width:640px){.tver-result-compact-fields{font-size:10px}.tver-result-detail-panel{max-height:240px}}
     .qc-review-focus{outline:3px solid #f1c40f !important;outline-offset:-2px;box-shadow:0 0 0 6px rgba(241,196,15,.25);transition:outline-color .15s ease,box-shadow .15s ease}
+
+    /* NO032：不一致・要確認を単一の固定ナビゲーションへ統合 */
+    .qc-unified-nav-floating{right:16px!important;bottom:16px!important;left:auto!important;display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:calc(100vw - 32px);z-index:1200;padding:8px 10px}
+    .qc-unified-nav-floating .qc-mismatch-nav-count{font-weight:700;white-space:nowrap}
+    .qc-nav-mode{border:1px solid #90a4ae;background:#fff;border-radius:5px;padding:3px 7px;font-size:11px;cursor:pointer;white-space:nowrap}
+    .qc-nav-mode.active{background:#2c3e50;border-color:#2c3e50;color:#fff}
+    @media (max-width:640px){.qc-unified-nav-floating{left:8px!important;right:8px!important;bottom:8px!important;justify-content:center}}
   </style>
 </head>
 <body>
@@ -3327,14 +3334,44 @@
     return strictText(rawValue).replace(/[\s\u3000]+/g, '');
   }
 
+  const TVER_ASR_ORDER='0123456789ABCDEF';
+  // NO032：ASR は 0〜F の固定順。全角/半角・範囲記号差を許容し、矢印は「初期設定＝左側」だけを読む。
+  function tverAsrNormalizeText(rawValue){
+    return String(rawValue ?? '')
+      .replace(/[０-９Ａ-Ｆａ-ｆ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+      .replace(/[～〜]/g, '~')
+      .replace(/[→⇒]/g, '->')
+      .replace(/[\s\u3000]+/g, ' ')
+      .trim();
+  }
+  function tverAsrParseCollection(rawValue){
+    const normalized=tverAsrNormalizeText(rawValue);
+    if(!normalized) return { value:'', ids:[], duplicate:false, initialOnly:false };
+    const parts=normalized.split(/\s*->\s*/);
+    const text=parts[0].trim();
+    const initialOnly=parts.length>1;
+    let tokens=[];
+    if(/^[0-9A-F]のみ$/.test(text)){
+      tokens=[text.charAt(0)];
+    }else{
+      const range=text.match(/^([0-9A-F])\s*~\s*([0-9A-F])$/);
+      if(range){
+        const start=TVER_ASR_ORDER.indexOf(range[1]);
+        const end=TVER_ASR_ORDER.indexOf(range[2]);
+        if(start<0 || end<0 || start>end) return { value:null, ids:null, duplicate:false, initialOnly };
+        tokens=TVER_ASR_ORDER.slice(start,end+1).split('');
+      }else{
+        const items=text.split(/[\s,]+/).filter(Boolean);
+        if(!items.length || items.some(token => !/^[0-9A-F]$/.test(token))) return { value:null, ids:null, duplicate:false, initialOnly };
+        tokens=items;
+      }
+    }
+    const duplicate=new Set(tokens).size!==tokens.length;
+    const sorted=[...new Set(tokens)].sort((left,right)=>TVER_ASR_ORDER.indexOf(left)-TVER_ASR_ORDER.indexOf(right));
+    return { value:sorted.join(' '), ids:sorted, duplicate, initialOnly };
+  }
   function tverC344UidSuffixSettingCanonical(rawValue){
-    const raw=strictText(rawValue).trim();
-    if(raw==='') return '';
-    if(raw==='0~7') return '0 1 2 3 4 5 6 7';
-    if(raw==='0~8') return '0 1 2 3 4 5 6 7 8';
-    if(raw==='0のみ') return '0';
-    if(raw==='0~C') return '0 1 2 3 4 5 6 7 8 9 A B C';
-    return null;
+    return tverAsrParseCollection(rawValue).value;
   }
 
   // FIX4-A：0~C专用；旧0~8/0のみ的数字集合与重复处理不变。
@@ -3349,11 +3386,7 @@
   function tverC344UidSuffixCsvCanonical(rawValue){
     const raw=strictText(rawValue).trim();
     if(raw==='') return '';
-    const tokens=raw.split(/[\s,]+/);
-    if(!tokens.length || tokens.some(token => !/^\d+$/.test(token))) return null;
-    const normalized=[...new Set(tokens.map(token => token.replace(/^0+(?=\d)/, '')))]
-      .sort((left, right) => left.length-right.length || left.localeCompare(right));
-    return normalized.join(' ');
+    return tverAsrParseCollection(raw).value;
   }
 
   function tverC344SettingCanonical(field, rawValue){
@@ -3408,6 +3441,7 @@
       rawValue:strictText(selected.source.rawValue), canonicalValue:selected.canonicalValue,
       evidenceState:'available', comparable:true, primarySource:selected.source,
       sourceEvidence:sources, derivedFrom:sources, ruleBasis:spec.ruleBasis, diagnostics:[], shouldGenerate:true,
+      ...(field==='uid_suffix' ? { asrInitialLeft:/->/.test(tverAsrNormalizeText(selected.source.rawValue)) } : {}),
     });
   }
 
@@ -3588,23 +3622,29 @@
 
   // NO030：CSV media ID 群と、設定表が指定した放送局群の関係だけを評価する。
   // 完全な期待 ID 集合を証明できない場合は「一致」を作らない。
-  function evaluateTverMediaStationEvidence(expectedGroups, csvValue){
-    const expected=new Set(expectedGroups || []);
+  function tverMediaIdsForGroups(groups){
+    const expected=new Set(groups || []);
+    return (TVER_ID_DICTIONARIES.media || []).filter(entry => expected.has(entry.group)).map(entry => entry.id);
+  }
+  // NO032：放送局指定は、参考 media Sheet の当該放送局に属する全 ID を期待集合として厳密比較する。
+  function evaluateTverMediaStationEvidence(expectedGroups, csvValue, csvEvidenceState){
+    const expectedGroupsSet=new Set(expectedGroups || []);
+    const expectedIds=new Set(tverMediaIdsForGroups([...expectedGroupsSet]));
     const ids=parseTverIdSet(csvValue).ids;
-    if(!ids.length) return { status:'需确认', reason:'CSV_MEDIA_ID_NOT_PROVIDED', detailIds:[] };
+    // 明示的な空白は「全期待 ID 欠落」、来源なし・Schema 不明は要確認として区別する。
+    if(!ids.length) return csvEvidenceState==='available'
+      ? { status:'不一致', reason:null, detailIds:[...expectedIds], missing:[...expectedIds], extra:[] }
+      : { status:'需确认', reason:'CSV_MEDIA_ID_NOT_PROVIDED', detailIds:[] };
     const dictionary=new Map((TVER_ID_DICTIONARIES.media || []).map(entry => [entry.id, entry]));
     const unknown=ids.filter(id => !dictionary.has(id));
     if(unknown.length) return { status:'需确认', reason:'MEDIA_ID_NOT_IN_DICTIONARY', detailIds:unknown };
-    const outside=ids.filter(id => !expected.has(dictionary.get(id).group));
-    if(outside.length){
-      // 参照カタログ上の特殊分類（例：日本テレビ放送網株式会社(NNNチャンネル)）は、
-      // 指定放送局の配下か独立かを断定できないため「要確認」に留める。
-      const special=outside.filter(id => { const group=String(dictionary.get(id).group || ''); const match=group.match(/^(.+)\(/); return Boolean(match && expected.has(match[1])); });
-      const definite=outside.filter(id => !special.includes(id));
-      if(definite.length) return { status:'不一致', reason:null, detailIds:definite, specialIds:special };
-      return { status:'需确认', reason:'MEDIA_SPECIAL_CLASSIFICATION_UNCONFIRMED', detailIds:special, specialIds:special };
-    }
-    return { status:'需确认', reason:'MEDIA_STATION_NAME_ONLY_MANUAL_CHECK', detailIds:[], specialIds:[] };
+    const special=ids.filter(id => { const group=String(dictionary.get(id).group || ''); const match=group.match(/^(.+)\(/); return Boolean(match && expectedGroupsSet.has(match[1])); });
+    if(special.length) return { status:'需确认', reason:'MEDIA_SPECIAL_CLASSIFICATION_UNCONFIRMED', detailIds:special, specialIds:special };
+    const csvSet=new Set(ids);
+    const missing=[...expectedIds].filter(id => !csvSet.has(id));
+    const extra=ids.filter(id => !expectedIds.has(id));
+    if(!missing.length && !extra.length) return { status:'一致', reason:null, detailIds:[], missing:[], extra:[] };
+    return { status:'不一致', reason:null, detailIds:[...missing, ...extra], missing, extra };
   }
 
   // NO031：放送局の「除外」指定（例：CX除外）を、指定放送局リストとして誤解釈しない。
@@ -3621,18 +3661,21 @@
     });
     return { groups:[...new Set(groups)], tokens, unresolved };
   }
-  function evaluateTverMediaExclusionEvidence(excludedGroups, csvValue){
+  function evaluateTverMediaExclusionEvidence(excludedGroups, csvValue, csvEvidenceState){
     const excluded=new Set(excludedGroups || []);
     const ids=parseTverIdSet(csvValue).ids;
-    if(!ids.length) return { status:'需确认', reason:'CSV_MEDIA_ID_NOT_PROVIDED', detailIds:[] };
+    // 明示的な空白は「除外対象を1件も選択していない」ため除外条件成立（一致）。
+    if(!ids.length) return csvEvidenceState==='available'
+      ? { status:'一致', reason:null, detailIds:[] }
+      : { status:'需确认', reason:'CSV_MEDIA_ID_NOT_PROVIDED', detailIds:[] };
     const dictionary=new Map((TVER_ID_DICTIONARIES.media || []).map(entry => [entry.id, entry]));
     const unknown=ids.filter(id => !dictionary.has(id));
     if(unknown.length) return { status:'需确认', reason:'MEDIA_ID_NOT_IN_DICTIONARY', detailIds:unknown };
-    const violated=ids.filter(id => excluded.has(dictionary.get(id).group));
-    if(violated.length) return { status:'不一致', reason:'MEDIA_EXCLUSION_VIOLATED', detailIds:violated };
     const special=ids.filter(id => { const group=String(dictionary.get(id).group || ''); const match=group.match(/^(.+)\(/); return Boolean(match && excluded.has(match[1])); });
     if(special.length) return { status:'需确认', reason:'MEDIA_SPECIAL_CLASSIFICATION_UNCONFIRMED', detailIds:special };
-    return { status:'需确认', reason:'MEDIA_EXCLUSION_ONLY_SET_UNCONFIRMED', detailIds:[] };
+    const violated=ids.filter(id => excluded.has(dictionary.get(id).group));
+    if(violated.length) return { status:'不一致', reason:'MEDIA_EXCLUSION_VIOLATED', detailIds:violated };
+    return { status:'一致', reason:null, detailIds:[] };
   }
 
   // NO030：subgenre の「指定／除外」マーカーだけを厳密に 1 つへ解決する。
@@ -3697,7 +3740,7 @@
         }
         const selection=resolveTverMediaExclusionSelection(exclusionTexts[0]);
         if(selection.groups.length && !selection.unresolved.length){
-          return tverA17TargetingResult({ rawValue:exclusionTexts[0], evidenceState:'available', comparable:true, primarySource:exclusionSources[0], sourceEvidence:evidenceSources, derivedFrom:evidenceSources, stationGroups:[], mediaExclusion:{groups:selection.groups}, ruleBasis:'TVER_NO031_MEDIA_EXCLUSION' });
+          return tverA17TargetingResult({ rawValue:exclusionTexts[0], evidenceState:'available', comparable:true, primarySource:exclusionSources[0], sourceEvidence:evidenceSources, derivedFrom:evidenceSources, stationGroups:[], mediaExclusion:{groups:selection.groups}, ruleBasis:'TVER_NO031_MEDIA_EXCLUSION', shouldGenerate:true });
         }
         return tverA17TargetingResult({ rawValue:exclusionTexts[0], evidenceState:'ambiguous', sourceEvidence:evidenceSources, derivedFrom:evidenceSources, ruleBasis:'TVER_NO031_MEDIA_EXCLUSION', diagnostics:[{ code:'MEDIA_EXCLUSION_STATION_UNRESOLVED' }] });
       }
@@ -3719,8 +3762,27 @@
         return tverA17TargetingResult({ rawValue:tverA17BusinessRawValue(unresolvedLocalSources), evidenceState:'ambiguous', sourceEvidence:unresolvedLocalSources,
           derivedFrom:unresolvedLocalSources, ruleBasis:'TVER_C3_C4_3_LOCAL_BROADCASTER_FULL_SELECTION', diagnostics:[{ code:'LOCAL_BROADCASTER_FULL_SELECTION_UNPROVEN' }], shouldGenerate:true });
       }
-      if(!localSources.length){const mediaOnlySources=broadcasterSources.filter(tverSettingSourceIsMediaOnly);if(broadcasterSources.length&&mediaOnlySources.length===broadcasterSources.length)return tverA17TargetingResult({rawValue:'',canonicalValue:'',evidenceState:'available',comparable:true,primarySource:mediaOnlySources[0],sourceEvidence:mediaOnlySources,derivedFrom:mediaOnlySources,ruleBasis:'TVER_A17_2_LOCAL_BROADCASTER_EMPTY_BY_SEPARATE_MEDIA_FIELD',diagnostics:[],shouldGenerate:false});return tverA17TargetingResult({rawValue:'',evidenceState:broadcasterSources.length?'ambiguous':'not_provided',sourceEvidence:broadcasterSources,derivedFrom:broadcasterSources,ruleBasis:'TVER_A17_2_LOCAL_BROADCASTER_SETTING_STATE',diagnostics:[{code:broadcasterSources.length?'LOCAL_BROADCASTER_SOURCE_INSUFFICIENT':'SETTING_LOCAL_BROADCASTER_NOT_PROVIDED'}],shouldGenerate:true});}
-      const canonicalValue=TVER_ID_DICTIONARIES.local_broadcaster.map(entry => entry.id).sort().join(' ');
+      if(!localSources.length){
+        const businessBroadcaster=broadcasterSources.filter(source => { const raw=strictText(source.rawValue).trim(); return raw!=='' && raw!=='○'; });
+        const numericMedia=source => /^\d+(?:[\s,]+\d+)*(?:\s*除外)?$/.test(strictText(source && source.rawValue).trim());
+        // NO032：媒体を数字 ID（指定・除外）で直接指定した場合、ローカル局は補助ツール既定の全選択。
+        // NO032-GATE-FIX1：参考 media Sheet に存在する有効 ID のときだけ既定全選択を適用する。
+        // CSV 側の値から Setting ID の有効性を推測しない。未知 ID は要確認（一致を作らない）。
+        if(businessBroadcaster.length && businessBroadcaster.every(numericMedia)){
+          const mediaIdDictionary=new Set(TVER_ID_DICTIONARIES.media.map(entry => entry.id));
+          const settingNumericIds=[...new Set(businessBroadcaster.flatMap(source => parseTverIdSet(strictText(source.rawValue).trim().replace(/\s*除外$/, '')).ids))];
+          const unknownSettingIds=settingNumericIds.filter(id => !mediaIdDictionary.has(id));
+          if(unknownSettingIds.length){
+            return tverA17TargetingResult({ rawValue:tverA17BusinessRawValue(broadcasterSources), evidenceState:'ambiguous', sourceEvidence:broadcasterSources, derivedFrom:broadcasterSources, ruleBasis:'TVER_NO032_LOCAL_BROADCASTER_DEFAULT_FULL_SELECTION', diagnostics:[{ code:'MEDIA_ID_NOT_IN_DICTIONARY' }], shouldGenerate:true });
+          }
+          const canonicalValue=TVER_ID_DICTIONARIES.local_broadcaster.map(entry => entry.id).sort((a,b)=>Number(a)-Number(b)).join(' ');
+          return tverA17TargetingResult({ rawValue:tverA17BusinessRawValue(broadcasterSources), canonicalValue, evidenceState:'available', comparable:true, primarySource:businessBroadcaster[0], sourceEvidence:broadcasterSources, derivedFrom:broadcasterSources, ruleBasis:'TVER_NO032_LOCAL_BROADCASTER_DEFAULT_FULL_SELECTION', diagnostics:[], shouldGenerate:true });
+        }
+        const mediaOnlySources=broadcasterSources.filter(tverSettingSourceIsMediaOnly);
+        if(broadcasterSources.length&&mediaOnlySources.length===broadcasterSources.length)return tverA17TargetingResult({rawValue:'',canonicalValue:'',evidenceState:'available',comparable:true,primarySource:mediaOnlySources[0],sourceEvidence:mediaOnlySources,derivedFrom:mediaOnlySources,ruleBasis:'TVER_A17_2_LOCAL_BROADCASTER_EMPTY_BY_SEPARATE_MEDIA_FIELD',diagnostics:[],shouldGenerate:false});
+        return tverA17TargetingResult({rawValue:'',evidenceState:broadcasterSources.length?'ambiguous':'not_provided',sourceEvidence:broadcasterSources,derivedFrom:broadcasterSources,ruleBasis:'TVER_A17_2_LOCAL_BROADCASTER_SETTING_STATE',diagnostics:[{code:broadcasterSources.length?'LOCAL_BROADCASTER_SOURCE_INSUFFICIENT':'SETTING_LOCAL_BROADCASTER_NOT_PROVIDED'}],shouldGenerate:true});
+      }
+      const canonicalValue=TVER_ID_DICTIONARIES.local_broadcaster.map(entry => entry.id).sort((a,b)=>Number(a)-Number(b)).join(' ');
       const candidates=localSources
         .slice()
         .sort((left, right) => Number(strictText(right.rawValue).includes('local_broadcaster(ローカル局)は全選択')) - Number(strictText(left.rawValue).includes('local_broadcaster(ローカル局)は全選択')))
@@ -4394,6 +4456,11 @@
   function tverA17CsvEvidenceState(schemaKind, logicalField, entity){
     const field=tverA17CsvEvidenceFieldName(schemaKind, logicalField);
     if(!field) return 'unavailable';
+    // NO032-GATE-FIX1：media / local_broadcaster は Schema の列と実セル来源が確認できた場合だけ
+    // 「明示的な空白」と扱う。列欠落・未認識 Schema・来源なしは unavailable（＝要確認）へ分離する。
+    if(logicalField==='media' || logicalField==='local_broadcaster'){
+      return tverA17CsvEvidence(entity, schemaKind, logicalField).length ? 'available' : 'unavailable';
+    }
     if(['start_age', 'end_age'].includes(logicalField)){
       const startEvidence=tverA17CsvEvidence(entity, schemaKind, 'start_age');
       const endEvidence=tverA17CsvEvidence(entity, schemaKind, 'end_age');
@@ -4424,8 +4491,9 @@
       const shouldGenerateWithAgeEvidence=shouldGenerate || ageEvidenceProvided;
       if(!shouldGenerateWithAgeEvidence) return;
       const csvAgeParsed=field==='age' ? tverA17CsvAgeParse(csv, schemaKind) : null;
-      const asr0C=field==='uid_suffix' && resolved.rawValue==='0~C' ? tverAsr0CCollection(csvValue) : null;
-      const csvCanonical=asr0C ? asr0C.value : tverA17CsvCanonical(field, csvValue, csv, schemaKind);
+      const asrSetting=field==='uid_suffix' ? tverAsrParseCollection(resolved.rawValue) : null;
+      const asrCsv=field==='uid_suffix' ? tverAsrParseCollection(csvValue) : null;
+      const csvCanonical=tverA17CsvCanonical(field, csvValue, csv, schemaKind);
       const csvEvidence=field==='age'
         ? uniqueSourceRefs([...tverA17CsvEvidence(csv, schemaKind, 'start_age'), ...tverA17CsvEvidence(csv, schemaKind, 'end_age')])
         : tverA17CsvEvidence(csv, schemaKind, field);
@@ -4436,8 +4504,8 @@
       let conservativeReason=null;
       const isC344Field=Boolean(TVER_C3_C4_4D_TARGETING_SPECS[field]);
       const mediaStationEvaluation=field==='media' && resolved.mediaExclusion && Array.isArray(resolved.mediaExclusion.groups) && resolved.mediaExclusion.groups.length
-        ? evaluateTverMediaExclusionEvidence(resolved.mediaExclusion.groups, csvValue)
-        : field==='media' && Array.isArray(resolved.stationGroups) && resolved.stationGroups.length ? evaluateTverMediaStationEvidence(resolved.stationGroups, csvValue) : null;
+        ? evaluateTverMediaExclusionEvidence(resolved.mediaExclusion.groups, csvValue, csvEvidenceState)
+        : field==='media' && Array.isArray(resolved.stationGroups) && resolved.stationGroups.length ? evaluateTverMediaStationEvidence(resolved.stationGroups, csvValue, csvEvidenceState) : null;
       const ageGuard=field==='age' && (resolved.comparable || resolved.evidenceState!=='available' || csvEvidenceState!=='available')
         ? resolveTverGpAgeGuard({ field, settingEvidenceState:resolved.evidenceState, csvEvidenceState }, resolved.rawValue, csvValue)
         : null;
@@ -4456,7 +4524,7 @@
         }else if(settingUnknown || csvUnknown){
           comparisonStatus='需确认';
           conservativeReason='UID_SUFFIX_EXACT_KNOWN_RULE_REQUIRED';
-        }else if(asr0C && asr0C.duplicate){
+        }else if((asrSetting && asrSetting.duplicate) || (asrCsv && asrCsv.duplicate)){
           comparisonStatus='需确认';
           conservativeReason='UID_SUFFIX_DUPLICATE_MEMBERS';
         }else if(settingEmpty && csvEmpty){
@@ -4479,6 +4547,24 @@
       }else if(!resolved.comparable){
         comparisonStatus='需确认';
         conservativeReason=resolved.diagnostics[0] && resolved.diagnostics[0].code || 'TARGETING_EVIDENCE_UNCONFIRMED';
+      }else if(field==='local_broadcaster' && resolved.ruleBasis==='TVER_NO032_LOCAL_BROADCASTER_DEFAULT_FULL_SELECTION'){
+        const expectedIds=parseTverIdSet(resolved.canonicalValue).ids;
+        const actualIds=parseTverIdSet(csvValue).ids;
+        const localKnown=new Set(TVER_ID_DICTIONARIES.local_broadcaster.map(entry => entry.id));
+        const csvLocalText=String(csvValue ?? '').trim();
+        if(csvEvidenceState!=='available'){
+          comparisonStatus='需确认';
+          conservativeReason='CSV_TARGETING_ID_EVIDENCE_UNAVAILABLE';
+        }else if(actualIds.some(id => !localKnown.has(id)) || (!actualIds.length && csvLocalText!=='')){
+          comparisonStatus='需确认';
+          conservativeReason='CSV_LOCAL_BROADCASTER_ID_UNKNOWN';
+        }else if(sameTverIdSet(expectedIds, actualIds)){
+          comparisonStatus='一致';
+          conservativeReason=null;
+        }else{
+          comparisonStatus='不一致';
+          conservativeReason=null;
+        }
       }else if(field==='local_broadcaster' && csvCanonical!==null && csvCanonical!==resolved.canonicalValue){
         comparisonStatus=resolved.evidenceState==='available' && String(resolved.canonicalValue ?? '')==='' ? '不一致' : '需确认';
         conservativeReason=resolved.evidenceState==='available' && String(resolved.canonicalValue ?? '')==='' ? 'LOCAL_BROADCASTER_VALUE_WHEN_NOT_REQUIRED' : 'LOCAL_BROADCASTER_FULL_SELECTION_UNPROVEN';
@@ -4494,10 +4580,12 @@
         csvCanonical:{ value:csvCanonical, ruleId:field==='age' && csvAgeParsed ? csvAgeParsed.ruleId : field==='gender' ? 'TVER_C3_C4_3_GENDER_MAPPING' : resolved.ruleBasis, evidenceState:csvEvidenceState,
           ...(csvAgeParsed ? { minAge:csvAgeParsed.minAge, maxAge:csvAgeParsed.maxAge, upperOpen:csvAgeParsed.upperOpen } : {}) },
         settingEvidenceState:resolved.evidenceState, csvEvidenceState,
-        comparable:ageGuard ? ageGuard.comparable : (mediaStationEvaluation ? true : resolved.comparable) && csvCanonical!==null
-           && (!isC344Field || (resolved.evidenceState==='available' && csvEvidenceState==='available'))
-           && (field!=='pref' || csvEvidenceState==='available'),
-        alwaysDisplay:true, ruleBasis:resolved.ruleBasis, comparisonStatus,
+        comparable:ageGuard ? ageGuard.comparable : mediaStationEvaluation
+           ? mediaStationEvaluation.status!=='需确认'
+           : resolved.comparable && csvCanonical!==null
+             && (!isC344Field || (resolved.evidenceState==='available' && csvEvidenceState==='available'))
+             && (field!=='pref' || csvEvidenceState==='available'),
+        alwaysDisplay:true, ruleBasis:field==='uid_suffix' && resolved.asrInitialLeft ? 'TVER_NO032_ASR_INITIAL_LEFT_OF_ARROW' : resolved.ruleBasis, comparisonStatus,
         conservativeReason, sourceEvidence:{ setting:resolved.sourceEvidence, csv:csvEvidence, derivedFrom },
       });
     });
@@ -5365,8 +5453,7 @@
   const TVER_DISPLAY_STATUSES=['一致', '不一致', '要確認'];
   const TVER_DISPLAY_STATUS_MAP={ '一致':'一致', '表記ゆれ一致':'一致', '不一致':'不一致', '需确认':'要確認', '未匹配':'要確認', '要確認':'要確認' };
   let tverPageState={ settingFile:null, csvFile:null, settingWorkbook:null, sheetCpIndex:null, availableSheetNames:[], selectedSheetName:'', selectedSettingValidation:null, selectedSettingModel:null, recognitionPending:false, uploadFiles:[], recognition:null, recognitionToken:0, runToken:0, run:null, error:'', busy:false, activeLevel:'Campaign', filters:{ ...TVER_DEFAULT_FILTERS }, objectUrl:null };
-  let tverMismatchNavigator=null;
-  let tverReviewNavigator=null;
+  let tverUnifiedNavigator=null;
 
   // ===== Mismatch Navigator（只消费最终渲染的 data-qc-status） =====
   function createQcMismatchNavigator(options={}){
@@ -5376,7 +5463,11 @@
     const summarySelector=options.summarySelector || '[data-qc-mismatch-navigator]';
     const scopeAttribute=options.scopeAttribute || 'data-qc-scope';
     const focusClass=options.focusClass || 'qc-mismatch-focus';
-    const status=options.status==='review' ? 'review' : 'mismatch';
+    const statuses=Array.isArray(options.statuses) && options.statuses.length
+      ? [...new Set(options.statuses.filter(value => value==='mismatch' || value==='review'))]
+      : [options.status==='review' ? 'review' : 'mismatch'];
+    const unified=Boolean(options.unified);
+    let mode=unified ? 'all' : statuses[0];
     const focusDurationMs=Number(options.focusDurationMs)||1800;
     const indexes=new Map();
     const currentPositions=new Map();
@@ -5385,6 +5476,7 @@
     let manualClose=false;
     let floatingElement=null;
     let floatingCount=null;
+    let floatingModeButtons=null;
     const scopeKey=scope=>scope===undefined||scope===null||String(scope)===''?'__all__':String(scope);
     function readScope(element){
       if(!element) return '__all__';
@@ -5408,8 +5500,18 @@
       const key=scopeKey(scope);
       return [...root.querySelectorAll(targetSelector)].filter(element=>{
         const marker=element.getAttribute&&element.getAttribute('data-qc-status');
-        return marker===status&&(key==='__all__'||readScope(element)===key)&&isVisible(element);
+        if(!statuses.includes(marker)) return false;
+        if(unified && mode!=='all' && marker!==mode) return false;
+        return (key==='__all__'||readScope(element)===key)&&isVisible(element);
       });
+    }
+    function countByStatus(marker,scope){
+      if(!root||typeof root.querySelectorAll!=='function') return 0;
+      const key=scopeKey(scope);
+      return [...root.querySelectorAll(targetSelector)].filter(element => {
+        const value=element.getAttribute&&element.getAttribute('data-qc-status');
+        return value===marker&&(key==='__all__'||readScope(element)===key)&&isVisible(element);
+      }).length;
     }
     function clearFocus(){
       if(root&&typeof root.querySelectorAll==='function') root.querySelectorAll('.'+focusClass).forEach(element=>element.classList&&element.classList.remove(focusClass));
@@ -5425,15 +5527,37 @@
       if(!documentRef||typeof documentRef.createElement!=='function') return null;
       const panel=documentRef.createElement('div');
       if(!panel||typeof panel.setAttribute!=='function'||typeof panel.appendChild!=='function'||typeof panel.addEventListener!=='function') return null;
-      panel.setAttribute('class','qc-mismatch-nav-floating'+(status==='review' ? ' qc-review-nav-floating' : ''));
+      panel.setAttribute('class','qc-mismatch-nav-floating'+(unified ? ' qc-unified-nav-floating' : ''));
       panel.setAttribute('role','region');
-      panel.setAttribute('aria-label',status==='review' ? '要確認ナビゲーター' : '不一致ナビゲーター');
+      panel.setAttribute('aria-label',unified ? '異常ナビゲーター' : statuses[0]==='review' ? '要確認ナビゲーター' : '不一致ナビゲーター');
       panel.style.position='fixed';
       const label=documentRef.createElement('span');
       label.setAttribute('class','qc-mismatch-nav-label');
-      label.textContent=status==='review' ? '⚠ 要確認' : '⚠ 不一致';
+      label.textContent=unified ? '⚠ 異常' : statuses[0]==='review' ? '⚠ 要確認' : '⚠ 不一致';
       const count=documentRef.createElement('span');
       count.setAttribute('class','qc-mismatch-nav-count');
+      const modeButtons={};
+      if(unified){
+        const allButton=documentRef.createElement('button');
+        allButton.setAttribute('type','button');
+        allButton.setAttribute('class','qc-nav-mode');
+        allButton.setAttribute('data-qc-nav-mode','all');
+        allButton.textContent='すべて';
+        allButton.addEventListener('click',event=>{ if(event&&event.preventDefault) event.preventDefault(); setMode('all'); });
+        modeButtons.all=allButton;
+        ['mismatch','review'].forEach(marker => {
+          const button=documentRef.createElement('button');
+          button.setAttribute('type','button');
+          button.setAttribute('class','qc-nav-mode');
+          button.setAttribute('data-qc-nav-mode',marker);
+          button.textContent=(marker==='mismatch' ? '不一致 ' : '要確認 ')+'0';
+          button.addEventListener('click',event=>{
+            if(event&&event.preventDefault) event.preventDefault();
+            setMode(mode===marker ? 'all' : marker);
+          });
+          modeButtons[marker]=button;
+        });
+      }
       const createButton=(action,label,ariaLabel)=>{
         const button=documentRef.createElement('button');
         button.setAttribute('type','button');
@@ -5460,6 +5584,7 @@
       });
       panel.appendChild(label);
       panel.appendChild(count);
+      Object.values(modeButtons).forEach(button => panel.appendChild(button));
       panel.appendChild(prev);
       panel.appendChild(next);
       panel.appendChild(close);
@@ -5469,7 +5594,18 @@
       panel.hidden=true;
       floatingElement=panel;
       floatingCount=count;
+      floatingModeButtons=modeButtons;
       return panel;
+    }
+    function setMode(next){
+      if(!unified) return;
+      mode=['all','mismatch','review'].includes(next) ? next : 'all';
+      manualClose=false;
+      const key=activeScope===null ? '__all__' : activeScope;
+      activeScope=key;
+      indexes.delete(key);
+      currentPositions.delete(key);
+      if(!navigate(key,1)) hideFloating();
     }
     function refreshFloating(){
       if(manualClose||activeScope===null){hideFloating();return;}
@@ -5478,7 +5614,25 @@
       if(!targets.length||position===undefined){hideFloating();return;}
       const panel=ensureFloating();
       if(!panel) return;
-      if(floatingCount) floatingCount.textContent=`${position+1} / ${targets.length}`;
+      const target=targets[position];
+      const fieldKey=target&&target.getAttribute ? target.getAttribute('data-field-key') : '';
+      let fieldLabel='';
+      if(fieldKey){
+        const panelEl=target.closest && target.closest('.tver-horizontal-panel');
+        const levelId=panelEl&&panelEl.id ? panelEl.id.replace('tver-horizontal-panel-','') : '';
+        const level={'campaign':'Campaign','ad-group':'Ad Group','ad':'Ad'}[levelId] || '';
+        fieldLabel=buildTverHorizontalFieldLabel(level, fieldKey) || fieldKey;
+      }
+      if(floatingCount) floatingCount.textContent=`${position+1} / ${targets.length}`+(fieldLabel ? '｜'+fieldLabel : '');
+      if(unified && floatingModeButtons){
+        const counts={ mismatch:countByStatus('mismatch',activeScope), review:countByStatus('review',activeScope) };
+        Object.entries(floatingModeButtons).forEach(([marker,button])=>{
+          if(marker==='all'){ button.classList && button.classList.toggle('active', mode==='all'); button.setAttribute && button.setAttribute('aria-pressed', String(mode==='all')); return; }
+          button.textContent=(marker==='mismatch' ? '不一致 ' : '要確認 ')+counts[marker];
+          button.classList && button.classList.toggle('active', mode===marker);
+          button.setAttribute && button.setAttribute('aria-pressed', String(mode===marker));
+        });
+      }
       panel.hidden=false;
     }
     function closeFloating(){
@@ -5602,10 +5756,16 @@
       summary.__qcMismatchNavigatorBound=true;
       const activate=event=>{
         if(event&&event.preventDefault) event.preventDefault();
+        if(unified){
+          const reviewMarker=summary.getAttribute && summary.getAttribute('data-qc-review-navigator');
+          const mismatchMarker=summary.getAttribute && summary.getAttribute('data-qc-mismatch-navigator');
+          if(reviewMarker!==null && reviewMarker!==undefined) mode='review';
+          else if(mismatchMarker!==null && mismatchMarker!==undefined) mode='mismatch';
+        }
         const key=scope===undefined?readScope(summary):scope;
         if(activeScope===scopeKey(key) && navigate(key,1)) return;
         if(startScope(key)) return;
-        if(typeof options.onEmpty==='function' && options.onEmpty(key)) startScope(key);
+        if(typeof options.onEmpty==='function' && options.onEmpty(key, mode)) startScope(key);
       };
       summary.addEventListener('click',activate);
       summary.addEventListener('keydown',event=>{if(event&&(event.key==='Enter'||event.key===' ')) activate(event);});
@@ -5617,22 +5777,23 @@
     return {getTargets,navigate,reset,resetAll:()=>reset(),beginLifecycle,refresh,bindSummary,bindSummaries};
   }
 
-  // NO030：現在レベルに不一致が無いとき、他レベル（CP/GP/Ad）へ切り替えて探索する。
-  function activateTverMismatchFallback(){
+  // NO032：不一致・要確認を単一ナビで扱う。現在層に該当が無ければ他層へ切り替える。
+  function activateTverUnifiedFallback(mode){
     if(!tverPageState || !tverPageState.run) return false;
     const doc=typeof document!=='undefined' ? document : null;
     if(!doc) return false;
+    const selector=mode==='all' ? '[data-qc-status="mismatch"],[data-qc-status="review"]' : '[data-qc-status="'+mode+'"]';
     const order=['Campaign', 'Ad Group', 'Ad'];
     const current=tverPageState.activeLevel || 'Campaign';
-    const start=Math.max(0, order.indexOf(current));
+    const startIndex=Math.max(0, order.indexOf(current));
     for(let offset=1; offset<=order.length; offset+=1){
-      const level=order[(start+offset)%order.length];
+      const level=order[(startIndex+offset)%order.length];
       if(level===current) continue;
       tverPageState.activeLevel=level;
       tverPageState.filters={ ...tverPageState.filters, level };
       renderTverRun(tverPageState.run, { activeLevel:level, filters:tverPageState.filters, newLifecycle:false });
       const panel=doc.getElementById('tver-horizontal-panel-'+tverHorizontalLevelId(level));
-      if(panel && typeof panel.querySelector==='function' && panel.querySelector('[data-qc-status="mismatch"]')) return true;
+      if(panel && typeof panel.querySelector==='function' && panel.querySelector(selector)) return true;
     }
     if(tverPageState.activeLevel!==current){
       tverPageState.activeLevel=current;
@@ -5641,47 +5802,15 @@
     }
     return false;
   }
-  // NO031：要確認も同じ導線で、現在レベルに無い場合は他レベルへ切り替えて探索する。
-  function activateTverReviewFallback(){
-    if(!tverPageState || !tverPageState.run) return false;
-    const doc=typeof document!=='undefined' ? document : null;
-    if(!doc) return false;
-    const order=['Campaign', 'Ad Group', 'Ad'];
-    const current=tverPageState.activeLevel || 'Campaign';
-    const start=Math.max(0, order.indexOf(current));
-    for(let offset=1; offset<=order.length; offset+=1){
-      const level=order[(start+offset)%order.length];
-      if(level===current) continue;
-      tverPageState.activeLevel=level;
-      tverPageState.filters={ ...tverPageState.filters, level };
-      renderTverRun(tverPageState.run, { activeLevel:level, filters:tverPageState.filters, newLifecycle:false });
-      const panel=doc.getElementById('tver-horizontal-panel-'+tverHorizontalLevelId(level));
-      if(panel && typeof panel.querySelector==='function' && panel.querySelector('[data-qc-status="review"]')) return true;
-    }
-    if(tverPageState.activeLevel!==current){
-      tverPageState.activeLevel=current;
-      tverPageState.filters={ ...tverPageState.filters, level:current };
-      renderTverRun(tverPageState.run, { activeLevel:current, filters:tverPageState.filters, newLifecycle:false });
-    }
-    return false;
-  }
-  function syncTverMismatchNavigator(doc,options={}){
+  function syncTverUnifiedNavigator(doc,options={}){
     const root=doc || (typeof document!=='undefined' ? document : null);
     if(!root) return;
-    if(!tverMismatchNavigator) tverMismatchNavigator=createQcMismatchNavigator({root, onEmpty:()=>activateTverMismatchFallback()});
-    tverMismatchNavigator.bindSummaries(root);
-    if(options.newLifecycle===false) tverMismatchNavigator.refresh('__all__');
-    else tverMismatchNavigator.beginLifecycle('__all__');
+    if(!tverUnifiedNavigator) tverUnifiedNavigator=createQcMismatchNavigator({root, unified:true, statuses:['mismatch','review'], targetSelector:'[data-qc-status]', summarySelector:'[data-qc-mismatch-navigator], [data-qc-review-navigator]', focusClass:'qc-mismatch-focus', onEmpty:(key,currentMode)=>activateTverUnifiedFallback(currentMode)});
+    tverUnifiedNavigator.bindSummaries(root);
+    if(options.newLifecycle===false) tverUnifiedNavigator.refresh('__all__');
+    else tverUnifiedNavigator.beginLifecycle('__all__');
   }
-  function syncTverReviewNavigator(doc,options={}){
-    const root=doc || (typeof document!=='undefined' ? document : null);
-    if(!root) return;
-    if(!tverReviewNavigator) tverReviewNavigator=createQcMismatchNavigator({root, status:'review', targetSelector:'[data-qc-status="review"]', summarySelector:'[data-qc-review-navigator]', focusClass:'qc-review-focus', onEmpty:()=>activateTverReviewFallback()});
-    tverReviewNavigator.bindSummaries(root);
-    if(options.newLifecycle===false) tverReviewNavigator.refresh('__all__');
-    else tverReviewNavigator.beginLifecycle('__all__');
-  }
-  function resetTverMismatchNavigator(){if(tverMismatchNavigator) tverMismatchNavigator.resetAll();if(tverReviewNavigator) tverReviewNavigator.resetAll();}
+  function resetTverNavigator(){if(tverUnifiedNavigator) tverUnifiedNavigator.resetAll();}
 
   function getTverPageState(){
     return tverPageState;
@@ -6974,10 +7103,33 @@
     return {value:tokens.sort().join(' '),state:'known'};
   }
 
+  // NO032：Excel 実セルは CRLF・前後空白・末尾空行を含み得る。指示行以降の「・名称」だけを業務値として読む。
+  function parseTverContentsGroupInstruction(rawValue){
+    const text=String(rawValue ?? '').replace(/\r\n?/g, '\n');
+    const lines=text.split('\n').map(line => line.trim()).filter(line => line !== '');
+    const index=lines.findIndex(line => line === 'コンテンツグループ指定');
+    if(index < 0) return null;
+    const names=[];
+    for(const line of lines.slice(index+1)){
+      if(!line.startsWith('・')) return null;
+      const name=line.replace(/^・\s*/, '').trim();
+      if(!name) return null;
+      names.push(name);
+    }
+    return names.length ? { names, rawValue:text } : null;
+  }
+
   function resolveTverAdditionalTargeting(setting,field){
     if(field==='auction_type') return resolveSettingAdGroupAuctionType(setting);
     const label=field==='genre' ? '番組ジャンル●' : 'その他設定(ADG)';
-    const sources=tverA17TargetingSources(setting,label),values=sources.map(s=>String(s.rawValue));
+    const allSources=tverA17TargetingSources(setting,label);
+    // NO032-GATE-FIX1：コンテンツグループは「指示行を含むセル」を業務来源として全件収集する。
+    // 解析できない指示も破棄せず、合法指示と併存する場合は一致を確定しない（○ 等のテンプレート記号は除外）。
+    const contentsGroupSources=allSources.filter(source => strictText(source && source.rawValue).includes('コンテンツグループ指定'));
+    const instructionParsed=contentsGroupSources.map(source => ({ source, parsed:parseTverContentsGroupInstruction(source.rawValue) }));
+    const unparsedInstructionSources=instructionParsed.filter(item => !item.parsed).map(item => item.source);
+    const sources=field==='contents_group' ? contentsGroupSources : allSources;
+    const values=allSources.map(s=>String(s.rawValue));
     const missing=reason=>({rawValue:'',canonicalValue:null,comparable:false,sourceEvidence:sources,reason,ruleBasis:'TVER_EXACT_'+field.toUpperCase()});
     let lists=[];
     if(field==='genre'){
@@ -6986,13 +7138,12 @@
       if(!markers.includes('指定')) return missing('GENRE_INCLUDE_RULE_PENDING');
       lists=values.filter(v=>v!=='' && v!=='指定');
     }else{
-      const instructions=values.filter(v=>v.startsWith('コンテンツグループ指定\n'));
-      if(!instructions.length) return missing('CONTENTS_GROUP_SOURCE_NOT_PROVIDED');
-      for(const instruction of instructions){
-        const lines=instruction.split('\n');
-        if(lines[0]!=='コンテンツグループ指定' || lines.length<2 || lines.slice(1).some(v=>!v.startsWith('・') || v.length===1)) return missing('CONTENTS_GROUP_RULE_PENDING');
-        lists.push(lines.slice(1).map(v=>v.slice(1)).join('\n'));
+      if(!instructionParsed.length) return missing('CONTENTS_GROUP_SOURCE_NOT_PROVIDED');
+      // 解析できない指示が1件でもあれば、他の合法指示だけでは一致を確定しない。
+      if(unparsedInstructionSources.length){
+        return {rawValue:tverA17BusinessRawValue(contentsGroupSources),canonicalValue:null,comparable:false,sourceEvidence:sources,reason:'CONTENTS_GROUP_RULE_PENDING',ruleBasis:'TVER_EXACT_CONTENTS_GROUP'};
       }
+      for(const item of instructionParsed) lists.push(item.parsed.names.join('\n'));
     }
     const dictionary=TVER_ID_DICTIONARIES[field] || [],byName=new Map(dictionary.map(x=>[x.name,x.id]));
     const canonical=lists.map(list=>{
@@ -7002,7 +7153,7 @@
     });
     const known=[...new Set(canonical)];
     if(!canonical.length || canonical.includes(null) || known.length!==1) return missing('TARGETING_COLLECTION_RULE_PENDING');
-    return {rawValue:lists[0],canonicalValue:known[0],comparable:true,sourceEvidence:sources,primarySource:sources.find(s=>String(s.rawValue)===lists[0]) || sources[0],ruleBasis:'TVER_EXACT_'+field.toUpperCase()};
+    return {rawValue:lists[0],canonicalValue:known[0],comparable:true,sourceEvidence:sources,primarySource:(field==='contents_group' ? (instructionParsed.find(item=>item.parsed.names.join('\n')===lists[0]) || {}).source : sources.find(source=>String(source.rawValue)===lists[0])) || sources[0],ruleBasis:'TVER_EXACT_'+field.toUpperCase()};
   }
 
   function resolveTverQuartileTracking(ad,model,field){
@@ -8324,7 +8475,7 @@
     return `${sideLabel}：${parts.join(' / ')}`;
   }
 
-  function buildTverHorizontalDetailViewModel(row, entriesRef){
+  function buildTverHorizontalDetailViewModel(row, entriesRef, options={}){
     const safe=row && typeof row==='object' ? row : {};
     const cells=safe.cells && typeof safe.cells==='object' ? safe.cells : {};
     const entryByIndex=new Map();
@@ -8349,7 +8500,7 @@
       if(!cellEntry && entry.hidden) return null; // NO022: フォールバック参照は実体判定と同じく hidden を除外
       if(entry.deferred) return null; // C3-C5-CR-REOPEN-3 FIX B：deferred 字段无判定，不进入确认详情
       const displayStatus=projectTverDisplayStatus(entry.displayStatus || entry.comparisonStatus);
-      if(displayStatus==='一致') return null;
+      if(displayStatus==='一致' && !options.includeConsistent) return null;
       const settingSources=tverDetailSourceList(entry, 'setting');
       const csvSources=tverDetailSourceList(entry, 'csv');
       const validationCodes=(Array.isArray(entry.validationIssues) ? entry.validationIssues : []).map(issue => String(issue && issue.code || '')).filter(Boolean);
@@ -8366,6 +8517,8 @@
         reason:getTverDisplayReason(entry),
         settingSources:settingSources.length ? settingSources : [null],
         csvSources:csvSources.length ? csvSources : [null],
+        settingCanonicalValue:entry.canonicalValues && entry.canonicalValues.setting || '',
+        csvCanonicalValue:entry.canonicalValues && entry.canonicalValues.csv || '',
         conservativeReason:String(entry.conservativeReason ?? ''),
         ruleBasis:String(entry.ruleBasis ?? ''),
         evidenceStates:entry.evidenceStates && typeof entry.evidenceStates==='object' ? { ...entry.evidenceStates } : {},
@@ -8424,6 +8577,18 @@
     return String(value);
   }
 
+  function buildTverMediaBreakdownHtml(detail){
+    const dictionary=new Map((TVER_ID_DICTIONARIES.media || []).map(entry => [entry.id, entry]));
+    const ids=parseTverIdSet(detail.csvRawValue).ids;
+    if(!ids.length) return '';
+    const parts=ids.slice(0,12).map(id => {
+      const entry=dictionary.get(id);
+      return entry ? `${id}:${entry.name}（${entry.group}）` : `${id}:未登録`;
+    });
+    const more=ids.length>12 ? ` / ほか${ids.length-12}件` : '';
+    return `<div class="tver-horizontal-detail-source">媒体内訳（CSV）：${escapeHtml(parts.join(' / ')+more)}</div>`;
+  }
+
   function buildTverHorizontalDetailEntryHtml(detail){
     const status=detail.displayStatus || '要確認';
     const sourceLines=[
@@ -8431,6 +8596,12 @@
       ...detail.csvSources.map(source => formatTverDetailSource('CSV', source)),
     ];
     const sourceHtml=sourceLines.map(line => `<div class="tver-horizontal-detail-source">${escapeHtml(line)}</div>`).join('');
+    const canonicalLines=[
+      detail.settingCanonicalValue ? '期待ID：'+detail.settingCanonicalValue : '',
+      detail.csvCanonicalValue ? 'CSV ID：'+detail.csvCanonicalValue : '',
+    ].filter(Boolean);
+    const canonicalHtml=canonicalLines.map(line => `<div class="tver-horizontal-detail-source">${escapeHtml(line)}</div>`).join('');
+    const mediaBreakdownHtml=detail.field==='media' ? buildTverMediaBreakdownHtml(detail) : '';
     const validation=tverTechnicalValue(detail.validationCodes.length ? detail.validationCodes.join(' | ') : '');
     const technical=[
       ['conservativeReason', detail.conservativeReason],
@@ -8441,7 +8612,7 @@
       ['validationIssues.code', validation],
     ].map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(tverTechnicalValue(value))}</dd>`).join('');
     const rowLevelScopeHtml=detail.rowLevelScope ? `<div class="tver-horizontal-detail-scope"><span class="tver-horizontal-detail-label">名称範囲 / 行対応</span><span class="tver-horizontal-detail-value">${escapeHtml(String(detail.rowLevelScope.name || ''))} ／ CSV行: ${escapeHtml((detail.rowLevelScope.csvRowNumbers || []).join(', '))} ／ 設定表行: ${escapeHtml((detail.rowLevelScope.settingRowNumbers || []).join(', '))} ／ 行級比較: 設定Group ${escapeHtml(String(detail.rowLevelScope.groupCount ?? ''))}件 ⇔ CSV ${escapeHtml(String((detail.rowLevelScope.csvRowNumbers || []).length))}行（Group実体ID未確認）</span></div>` : '';
-    return `<article class="tver-horizontal-detail-entry" data-detail-entry-index="${escapeHtml(detail.entryIndex)}"><div class="tver-horizontal-detail-grid"><div><span class="tver-horizontal-detail-label">項目</span><span class="tver-horizontal-detail-value tver-horizontal-detail-field">${escapeHtml(detail.fieldLabel || detail.field)}</span></div><div><span class="tver-horizontal-detail-label">判定</span><span class="tver-horizontal-detail-status ${tverHorizontalStatusClass(status)}">${escapeHtml(status)}</span></div><div><span class="tver-horizontal-detail-label">設定表値</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.settingDisplayValue ?? detail.settingRawValue)}</span></div><div><span class="tver-horizontal-detail-label">CSV値</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.csvDisplayValue ?? detail.csvRawValue)}</span></div></div><div class="tver-horizontal-detail-reason"><span class="tver-horizontal-detail-label">確認理由</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.reason)}</span></div>${rowLevelScopeHtml}<div class="tver-horizontal-detail-actions"><button class="tver-horizontal-detail-action" type="button" data-action="toggle-detail-evidence" data-detail-entry-index="${escapeHtml(detail.entryIndex)}" aria-expanded="false">根拠を表示</button><div class="tver-horizontal-detail-sources hidden" hidden data-detail-evidence>${sourceHtml}</div><details class="tver-horizontal-detail-technical"><summary>技術情報</summary><dl>${technical}</dl></details></div></article>`;
+    return `<article class="tver-horizontal-detail-entry" data-detail-entry-index="${escapeHtml(detail.entryIndex)}"><div class="tver-horizontal-detail-grid"><div><span class="tver-horizontal-detail-label">項目</span><span class="tver-horizontal-detail-value tver-horizontal-detail-field">${escapeHtml(detail.fieldLabel || detail.field)}</span></div><div><span class="tver-horizontal-detail-label">判定</span><span class="tver-horizontal-detail-status ${tverHorizontalStatusClass(status)}">${escapeHtml(status)}</span></div><div><span class="tver-horizontal-detail-label">設定表値</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.settingDisplayValue ?? detail.settingRawValue)}</span></div><div><span class="tver-horizontal-detail-label">CSV値</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.csvDisplayValue ?? detail.csvRawValue)}</span></div></div><div class="tver-horizontal-detail-reason"><span class="tver-horizontal-detail-label">確認理由</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.reason)}</span></div>${rowLevelScopeHtml}<div class="tver-horizontal-detail-actions"><button class="tver-horizontal-detail-action" type="button" data-action="toggle-detail-evidence" data-detail-entry-index="${escapeHtml(detail.entryIndex)}" aria-expanded="false">根拠を表示</button><div class="tver-horizontal-detail-sources hidden" hidden data-detail-evidence>${sourceHtml}${canonicalHtml}${mediaBreakdownHtml}</div><details class="tver-horizontal-detail-technical"><summary>技術情報</summary><dl>${technical}</dl></details></div></article>`;
   }
 
   // NO022: 実体バッジの原因概要（単一原因=項目ラベル、複数原因=N項目）。
@@ -8657,15 +8828,21 @@
       const entityStatus=projectTverDisplayStatus(row.entityDisplayStatus) || '一致';
       // NO030：異常は既定で全件を項目別に表示する（クリック操作不要・技術詳細の展開なし）。
       const abnormalDetails=(buildTverHorizontalDetailViewModel(row, view.entries) || []).filter(detail => detail && detail.displayStatus!=='一致');
+      const consistentTargetDetails=abnormalDetails.length ? [] : (buildTverHorizontalDetailViewModel(row, view.entries, { includeConsistent:true }) || []).filter(detail => detail && ['contents_group','media'].includes(detail.field));
       // NO031：既定表示は要約のみ。詳細はクリックで展開し、行高・桁あふれ・隣列との重なりを防ぐ。
       const resultSummaryHtml=abnormalDetails.length ? buildTverResultSummaryHtml(abnormalDetails, entityStatus) : '';
       const resultDetailHtml=abnormalDetails.length
         ? '<div class="tver-result-detail-panel" data-result-detail hidden>'+abnormalDetails.map(buildTverHorizontalDetailEntryHtml).join('')+'</div>'
         : '';
       const entityBadge=buildTverEntityBadgeLabel(row, entityStatus, view.entries);
+      const consistentDetailHtml=consistentTargetDetails.length
+        ? '<button type="button" class="tver-result-compact" data-action="toggle-result-detail" aria-expanded="false" data-entity-status="'+escapeHtml(entityStatus)+'"><span class="tver-result-compact-head"><span class="tver-result-compact-hint">一致・詳細</span></span><span class="tver-result-compact-fields">'+escapeHtml(consistentTargetDetails.map(detail => detail.fieldLabel).join(' / '))+'</span></button><div class="tver-result-detail-panel" data-result-detail hidden>'+consistentTargetDetails.map(buildTverHorizontalDetailEntryHtml).join('')+'</div>'
+        : '';
       const comparisonControl=abnormalDetails.length
         ? '<div class="tver-result-lines" data-entity-status="'+escapeHtml(entityStatus)+'">'+resultSummaryHtml+resultDetailHtml+'</div>'
-        : '<span class="tver-horizontal-entity-status '+tverHorizontalStatusClass(entityStatus)+'" data-entity-status="'+escapeHtml(entityStatus)+'">'+escapeHtml(entityStatus==='一致' ? '一致' : entityBadge)+'</span>';
+        : consistentDetailHtml
+          ? '<div class="tver-result-lines" data-entity-status="'+escapeHtml(entityStatus)+'">'+consistentDetailHtml+'</div>'
+          : '<span class="tver-horizontal-entity-status '+tverHorizontalStatusClass(entityStatus)+'" data-entity-status="'+escapeHtml(entityStatus)+'">'+escapeHtml(entityStatus==='一致' ? '一致' : entityBadge)+'</span>';
       const fixedCells=`<td class="tver-horizontal-fixed tver-horizontal-col-no tver-horizontal-fixed-no" rowspan="2">${escapeHtml(index + 1)}</td><td class="tver-horizontal-fixed tver-horizontal-col-target tver-horizontal-fixed-target" rowspan="2">${escapeHtml(row.displayLabel)}</td>${buildTverHorizontalProjectedNameCellHtml(row, view.level, 'setting')}<td class="tver-horizontal-fixed tver-horizontal-col-comparison tver-horizontal-fixed-comparison" rowspan="2"><span data-entity-status="${escapeHtml(entityStatus)}">${comparisonControl}</span></td>`;
       const csvNameCells=buildTverHorizontalProjectedNameCellHtml(row, view.level, 'csv');
       bodyRows.push(`<tr data-row-key="${escapeHtml(row.rowKey)}" data-row-variant="setting">${fixedCells}${settingSourceCell}${settingCells}</tr><tr data-row-key="${escapeHtml(row.rowKey)}" data-row-variant="csv">${csvNameCells}${csvSourceCell}${csvCells}</tr>`);
@@ -9157,8 +9334,7 @@
       if(resultSummary){ resultSummary.innerHTML=summaryContentHtml+buildTverCoverageHtml(run)+buildTverManualMappingHtml(run); resultSummary.classList && resultSummary.classList.remove('hidden'); }
       const panel=doc.getElementById('results-panel');
       if(panel){ panel.innerHTML=resultSummary ? mainHtml : html; panel.classList && panel.classList.remove('hidden'); bindTverHorizontalInteractions(panel); syncTverHorizontalScrollAccess(panel); syncTverHorizontalHeaderHeights(panel); scheduleTverHorizontalStickySync(panel); }
-      syncTverMismatchNavigator(doc, config);
-      syncTverReviewNavigator(doc, config);
+      syncTverUnifiedNavigator(doc, config);
       updateActionButtons(doc);
     }
     return { html, displayedEntries:shown, statusCounts, activeLevel };
@@ -9486,7 +9662,7 @@
   }
 
   function clearTverResults(doc){
-    resetTverMismatchNavigator();
+    resetTverNavigator();
     const panel=getElement(doc, 'results-panel');
     if(panel){ panel.innerHTML=''; panel.scrollLeft=0; panel.classList && panel.classList.add('hidden'); }
     const summary=getElement(doc, 'tver-result-summary');
