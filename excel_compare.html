@@ -118,6 +118,26 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 .xlcomp-display-stat[data-level="diff"]{color:#8a2027;background:#ffe5e5;border-color:#e5b6b6;}
 .xlcomp-display-stat[data-level="warning"]{color:#784106;background:#fff0d8;border-color:#ddbc86;}
 .xlcomp-display-stat[data-level="unchecked"]{color:#546e7a;background:#eef2f7;border-color:#c3ccd6;}
+.xlcomp-result-actions-tools{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.xlcomp-result-actions-tools #xlcomp-report-export{margin-left:0;}
+.xlcomp-cf-help{position:relative;font-size:13px;}
+.xlcomp-cf-help>summary{color:#dbe9f2;cursor:pointer;padding:6px 8px;border-radius:4px;font-weight:600;}
+.xlcomp-cf-help>summary:focus-visible{outline:3px solid #a9d8ff;outline-offset:2px;}
+.xlcomp-cf-help-body{position:absolute;right:0;top:calc(100% + 4px);z-index:50;width:min(420px,calc(100vw - 32px));max-height:60vh;overflow:auto;background:white;border:1px solid #c3ccd6;border-radius:6px;box-shadow:0 6px 20px rgba(22,45,67,.16);padding:12px;color:#37474f;font-size:13px;}
+.xlcomp-cf-help-body>p{margin:0 0 8px;line-height:1.6;}
+.xlcomp-cf-help-body details{margin-top:8px;}.xlcomp-cf-help-body summary{cursor:pointer;font-weight:600;}
+.xlcomp-uncompared-scope{margin:4px 0 8px;color:#ffe2b0;font-size:13px;}
+.xlcomp-uncompared-scope>summary{cursor:pointer;font-weight:600;}
+.xlcomp-uncompared-scope>summary:focus-visible{outline:3px solid #a9d8ff;outline-offset:2px;border-radius:4px;}
+.xlcomp-uncompared-scope-detail{margin:6px 0 0;padding-left:12px;}
+.xlcomp-uncompared-scope[open]{flex:1 1 100%;}
+.xlcomp-uncompared-scope-detail .xlcomp-limit-table{margin-top:8px;padding:4px 6px 8px;background:#fff;color:#253746;border:1px solid #cbd5df;border-radius:6px;overflow:auto;}
+.xlcomp-uncompared-scope-detail .xlcomp-limit-table caption{padding:6px 8px;text-align:left;color:#253746;}
+.xlcomp-uncompared-scope-detail .xlcomp-limit-table table{width:100%;border-collapse:collapse;color:#253746;}
+.xlcomp-uncompared-scope-detail .xlcomp-limit-table th,.xlcomp-uncompared-scope-detail .xlcomp-limit-table td{padding:6px 10px;text-align:left;vertical-align:top;border-bottom:1px solid #e4eaf0;}
+.xlcomp-uncompared-scope-detail .xlcomp-limit-table thead th{background:#edf2f7;}
+.xlcomp-display-warning{margin:4px 0 8px;color:#784106;font-size:13px;font-weight:600;}
+@media(max-width:600px){.xlcomp-result-actions-tools{width:100%;justify-content:space-between;}.xlcomp-cf-help-body{position:static;right:auto;top:auto;width:auto;max-height:none;box-shadow:none;margin-top:6px;}}
 .xlcomp-display-card{width:100%;box-sizing:border-box;border:1px solid #c3ccd6;border-radius:6px;padding:10px 12px;background:#eef2f7;color:#37474f;font-size:14px;}
 .xlcomp-display-card[data-level="warning"]{background:#fff0d8;border-color:#ddbc86;color:#784106;}
 .xlcomp-display-card>strong,.xlcomp-display-card>span{margin-right:10px;}
@@ -155,6 +175,10 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 .xlcomp-sheet-summary-title { font-size:15px;color:#253746; }
 .xlcomp-sheet-summary-count { font-weight:bold;color:#0f5f51;font-size:15px; }
 .xlcomp-sheet-summary-objects,.xlcomp-sheet-summary-note { font-size:13px;color:#546e7a; }
+.xlcomp-sheet-summary-stats{margin-left:auto;font-size:13px;color:#546e7a;}
+.xlcomp-sheet-summary-stats>summary{cursor:pointer;font-weight:600;}
+.xlcomp-sheet-summary-stats>summary:focus-visible{outline:3px solid #a9d8ff;outline-offset:2px;border-radius:4px;}
+.xlcomp-sheet-summary-stats .xlcomp-sheet-summary-note{display:block;margin-top:4px;}
 .xlcomp-sheet-summary-hint { font-size:13px;color:#546e7a;margin:3px 0 8px; }
 .xlcomp-sheet-summary-list { display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 8px; }
 .xlcomp-sheet-summary-item { min-width:0; }
@@ -167,6 +191,7 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 .xlcomp-sheet-summary-item[data-state="pass"] .xlcomp-sheet-summary-row { border-left-color:#0f7a66; }
 .xlcomp-sheet-summary-item[data-state="diff"] .xlcomp-sheet-summary-row { border-left-color:#c0392b; }
 .xlcomp-sheet-summary-item[data-state="partial"] .xlcomp-sheet-summary-row { border-left-color:#b9770e; }
+.xlcomp-sheet-summary-item[data-state="partial"][data-display-level="info"]:not([data-has-diff="true"]) .xlcomp-sheet-summary-row { border-left-color:#607d8b; }
 .xlcomp-sheet-summary-item[data-state="failed"] .xlcomp-sheet-summary-row { border-left-color:#8a2027; }
 .xlcomp-sheet-summary-item[data-state="onlyA"] .xlcomp-sheet-summary-row,
 .xlcomp-sheet-summary-item[data-state="onlyB"] .xlcomp-sheet-summary-row { border-left-color:#2b6ca3; }
@@ -227,6 +252,9 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 .xl-fast-progress .fp-stats { font-size:0.78rem; color:#a07000; display:flex; gap:14px; flex-wrap:wrap; }
 .xl-fast-progress .fp-bar-outer { height:8px; background:#f0d080; border-radius:4px; overflow:hidden; margin:8px 0; }
 .xl-fast-progress .fp-bar-inner { height:100%; background:#e67e22; border-radius:4px; transition:width 0.3s; width:0%; }
+.xlcomp-elapsed-timer{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:6px;font-size:.82rem;color:#435867;}
+.xlcomp-elapsed-seconds{font-weight:600;}
+.xlcomp-elapsed-suggestions{width:100%;margin:3px 0 0 18px;padding:0;line-height:1.5;}
 .xl-fast-progress .fp-phase { font-size:0.75rem; color:#a07000; }
 .btn-cancel { background:#c0392b; color:white; border:none; border-radius:4px; padding:6px 16px; font-size:0.82rem; cursor:pointer; font-weight:bold; display:none; }
 .btn-cancel.show { display:inline-block; }
@@ -477,10 +505,14 @@ function qcHeaderLang(lang){
 
 <!-- Standard Excel result controls -->
 <div id="xlcomp-unified-nav" hidden>
-  <div class="xlcomp-result-actions">
-    <strong id="xlcomp-overall" aria-live="polite"></strong>
+<div class="xlcomp-result-actions">
+  <strong id="xlcomp-overall" aria-live="polite"></strong>
+  <div class="xlcomp-result-actions-tools">
+    <div id="xlcomp-cf-help-mount"></div>
     <button id="xlcomp-report-export" type="button" onclick="exportXlComp()" data-xlcomp-label="export">导出 HTML</button>
   </div>
+</div>
+
   <div id="xlcomp-unified-counts" role="group"></div>
   <div id="xlcomp-display-summary" aria-live="polite"></div>
   <div class="xlcomp-result-actions xlcomp-location-tools">
@@ -550,6 +582,11 @@ function xlcompEscapeAttr(s){ return esc(s).replace(/"/g,'&quot;'); }
 // ===== 状态変数 =====
 let xlcompFileA = null, xlcompFileB = null;
 let xlcompCmpBorder=true, xlcompStandardBusy=false;
+let xlcompZipBusy = false;
+let xlcompElapsedTimerId = null;
+let xlcompElapsedStartedAt = null;
+let xlcompElapsedMode = null;
+let xlcompElapsedLastSecond = -1;
 let xlcompBorderDiffs=[], xlcompCategoryIssues={}, xlcompCfGroupCount=0;
 let xlcompCfDisplayGroupByCat={};
 // 检查限制明细（结构化）：限制类型 / 文件 / Sheet / 范围 / 是否可精确定位 / 覆盖状态
@@ -1253,23 +1290,68 @@ function xlcompReadBorderTable(styles,wb){
     return {resolve,dxfs};
 }
 
+// Base fills only: OOXML cellXfs -> fillId -> patternFill; CF dxf is never used here.
+function xlcompReadFillTable(styles,wb){
+    const formats=xlcompXmlChildren(xlcompXmlChild(styles,'cellXfs'),'xf');
+    const bases=xlcompXmlChildren(xlcompXmlChild(styles,'cellStyleXfs'),'xf');
+    const fills=xlcompXmlChildren(xlcompXmlChild(styles,'fills'),'fill');
+    const palette=xlcompXmlChildren(xlcompXmlChild(xlcompXmlChild(styles,'colors'),'indexedColors'),'rgbColor');
+    const cache=new Map();
+    return {resolve(styleId){
+        if(cache.has(styleId))return cache.get(styleId);
+        if(!formats.length&&!fills.length&&styleId==='0')return {color:null};
+        if(!/^\d+$/.test(styleId)||!formats[Number(styleId)])throw new Error('Invalid fill cell style reference');
+        const xf=formats[Number(styleId)],base=xf.hasAttribute('xfId')?bases[Number(xf.getAttribute('xfId'))]:null;
+        const inherit=['0','false'].includes(xf.getAttribute('applyFill'));
+        const fillId=(inherit?base?.getAttribute('fillId'):xf.getAttribute('fillId'))??base?.getAttribute('fillId')??'0';
+        const fill=/^\d+$/.test(fillId)?fills[Number(fillId)]:null;
+        if(!fill)throw new Error('Invalid fill reference');
+        const pattern=xlcompXmlChild(fill,'patternFill');
+        if(!pattern||xlcompXmlChild(fill,'gradientFill'))throw new Error('Unsupported base fill');
+        const type=pattern.getAttribute('patternType')||'none';let result={color:null};
+        if(type!=='none'){
+            if(type!=='solid')throw new Error('Unsupported patterned base fill');
+            const fg=xlcompXmlChild(pattern,'fgColor');if(!fg)throw new Error('Missing base fill color');
+            const rgb=fg.getAttribute('rgb'),index=fg.getAttribute('indexed'),theme=fg.getAttribute('theme'),auto=fg.getAttribute('auto');
+            if([rgb,index,theme,auto].filter(x=>x!==null).length!==1)throw new Error('Ambiguous base fill color');
+            let color;
+            if(rgb!==null){if(!/^(?:[0-9a-f]{6}|[0-9a-f]{8})$/i.test(rgb))throw new Error('Invalid fill RGB');color={rgb};}
+            else if(index!==null){
+                if(!/^\d+$/.test(index)||Number(index)>65)throw new Error('Invalid indexed fill color');
+                const idx=Number(index),custom=palette[idx]?.getAttribute('rgb');
+                if(custom&&!/^(?:[0-9a-f]{6}|[0-9a-f]{8})$/i.test(custom))throw new Error('Invalid indexed palette color');
+                color=idx>=64?{indexed:idx}:custom?{rgb:custom}:{indexed:idx};
+            }else if(theme!==null){
+                const tint=Number(fg.getAttribute('tint')||0);
+                if(!/^\d+$/.test(theme)||Number(theme)>11||!Number.isFinite(tint)||Math.abs(tint)>1)throw new Error('Invalid theme fill color');
+                color={theme:Number(theme),tint};
+            }else{if(!['1','true'].includes(auto))throw new Error('Invalid automatic fill color');color={indexed:64};}
+            result={color};
+        }
+        cache.set(styleId,result);return result;
+    }};
+}
+
 async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBorders=false,needCfScope=needBorders){
     if(wb._cellStyleMap&&sheetNames.every(name=>wb._cellStyleMap.has(name))&&
+        (wb._fillStyleError||sheetNames.every(name=>wb._fillStyleMap?.has(name)))&&
         (!needBorders||sheetNames.every(name=>wb._borderStyleMap?.has(name)))&&
         (!needCfScope||wb._cfScopeReady||wb._cfScopeError)) return;
     const {zip,bookPart,relationships,sheets}=await xlcompXmlWorkbook(wb,fileOrBuf);
     const map=new Map();
     const borderMap=new Map();
+    const fillMap=new Map();
     const borderLimitsBySheet=wb._borderLimitsBySheet||new Map();
-    let table=null, cfTable=null, borderError=null, cfScopeError=null;
-    if(needBorders||needCfScope){
+    let table=null, cfTable=null, borderError=null, cfScopeError=null, fillTable=null, fillError=null;
+    {
         const rel=relationships.find(el=>el.getAttribute('Type')?.endsWith('/styles'));
         let styles=null;
         if(rel){
             try{ styles=await xlcompReadXml(zip,xlcompRelationshipPath(bookPart,rel.getAttribute('Target')),'styleSheet'); }
-            catch(err){ borderError=err; if(needCfScope) cfScopeError=err; }
+            catch(err){ borderError=err; fillError=err; if(needCfScope) cfScopeError=err; }
         }
         if(!rel||styles){
+            try{ fillTable=xlcompReadFillTable(styles,wb); }catch(err){ fillError=err; }
             try{
                 const dxfs=xlcompXmlChildren(xlcompXmlChild(styles,'dxfs'),'dxf');
                 cfTable={dxfs};
@@ -1282,16 +1364,19 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
         const rel=sheets.get(sheetName);
         if(!rel) throw new Error('Missing worksheet relationship');
         const cellMap=new Map();
-        const sheetBorders=new Map();
+        const sheetBorders=new Map(),sheetFills=new Map();
+        fillMap.set(sheetName,sheetFills);
         map.set(sheetName,cellMap);
         borderMap.set(sheetName,sheetBorders);
         if(!rel.getAttribute('Type')?.endsWith('/worksheet')){
+            fillError??=new Error('Unsupported sheet base fill');
             if(needBorders) borderLimitsBySheet.set(sheetName,[{type:'unsupportedSheet',
                 sheet:sheetName,range:'',precise:false,coverage:'notChecked',count:1}]);
             continue;
         }
         const root=await xlcompReadXml(zip,xlcompRelationshipPath(bookPart,rel.getAttribute('Target')),'worksheet');
         const rows=xlcompXmlChildren(xlcompXmlChild(root,'sheetData'),'row');
+        const fillCols=xlcompXmlChildren(xlcompXmlChild(root,'cols'),'col').filter(col=>col.hasAttribute('style'));
         const view=xlcompXmlChild(xlcompXmlChild(root,'sheetViews'),'sheetView');
         const rtl=['1','true'].includes(view?.getAttribute('rightToLeft'));
         let rowNumber=0, invalidRefs=0;
@@ -1326,6 +1411,13 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
                 if(style===null) implicitCells++;
                 const xf=wb.Styles?.CellXf?.[style];
                 if(xf) cellMap.set(addr,{fillId:xf.fillId??0,fontId:xf.fontId??0});
+                if(fillTable){
+                    try{
+                        const colStyle=style===null?fillCols.find(col=>column>=Number(col.getAttribute('min'))&&column<=Number(col.getAttribute('max')))?.getAttribute('style'):null;
+                        const rowStyle=style===null&&['1','true'].includes(row.getAttribute('customFormat'))?row.getAttribute('s'):null;
+                        sheetFills.set(addr,fillTable.resolve(style??rowStyle??colStyle??'0'));
+                    }catch(err){fillError??=err;sheetFills.set(addr,{unknown:true});}
+                }
                 if(needBorders&&table&&!borderError){
                     try{ sheetBorders.set(addr,table.resolve(style??'0',rtl)); }
                     catch(err){ borderError=err; }
@@ -1393,6 +1485,8 @@ async function _ensureCellStyleMap(wb,fileOrBuf,sheetNames=wb.SheetNames,needBor
         }
     }
     wb._cellStyleMap=map;
+    wb._fillStyleMap=fillMap;
+    wb._fillStyleError=fillError;
     if(needBorders||needCfScope){
         wb._borderLimitsBySheet=borderLimitsBySheet;
         if(needCfScope){ wb._cfScopeReady=!cfScopeError; wb._cfScopeError=cfScopeError; }
@@ -1426,7 +1520,7 @@ function xlcompCompareBorders(wbA,wbB,sheets){
 }
 
 // ===== セルスタイル抽出（fill / font 色） =====
-function xlcompExtractCellColors(cell, wb, sheetName, addr){
+function xlcompExtractCellColors(cell, wb, sheetName, addr, fillAddr=addr){
     // 戻り値: { fill: "#RRGGBB"|"NONE"|..., font: "#RRGGBB"|"AUTO"|... }
     // NOTE: SheetJS 0.18.5 では cell.s に fill 情報のみが格納され、
     //       フォント色は wb.Styles.Fonts からスタイルインデックス経由で取得する必要がある
@@ -1445,6 +1539,17 @@ function xlcompExtractCellColors(cell, wb, sheetName, addr){
             }
         }
     }
+
+    // Prefer verified base fill XML. Keep the existing SheetJS-resolved RGB for theme/tint.
+    if(wb?._fillStyleMap?.has(sheetName)){
+        const info=wb._fillStyleMap.get(sheetName).get(fillAddr);
+        if(info?.unknown)fillColor='UNKNOWN';
+        else if(info){
+            const legacy=cell?.s?.fgColor;
+            const color=info.color?.theme!==undefined&&legacy?.rgb?legacy:info.color;
+            fillColor=xlcompNormalizeColor(color,'fill',wb);
+        }else if(wb._fillStyleError)fillColor='UNKNOWN';
+    }else if(wb?._fillStyleError)fillColor='UNKNOWN';
 
     // --- フォント色（wb._cellStyleMap 経由で Styles.Fonts から取得） ---
     if(wb && wb._cellStyleMap && sheetName && addr){
@@ -1656,6 +1761,7 @@ function _fastCheckLargeFiles(){
 
 // ===== 高速モード提案応答 =====
 function xlcompEnableFastMode(){
+    if(xlcompIsComparisonActive()) return;
     xlcompClearResult();
     xlcompFastMode = true;
     document.getElementById('xlcomp-fast-suggest').classList.remove('show');
@@ -1674,6 +1780,7 @@ function xlcompDismissFastSuggest(){
 
 // ===== 高速モード手動切替 =====
 function xlcompToggleFastMode(){
+    if(xlcompIsComparisonActive()) return;
     if(xlcompMode === 'zip'){
         alert('ZIP比較モードでは高速モードは利用できません。');
         return;
@@ -1716,6 +1823,7 @@ function xlcompToggleFastMode(){
 
 // ===== モード切替 =====
 function xlcompSetMode(mode){
+    if(xlcompIsComparisonActive()) return;
     // 高速モード中はZIPモードに切替不可
     if(xlcompFastMode && mode === 'zip'){
         alert('高速モードではZIP比較は利用できません。先に高速モードを解除してください。');
@@ -1828,10 +1936,74 @@ async function runXlComp(){
     }
 }
 
+function xlcompIsComparisonActive(){
+    return !!xlcompStandardBusy||xlcompFastPhase==='comparing'||!!xlcompZipBusy;
+}
+function xlcompSetComparisonControlsBusy(busy){
+    document.querySelectorAll('.mode-bar,.drop-wrap,#xlcomp-controls,#xlcomp-sheet-select')
+        .forEach(element=>{element.inert=!!busy;});
+}
+function xlcompElapsedMessageKey(seconds){
+    return seconds>30?'compareTimerComplex':seconds>10?'compareTimerLarge':'compareTimerInitial';
+}
+function xlcompStartElapsedTimer(mode){
+    xlcompStopElapsedTimer();
+    xlcompElapsedMode=mode;
+    xlcompElapsedStartedAt=performance.now();
+    xlcompElapsedLastSecond=-1;
+    xlcompElapsedTimerId=window.setInterval(xlcompUpdateElapsedTimer,250);
+    xlcompUpdateElapsedTimer();
+}
+function xlcompUpdateElapsedTimer(){
+    if(!xlcompElapsedMode||xlcompElapsedStartedAt===null) return;
+    const seconds=Math.floor(Math.max(0,performance.now()-xlcompElapsedStartedAt)/1000);
+    if(seconds===xlcompElapsedLastSecond) return;
+    xlcompElapsedLastSecond=seconds;
+    const target=document.getElementById(xlcompElapsedMode==='fast'?'xlcomp-fast-progress':'xlcomp-progress');
+    if(!target) return;
+    let node=document.getElementById('xlcomp-elapsed-timer');
+    if(!node){
+        node=document.createElement('div');
+        node.id='xlcomp-elapsed-timer';
+        node.className='xlcomp-elapsed-timer';
+        node.setAttribute('role','status');
+        node.setAttribute('aria-live','polite');
+        const status=document.createElement('span');status.className='xlcomp-elapsed-status';node.appendChild(status);
+        const elapsed=document.createElement('span');elapsed.className='xlcomp-elapsed-seconds';node.appendChild(elapsed);
+        const suggestions=document.createElement('ul');suggestions.className='xlcomp-elapsed-suggestions';node.appendChild(suggestions);
+    }
+    if(node.parentNode!==target) target.appendChild(node);
+    const status=node.querySelector('.xlcomp-elapsed-status');
+    const elapsed=node.querySelector('.xlcomp-elapsed-seconds');
+    const suggestions=node.querySelector('.xlcomp-elapsed-suggestions');
+    status.textContent=xlcompText(xlcompElapsedMessageKey(seconds),seconds);
+    elapsed.textContent=seconds>10?' · '+xlcompText('compareTimerElapsed',seconds):'';
+    if(seconds>30){
+        suggestions.hidden=false;
+        suggestions.replaceChildren(...['compareTimerWaitSuggestion','compareTimerFastSuggestion','compareTimerSheetSuggestion'].map(key=>{
+            const item=document.createElement('li');item.textContent=xlcompText(key);return item;
+        }));
+    }else{
+        suggestions.hidden=true;
+        suggestions.replaceChildren();
+    }
+}
+function xlcompStopElapsedTimer(){
+    if(xlcompElapsedTimerId!==null) window.clearInterval(xlcompElapsedTimerId);
+    xlcompElapsedTimerId=null;
+    xlcompElapsedStartedAt=null;
+    xlcompElapsedMode=null;
+    xlcompElapsedLastSecond=-1;
+    const node=document.getElementById('xlcomp-elapsed-timer');
+    if(node){node.textContent='';node.remove();}
+}
+function xlcompYieldForProgress(){
+    return new Promise(resolve=>window.setTimeout(resolve,0));
+}
+
 function xlcompSetStandardBusy(busy){
     xlcompStandardBusy=busy;
-    document.querySelectorAll('.mode-bar,.drop-wrap,#xlcomp-controls,#xlcomp-sheet-select')
-        .forEach(el=>{ el.inert=busy; });
+    xlcompSetComparisonControlsBusy(busy);
 }
 
 async function xlcompReadWorkbook(file){
@@ -2081,6 +2253,7 @@ async function doXlComp(selected){
         else if(!xmlFiles&&['border','fontcolor','textbox','bgcolor'].includes(category)) xlcompCategoryIssues[category]='fileUnsupported';
     }
     try{
+        xlcompStartElapsedTimer('standard');
         await new Promise(resolve=>setTimeout(resolve,30));
         if(xmlFiles&&common.length&&(xlcompCmpFont||xlcompCmpBorder||xlcompCmpBg||xlcompCmpNumFmt)){
             try{
@@ -2088,6 +2261,7 @@ async function doXlComp(selected){
                     _ensureCellStyleMap(wb,wb._rawBuf,common,xlcompCmpBorder,
                         xlcompCmpBorder||xlcompCmpBg||xlcompCmpFont||xlcompCmpNumFmt)));
                 const scopeWorkbooks=[xlcompWbA,xlcompWbB];
+                if(xlcompCmpBg&&scopeWorkbooks.some(wb=>wb._fillStyleError))xlcompCategoryIssues.bgcolor='failed';
                 if(scopeWorkbooks.some(wb=>wb._cfScopeError)){
                     if(xlcompCmpFont) xlcompCategoryIssues.fontcolor='failed';
                     if(xlcompCmpBg) xlcompCategoryIssues.bgcolor='failed';
@@ -2193,7 +2367,7 @@ async function doXlComp(selected){
         xlcompResults=Object.create(null);
         // NO012 Gate 补正：每次比较重置累计放宽预算，保证单次比较内多张宽表不会无限放宽。
         xlcompExpandBudgetUsed=0;
-        selected.forEach(name=>{ xlcompResults[name]=compareSheet(name); });
+        for(const name of selected){ xlcompResults[name]=compareSheet(name); await xlcompYieldForProgress(); }
         const clippedSheets=Object.entries(xlcompResults).filter(([,result])=>result.clipped);
         if(clippedSheets.length){
             for(const category of ['cell','bgcolor','fontcolor','numfmt']){
@@ -2240,7 +2414,7 @@ async function doXlComp(selected){
         progress.textContent=xlcompText('failed');
         console.error(err);
     }finally{
-        xlcompSetStandardBusy(false);
+        xlcompStopElapsedTimer();xlcompSetStandardBusy(false);
     }
 }
 
@@ -2487,7 +2661,7 @@ function sheetTo2D(ws, maxRows, maxCols, wb, needColors, needNumFmt, sheetName, 
 
             row.push(cell?(cell.v!==undefined?cell.v:''):'');
             if(needColors){
-                const colors = xlcompExtractCellColors(styleCell, wb, sheetName, addr);
+                const colors = xlcompExtractCellColors(styleCell, wb, sheetName, addr, mergeStyleMap.get(addr)||addr);
                 colorRow.push(colors);
             }
             if(needNumFmt){
@@ -3163,6 +3337,8 @@ const XLCOMP_LOCAL_TEXT={
     displayPartialCount:['部分检查：{0} Sheet','一部比較：{0} シート'], displayFailedCount:['检查失败：{0} Sheet','比較失敗：{0} シート'],
     displayUncheckedCount:['未检查：{0} Sheet','未比較：{0} シート'], displayNoDiff:['已检查范围内未发现差异。','比較済みの範囲内に差異はありません。'],
     displayNoDiffIncomplete:['已检查范围内未发现差异；仍有未检查或未验证内容，不能视为文件完全一致。','比較済みの範囲では差異はありません。未比較または未検証の内容があるため、ファイル全体が一致するとは判定できません。'],
+    incompleteCfOnly:['未发现差异（条件格式显示色未验证）','差異なし（条件付き書式の表示色は未検証）'],
+    displayCfOnlyUnverified:['已检查范围内未发现差异；条件格式的显示颜色未验证，详情见右上角「条件格式说明」。','比較済みの範囲では差異はありません。条件付き書式による表示色は未検証です。詳細は右上の「条件付き書式の説明」をご確認ください。'],
     sheetStateDynamic:['🔵 动态格式未验证','🔵 動的書式は未検証'], sheetStateWarning:['🟡 需要确认','🟡 要確認'],
     sheetStateMixedInfo:['🔵 动态格式未验证','🔵 動的書式は未検証'], sheetStateMixedWarning:['🟡 需要确认','🟡 要確認'],
     sheetSummaryWarningHidden:['另有 {0} 个需要确认的 Sheet 未显示','ほか要確認のシート {0} 件は非表示'],
@@ -3206,6 +3382,7 @@ const XLCOMP_LOCAL_TEXT={
     sheetSummaryTitle:['Sheet 检查结果','シート比較結果'],
     sheetSummaryChecked:['已检查 Sheet：{0}/{1}','比較済みシート：{0}/{1}'],
     sheetSummaryObjects:['检查对象 {0} 个','比較対象 {0} 件'],
+    sheetSummaryStats:['统计详情','集計の詳細'],
     sheetSummaryJump:['点击 Sheet 名称查看该 Sheet 的检查结果','シート名をクリックするとこのシートの比較結果を表示します'],
     sheetSummaryHidden:['另有 {0} 个 Sheet 未显示','ほか {0} 件のシートは非表示'],
     sheetSummaryExpand:['展开全部 {0} 个','全 {0} 件を表示'],
@@ -3236,6 +3413,20 @@ const XLCOMP_LOCAL_TEXT={
     sheetSummaryCat_failed:['检查失败','比較失敗'],
     sheetSummaryCat_unchecked:['未检查','未比較'],
     sheetSummaryCat_noBusiness:['无需业务检查','調査不要'],
+    displayProcessedCount:['已处理Sheet：{0}/{1}','処理済みシート：{0}/{1}'],
+    sheetSummaryProcessed:['已处理Sheet：{0}/{1}','処理済みシート：{0}/{1}'],
+    conditionalFormatHelpTitle:['ⓘ 条件格式说明','ⓘ 条件付き書式の説明'],
+    conditionalFormatHelpBody:['条件格式产生的显示颜色不属于本工具的默认比较范围。请优先确认文本、数值及公式的比较结果；如需核对颜色，请在Excel中确认条件格式规则及实际显示颜色。','条件付き書式による表示色は、本ツールの既定の比較範囲には含まれません。まずテキスト、数値、数式の比較結果をご確認ください。色を確認する場合は、Excelで条件付き書式のルールと実際の表示色をご確認ください。'],
+    uncomparedRangesNotice:['{0}个Sheet存在未检查区域｜查看范围','{0}シートに未比較範囲があります｜範囲を確認'],
+    uncomparedScopeTitle:['未检查范围明细','未比較範囲の詳細'],
+    displayWarningCompact:['检查失败或格式不支持：{0}项需确认。请查看对应检查项提示。','比較失敗または非対応項目：{0}件を確認してください。対応する項目の注意をご確認ください。'],
+    compareTimerInitial:['正在比较Excel文件…… 已用时 {0} 秒','Excelファイルを比較中… 経過時間 {0} 秒'],
+    compareTimerLarge:['文件较大，正在继续比较，请勿重复提交。','ファイルサイズが大きいため比較を続行しています。再度実行しないでください。'],
+    compareTimerComplex:['文件较复杂，仍在处理中。可以继续等待，也可以选择其他比较方式。','ファイルが複雑なため、処理を続行しています。待機を続けるか、次回は別の比較方法を選択できます。'],
+    compareTimerElapsed:['已用时 {0} 秒','経過時間 {0} 秒'],
+    compareTimerWaitSuggestion:['继续等待。','このまま待つ。'],
+    compareTimerFastSuggestion:['下次使用大文件高速模式。','次回は大容量ファイル高速モードを使用する。'],
+    compareTimerSheetSuggestion:['下次指定Sheet进行比较。','次回は対象シートを指定して比較する。']
 };
 
 function xlcompText(key,...args){
@@ -3296,6 +3487,11 @@ function xlcompCategoryLabel(category,{count,state}){
 // ===== NO009 Sheet 检查結果サマリー（比較完了後に既定表示） =====
 // 仅复用既有 xlcompResults / xlcompUnifiedIndex / xlcompSheetStructureDiff /
 // xlcompLimits / xlcompCategoryIssues / 已选择 Sheet 状态，不修改比较引擎。
+function xlcompProcessedSheetCount(data){
+    const tally=data&&data.tally?data.tally:{};
+    return Number(tally.pass||0)+Number(tally.diff||0)+Number(tally.partial||0);
+}
+
 function xlcompSheetSummaryData(){
     const results = xlcompResults || Object.create(null);
     const selected = Array.isArray(window._xlcompSelectedSheets)
@@ -3406,8 +3602,10 @@ function xlcompSheetCategoryState(data, row, category){
 function xlcompSheetSummaryStateText(row){
     if(row.status==='partial'){
         const levels=xlcompSheetDisplayLevels(row),parts=[];
-        if(row.diffTotal)parts.push(xlcompText('sheetStateDiff',row.diffTotal));
-        levels.forEach(level=>{if(level==='warning')parts.push(xlcompText(row.diffTotal?'sheetStateMixedWarning':'sheetStateWarning'));else if(level==='info')parts.push(xlcompText(row.diffTotal?'sheetStateMixedInfo':'sheetStateDynamic'));});
+        if(row.diffTotal) parts.push(xlcompText('sheetStateDiff',row.diffTotal));
+        parts.push(xlcompText('sheetStatePartial'));
+        if(levels.includes('warning')) parts.push(xlcompText('sheetStateWarning'));
+        else if(levels.includes('info')) parts.push('ⓘ');
         return parts.join(' · ');
     }
     switch(row.status){
@@ -3420,44 +3618,42 @@ function xlcompSheetSummaryStateText(row){
         default:return '';
     }
 }
+
 function xlcompSheetSummaryDetailHtml(data,row){
-    if(['notSelected','onlyA','onlyB'].includes(row.status))return '<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">'+esc(xlcompText('sheetSummaryNoResult'))+'</div>';
-    if(row.empty&&row.status==='pass')return '<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">'+esc(xlcompText('sheetSummaryEmptyNote'))+'</div>';
+    if(['notSelected','onlyA','onlyB'].includes(row.status)) return '<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">'+esc(xlcompText('sheetSummaryNoResult'))+'</div>';
+    if(row.empty&&row.status==='pass') return '<div class="xlcomp-sheet-summary-detail xlcomp-sheet-summary-detail-none">'+esc(xlcompText('sheetSummaryEmptyNote'))+'</div>';
     const cells=xlcompCategories().map(category=>{
         const categoryPresentation=xlcompSheetCategoryPresentation(category,row.name),st=xlcompSheetCategoryState(data,row,category);let text;
         const warning=categoryPresentation.warningGroups.length||['failed','unsupported'].includes(categoryPresentation.state.state)||categoryPresentation.state.issue==='noCommon'||(st.key==='partial'&&!categoryPresentation.infoGroups.length);
-        const markers=[];
-        if(warning)markers.push(xlcompText(st.count?'sheetStateMixedWarning':'sheetStateWarning'));
-        if(categoryPresentation.infoGroups.length)markers.push(xlcompText(st.count?'sheetStateMixedInfo':'sheetStateDynamic'));
-        const tierText=markers.join(' · ');
-        if(st.key==='diff')text=xlcompText('sheetSummaryCat_diff',st.count);
-        else if(st.key==='partial'&&st.count)text=xlcompText('sheetSummaryCat_diff',st.count)+(tierText?' · '+tierText:'');
-        else if(st.key==='partial')text=tierText||xlcompText('sheetStateWarning');
+        if(st.key==='diff') text=xlcompText('sheetSummaryCat_diff',st.count);
+        else if(st.key==='partial') text=warning?xlcompText('sheetStateWarning'):xlcompText('sheetSummaryCat_partial');
         else text=xlcompText('sheetSummaryCat_'+st.key);
-        const level=warning?'warning':categoryPresentation.infoGroups.length?'info':st.key==='diff'?'diff':'normal';
+        const level=warning?'warning':st.key==='diff'?'diff':'normal';
         return '<span class="xlcomp-sheet-summary-cat" data-state="'+st.key+'" data-display-level="'+level+'"><span class="xlcomp-sheet-summary-cat-name">'+esc(xlcompText(category))+'</span><span class="xlcomp-sheet-summary-cat-state">'+esc(text)+'</span></span>';
     }).join('');
     return '<div class="xlcomp-sheet-summary-detail"><div class="xlcomp-sheet-summary-detail-title">'+esc(xlcompText('sheetSummaryDetail'))+' · '+esc(row.name)+'</div><div class="xlcomp-sheet-summary-cats">'+cells+'</div></div>';
 }
+
 function xlcompSheetSummaryHtml(){
     const data=xlcompSheetSummaryData();xlcompSummaryRows=data.rows;if(xlcompSummaryFocus>=data.rows.length)xlcompSummaryFocus=-1;
     const ordered=data.rows.map((row,originIdx)=>({row,originIdx})).sort((a,b)=>xlcompSheetSummaryPriority(a.row)-xlcompSheetSummaryPriority(b.row)||a.originIdx-b.originIdx);
     const visible=xlcompSummaryExpanded?ordered.length:Math.min(XLCOMP_SUMMARY_VISIBLE,ordered.length),shown=ordered.slice(0,visible),hidden=ordered.length-visible,hiddenRows=ordered.slice(visible).map(x=>x.row);
-    const hiddenCount=level=>hiddenRows.filter(row=>level==='warning'?(row.status==='failed'||xlcompSheetDisplayLevel(row)==='warning'):level==='info'?(row.status==='partial'&&xlcompSheetDisplayLevel(row)==='info'):level==='diff'?row.diffTotal>0:['notSelected','onlyA','onlyB'].includes(row.status)).length;
+    const hiddenCount=level=>hiddenRows.filter(row=>level==='warning'?(row.status==='failed'||xlcompSheetDisplayLevel(row)==='warning'):level==='diff'?row.diffTotal>0:['notSelected','onlyA','onlyB'].includes(row.status)).length;
     const unchecked=data.tally.notSelected+data.tally.onlyA+data.tally.onlyB;
-    const notes=[xlcompText('sheetSummaryFull')+' '+data.checked+' · '+xlcompText('sheetStatePartial')+' '+data.tally.partial+' · '+xlcompText('sheetSummaryUnchecked')+' '+unchecked];
-    if(data.tally.failed)notes.push(xlcompText('sheetStateFailed')+' '+data.tally.failed);
+    const notes=[xlcompText('sheetSummaryObjects',data.total),xlcompText('sheetSummaryFull')+' '+data.checked,xlcompText('sheetStatePartial')+' '+data.tally.partial,xlcompText('sheetSummaryUnchecked')+' '+unchecked];
+    if(data.tally.failed) notes.push(xlcompText('sheetStateFailed')+' '+data.tally.failed);
     const noteHtml='<span class="xlcomp-sheet-summary-note">'+esc(notes.join(' · '))+'</span>';
     const rowsHtml=shown.map(({row,originIdx})=>{
         const open=xlcompSummaryFocus===originIdx,level=xlcompSheetDisplayLevel(row);
         return '<div class="xlcomp-sheet-summary-item" data-state="'+row.status+'" data-display-level="'+level+'" data-has-diff="'+(row.diffTotal>0)+'"><button type="button" class="xlcomp-sheet-summary-row" data-xlcomp-sheet-idx="'+originIdx+'" title="'+xlcompEscapeAttr(row.name)+'" onclick="xlcompSummarySelectSheet('+originIdx+')" aria-pressed="'+open+'"><span class="xlcomp-sheet-summary-name">'+esc(row.name)+'</span><span class="xlcomp-sheet-summary-state">'+esc(xlcompSheetSummaryStateText(row))+'</span></button>'+(open?xlcompSheetSummaryDetailHtml(data,row):'')+'</div>';
     }).join('');
-    const badges=[['warning','sheetSummaryWarningHidden'],['diff','sheetSummaryDiffHidden'],['info','sheetSummaryDynamicHidden'],['unchecked','sheetSummaryUncheckedHidden']]
+    const badges=[['warning','sheetSummaryWarningHidden'],['diff','sheetSummaryDiffHidden'],['unchecked','sheetSummaryUncheckedHidden']]
         .map(([level,key])=>{const n=hiddenCount(level);return n?'<span class="xlcomp-sheet-summary-attention-item" data-level="'+level+'">'+esc(xlcompText(key,n))+'</span>':''}).join('');
     const attention=badges?'<div class="xlcomp-sheet-summary-attention-list">'+badges+'</div>':'';
     const more=hidden>0?'<button type="button" class="xlcomp-sheet-summary-more" onclick="xlcompSummaryToggleAll()">'+esc(xlcompText('sheetSummaryHidden',hidden)+' · '+xlcompText('sheetSummaryExpand',data.total))+'</button>':(xlcompSummaryExpanded&&ordered.length>XLCOMP_SUMMARY_VISIBLE?'<button type="button" class="xlcomp-sheet-summary-more" onclick="xlcompSummaryToggleAll()">'+esc(xlcompText('sheetSummaryCollapse'))+'</button>':'');
-    return '<section id="xlcomp-sheet-summary" class="xlcomp-sheet-summary" aria-label="'+xlcompEscapeAttr(xlcompText('sheetSummaryTitle'))+'"><div class="xlcomp-sheet-summary-head"><strong class="xlcomp-sheet-summary-title">'+esc(xlcompText('sheetSummaryTitle'))+'</strong><span class="xlcomp-sheet-summary-count">'+esc(xlcompText('sheetSummaryChecked',data.checked,data.total))+'</span><span class="xlcomp-sheet-summary-objects">'+esc(xlcompText('sheetSummaryObjects',data.total))+'</span>'+noteHtml+'</div><div class="xlcomp-sheet-summary-hint">'+esc(xlcompText('sheetSummaryJump'))+'</div><div class="xlcomp-sheet-summary-list">'+rowsHtml+'</div>'+attention+more+'</section>';
+    return '<section id="xlcomp-sheet-summary" class="xlcomp-sheet-summary" aria-label="'+xlcompEscapeAttr(xlcompText('sheetSummaryTitle'))+'"><div class="xlcomp-sheet-summary-head"><strong class="xlcomp-sheet-summary-title">'+esc(xlcompText('sheetSummaryTitle'))+'</strong><span class="xlcomp-sheet-summary-count">'+esc(xlcompText('sheetSummaryProcessed',xlcompProcessedSheetCount(data),data.total))+'</span><details class="xlcomp-sheet-summary-stats"><summary>'+esc(xlcompText('sheetSummaryStats'))+'</summary>'+noteHtml+'</details></div><div class="xlcomp-sheet-summary-hint">'+esc(xlcompText('sheetSummaryJump'))+'</div><div class="xlcomp-sheet-summary-list">'+rowsHtml+'</div>'+attention+more+'</section>';
 }
+
 function xlcompSummaryToggleAll(){
     xlcompSummaryExpanded = !xlcompSummaryExpanded;
     _xlcompRenderCurrentView();
@@ -3493,19 +3689,22 @@ function xlcompSummarySelectSheet(idx){
     document.getElementById('xlcomp-sheet-summary')?.scrollIntoView({block:'nearest'});
 }
 
-function xlcompIsLocatedDynamicCFGroup(group){
-    return ['condFormatDisplay','condFormatBorder'].includes(group.type)&&!group.cfUnknown&&!group.wholeSheet&&group.precise!==false&&Array.isArray(group.ranges)&&group.ranges.length>0;
+function xlcompIsConditionalFormatItem(item){
+    return !!item&&['condFormatDisplay','condFormatDisplayUnknown','condFormatBorder'].includes(item.type);
 }
+
 function xlcompCategoryPresentation(category){
     const state=xlcompCategoryState(category),groups=xlcompLimitGroups(category);
-    const infoGroups=groups.filter(xlcompIsLocatedDynamicCFGroup),warningGroups=groups.filter(g=>!xlcompIsLocatedDynamicCFGroup(g));
+    const infoGroups=groups.filter(xlcompIsConditionalFormatItem),warningGroups=groups.filter(group=>!xlcompIsConditionalFormatItem(group));
     const warning=state.state==='failed'||state.state==='unsupported'||state.issue==='noCommon'||warningGroups.length>0||(state.state==='partial'&&!infoGroups.length);
     return {state,level:warning?'warning':infoGroups.length?'info':state.state==='diff'?'diff':state.state==='skipped'?'unchecked':'normal',infoGroups,warningGroups};
 }
+
 function xlcompSheetDisplayLevel(row){
     const levels=xlcompSheetDisplayLevels(row);
-    return levels.includes('warning')?'warning':levels[0]||'normal';
+    return levels.includes('warning')?'warning':levels.includes('diff')?'diff':levels.includes('info')?'info':'normal';
 }
+
 function xlcompDistinctSheetSummary(groups){
     const sheets=new Set();let unlocated=false;
     groups.forEach(g=>{if(g.sheet)sheets.add(g.sheet);else unlocated=true;});
@@ -3515,16 +3714,15 @@ function xlcompAllDisplayGroups(tier){
     const groups=[];xlcompCategories().forEach(c=>{const p=xlcompCategoryPresentation(c);groups.push(...p[tier+'Groups']);});return groups;
 }
 
-function xlcompIsLocatedDynamicCFItem(item){
-    const hasRange=!!item.range||(Array.isArray(item.ranges)&&item.ranges.length>0);
-    return ['condFormatDisplay','condFormatBorder'].includes(item.type)&&!item.cfUnknown&&!item.wholeSheet&&item.precise!==false&&hasRange;
-}
+
+
 function xlcompSheetCategoryPresentation(category,sheet){
     const state=xlcompCategoryState(category),groups=xlcompLimitGroups(category,item=>!item.sheet||item.sheet===sheet);
-    const infoGroups=groups.filter(xlcompIsLocatedDynamicCFGroup),warningGroups=groups.filter(g=>!xlcompIsLocatedDynamicCFGroup(g));
+    const infoGroups=groups.filter(xlcompIsConditionalFormatItem),warningGroups=groups.filter(group=>!xlcompIsConditionalFormatItem(group));
     const warning=state.state==='failed'||state.state==='unsupported'||state.issue==='noCommon'||warningGroups.length>0||(state.state==='partial'&&!infoGroups.length);
     return {state,level:warning?'warning':infoGroups.length?'info':state.state==='diff'?'diff':state.state==='skipped'?'unchecked':'normal',infoGroups,warningGroups};
 }
+
 function xlcompSheetDisplayLevels(row){
     if(row.status==='failed')return ['warning'];
     if(row.status==='partial'){
@@ -3543,48 +3741,121 @@ function xlcompSheetDisplayLevels(row){
 }
 function xlcompSheetSummaryPriority(row){
     const levels=xlcompSheetDisplayLevels(row);
-    if(row.status==='failed'||levels.includes('warning'))return 0;
-    if(row.diffTotal>0||row.status==='diff')return 1;
-    if(['notSelected','onlyA','onlyB'].includes(row.status))return 2;
-    if(row.status==='partial'&&levels.includes('info'))return 3;
-    if(row.status==='pass')return 4;
+    if(row.diffTotal>0||row.status==='diff') return 0;
+    if(row.status==='failed'||levels.includes('warning')) return 1;
+    if(['notSelected','onlyA','onlyB'].includes(row.status)) return 2;
+    if(row.status==='partial'&&levels.includes('info')) return 3;
+    if(row.status==='pass') return 4;
     return 5;
 }
+
 function xlcompDynamicDetailsHtml(exportMode=false){
     const all=xlcompDistinctSheetSummary(xlcompAllDisplayGroups('info'));
     const targets=[...all.sheets].map(sheet=>({sheet,label:sheet}));
-    if(all.unlocated)targets.push({sheet:null,label:xlcompText('tierInfoSheetUnknown')});
+    if(all.unlocated) targets.push({sheet:null,label:xlcompText('tierInfoSheetUnknown')});
     return targets.map(target=>{
         const categories=xlcompCategories().filter(category=>xlcompCategoryPresentation(category).infoGroups.some(group=>(group.sheet||null)===target.sheet));
         const sections=categories.map(category=>'<section class="xlcomp-display-detail-category"><h4>'+esc(xlcompText(category))+'</h4>'+
-            xlcompLimitTableHtml(category,item=>xlcompIsLocatedDynamicCFItem(item)&&(item.sheet||null)===target.sheet,exportMode)+'</section>').join('');
+            xlcompLimitTableHtml(category,item=>xlcompIsConditionalFormatItem(item)&&(item.sheet||null)===target.sheet,exportMode)+'</section>').join('');
         return '<details class="xlcomp-display-sheet"'+(exportMode?' open':'')+'><summary>'+esc(target.label)+'</summary>'+sections+'</details>';
     }).join('');
 }
+
+function xlcompUncomparedScopeGroups(limits){
+    const expected={clippedRange:'notChecked',sheetDefault:'notChecked',rowDefault:'partial',colDefault:'partial'};
+    const groups=new Map();
+    for(const item of limits||[]){
+        const coverage=expected[item.type];
+        if(!coverage||item.coverage!==coverage||!item.sheet) continue;
+        const wholeSheet=item.type==='sheetDefault'&&item.wholeSheet===true;
+        const aggregated=item.type==='rowDefault'&&item.aggregated===true&&Number.isFinite(Number(item.first))&&Number.isFinite(Number(item.last));
+        const range=typeof item.range==='string'?item.range:'';
+        if(item.type==='sheetDefault'&&!wholeSheet) continue;
+        if(['clippedRange','colDefault'].includes(item.type)&&!range) continue;
+        if(item.type==='rowDefault'&&!range&&!aggregated) continue;
+        if(!range&&!wholeSheet&&!aggregated) continue;
+        const key=JSON.stringify([item.type,item.sheet,item.file||'',item.coverage,range,wholeSheet,aggregated,item.first??null,item.last??null]);
+        let group=groups.get(key);
+        if(!group) group={type:item.type,sheet:item.sheet,file:item.file||'',range,coverage:item.coverage,precise:item.precise!==false,wholeSheet,aggregated,first:item.first??null,last:item.last??null,sample:Array.isArray(item.sample)?item.sample.slice():[],ranges:[],categories:[],count:0};
+        if(range&&!group.ranges.includes(range)) group.ranges.push(range);
+        const categories=[...(item.category?[item.category]:[]),...(Array.isArray(item.categories)?item.categories:[])];
+        categories.forEach(category=>{if(category&&!group.categories.includes(category))group.categories.push(category);});
+        group.count=Math.max(group.count,Number(item.count)||1);
+        groups.set(key,group);
+    }
+    return [...groups.values()];
+}
+
+function xlcompUncomparedScopeDetailHtml(groups,exportMode=false){
+    const details=[];
+    if(groups.some(group=>group.type==='clippedRange'))
+        details.push(xlcompLimitTableHtml('cell',item=>item.type==='clippedRange',exportMode));
+    if(groups.some(group=>['sheetDefault','rowDefault','colDefault'].includes(group.type)))
+        details.push(xlcompLimitTableHtml('border',item=>['sheetDefault','rowDefault','colDefault'].includes(item.type),exportMode));
+    return details.join('');
+}
+
+function xlcompUncomparedScopeHtml(groups,exportMode=false){
+    const sheets=new Set(groups.map(group=>group.sheet).filter(Boolean));
+    if(!sheets.size) return '';
+    const title=esc(xlcompText('uncomparedRangesNotice',sheets.size));
+    const details=xlcompUncomparedScopeDetailHtml(groups,exportMode);
+    if(exportMode) return '<section id="xlcomp-export-uncompared-scopes"><h3>'+esc(xlcompText('uncomparedScopeTitle'))+'</h3><p>'+title+'</p>'+details+'</section>';
+    return '<details class="xlcomp-uncompared-scope"><summary>⚠️ '+title+'</summary><div class="xlcomp-uncompared-scope-detail">'+details+'</div></details>';
+}
+
+function xlcompConditionalFormatHelpHtml(exportMode=false){
+    const info=xlcompAllDisplayGroups('info');
+    if(!info.length) return '';
+    const details=xlcompDynamicDetailsHtml(exportMode);
+    const audit=details?'<details'+(exportMode?' open':'')+'><summary>'+esc(xlcompText('tierInfoDetails'))+'</summary>'+details+'</details>':'';
+    const title=esc(xlcompText('conditionalFormatHelpTitle'));
+    const body='<p>'+esc(xlcompText('conditionalFormatHelpBody'))+'</p>'+audit;
+    return exportMode?'<section id="xlcomp-export-conditional-format"><h3>'+title+'</h3>'+body+'</section>':
+        '<details id="xlcomp-cf-help" class="xlcomp-cf-help"><summary>'+title+'</summary><div class="xlcomp-cf-help-body">'+body+'</div></details>';
+}
+
+function xlcompCompactWarningHtml(data,scopeGroups){
+    const scopeKeys=new Set(scopeGroups.map(group=>JSON.stringify([group.type,group.sheet||'',group.file||'',group.coverage||'notChecked'])));
+    const otherWarnings=xlcompAllDisplayGroups('warning').filter(group=>!scopeKeys.has(JSON.stringify([group.type,group.sheet||'',group.file||'',group.coverage||'notChecked'])));
+    const categoryErrors=xlcompCategories().filter(category=>{const state=xlcompCategoryState(category);return ['failed','unsupported'].includes(state.state)||state.issue==='noCommon';}).length;
+    const warningSheets=new Set(otherWarnings.map(group=>group.sheet).filter(Boolean));
+    const count=Math.max(data.tally.failed||0,categoryErrors,warningSheets.size,otherWarnings.length?1:0);
+    if(!count) return '';
+    return '<p class="xlcomp-display-warning" data-level="warning">⚠️ '+esc(xlcompText('displayWarningCompact',count))+'</p>';
+}
+
+function xlcompOnlyCfDisplayUnverified(data){
+    const limits=xlcompLimits||[];
+    if(!limits.length) return false;
+    if(data.diffTotal||data.tally.failed) return false;
+    if(data.tally.notSelected+data.tally.onlyA+data.tally.onlyB) return false;
+    if(!(data.tally.partial>0)) return false;
+    const states=xlcompCategories().map(c=>[c,xlcompCategoryState(c)]);
+    if(states.some(([c,st])=>st.issue&&st.issue!=='cfUnverifiedDisplay')) return false;
+    if(states.some(([c,st])=>!['pass','partial'].includes(st.state))) return false;
+    if(data.rows.some(row=>!['pass','partial'].includes(row.status))) return false;
+    if(data.rows.some(row=>(row.limitedCats||[]).some(cat=>{const st=xlcompCategoryState(cat);return st.issue!=='cfUnverifiedDisplay';}))) return false;
+    if(limits.some(item=>!String(item.type).startsWith('condFormat'))) return false;
+    return xlcompUncomparedScopeGroups(limits).length===0;
+}
 function xlcompOverallDisplaySummaryHtml(data=xlcompSheetSummaryData(),exportMode=false){
-    const info=xlcompAllDisplayGroups('info'),warnings=xlcompAllDisplayGroups('warning');
-    const infoSheets=xlcompDistinctSheetSummary(info),warningSheets=xlcompDistinctSheetSummary(warnings);
-    data.rows.forEach(row=>{if(xlcompSheetDisplayLevels(row).includes('warning'))warningSheets.sheets.add(row.name);});warningSheets.count=warningSheets.sheets.size;
     const unchecked=data.tally.notSelected+data.tally.onlyA+data.tally.onlyB,stats=[];
-    if(data.diffTotal)stats.push('<span class="xlcomp-display-stat" data-level="diff">🔴 '+xlcompText('displayConfirmedCount',data.diffTotal)+'</span>');
-    stats.push('<span class="xlcomp-display-stat">✅ '+xlcompText('displayFullCount',data.checked)+'</span>');
-    stats.push('<span class="xlcomp-display-stat">'+xlcompText('displayPartialCount',data.tally.partial)+'</span>');
-    if(data.tally.failed)stats.push('<span class="xlcomp-display-stat" data-level="warning">❌ '+xlcompText('displayFailedCount',data.tally.failed)+'</span>');
-    if(unchecked)stats.push('<span class="xlcomp-display-stat" data-level="unchecked">'+xlcompText('displayUncheckedCount',unchecked)+'</span>');
-    const caution=!data.diffTotal&&(data.tally.partial||data.tally.failed||unchecked)?'<p class="xlcomp-display-caution">'+xlcompText('displayNoDiffIncomplete')+'</p>':'';
-    const warningCard=warnings.length||warningSheets.count||warningSheets.unlocated
-        ?'<section class="xlcomp-display-card" data-level="warning"><strong>⚠️ '+xlcompText('tierWarningTitle')+'</strong><span>'+
-        (warningSheets.unlocated?xlcompText('tierWarningSheetUnknown'):xlcompText('tierWarningSheetCount',warningSheets.count))+'</span><p>'+xlcompText('tierWarningDescription')+'</p></section>':'';
-    const infoDetails=xlcompDynamicDetailsHtml(exportMode);
-    const infoCard=info.length
-        ?'<section class="xlcomp-display-card" data-level="info"><strong>ⓘ '+xlcompText('tierInfoTitle')+'</strong><span>'+
-        (infoSheets.unlocated?xlcompText('tierInfoSheetUnknown'):xlcompText('tierInfoSheetCount',infoSheets.count))+'</span><p>'+
-        xlcompText('tierInfoDescription')+'</p><details '+(exportMode?'open':'')+'><summary>'+xlcompText('tierInfoDetails')+'</summary>'+
-        infoDetails+'</details></section>':'';
-    const body='<div class="xlcomp-display-summary-stats">'+stats.join(' · ')+'</div>'+caution+warningCard+infoCard;
+    if(data.diffTotal) stats.push('<span class="xlcomp-display-stat" data-level="diff">🔴 '+xlcompText('displayConfirmedCount',data.diffTotal)+'</span>');
+    stats.push('<span class="xlcomp-display-stat">✅ '+xlcompText('displayProcessedCount',xlcompProcessedSheetCount(data),data.total)+'</span>');
+    if(data.tally.failed) stats.push('<span class="xlcomp-display-stat" data-level="warning">❌ '+xlcompText('displayFailedCount',data.tally.failed)+'</span>');
+    if(unchecked) stats.push('<span class="xlcomp-display-stat" data-level="unchecked">'+xlcompText('displayUncheckedCount',unchecked)+'</span>');
+    const cfOnly=!exportMode&&xlcompOnlyCfDisplayUnverified(data);
+    const caution=cfOnly?'<p class="xlcomp-display-caution" data-level="cfInfo">'+xlcompText('displayCfOnlyUnverified')+'</p>':(!data.diffTotal&&(data.tally.partial||data.tally.failed||unchecked)?'<p class="xlcomp-display-caution">'+xlcompText('displayNoDiffIncomplete')+'</p>':'');
+    const scopes=xlcompUncomparedScopeGroups(xlcompLimits||[]);
+    const rangeNotice=xlcompUncomparedScopeHtml(scopes,exportMode);
+    const warnings=exportMode?'':xlcompCompactWarningHtml(data,scopes);
+    const conditionalFormat=exportMode?xlcompConditionalFormatHelpHtml(true):'';
+    const body='<div class="xlcomp-display-summary-stats">'+stats.join(' · ')+'</div>'+caution+rangeNotice+warnings+conditionalFormat;
     return exportMode?'<section id="xlcomp-export-overview"><h3>'+esc(xlcompText('displayOverview'))+'</h3>'+body+'</section>':
         '<div class="xlcomp-display-summary-content">'+body+'</div>';
 }
+
 function xlcompExportSheetSummaryHtml(data=xlcompSheetSummaryData()){
     const ordered=data.rows.map((row,index)=>({row,index})).sort((a,b)=>xlcompSheetSummaryPriority(a.row)-xlcompSheetSummaryPriority(b.row)||a.index-b.index);
     const unchecked=data.tally.notSelected+data.tally.onlyA+data.tally.onlyB;
@@ -3620,8 +3891,8 @@ function xlcompShowUnifiedNav(){
     const headline=document.getElementById('xlcomp-overall');headline.dataset.state=overall;
     const warning=stats.some(x=>x.presentation.level==='warning'),info=stats.some(x=>x.presentation.infoGroups.length);
     headline.dataset.displayLevel=data.diffTotal?'diff':warning?'warning':info?'info':'normal';
-    headline.textContent=xlcompText(overall)+(hasIssues&&overall==='diff'?' · '+xlcompText('incomplete'):'');
-    const summary=document.getElementById('xlcomp-display-summary');if(summary)summary.innerHTML=xlcompOverallDisplaySummaryHtml(data,false);
+    headline.textContent=xlcompOnlyCfDisplayUnverified(data)?xlcompText('incompleteCfOnly'):xlcompText(overall)+(hasIssues&&overall==='diff'?' · '+xlcompText('incomplete'):'');
+    const summary=document.getElementById('xlcomp-display-summary');if(summary)summary.innerHTML=xlcompOverallDisplaySummaryHtml(data,false);const cfHelp=document.getElementById('xlcomp-cf-help-mount');if(cfHelp)cfHelp.innerHTML=xlcompConditionalFormatHelpHtml(false);
     const group=document.getElementById('xlcomp-unified-counts');group.setAttribute('aria-label',xlcompText('results'));
     group.replaceChildren(...stats.map(item=>{
         const btn=document.createElement('button');btn.type='button';btn.id='xlcomp-view-'+item.key;btn.dataset.state=item.state;btn.dataset.displayLevel=item.presentation.level;btn.dataset.hasInfo=String(item.presentation.infoGroups.length>0);btn.dataset.hasWarning=String(item.presentation.warningGroups.length>0||item.presentation.level==='warning');btn.dataset.hasInfo=String(item.presentation.infoGroups.length>0);btn.dataset.hasWarning=String(item.presentation.warningGroups.length>0||item.presentation.level==='warning');
@@ -3819,11 +4090,18 @@ function xlcompToggleLimitPanel(view){
     }
 }
 
+function xlcompScopesCoverWarnings(view){
+    const groups=xlcompLimitGroups(view,item=>!xlcompIsConditionalFormatItem(item));
+    if(!groups.length||groups.some(group=>!group.sheet||group.precise===false)) return false;
+    const scopeKeys=new Set(xlcompUncomparedScopeGroups(xlcompLimits||[]).map(group=>group.type+'|'+(group.sheet||'')));
+    return groups.every(group=>scopeKeys.has(group.type+'|'+group.sheet));
+}
 function xlcompStatusHtml(view,exportMode=false){
     const {count,state,issue}=xlcompCategoryState(view),presentation=xlcompCategoryPresentation(view);let html='';
     if(count)html+='<p class="xlcomp-result-confirmed-diff" data-state="diff" data-display-level="diff">🔴 '+xlcompText('displayConfirmedCount',count)+'</p>';
-    if(presentation.level==='warning'||state==='failed'||state==='unsupported'){
-        const filter=item=>!xlcompIsLocatedDynamicCFItem(item);
+    const scopeCovered=!exportMode&&xlcompScopesCoverWarnings(view)&&!['failed','unsupported'].includes(state)&&issue!=='noCommon'&&issue!=='fileUnsupported';
+    if((presentation.level==='warning'||state==='failed'||state==='unsupported')&&!scopeCovered){
+        const filter=item=>!xlcompIsConditionalFormatItem(item);
         html+=xlcompIncompleteHtml(view,count,filter,exportMode);
         if(!presentation.warningGroups.length)html+='<p class="xlcomp-result-message" data-state="failed" data-display-level="warning">⚠️ '+xlcompText(issue||'failed')+'</p>';
     }else if(state==='skipped')html+='<p class="xlcomp-result-message" data-state="skipped">'+xlcompText(issue||'skipped')+'</p>';
@@ -3913,7 +4191,7 @@ function xlcompClearResult(){
     xlcompSummaryRows=[];
     xlcompSummaryExpanded=false;
     xlcompSummaryFocus=-1;
-    document.getElementById('xlcomp-unified-nav').hidden=true;
+    document.getElementById('xlcomp-unified-nav').hidden=true;const cfHelp=document.getElementById('xlcomp-cf-help-mount');if(cfHelp)cfHelp.replaceChildren();
     document.getElementById('xlcomp-nav-all').checked=false;
     document.getElementById('xlcomp-nav-sheet').replaceChildren();
     document.getElementById('xlcomp-result').replaceChildren();
@@ -3950,16 +4228,17 @@ async function prepareFormulaComparison(){
     if(xlcompFormulaResults) return xlcompFormulaResults;
     if(!xlcompResults) return null;
 
-    const selectedSheets = window._xlcompSelectedSheets || Object.keys(xlcompResults);
-    const commonSheets = selectedSheets.filter(name =>
-        xlcompWbA?.SheetNames?.includes(name) && xlcompWbB?.SheetNames?.includes(name)
-    );
-    const results = Object.create(null);
+    const selectedSheets=window._xlcompSelectedSheets||Object.keys(xlcompResults);
+    const commonSheets=selectedSheets.filter(name=>xlcompWbA?.SheetNames?.includes(name)&&xlcompWbB?.SheetNames?.includes(name));
+    const results=Object.create(null);
     if(commonSheets.length){
         await _xlcompEnsureExternalMaps();
-        commonSheets.forEach(name=>{ results[name]=compareSheetFormula(name); });
+        for(const name of commonSheets){
+            results[name]=compareSheetFormula(name);
+            await xlcompYieldForProgress();
+        }
     }
-    xlcompFormulaResults = results;
+    xlcompFormulaResults=results;
     return xlcompFormulaResults;
 }
 
@@ -4779,21 +5058,26 @@ async function readExcelsFromZip(zipFile){
 
 async function runZipComp(){
     if(!xlcompFileA||!xlcompFileB){ alert(xlcompText('uploadBothZip')); return; }
+    if(xlcompIsComparisonActive()) return;
+    const progress=document.getElementById('xlcomp-progress');
+    if(!progress) return;
+    xlcompZipBusy=true;
+    try{
+        xlcompSetComparisonControlsBusy(true);
     // 色比較オプションをチェックボックスから同期
-    xlcompOnCompareOptChange();
+        xlcompOnCompareOptChange();
     xlcompClearResult();
     // NO012 Gate 最终微修复：每次独立启动 ZIP 比较时重置累计放宽预算。
     // 否则重复运行同一 ZIP 比较会继承上一次的消耗，导致同一份文件的检查范围前后不一致。
     // 重置只发生在这里一次 —— 同一次 ZIP 比较中的全部工作簿与全部 Sheet
     // 仍共用同一份 XLCOMP_EXPAND_CELL_BUDGET_TOTAL(300000) 累计预算，不按文件单独重置。
     xlcompExpandBudgetUsed=0;
-    const progress=document.getElementById('xlcomp-progress');
-    progress.textContent=xlcompText('zipUnpack');
+        progress.textContent=xlcompText('zipUnpack');
     progress.classList.add('show');
     document.getElementById('xlcomp-result').innerHTML='';
     document.getElementById('xlcomp-sheet-select').style.display='none';
 
-    try{
+        xlcompStartElapsedTimer('zip');
         await LibLoader.loadJSZip();
         await LibLoader.loadXLSX();
 
@@ -4837,9 +5121,10 @@ async function runZipComp(){
             for(const entry of allWbs){
                 if(entry.wb._rawBuf && !entry.wb._cellStyleMap){
                     try{ await _ensureCellStyleMap(entry.wb, entry.wb._rawBuf); }
-                    catch(e){ console.warn('样式构建失败:', entry.fileName, e.message); }
+                    catch(e){ entry.wb._fillStyleError=e; console.warn('样式构建失败:', entry.fileName, e.message); }
                 }
             }
+            if(xlcompCmpBg){const invalid=allWbs.find(entry=>entry.wb._fillStyleError);if(invalid)throw new Error('Base fill validation failed: '+invalid.wb._fillStyleError.message);}
         }
 
         for(const name of common){
@@ -4854,7 +5139,7 @@ async function runZipComp(){
             const allSheets=[...new Set([...wbA.SheetNames, ...wbB.SheetNames])];
             const sheetStructureDiff=xlcompBuildSheetStructureDiff(wbA.SheetNames, wbB.SheetNames);
             const sheetResults=Object.create(null);
-            allSheets.forEach(sheet=>{ sheetResults[sheet]=compareSheet(sheet); });
+            for(const sheet of allSheets){ sheetResults[sheet]=compareSheet(sheet); await xlcompYieldForProgress(); }
 
             xlcompWbA=_wbA; xlcompWbB=_wbB;
 
@@ -4864,6 +5149,7 @@ async function runZipComp(){
             },0);
 
             zipResult.files[name]={ status:'both', sheets:sheetResults, sheetNames:allSheets, totalDiff, sheetStructureDiff, isFuzzy, matchedNameB:nameBMatched };
+            await xlcompYieldForProgress();
         }
 
         progress.classList.remove('show');
@@ -4874,6 +5160,12 @@ async function runZipComp(){
     } catch(err){
         progress.textContent=xlcompText('zipFailed')+err.message;
         console.error(err);
+    }
+    finally{
+        xlcompStopElapsedTimer();
+        xlcompZipBusy=false;
+        xlcompSetComparisonControlsBusy(false);
+        _xlcompSyncCompareEntryButtons();
     }
 }
 
@@ -5442,7 +5734,7 @@ function _fastReadSelectedSheet(rawBuffer, sheetName, fileLabel, readOptions){
 
 // ===== 高速モードPhase2：選択Sheet比較開始 =====
 async function xlcompFastPhase2Start(){
-    if(xlcompFastPhase === 'comparing') return; // 二重実行防止
+    if(xlcompIsComparisonActive()) return; // 二重実行防止
 
     const selected = [...document.querySelectorAll('.xlcomp-sheet-cb:checked')].map(cb => cb.dataset.sheet);
     if(!selected.length){ alert('少なくとも1つのSheetを選択してください'); return; }
@@ -5457,7 +5749,7 @@ async function xlcompFastPhase2Start(){
 
     // リセット
     xlcompCancelFlag = false;
-    xlcompFastPhase = 'comparing';
+
     xlcompFastDiffs = [];
     xlcompFastStats = {};
     xlcompFastRenderIdx = 0;
@@ -5475,7 +5767,6 @@ async function xlcompFastPhase2Start(){
     progress.classList.add('show');
     document.getElementById('xlcomp-fast-controls').classList.remove('show');
     document.getElementById('xlcomp-fast-start-btn').style.display = 'none';
-    _xlcompSyncCompareEntryButtons();
 
     const bar = document.getElementById('xlcomp-fp-bar');
     const totalSheets = selected.length;
@@ -5487,6 +5778,10 @@ async function xlcompFastPhase2Start(){
     };
 
     try {
+        xlcompFastPhase = 'comparing';
+        xlcompSetComparisonControlsBusy(true);
+        xlcompStartElapsedTimer('fast');
+        _xlcompSyncCompareEntryButtons();
         const totalStart = Date.now();
         let grandDiffCount = 0;
 
@@ -5589,6 +5884,11 @@ async function xlcompFastPhase2Start(){
             );
             const wbB_slim = parsedB.workbook;
             const wsB = parsedB.worksheet;
+            if(xlcompCmpBg&&[xlcompFileA,xlcompFileB].every(file=>/\.(xlsx|xlsm)$/i.test(file.name))){
+                await Promise.all([_ensureCellStyleMap(wbA_slim,xlcompRawBufA,[sheetNameA]),_ensureCellStyleMap(wbB_slim,xlcompRawBufB,[sheetNameB])]);
+                const error=wbA_slim._fillStyleError||wbB_slim._fillStyleError;
+                if(error)throw error;
+            }
 
             // 🔍 防御的診断ログ
             console.log('🔍 [Phase2] XLSX.read結果:', {
@@ -5722,6 +6022,11 @@ async function xlcompFastPhase2Start(){
         _xlcompSyncCompareEntryButtons();
         throw err;
     }
+    finally{
+        xlcompStopElapsedTimer();
+        xlcompSetComparisonControlsBusy(false);
+        _xlcompSyncCompareEntryButtons();
+    }
 }
 
 // ===== 高速モード：スパースセル比較 =====
@@ -5802,7 +6107,7 @@ function _fastCompareSheetSparse(sheetName, wsA, wsB, wbA, wbB, needColors){
                 let bgDiff = false, fontDiff = false;
                 let fillA = 'NONE', fillB = 'NONE', fontA = 'AUTO', fontB = 'AUTO';
 
-                if(needColors && diffType){
+                if(needColors && (diffType||xlcompCmpBg)){
                     const cellA = entryA ? entryA.cell : null;
                     const cellB = entryB ? entryB.cell : null;
                     const colorsA = xlcompExtractCellColors(cellA, wbA, sheetName, addr);
@@ -5810,7 +6115,7 @@ function _fastCompareSheetSparse(sheetName, wsA, wsB, wbA, wbB, needColors){
                     fillA = colorsA.fill; fillB = colorsB.fill;
                     fontA = colorsA.font; fontB = colorsB.font;
                     if(xlcompCmpBg && !xlcompColorsEqual(fillA, fillB)){ bgDiff = true; bgDiffCount++; }
-                    if(xlcompCmpFont && !xlcompColorsEqual(fontA, fontB)){ fontDiff = true; fontDiffCount++; }
+                    if(diffType&&xlcompCmpFont && !xlcompColorsEqual(fontA, fontB)){ fontDiff = true; fontDiffCount++; }
                 }
 
                 if(diffType || bgDiff || fontDiff){
@@ -5827,7 +6132,7 @@ function _fastCompareSheetSparse(sheetName, wsA, wsB, wbA, wbB, needColors){
                         bgDiff, fontDiff,
                         fillA, fillB, fontA, fontB
                     });
-                    if(diffType === 'mod') diffCount++;
+                    if(diffType === 'mod'||(!diffType&&bgDiff)) diffCount++;
                 }
             }
         }
