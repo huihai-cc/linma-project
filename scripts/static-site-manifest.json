@@ -33,7 +33,7 @@
     {
       "path": "bpo_weekly_report_malin.html",
       "source": "workspace",
-      "sha256": "fba097edd7144d8a98bc677ca30025544d758afa5176b00b57a1f2532b781112"
+      "sha256": "c649c89c167d0dd47605385b8c11c8918727102acc54e155cc873eb3341cc10a"
     },
     {
       "path": "dv360_check.html",
@@ -73,7 +73,7 @@
     {
       "path": "index.html",
       "source": "workspace",
-      "sha256": "5f7e24227aa2c2d107da005fee39ca28cda9b29b423f0f8a0d078ee5f79d5c8c"
+      "sha256": "1b0f4c93142fd6b251976af652c457e6cf8233a1615c1d476fa095f0ddfc00d9"
     },
     {
       "path": "jszip.min.js",

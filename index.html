@@ -141,6 +141,22 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
 .tool-card.is-disabled{opacity:.6;}
 .tool-card.is-disabled .tool-main{cursor:not-allowed;}
 .tool-card.is-locked{background:#F8FAFC;}
+/* 報告書一覧（その他）: 単行リスト、将来の複数追加にも対応 */
+.report-list{display:flex;flex-direction:column;gap:8px;}
+.report-row{position:relative;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid #E8EDF3;border-radius:12px;transition:border-color .15s,box-shadow .15s,transform .15s;}
+.report-row:hover{border-color:#C7D2E0;box-shadow:0 4px 14px rgba(15,23,42,.07);transform:translateY(-1px);}
+.report-row-link{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:12px 6px 12px 14px;text-decoration:none;color:inherit;}
+.report-row-icon{flex:0 0 34px;width:34px;height:34px;display:block;}
+.report-row-icon svg{width:34px;height:34px;display:block;border-radius:9px;}
+.report-row-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+.report-row-name{font-size:.82rem;font-weight:700;color:var(--text);line-height:1.35;word-break:break-word;}
+.report-row-desc{font-size:.68rem;color:var(--text2);line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.report-row-side{display:flex;align-items:center;gap:9px;flex:0 0 auto;color:#64748B;}
+.report-row-perm{font-size:.62rem;font-weight:600;color:#475569;background:#F1F5F9;border:1px solid #E2E8F0;border-radius:999px;padding:3px 8px;white-space:nowrap;}
+.report-row-enter{font-size:1.2rem;line-height:1;color:#94A3B8;}
+.report-row-fav{position:static;flex:0 0 22px;margin-right:9px;}
+.report-row.is-locked{background:#F8FAFC;opacity:.75;}
+.report-row.is-locked .report-row-icon{display:grid;place-items:center;font-size:17px;}
 
 /* 1課 サブグループ（右ペイン内） */
 .ka1-subgroups{display:flex;flex-direction:column;gap:18px;}
@@ -164,9 +180,16 @@ body{font-family:'Segoe UI','Noto Sans SC',sans-serif;background:var(--bg);color
   /* ☰ ボタンと重ならないよう上に余白を確保（コンテンツ側は横溢れさせない） */
   .content{padding:64px 14px 40px;}
   .tool-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));}
+  .report-row-link{gap:9px;padding:11px 5px 11px 11px;}
+  .report-row-fav{margin-right:6px;}
 }
 @media(max-width:420px){
   .tool-grid{grid-template-columns:1fr;}
+  .report-row-link{gap:9px;padding:11px 9px;}
+  .report-row-icon{flex-basis:30px;width:30px;height:30px;}
+  .report-row-icon svg{width:30px;height:30px;}
+  .report-row-desc{-webkit-line-clamp:3;white-space:normal;}
+  .report-row-perm{font-size:.58rem;padding:2px 6px;}
   .content-title{font-size:1rem;}
   .settings-box{max-width:calc(100vw - 24px);}
 }
@@ -510,7 +533,7 @@ var TOOLS=[
   {group:'ka5',icon:'📦',logo:'soon',name:'準備中',name_ja:'準備中',desc:'',desc_ja:'',href:'',disabled:true,badge:'soon'},
   {group:'ka6',icon:'📺',logo:'tvpr',name:'TVPR 关键字生成',name_ja:'TVPR キーワード生成',desc:'テレビ番組広告の検索キーワード生成（繁体字・Google/Yahoo）',desc_ja:'テレビ番組広告の検索キーワード生成（繁体字・Google/Yahoo）',href:'tvpr_check.html',badge:''},
   {group:'ka6',icon:'🔗',logo:'suntoryUtm',name:'三得利 UTM 檢查',name_ja:'三得利 UTM チェック',desc:'UTM 長鏈的參數・campaign 六段・LPID 末碼與本批條件比對，可匯出 CSV',desc_ja:'UTM 長鏈のパラメータ・campaign 6 段・LPID 末碼を本批条件と照合し CSV 出力',href:'suntory_utm_check.html',badge:''},
-  {group:'report',icon:'📋',logo:'report',name:'BPO定例会 報告書',name_ja:'BPO定例会 報告書',desc:'年度目标・効率指標・核心成果・工作计划',desc_ja:'年度目標・効率指標・核心成果・業務計画',href:'bpo_weekly_report_malin.html',badge:'',perm:'管理者'},
+  {group:'report',icon:'📋',logo:'report',name:'【1課】BPO月定例会_馬 林',name_ja:'【1課】BPO月定例会_馬 林',desc:'年度目标 · 自动化成果 · 业务改善 · 月度报告',desc_ja:'年度目標 · 自動化成果 · 業務改善 · 月度報告',href:'bpo_weekly_report_malin.html',badge:'',perm:'管理者',view:'list',permDeniedName:'管理者専用',permDeniedDesc:'BPO月定例会報告書は管理者のみ閲覧可能です'},
   {group:'admin',icon:'📊',logo:'usage',name:'工具使用状况管理',name_ja:'ツール使用状況管理',desc:'课室・月度・日度・人员・工具别使用统计（管理者专用）',desc_ja:'課室・月次・日次・人員・ツール別の利用統計（管理者専用）',href:'usage_dashboard.html',badge:'',perm:'管理者',permDeniedName:'管理者専用',permDeniedDesc:'ツール使用状況管理は管理者のみ閲覧可能です'}
 ];
 var KA1_SUBGROUPS=[
@@ -908,6 +931,40 @@ function gridHTML(tools){
   if(!tools.length)return'';
   return '<div class="tool-grid">'+tools.map(cardHTML).join('')+'</div>';
 }
+function reportListHTML(tools){
+  if(!tools.length)return'';
+  var lang=isJa();
+  var html='<div class="report-list">';
+  tools.forEach(function(tool){
+    var name=lang&&tool.name_ja?tool.name_ja:tool.name;
+    var desc=lang&&tool.desc_ja?tool.desc_ja:tool.desc;
+    if(tool.perm&&!isAdminUser()){
+      var denyName=tool.permDeniedName||'管理者専用';
+      var denyDesc=tool.permDeniedDesc||'管理者のみ閲覧可能';
+      html+='<div class="report-row is-locked">'+
+        '<span class="report-row-icon" aria-hidden="true">🔒</span>'+
+        '<span class="report-row-body"><span class="report-row-name">'+esc(denyName)+'</span>'+
+        '<span class="report-row-desc">'+esc(denyDesc)+'</span></span>'+
+        '<span class="report-row-side"><span class="report-row-perm">'+esc(pt('dashLocked'))+'</span></span></div>';
+      return;
+    }
+    var id=tool.href, fav=isFavorite(id);
+    html+='<div class="report-row">';
+    html+='<a class="report-row-link" href="'+esc(id)+'" target="_blank" rel="noopener"'+
+      ' onclick="recordRecent(\''+encodeURIComponent(tool.name)+'\')">';
+    html+='<span class="report-row-icon">'+toolLogoHTML(tool)+'</span>';
+    html+='<span class="report-row-body"><span class="report-row-name">'+esc(name)+'</span>'+
+      (desc?'<span class="report-row-desc">'+esc(desc)+'</span>':'')+'</span>';
+    html+='<span class="report-row-side"><span class="report-row-perm">🔒 '+esc(pt('dashLocked'))+'</span>'+
+      '<span class="report-row-enter" aria-hidden="true">›</span></span>';
+    html+='</a>';
+    html+='<button class="tool-fav report-row-fav'+(fav?' on':'')+'" type="button" title="'+
+      (fav?'お気に入りから削除':'お気に入りに追加')+'" aria-label="お気に入り"'+
+      ' onclick="toggleFavorite(\''+esc(id)+'\',event)">'+(fav?'★':'☆')+'</button>';
+    html+='</div>';
+  });
+  return html+'</div>';
+}
 function renderKa1Tools(tools){
   var html='<div class="ka1-subgroups">';
   KA1_SUBGROUPS.forEach(function(subgroup){
@@ -1081,6 +1138,9 @@ function renderContent(){
     body.innerHTML=renderKa1Tools(tools)+
       (needCount?'<div class="search-result-hd" style="margin-top:16px;">※ '+esc(pt('pendingNote'))+'</div>':'');
     highlightSubgroup(null);
+  }else if(item.id==='report'){
+    body.innerHTML=reportListHTML(tools)+
+      (needCount?'<div class="search-result-hd" style="margin-top:16px;">※ '+esc(pt('pendingNote'))+'</div>':'');
   }else{
     body.innerHTML=gridHTML(tools)+
       (needCount?'<div class="search-result-hd" style="margin-top:16px;">※ '+esc(pt('pendingNote'))+'</div>':'');
@@ -1212,6 +1272,17 @@ document.addEventListener('DOMContentLoaded',function(){
   if(session){showMain();}
   applyPortalI18n();
 });
+</script>
+<script>
+// BPO 报告专属会话同步：登录态变化时立即签发或清除报告 Cookie，不改共享认证模块
+(function(){
+  try{
+    var s=null;try{s=JSON.parse(localStorage.getItem("qc_session")||"null");}catch(e){}
+    var token=(s&&s.token)?s.token:null;
+    fetch("/api/bpo-report-auth",{method:"POST",headers:{"Content-Type":"application/json"},
+      credentials:"same-origin",body:JSON.stringify({mode:"sync",token:token})}).catch(function(){});
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
