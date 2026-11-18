@@ -3746,7 +3746,10 @@
       return { state:'full', reason:null, sources:business, mediaText:raw };
     }
     const groups=resolveTverMediaStationGroups(raw);
-    if(groups.length) return { state:'full', reason:null, sources:business, mediaText:raw };
+    // NO032-GATE-FIX3：普通の放送局名指定は「その局を選ぶ」だけで、ローカル局の全選択を意味しない。
+    // 除外指定・数字指定とは分離し、CSV local が明示空白なら一致、値があれば既存の
+    // LOCAL_BROADCASTER_VALUE_WHEN_NOT_REQUIRED で不一致とする。
+    if(groups.length) return { state:'not_required', reason:null, sources:business, mediaText:raw };
     return { state:'ambiguous', reason:'LOCAL_BROADCASTER_MEDIA_SOURCE_UNRECOGNIZED', sources:business };
   }
 
@@ -3818,6 +3821,9 @@
         if(mediaDefault.state==='full'){
           const canonicalValue=TVER_ID_DICTIONARIES.local_broadcaster.map(entry => entry.id).sort((a,b)=>Number(a)-Number(b)).join(' ');
           return tverA17TargetingResult({ rawValue:tverA17BusinessRawValue(mediaDefault.sources), canonicalValue, evidenceState:'available', comparable:true, primarySource:mediaDefault.sources[0], sourceEvidence:broadcasterSources, derivedFrom:broadcasterSources, ruleBasis:'TVER_NO032_LOCAL_BROADCASTER_DEFAULT_FULL_SELECTION', diagnostics:[], shouldGenerate:true });
+        }
+        if(mediaDefault.state==='not_required'){
+          return tverA17TargetingResult({ rawValue:tverA17BusinessRawValue(mediaDefault.sources), canonicalValue:'', evidenceState:'available', comparable:true, primarySource:mediaDefault.sources[0], sourceEvidence:broadcasterSources, derivedFrom:broadcasterSources, ruleBasis:'TVER_NO032_FIX3_LOCAL_BROADCASTER_NOT_REQUIRED_BY_STATION_NAME', diagnostics:[], shouldGenerate:true });
         }
         if(mediaDefault.state==='ambiguous'){
           return tverA17TargetingResult({ rawValue:tverA17BusinessRawValue(mediaDefault.sources), evidenceState:'ambiguous', sourceEvidence:broadcasterSources, derivedFrom:broadcasterSources, ruleBasis:'TVER_NO032_LOCAL_BROADCASTER_DEFAULT_FULL_SELECTION', diagnostics:[{ code:mediaDefault.reason }], shouldGenerate:true });
@@ -4529,7 +4535,7 @@
       const csvEvidenceState=field==='age'
         ? tverA17CsvEvidenceState(schemaKind, 'start_age', csv)
         : tverA17CsvEvidenceState(schemaKind, field, csv);
-      const localBothEmpty=field==='local_broadcaster' && resolved.evidenceState==='available' && String(resolved.canonicalValue ?? '').trim()==='' && String(csvValue ?? '').trim()==='' && csvEvidenceState==='available';
+      const localBothEmpty=field==='local_broadcaster' && resolved.ruleBasis!=='TVER_NO032_FIX3_LOCAL_BROADCASTER_NOT_REQUIRED_BY_STATION_NAME' && resolved.evidenceState==='available' && String(resolved.canonicalValue ?? '').trim()==='' && String(csvValue ?? '').trim()==='' && csvEvidenceState==='available';
       const shouldGenerate=!localBothEmpty && (resolved.shouldGenerate || tverA17CsvHasBusinessValue(field, csv, schemaKind));
       const ageEvidenceProvided=field==='age' && (resolved.sourceEvidence.length>0 || csvEvidenceState==='available');
       const shouldGenerateWithAgeEvidence=shouldGenerate || ageEvidenceProvided;
@@ -4601,6 +4607,20 @@
       }else if(!resolved.comparable){
         comparisonStatus='需确认';
         conservativeReason=resolved.diagnostics[0] && resolved.diagnostics[0].code || 'TARGETING_EVIDENCE_UNCONFIRMED';
+      }else if(field==='local_broadcaster' && resolved.ruleBasis==='TVER_NO032_FIX3_LOCAL_BROADCASTER_NOT_REQUIRED_BY_STATION_NAME'){
+        if(csvEvidenceState!=='available'){
+          comparisonStatus='需确认';
+          conservativeReason='CSV_TARGETING_ID_EVIDENCE_UNAVAILABLE';
+        }else if(String(csvValue ?? '').trim()===''){
+          comparisonStatus='一致';
+          conservativeReason=null;
+        }else if(csvCanonical===null){
+          comparisonStatus='需确认';
+          conservativeReason='CSV_LOCAL_BROADCASTER_ID_UNKNOWN';
+        }else{
+          comparisonStatus='不一致';
+          conservativeReason='LOCAL_BROADCASTER_VALUE_WHEN_NOT_REQUIRED';
+        }
       }else if(field==='local_broadcaster' && (resolved.ruleBasis==='TVER_NO032_LOCAL_BROADCASTER_DEFAULT_FULL_SELECTION' || resolved.ruleBasis==='TVER_C3_C4_3_LOCAL_BROADCASTER_FULL_SELECTION')){
         const expectedIds=parseTverIdSet(resolved.canonicalValue).ids;
         const actualIds=parseTverIdSet(csvValue).ids;
@@ -4636,9 +4656,11 @@
         settingEvidenceState:resolved.evidenceState, csvEvidenceState,
         comparable:ageGuard ? ageGuard.comparable : mediaStationEvaluation
            ? mediaStationEvaluation.status!=='需确认'
-           : resolved.comparable && csvCanonical!==null
-             && (!isC344Field || (resolved.evidenceState==='available' && csvEvidenceState==='available'))
-             && (field!=='pref' || csvEvidenceState==='available'),
+           : field==='local_broadcaster' && resolved.ruleBasis==='TVER_NO032_FIX3_LOCAL_BROADCASTER_NOT_REQUIRED_BY_STATION_NAME'
+             ? comparisonStatus!=='需确认'
+             : resolved.comparable && csvCanonical!==null
+               && (!isC344Field || (resolved.evidenceState==='available' && csvEvidenceState==='available'))
+               && (field!=='pref' || csvEvidenceState==='available'),
         alwaysDisplay:true, ruleBasis:field==='uid_suffix' && resolved.asrInitialLeft ? 'TVER_NO032_ASR_INITIAL_LEFT_OF_ARROW' : resolved.ruleBasis, comparisonStatus,
         conservativeReason, sourceEvidence:{ setting:resolved.sourceEvidence, csv:csvEvidence, derivedFrom },
         ...(mediaEvaluationDetail ? { mediaEvaluation:mediaEvaluationDetail } : {}),
@@ -5528,6 +5550,7 @@
     const currentPositions=new Map();
     const focusTimers=new Map();
     let activeScope=null;
+    let navToken=0;
     let manualClose=false;
     let floatingElement=null;
     let floatingCount=null;
@@ -5541,8 +5564,11 @@
       return value===undefined||value===''?'__all__':String(value);
     }
     function isVisible(element){
+      // A field without a table cell is navigable through its own detail record.
+      const revealable=element.hasAttribute && element.hasAttribute('data-qc-detail-target') && element.closest('[data-result-detail]');
       let current=element;
       while(current){
+        if(current===revealable){current=current.parentElement;continue;}
         if(current.hidden||(current.getAttribute&&current.getAttribute('hidden')!==null)) return false;
         const style=current.style||{};
         if(style.display==='none'||style.visibility==='hidden') return false;
@@ -5569,6 +5595,7 @@
       }).length;
     }
     function clearFocus(){
+      navToken+=1;
       if(root&&typeof root.querySelectorAll==='function') root.querySelectorAll('.'+focusClass).forEach(element=>element.classList&&element.classList.remove(focusClass));
       focusTimers.forEach(timer=>clearTimeout(timer));
       focusTimers.clear();
@@ -5670,7 +5697,8 @@
       const panel=ensureFloating();
       if(!panel) return;
       const target=targets[position];
-      const fieldKey=target&&target.getAttribute ? target.getAttribute('data-field-key') : '';
+      const fieldCell=target && target.closest && target.closest('[data-field-key]');
+      const fieldKey=fieldCell && fieldCell.getAttribute('data-field-key');
       let fieldLabel='';
       if(fieldKey){
         const panelEl=target.closest && target.closest('.tver-horizontal-panel');
@@ -5678,7 +5706,7 @@
         const level={'campaign':'Campaign','ad-group':'Ad Group','ad':'Ad'}[levelId] || '';
         fieldLabel=buildTverHorizontalFieldLabel(level, fieldKey) || fieldKey;
       }
-      if(floatingCount) floatingCount.textContent=`${position+1} / ${targets.length}`+(fieldLabel ? '｜'+fieldLabel : '');
+      if(floatingCount) floatingCount.textContent=(unified && target && readScope(target)!=='__all__' ? readScope(target)+' ｜ ' : '')+`${position+1} / ${targets.length}`+(fieldLabel ? '｜'+fieldLabel : '');
       if(unified && floatingModeButtons){
         const counts={ mismatch:countByStatus('mismatch',activeScope), review:countByStatus('review',activeScope) };
         Object.entries(floatingModeButtons).forEach(([marker,button])=>{
@@ -5698,26 +5726,24 @@
       hideFloating();
     }
     // NO030：固定ヘッダー・固定列・水平スクロールを考慮して対象セルを可視領域へ移動する。
-    function scrollQcMismatchTarget(target){
-      if(!target || typeof target.getBoundingClientRect!=='function') return;
-      const view=documentRef && documentRef.defaultView ? documentRef.defaultView : (typeof window!=='undefined' ? window : null);
-      if(!view) return;
-      const rect=target.getBoundingClientRect();
-      let topOffset=0;
+    // NO001-FIX4-NAV：スクロール／詳細展開後の実レイアウトで再測定し、残存する遮蔽だけを一度だけ補正する。
+    function readQcStickyBottom(view){
+      let bottom=0;
       if(documentRef && typeof documentRef.querySelectorAll==='function'){
         ['.qc-header', '.tver-level-tabs', '.tver-horizontal-sticky-header'].forEach(selector => {
           documentRef.querySelectorAll(selector).forEach(element => {
             const style=view.getComputedStyle(element);
             if(style.position!=='sticky' && style.position!=='fixed') return;
             const box=element.getBoundingClientRect();
-            if(box.height>0 && box.top<view.innerHeight/2 && box.bottom>topOffset) topOffset=box.bottom;
+            if(box.height>0 && box.top<view.innerHeight/2 && box.bottom>bottom) bottom=box.bottom;
           });
         });
       }
-      const desiredTop=topOffset+16;
-      if(rect.top<desiredTop || rect.bottom>view.innerHeight-24) view.scrollBy({ top:rect.top-desiredTop, behavior:'smooth' });
+      return bottom;
+    }
+    function alignQcHorizontal(target,rect){
       const scroller=typeof target.closest==='function' ? target.closest('.tver-horizontal-scroll') : null;
-      if(!scroller) return;
+      if(!scroller || target.closest('.tver-horizontal-fixed')) return;
       const scrollerRect=scroller.getBoundingClientRect();
       let leftOffset=0;
       const row=typeof target.closest==='function' ? target.closest('tr') : null;
@@ -5730,6 +5756,69 @@
       const desiredLeft=scrollerRect.left+leftOffset+12;
       if(rect.left<desiredLeft || rect.right>scrollerRect.right-12) scroller.scrollLeft += (rect.left-desiredLeft);
     }
+    function scrollQcMismatchTarget(target,options={}){
+      if(!target || typeof target.getBoundingClientRect!=='function') return;
+      const view=documentRef && documentRef.defaultView ? documentRef.defaultView : (typeof window!=='undefined' ? window : null);
+      if(!view) return;
+      const rect=target.getBoundingClientRect();
+      const desiredTop=readQcStickyBottom(view)+16;
+      const behavior=options.behavior==='auto' ? 'auto' : 'smooth';
+      if(rect.top<desiredTop || rect.bottom>view.innerHeight-24) view.scrollBy({ top:rect.top-desiredTop, behavior });
+      alignQcHorizontal(target,rect);
+    }
+    function correctQcMismatchTargetOnce(target){
+      const view=documentRef && documentRef.defaultView ? documentRef.defaultView : (typeof window!=='undefined' ? window : null);
+      if(!view) return {corrected:false,reason:'no-view'};
+      const stickyBottom=readQcStickyBottom(view);
+      const rect=target.getBoundingClientRect();
+      const desiredTop=stickyBottom+16;
+      const availableBottom=view.innerHeight-24;
+      let delta=0;
+      if(rect.top<desiredTop) delta=rect.top-desiredTop;
+      else if(rect.bottom>availableBottom) delta=Math.min(rect.bottom-availableBottom, rect.top-desiredTop);
+      if(!delta) return {corrected:false,stickyBottom,top:rect.top,bottom:rect.bottom};
+      const beforeY=view.scrollY;
+      view.scrollBy({ top:delta, left:0, behavior:'auto' });
+      alignQcHorizontal(target,target.getBoundingClientRect());
+      return {corrected:true,moved:Math.abs(view.scrollY-beforeY)>0.5,delta,stickyBottom};
+    }
+    // スクロールと詳細展開のレイアウトが落ち着くまで待ち、実測で足りない分だけ一度補正してから
+    // フォーカスの表示時間を開始する。古い遷移のコールバックは navToken で無効化する。
+    // 判定は scrollend（あれば）を主、スクロール位置の安定を従とし、アニメーション開始直後の
+    // 一時停止を「完了」と誤認しないよう最低待ち時間を設ける。
+    function settleQcMismatchScroll(target,token){
+      const view=documentRef && documentRef.defaultView ? documentRef.defaultView : (typeof window!=='undefined' ? window : null);
+      if(!view){ scheduleQcFocusTimer(target); return; }
+      const started=Date.now();
+      const minWait=240;
+      let lastY=view.scrollY, lastX=view.scrollX, stable=0, finished=false;
+      const onScrollEnd=()=>{ setTimeout(()=>finish(),60); };
+      const cleanup=()=>{ if(typeof view.removeEventListener==='function') view.removeEventListener('scrollend',onScrollEnd); };
+      const finish=()=>{
+        if(finished) return;
+        finished=true;
+        cleanup();
+        if(token!==navToken) return;
+        if(!target || !target.classList || !target.classList.contains(focusClass)) return;
+        correctQcMismatchTargetOnce(target);
+        scheduleQcFocusTimer(target);
+      };
+      if(typeof view.addEventListener==='function') view.addEventListener('scrollend', onScrollEnd, { passive:true });
+      const step=()=>{
+        if(finished) return;
+        if(token!==navToken){ finished=true; cleanup(); return; }
+        const y=view.scrollY, x=view.scrollX;
+        if(Math.abs(y-lastY)<=1 && Math.abs(x-lastX)<=1) stable+=1; else {stable=0; lastY=y; lastX=x;}
+        const elapsed=Date.now()-started;
+        if((stable>=3 && elapsed>=minWait) || elapsed>2000){ finish(); return; }
+        setTimeout(step,80);
+      };
+      setTimeout(step,80);
+    }
+    function scheduleQcFocusTimer(target){
+      const timer=setTimeout(()=>{target.classList&&target.classList.remove(focusClass);focusTimers.delete(target);},focusDurationMs);
+      focusTimers.set(target,timer);
+    }
     function navigate(scope,direction=1){
       const key=scopeKey(scope),targets=getTargets(key);
       if(!targets.length){indexes.delete(key);currentPositions.delete(key);if(activeScope===key) hideFloating();clearFocus();return null;}
@@ -5741,10 +5830,16 @@
       const target=targets[current];
       indexes.set(key,(current+1)%targets.length);
       clearFocus();
+      const token=navToken;
       target.classList&&target.classList.add(focusClass);
+      if(target.hasAttribute && target.hasAttribute('data-qc-detail-target')){
+        const detailPanel=target.closest('[data-result-detail]');
+        const control=detailPanel && detailPanel.parentElement.querySelector('[data-action="toggle-result-detail"]');
+        if(control && detailPanel.hidden) control.click();
+        if(detailPanel) detailPanel.scrollTop+=target.getBoundingClientRect().top-detailPanel.getBoundingClientRect().top;
+      }
       scrollQcMismatchTarget(target);
-      const timer=setTimeout(()=>{target.classList&&target.classList.remove(focusClass);focusTimers.delete(target);},focusDurationMs);
-      focusTimers.set(target,timer);
+      settleQcMismatchScroll(target,token);
       if(activeScope===key) refreshFloating();
       return target;
     }
@@ -8061,7 +8156,7 @@
     return String(label ?? '') || '未特定';
   }
 
-  function collectTverDisplayNodesByLevel(displayTree, level){
+  function collectTverDisplayNodesByLevel(displayTree, level, entries=[]){
     const tree=displayTree && typeof displayTree==='object' ? displayTree : {};
     const roots=Array.isArray(tree.roots) ? tree.roots : [];
     const unattached=Array.isArray(tree.unattached) ? tree.unattached : [];
@@ -8072,7 +8167,10 @@
     const walk=(node, parent, parentPath, isUnattachedRoot) => {
       if(!node || typeof node!=='object') return;
       const nodeKey=String(node.nodeKey ?? node.entityKey ?? '');
-      const nodeLevel=String(node.level ?? '');
+      // An unattached record can have a known comparison level even when entity matching is unresolved.
+      const index=node.matchState==='unattached' && node.entryIndexes && node.entryIndexes.length===1 ? node.entryIndexes[0] : null;
+      const record=Number.isInteger(index) ? entries[index] : null;
+      const nodeLevel=node.level==='Unknown' && record && TVER_HORIZONTAL_LEVELS.includes(record.level) ? record.level : String(node.level ?? '');
       const displayLabel=contextLabel(node);
       const path=Array.isArray(parentPath) ? parentPath.map(item => ({ ...item })) : [];
       if(nodeLevel===level){
@@ -8109,7 +8207,7 @@
   function buildTverHorizontalColumns(run, level){
     const safeRun=run && typeof run==='object' ? run : {};
     const entries=Array.isArray(safeRun.entries) ? safeRun.entries : [];
-    const nodes=collectTverDisplayNodesByLevel(safeRun.displayTree, level);
+    const nodes=collectTverDisplayNodesByLevel(safeRun.displayTree, level, entries);
     const fixedFields=Array.isArray(TVER_HORIZONTAL_FIELD_ORDER[level]) ? TVER_HORIZONTAL_FIELD_ORDER[level] : [];
     const fixedSet=new Set(fixedFields);
     const projectedNameField=level==='Campaign' ? 'campaign_name' : level==='Ad Group' ? 'adgroup_name' : level==='Ad' ? 'creative_name' : null;
@@ -8147,7 +8245,7 @@
     const criteria=buildTverEntryFilterCriteria({ ...(filters || {}), level });
     const rows=[];
 
-    collectTverDisplayNodesByLevel(safeRun.displayTree, level).forEach(nodeView => {
+    collectTverDisplayNodesByLevel(safeRun.displayTree, level, entries).forEach(nodeView => {
       const visibleEntryIndexes=nodeView.entryIndexes.filter(entryIndex => {
         if(!Number.isInteger(entryIndex) || entryIndex<0 || entryIndex>=entries.length) return false;
         const entry=entries[entryIndex];
@@ -8369,6 +8467,7 @@
     MEDIA_GROUP_UNCLASSIFIED:'媒体IDの放送局分類を辞書で確認できません。mediaシートの分類を確認してください',
     MEDIA_EXPECTED_GROUP_UNKNOWN:'設定表の放送局名をmediaシートのID群へ解決できません。放送局名を確認してください',
     MEDIA_EXCLUDED_GROUP_UNKNOWN:'除外指定の放送局名をmediaシートのID群へ解決できません。除外局名を確認してください',
+    CSV_LOCAL_BROADCASTER_ID_UNKNOWN:'CSVのローカル局IDを辞書で確認できません。CSVの値とローカル局一覧を照合してください',
     LOCAL_BROADCASTER_MEDIA_SOURCE_CONFLICT:'ローカル局の既定全選択を判断する媒体来源が複数・矛盾しています。媒体設定を確認してください',
     LOCAL_BROADCASTER_MEDIA_SOURCE_UNRECOGNIZED:'媒体設定を放送局名・除外・数字IDとして解決できません。媒体設定を確認してください',
     SETTING_LOCAL_BROADCASTER_NOT_PROVIDED:'設定表にローカル局の確認元がありません',
@@ -8483,6 +8582,7 @@
     if(safe.field==='creative_name' && safe.ruleBasis==='TVER_NO021_VIDEO_FILENAME_WITHOUT_EXTENSION' && safe.displayStatus==='不一致') return '動画拡張子を除いた期待名「'+deriveTverCreativeName(safe.settingRawValue)+'」とCSV名称が異なります';
     const status=projectTverDisplayStatus(safe.displayStatus || safe.comparisonStatus);
     if(status==='不一致'){
+      if(safe.conservativeReason==='LOCAL_BROADCASTER_VALUE_WHEN_NOT_REQUIRED') return TVER_DISPLAY_REASON_MESSAGES[safe.conservativeReason];
       const prefDiff=buildTverPrefDiffDisplay(safe);
       if(prefDiff.text) return prefDiff.text;
       return '設定表とCSVの値が異なります';
@@ -8490,6 +8590,8 @@
     if(safe.displayStatus==='需确认' && String(safe.field ?? '')==='daily_budget' && !tverHorizontalRawValuePresent(safe.settingRawValue) && String(safe.ruleBasis ?? '')==='strict' && !String(safe.conservativeReason ?? '').trim()){
       return '設定表の日予算が空欄のため確認が必要です';
     }
+    if(safe.field==='media' && safe.conservativeReason==='MEDIA_MAPPING_INSUFFICIENT' && String(safe.settingRawValue ?? '').trim()==='EX除外')
+      return '設定表の「EX除外」は自動判定の対象外です。CSVの媒体IDをmediaシートで照合し、テレビ朝日所属のIDが含まれていないか確認してください';
     const conservativeCode=normalizeTverDisplayReasonCode(safe, safe.conservativeReason);
     const conservativeMessage=tverDisplayReasonCodeMessage(conservativeCode);
     if(conservativeMessage) return conservativeMessage;
@@ -8572,6 +8674,7 @@
         comparisonStatus:String(entry.comparisonStatus ?? ''),
         settingRawValue:entry.settingRawValue,
         csvRawValue:entry.csvRawValue,
+        mediaEvaluation:entry.mediaEvaluation,
         settingDisplayValue:tverDetailDisplayValue(formatTverDisplayValue(entry, 'setting')),
         csvDisplayValue:tverDetailDisplayValue(formatTverDisplayValue(entry, 'csv')),
         reason:getTverDisplayReason(entry),
@@ -8647,6 +8750,7 @@
     }).join('、');
     const lines=[];
     if(evaluation){
+      if(evaluation.status==='需确认' && evaluation.detailIds && evaluation.detailIds.length) lines.push('確認が必要な媒体ID：'+formatIds(evaluation.detailIds));
       if(Array.isArray(evaluation.expectedGroups) && evaluation.expectedGroups.length){
         const hits=(evaluation.hitGroups || []).map(group => `${group}(${(evaluation.hitCounts || {})[group] || 0})`);
         if(hits.length) lines.push('命中した放送局：'+hits.join(' / '));
@@ -8656,7 +8760,7 @@
       }
       if(Array.isArray(evaluation.excludedGroups) && evaluation.excludedGroups.length){
         if((evaluation.violatedGroups || []).length) lines.push('除外違反の放送局：'+evaluation.violatedGroups.join(' / '));
-        else lines.push('除外成立：'+evaluation.excludedGroups.join(' / ')+' のIDはCSVにありません');
+        else if(evaluation.status==='一致') lines.push('除外成立：'+evaluation.excludedGroups.join(' / ')+' のIDはCSVにありません');
         if((evaluation.violatedIds || []).length) lines.push('除外違反ID：'+formatIds(evaluation.violatedIds));
         if((evaluation.unknownExcludedGroups || []).length) lines.push('解決できない除外放送局：'+evaluation.unknownExcludedGroups.join(' / '));
       }
@@ -8671,7 +8775,9 @@
     return lines.map(line => `<div class="tver-horizontal-detail-source">${escapeHtml(line)}</div>`).join('');
   }
 
-  function buildTverHorizontalDetailEntryHtml(detail){
+  function buildTverHorizontalDetailEntryHtml(detail,{navigationLevel}={}){
+    const targetAttributes=navigationLevel
+      ? ` data-qc-detail-target data-qc-scope="${escapeHtml(navigationLevel)}" data-field-key="${escapeHtml(detail.field)}" data-qc-status="${detail.displayStatus==='要確認' ? 'review' : 'mismatch'}"` : '';
     const status=detail.displayStatus || '要確認';
     const sourceLines=[
       ...detail.settingSources.map(source => formatTverDetailSource('設定表', source)+(detail.conservativeReason==='SETTING_GP_FIELD_CONFLICT' ? ' / 原値 '+String(source.rawValue ?? '') : '')),
@@ -8694,7 +8800,7 @@
       ['validationIssues.code', validation],
     ].map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(tverTechnicalValue(value))}</dd>`).join('');
     const rowLevelScopeHtml=detail.rowLevelScope ? `<div class="tver-horizontal-detail-scope"><span class="tver-horizontal-detail-label">名称範囲 / 行対応</span><span class="tver-horizontal-detail-value">${escapeHtml(String(detail.rowLevelScope.name || ''))} ／ CSV行: ${escapeHtml((detail.rowLevelScope.csvRowNumbers || []).join(', '))} ／ 設定表行: ${escapeHtml((detail.rowLevelScope.settingRowNumbers || []).join(', '))} ／ 行級比較: 設定Group ${escapeHtml(String(detail.rowLevelScope.groupCount ?? ''))}件 ⇔ CSV ${escapeHtml(String((detail.rowLevelScope.csvRowNumbers || []).length))}行（Group実体ID未確認）</span></div>` : '';
-    return `<article class="tver-horizontal-detail-entry" data-detail-entry-index="${escapeHtml(detail.entryIndex)}"><div class="tver-horizontal-detail-grid"><div><span class="tver-horizontal-detail-label">項目</span><span class="tver-horizontal-detail-value tver-horizontal-detail-field">${escapeHtml(detail.fieldLabel || detail.field)}</span></div><div><span class="tver-horizontal-detail-label">判定</span><span class="tver-horizontal-detail-status ${tverHorizontalStatusClass(status)}">${escapeHtml(status)}</span></div><div><span class="tver-horizontal-detail-label">設定表値</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.settingDisplayValue ?? detail.settingRawValue)}</span></div><div><span class="tver-horizontal-detail-label">CSV値</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.csvDisplayValue ?? detail.csvRawValue)}</span></div></div><div class="tver-horizontal-detail-reason"><span class="tver-horizontal-detail-label">確認理由</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.reason)}</span></div>${rowLevelScopeHtml}<div class="tver-horizontal-detail-actions"><button class="tver-horizontal-detail-action" type="button" data-action="toggle-detail-evidence" data-detail-entry-index="${escapeHtml(detail.entryIndex)}" aria-expanded="false">根拠を表示</button><div class="tver-horizontal-detail-sources hidden" hidden data-detail-evidence>${sourceHtml}${canonicalHtml}${mediaBreakdownHtml}</div><details class="tver-horizontal-detail-technical"><summary>技術情報</summary><dl>${technical}</dl></details></div></article>`;
+    return `<article class="tver-horizontal-detail-entry"${targetAttributes} data-detail-entry-index="${escapeHtml(detail.entryIndex)}"><div class="tver-horizontal-detail-grid"><div><span class="tver-horizontal-detail-label">項目</span><span class="tver-horizontal-detail-value tver-horizontal-detail-field">${escapeHtml(detail.fieldLabel || detail.field)}</span></div><div><span class="tver-horizontal-detail-label">判定</span><span class="tver-horizontal-detail-status ${tverHorizontalStatusClass(status)}">${escapeHtml(status)}</span></div><div><span class="tver-horizontal-detail-label">設定表値</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.settingDisplayValue ?? detail.settingRawValue)}</span></div><div><span class="tver-horizontal-detail-label">CSV値</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.csvDisplayValue ?? detail.csvRawValue)}</span></div></div><div class="tver-horizontal-detail-reason"><span class="tver-horizontal-detail-label">確認理由</span><span class="tver-horizontal-detail-value">${escapeHtml(detail.reason)}</span></div>${rowLevelScopeHtml}<div class="tver-horizontal-detail-actions"><button class="tver-horizontal-detail-action" type="button" data-action="toggle-detail-evidence" data-detail-entry-index="${escapeHtml(detail.entryIndex)}" aria-expanded="false">根拠を表示</button><div class="tver-horizontal-detail-sources hidden" hidden data-detail-evidence>${sourceHtml}${canonicalHtml}${mediaBreakdownHtml}</div><details class="tver-horizontal-detail-technical"><summary>技術情報</summary><dl>${technical}</dl></details></div></article>`;
   }
 
   // NO022: 実体バッジの原因概要（単一原因=項目ラベル、複数原因=N項目）。
@@ -8726,13 +8832,15 @@
     const counts=[];
     if(mismatch.length) counts.push('<span class="tver-result-compact-count tver-result-compact-count-mismatch">不一致 '+mismatch.length+'項目</span>');
     if(review.length) counts.push('<span class="tver-result-compact-count tver-result-compact-count-review">要確認 '+review.length+'項目</span>');
-    const labels=[];
-    [...mismatch, ...review].forEach(detail => {
-      const label=String(detail && (detail.fieldLabel || detail.field) || '').trim();
-      if(label && !labels.includes(label)) labels.push(label);
-    });
-    const shown=labels.slice(0,4), rest=Math.max(0, labels.length-shown.length);
-    const fieldText=shown.join(' / ')+(rest ? ' / ほか'+rest+'項目' : '');
+    const labels=items => [...new Set(items.map(item => String(item.fieldLabel || item.field || '').trim()).filter(Boolean))];
+    const red=labels(mismatch), yellow=labels(review);
+    const redSlots=Math.min(red.length, Math.max(2, 4-yellow.length));
+    const yellowSlots=4-redSlots;
+    const groups=[];
+    if(red.length) groups.push('不一致：'+red.slice(0,redSlots).join(' / '));
+    if(yellow.length) groups.push('要確認：'+yellow.slice(0,yellowSlots).join(' / '));
+    const rest=red.length-redSlots+Math.max(0,yellow.length-yellowSlots);
+    const fieldText=groups.join(' ｜ ')+(rest ? ' / ほか'+rest+'項目' : '');
     return '<button type="button" class="tver-result-compact" data-action="toggle-result-detail" aria-expanded="false" data-entity-status="'+escapeHtml(entityStatus)+'">'
       +'<span class="tver-result-compact-head">'+counts.join('')+'<span class="tver-result-compact-hint">詳細</span></span>'
       +'<span class="tver-result-compact-fields">'+escapeHtml(fieldText)+'</span></button>';
@@ -8866,7 +8974,8 @@
       value=raw!=='' ? raw : evidenceState==='available' ? '（空欄）' : '（要確認）';
       nameStatus=entry.comparisonStatus || entry.displayStatus || '';
       status=projectTverDisplayStatus(entry.displayStatus || entry.comparisonStatus);
-      const qcMismatchAttr=expected && status==='不一致' ? ` data-qc-status="mismatch" data-qc-scope="${escapeHtml(level)}"` : '';
+      const qcMismatchAttr=expected && (status==='不一致' || status==='要確認')
+        ? ` data-qc-status="${status==='不一致' ? 'mismatch' : 'review'}" data-qc-scope="${escapeHtml(level)}" data-field-key="${escapeHtml(entry.field)}"` : '';
       marker=` data-entry-index="${escapeHtml(projection.entryIndex)}" data-entry-status="${escapeHtml(status)}"${qcMismatchAttr}`;
     }
     let projectionState='unique';
@@ -8894,6 +9003,7 @@
     const nameLabel=view.level==='Campaign' ? 'CP名' : view.level==='Ad Group' ? 'Group名' : 'クリエイティブ名';
     const colgroup=`<colgroup><col class="tver-horizontal-col-no" data-column-key="no" ${buildTverColumnWidthStyle(view.level, 'no', storage, resolvedWidths)}><col class="tver-horizontal-col-target" data-column-key="target" ${buildTverColumnWidthStyle(view.level, 'target', storage, resolvedWidths)}><col class="tver-horizontal-name-col" data-column-key="name" ${buildTverColumnWidthStyle(view.level, 'name', storage, resolvedWidths)}><col class="tver-horizontal-col-comparison" data-column-key="comparison" ${buildTverColumnWidthStyle(view.level, 'comparison', storage, resolvedWidths)}>${buildTverHorizontalSourceColumnHtml()}${columns.map(column => `<col class="tver-horizontal-field-col" data-column-key="${escapeHtml(column.key)}" ${buildTverColumnWidthStyle(view.level, column.key, storage, resolvedWidths)}>`).join('')}</colgroup>`;
     const head=`<thead><tr>${buildTverColumnHeader('No.', 'tver-horizontal-fixed tver-horizontal-col-no tver-horizontal-fixed-no', 'no', view.level, storage, false, resolvedWidths)}${buildTverColumnHeader(targetHeaderLabel, 'tver-horizontal-fixed tver-horizontal-col-target tver-horizontal-fixed-target', 'target', view.level, storage, true, resolvedWidths)}${buildTverColumnHeader(nameLabel, 'tver-horizontal-fixed tver-horizontal-name-col tver-horizontal-fixed-name', 'name', view.level, storage, true, resolvedWidths)}${buildTverColumnHeader('比較結果', 'tver-horizontal-fixed tver-horizontal-col-comparison tver-horizontal-fixed-comparison', 'comparison', view.level, storage, true, resolvedWidths)}${buildTverColumnHeader('来源', 'tver-horizontal-source-col', TVER_HORIZONTAL_SOURCE_COLUMN_KEY, view.level, storage, false, resolvedWidths)}${columns.map(column => buildTverColumnHeader(column.label, 'tver-horizontal-field-col', column.key, view.level, storage, true, resolvedWidths)).join('')}</tr></thead>`;
+    const fieldColumns=new Set(columns.map(column => column.key));
     let previousGroupKey=null;
     const bodyRows=[];
     rows.forEach((row, index) => {
@@ -8913,8 +9023,14 @@
       const consistentTargetDetails=abnormalDetails.length ? [] : (buildTverHorizontalDetailViewModel(row, view.entries, { includeConsistent:true }) || []).filter(detail => detail && ['contents_group','media'].includes(detail.field));
       // NO031：既定表示は要約のみ。詳細はクリックで展開し、行高・桁あふれ・隣列との重なりを防ぐ。
       const resultSummaryHtml=abnormalDetails.length ? buildTverResultSummaryHtml(abnormalDetails, entityStatus) : '';
+      const nameEntry=(row.campaignName || row.groupName || row.creativeName || {}).entryIndex;
+      const renderAbnormalDetail=detail => {
+        const hasCell=fieldColumns.has(detail.field) || detail.entryIndex===nameEntry;
+        const navigationLevel=!hasCell && detail.entryIndex>=0 ? view.level : null;
+        return buildTverHorizontalDetailEntryHtml(detail,{navigationLevel});
+      };
       const resultDetailHtml=abnormalDetails.length
-        ? '<div class="tver-result-detail-panel" data-result-detail hidden>'+abnormalDetails.map(buildTverHorizontalDetailEntryHtml).join('')+'</div>'
+        ? '<div class="tver-result-detail-panel" data-result-detail hidden>'+abnormalDetails.map(renderAbnormalDetail).join('')+'</div>'
         : '';
       const entityBadge=buildTverEntityBadgeLabel(row, entityStatus, view.entries);
       const consistentDetailHtml=consistentTargetDetails.length
