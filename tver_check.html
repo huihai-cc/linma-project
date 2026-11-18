@@ -3171,6 +3171,7 @@
         ? input.conservativeReason || null : conservative.reason || input && input.conservativeReason || null,
       ...(input && input.additionalEvidenceIssues && input.additionalEvidenceIssues.length ? {additionalEvidenceIssues:input.additionalEvidenceIssues} : {}),
       ...(input && input.mediaEvaluation ? {mediaEvaluation:input.mediaEvaluation} : {}),
+      ...(input && input.idDiff ? {idDiff:input.idDiff} : {}),
       evidence:input && Array.isArray(input.evidence) ? input.evidence : [],
     };
   }
@@ -3187,6 +3188,36 @@
     const raw=String(rawValue ?? '');
     const values=raw.split(/[\s,]+/).map(value => value.trim()).filter(Boolean);
     return { rawValue:raw, ids:[...new Set(values)].sort() };
+  }
+
+  // NO005：ID 集合の差分は「順序に依存しない集合比較」で求める。表示順だけ数値昇順に整える
+  // （数値でない ID は文字列順）。'08' と '8' を同一視する変換は行わない。
+  function tverSortIdsForDisplay(idList){
+    const list=[...(idList || [])];
+    return list.sort((left, right) => {
+      const leftNumber=Number(left);
+      const rightNumber=Number(right);
+      const leftNumeric=left!=='' && Number.isFinite(leftNumber);
+      const rightNumeric=right!=='' && Number.isFinite(rightNumber);
+      if(leftNumeric && rightNumeric) return leftNumber-rightNumber || String(left).localeCompare(String(right));
+      if(leftNumeric!==rightNumeric) return leftNumeric ? -1 : 1;
+      return String(left).localeCompare(String(right));
+    });
+  }
+  function buildTverIdSetDiff(expectedValue, actualValue){
+    const expectedIds=tverSortIdsForDisplay(parseTverIdSet(expectedValue).ids);
+    const actualIds=tverSortIdsForDisplay(parseTverIdSet(actualValue).ids);
+    const expectedSet=new Set(expectedIds);
+    const actualSet=new Set(actualIds);
+    return {
+      expectedIds, actualIds,
+      missingIds:expectedIds.filter(id => !actualSet.has(id)),
+      extraIds:actualIds.filter(id => !expectedSet.has(id)),
+    };
+  }
+  function tverIdListAllKnown(rawValue, dictionaryType){
+    const known=new Set((TVER_ID_DICTIONARIES[dictionaryType] || []).map(entry => entry.id));
+    return parseTverIdSet(rawValue).ids.every(id => known.has(id));
   }
 
   function sameTverIdSet(left, right){
@@ -3628,23 +3659,31 @@
     const expected=new Set(groups || []);
     return (TVER_ID_DICTIONARIES.media || []).filter(entry => expected.has(entry.group)).map(entry => entry.id);
   }
-  // NO032-GATE-FIX2：管理画面の放送局選択は「放送局名对应的 ID 群に少なくとも1件命中」で判定する。
-  // 全 ID の集合一致は要求しない。他の放送局 ID の増減は判定に混ぜず、除外指定がある場合だけ別評価する。
+  // NO005：放送局名指定は「指定放送局に属する全 ID が CSV に存在すること」を要求する。
+  // 指定放送局自身の ID が 1 件でも欠ければ不一致。他の放送局 ID の増減は判定に混ぜず
+  // （extraGroups は診断用に保持）、除外指定がある場合だけ別評価する。
   function evaluateTverMediaStationEvidence(expectedGroups, csvValue, csvEvidenceState){
     const expectedGroupsList=[...new Set(expectedGroups || [])];
     const expectedGroupsSet=new Set(expectedGroupsList);
     const ids=parseTverIdSet(csvValue).ids;
     const expectedGroupIds=new Map(expectedGroupsList.map(group => [group, tverMediaIdsForGroups([group])]));
     const unknownExpectedGroups=expectedGroupsList.filter(group => !(expectedGroupIds.get(group) || []).length);
-    if(unknownExpectedGroups.length) return { status:'需确认', reason:'MEDIA_EXPECTED_GROUP_UNKNOWN', detailIds:[], hitGroups:[], missingGroups:[], extraGroups:[], hitCounts:{}, unknownExpectedGroups };
-    if(!ids.length) return csvEvidenceState==='available'
-      ? { status:'不一致', reason:null, detailIds:[], hitGroups:[], missingGroups:expectedGroupsList, extraGroups:[], hitCounts:{} }
-      : { status:'需确认', reason:'CSV_MEDIA_ID_NOT_PROVIDED', detailIds:[] };
+    if(unknownExpectedGroups.length) return { status:'需确认', reason:'MEDIA_EXPECTED_GROUP_UNKNOWN', detailIds:[], hitGroups:[], missingGroups:[], extraGroups:[], hitCounts:{}, unknownExpectedGroups, expectedIds:[], missingIds:[], extraIds:[] };
+    // NO005：指定放送局の全 ID を期待集合とし、CSV 側に無い ID を過不足なく求める。
+    const expectedIds=tverSortIdsForDisplay([...new Set(expectedGroupsList.flatMap(group => expectedGroupIds.get(group) || []))]);
+    const expectedSet=new Set(expectedIds);
+    const csvSet=new Set(ids);
+    const missingIds=tverSortIdsForDisplay(expectedIds.filter(id => !csvSet.has(id)));
+    // 他放送局の ID は現行規則どおり判定対象外。診断用に extraIds として保持するだけ。
+    const extraIds=tverSortIdsForDisplay(ids.filter(id => !expectedSet.has(id)));
+    // NO005：Schema 不支持・セル来源未取得は値の有無にかかわらず要確認（明示空白とは区別）。
+    if(csvEvidenceState!=='available') return { status:'需确认', reason:'CSV_MEDIA_ID_NOT_PROVIDED', detailIds:[], expectedIds, missingIds:[], extraIds:[] };
+    if(!ids.length) return { status:'不一致', reason:null, detailIds:[], hitGroups:[], missingGroups:expectedGroupsList, extraGroups:[], hitCounts:{}, expectedIds, missingIds:tverSortIdsForDisplay(expectedIds), extraIds:[] };
     const dictionary=new Map((TVER_ID_DICTIONARIES.media || []).map(entry => [entry.id, entry]));
     const unknown=ids.filter(id => !dictionary.has(id));
-    if(unknown.length) return { status:'需确认', reason:'MEDIA_ID_NOT_IN_DICTIONARY', detailIds:unknown };
+    if(unknown.length) return { status:'需确认', reason:'MEDIA_ID_NOT_IN_DICTIONARY', detailIds:unknown, expectedIds, missingIds:[], extraIds:[] };
     const unclassified=ids.filter(id => !String(dictionary.get(id).group || '').trim());
-    if(unclassified.length) return { status:'需确认', reason:'MEDIA_GROUP_UNCLASSIFIED', detailIds:unclassified };
+    if(unclassified.length) return { status:'需确认', reason:'MEDIA_GROUP_UNCLASSIFIED', detailIds:unclassified, expectedIds, missingIds:[], extraIds:[] };
     const groupIds=new Map();
     ids.forEach(id => {
       const group=dictionary.get(id).group;
@@ -3655,8 +3694,9 @@
     const missingGroups=expectedGroupsList.filter(group => !(groupIds.get(group) || []).length);
     const extraGroups=[...groupIds.keys()].filter(group => !expectedGroupsSet.has(group));
     const hitCounts=Object.fromEntries(expectedGroupsList.map(group => [group, (groupIds.get(group) || []).length]));
-    if(!missingGroups.length) return { status:'一致', reason:null, detailIds:[], hitGroups, missingGroups:[], extraGroups, hitCounts };
-    return { status:'不一致', reason:null, detailIds:[], hitGroups, missingGroups, extraGroups, hitCounts };
+    // NO005：群の命中可否ではなく、指定局の期待 ID がすべて揃った場合だけ一致とする。
+    if(!missingIds.length) return { status:'一致', reason:null, detailIds:[], hitGroups, missingGroups, extraGroups, hitCounts, expectedIds, missingIds:[], extraIds };
+    return { status:'不一致', reason:null, detailIds:[], hitGroups, missingGroups, extraGroups, hitCounts, expectedIds, missingIds, extraIds };
   }
 
   // NO031：放送局の「除外」指定（例：CX除外）を、指定放送局リストとして誤解釈しない。
@@ -3679,10 +3719,10 @@
     const ids=parseTverIdSet(csvValue).ids;
     const unknownExcludedGroups=excludedGroupsList.filter(group => !tverMediaIdsForGroups([group]).length);
     if(unknownExcludedGroups.length) return { status:'需确认', reason:'MEDIA_EXCLUDED_GROUP_UNKNOWN', detailIds:[], violatedGroups:[], violatedIds:[], unknownExcludedGroups };
+    // NO005：Schema 不支持・セル来源未取得は値の有無にかかわらず要確認（明示空白とは区別）。
+    if(csvEvidenceState!=='available') return { status:'需确认', reason:'CSV_MEDIA_ID_NOT_PROVIDED', detailIds:[], violatedGroups:[], violatedIds:[] };
     // 明示的な空白は「除外対象を1件も選択していない」ため除外条件成立（一致）。
-    if(!ids.length) return csvEvidenceState==='available'
-      ? { status:'一致', reason:null, detailIds:[], violatedGroups:[], violatedIds:[] }
-      : { status:'需确认', reason:'CSV_MEDIA_ID_NOT_PROVIDED', detailIds:[] };
+    if(!ids.length) return { status:'一致', reason:null, detailIds:[], violatedGroups:[], violatedIds:[] };
     const dictionary=new Map((TVER_ID_DICTIONARIES.media || []).map(entry => [entry.id, entry]));
     const unknown=ids.filter(id => !dictionary.has(id));
     if(unknown.length) return { status:'需确认', reason:'MEDIA_ID_NOT_IN_DICTIONARY', detailIds:unknown };
@@ -4557,12 +4597,37 @@
       const mediaStationEvaluation=field==='media' && resolved.mediaExclusion && Array.isArray(resolved.mediaExclusion.groups) && resolved.mediaExclusion.groups.length
         ? evaluateTverMediaExclusionEvidence(resolved.mediaExclusion.groups, csvValue, csvEvidenceState)
         : field==='media' && Array.isArray(resolved.stationGroups) && resolved.stationGroups.length ? evaluateTverMediaStationEvidence(resolved.stationGroups, csvValue, csvEvidenceState) : null;
+      // NO005：設定表が数字 ID 集合を明示した media は完全集合比較（不足・超過の双方を不一致）。
+      // 明示空白は空集合として扱い、Schema/来源が未取得の場合だけ要確認に残す。
+      const mediaNumericDiff=field==='media' && !mediaStationEvaluation
+        && resolved.ruleBasis==='TVER_A17_2_MEDIA_NUMERIC_ID_SLOT'
+        && resolved.canonicalValue!==null && resolved.canonicalValue!==undefined && String(resolved.canonicalValue).trim()!==''
+        && csvEvidenceState==='available' && tverIdListAllKnown(csvValue, 'media')
+        ? buildTverIdSetDiff(resolved.canonicalValue, csvValue) : null;
+      // NO005：ローカル局の全選択（139 ID）も完全集合比較し、不足・超過の双方を保持する。
+      const localFullDiff=field==='local_broadcaster'
+        && (resolved.ruleBasis==='TVER_NO032_LOCAL_BROADCASTER_DEFAULT_FULL_SELECTION' || resolved.ruleBasis==='TVER_C3_C4_3_LOCAL_BROADCASTER_FULL_SELECTION')
+        && resolved.canonicalValue!==null && resolved.canonicalValue!==undefined && String(resolved.canonicalValue).trim()!==''
+        && csvEvidenceState==='available' && tverIdListAllKnown(csvValue, 'local_broadcaster')
+        ? buildTverIdSetDiff(resolved.canonicalValue, csvValue) : null;
+      // NO005：監査用に期待集合・CSV 集合・不足・超過・除外違反を entry へ保持する（表示は差分 ID のみ）。
+      const idDiff=mediaStationEvaluation
+        ? { kind:Array.isArray(mediaStationEvaluation.violatedIds) ? 'media_exclusion' : 'media_station',
+          expectedIds:mediaStationEvaluation.expectedIds || [], actualIds:parseTverIdSet(csvValue).ids,
+          missingIds:mediaStationEvaluation.missingIds || [], extraIds:mediaStationEvaluation.extraIds || [],
+          violatedIds:mediaStationEvaluation.violatedIds || [] }
+        : mediaNumericDiff
+          ? { kind:'media_numeric', expectedIds:mediaNumericDiff.expectedIds, actualIds:mediaNumericDiff.actualIds, missingIds:mediaNumericDiff.missingIds, extraIds:mediaNumericDiff.extraIds, violatedIds:[] }
+          : localFullDiff
+            ? { kind:'local_broadcaster', expectedIds:localFullDiff.expectedIds, actualIds:localFullDiff.actualIds, missingIds:localFullDiff.missingIds, extraIds:localFullDiff.extraIds, violatedIds:[] }
+            : null;
       const mediaEvaluationDetail=mediaStationEvaluation ? {
         status:mediaStationEvaluation.status, reason:mediaStationEvaluation.reason,
         detailIds:mediaStationEvaluation.detailIds || [],
         hitGroups:mediaStationEvaluation.hitGroups || [], missingGroups:mediaStationEvaluation.missingGroups || [],
         extraGroups:mediaStationEvaluation.extraGroups || [], hitCounts:mediaStationEvaluation.hitCounts || {},
         violatedGroups:mediaStationEvaluation.violatedGroups || [], violatedIds:mediaStationEvaluation.violatedIds || [],
+        expectedIds:mediaStationEvaluation.expectedIds || [], missingIds:mediaStationEvaluation.missingIds || [], extraIds:mediaStationEvaluation.extraIds || [],
         unknownExpectedGroups:mediaStationEvaluation.unknownExpectedGroups || [], unknownExcludedGroups:mediaStationEvaluation.unknownExcludedGroups || [],
         ...(resolved.stationGroups ? { expectedGroups:resolved.stationGroups } : {}),
         ...(resolved.mediaExclusion && resolved.mediaExclusion.groups ? { excludedGroups:resolved.mediaExclusion.groups } : {}),
@@ -4605,6 +4670,13 @@
       }else if(mediaStationEvaluation){
         comparisonStatus=mediaStationEvaluation.status;
         conservativeReason=mediaStationEvaluation.reason;
+      }else if(mediaNumericDiff){
+        // NO005：数字 ID 集合の完全一致だけを「一致」とし、順序差は表記ゆれにしない。
+        comparisonStatus=mediaNumericDiff.missingIds.length || mediaNumericDiff.extraIds.length ? '不一致' : '一致';
+        conservativeReason=null;
+      }else if(field==='media' && csvEvidenceState!=='available'){
+        comparisonStatus='需确认';
+        conservativeReason='CSV_MEDIA_ID_NOT_PROVIDED';
       }else if(!resolved.comparable){
         comparisonStatus='需确认';
         conservativeReason=resolved.diagnostics[0] && resolved.diagnostics[0].code || 'TARGETING_EVIDENCE_UNCONFIRMED';
@@ -4665,6 +4737,7 @@
         alwaysDisplay:true, ruleBasis:field==='uid_suffix' && resolved.asrInitialLeft ? 'TVER_NO032_ASR_INITIAL_LEFT_OF_ARROW' : resolved.ruleBasis, comparisonStatus,
         conservativeReason, sourceEvidence:{ setting:resolved.sourceEvidence, csv:csvEvidence, derivedFrom },
         ...(mediaEvaluationDetail ? { mediaEvaluation:mediaEvaluationDetail } : {}),
+        ...(idDiff ? { idDiff } : {}),
       });
     });
     return inputs;
@@ -8745,12 +8818,84 @@
     return { multi, missing, text:parts.join('；')+'。' };
   }
 
+  // NO005：media／local_broadcaster の差分は数字 ID のみで表す。放送局名・全量 ID 集合・
+  // 辞書明細・技術的な理由コードは表示しない（監査データは entry.idDiff / mediaEvaluation に保持）。
+  function tverIdDiffForEntry(entry){
+    const safe=entry && typeof entry==='object' ? entry : {};
+    const field=String(safe.field ?? '');
+    if(field!=='media' && field!=='local_broadcaster') return null;
+    if(safe.idDiff && typeof safe.idDiff==='object'){
+      const kind=String(safe.idDiff.kind ?? '');
+      return {
+        missingIds:tverSortIdsForDisplay(safe.idDiff.missingIds || []),
+        extraIds:tverSortIdsForDisplay(safe.idDiff.extraIds || []),
+        violatedIds:tverSortIdsForDisplay(safe.idDiff.violatedIds || []),
+        allowExtraIds:kind==='media_numeric' || kind==='local_broadcaster',
+      };
+    }
+    // 旧 entry など idDiff を持たない経路のフォールバック（同じ集合差分を再計算する）。
+    if(field==='media'){
+      const evaluation=safe.mediaEvaluation && typeof safe.mediaEvaluation==='object' ? safe.mediaEvaluation : null;
+      if(evaluation && Array.isArray(evaluation.violatedIds) && evaluation.violatedIds.length){
+        return { missingIds:[], extraIds:[], violatedIds:tverSortIdsForDisplay(evaluation.violatedIds), allowExtraIds:false };
+      }
+      if(evaluation && Array.isArray(evaluation.expectedIds) && evaluation.expectedIds.length){
+        const diff=buildTverIdSetDiff(evaluation.expectedIds.join(' '), safe.csvRawValue);
+        return { missingIds:diff.missingIds, extraIds:diff.extraIds, violatedIds:[], allowExtraIds:false };
+      }
+      const expectedGroups=Array.isArray(evaluation && evaluation.expectedGroups) ? evaluation.expectedGroups : [];
+      if(expectedGroups.length){
+        const diff=buildTverIdSetDiff(tverMediaIdsForGroups(expectedGroups).join(' '), safe.csvRawValue);
+        return { missingIds:diff.missingIds, extraIds:diff.extraIds, violatedIds:[], allowExtraIds:false };
+      }
+    }
+    const canonicalValues=safe.canonicalValues && typeof safe.canonicalValues==='object' ? safe.canonicalValues : {};
+    const expected=canonicalValues.setting;
+    if(expected===null || expected===undefined || String(expected).trim()==='') return null;
+    const actual=canonicalValues.csv===null || canonicalValues.csv===undefined ? safe.csvRawValue : canonicalValues.csv;
+    const diff=buildTverIdSetDiff(expected, actual);
+    return { missingIds:diff.missingIds, extraIds:diff.extraIds, violatedIds:[], allowExtraIds:true };
+  }
+
+  function buildTverIdDiffDisplay(entry){
+    const empty=() => ({ missingIds:[], extraIds:[], violatedIds:[], lines:[], text:'' });
+    const safe=entry && typeof entry==='object' ? entry : {};
+    const field=String(safe.field ?? '');
+    if(field!=='media' && field!=='local_broadcaster') return empty();
+    if(projectTverDisplayStatus(safe.displayStatus || safe.comparisonStatus)!=='不一致') return empty();
+    // 「未要求设置ローカル局」は専用文言（既存承認済み）を優先する。
+    if(safe.conservativeReason==='LOCAL_BROADCASTER_VALUE_WHEN_NOT_REQUIRED') return empty();
+    const diff=tverIdDiffForEntry(safe);
+    if(!diff) return empty();
+    const missingIds=diff.missingIds || [];
+    const extraIds=diff.allowExtraIds ? (diff.extraIds || []) : [];
+    const violatedIds=diff.violatedIds || [];
+    const lines=[];
+    if(violatedIds.length) lines.push('除外対象のID「'+violatedIds.join('、')+'」がダウンロードデータに含まれています。');
+    if(missingIds.length && extraIds.length){
+      lines.push('不足ID：'+missingIds.join('、'));
+      lines.push('余分なID：'+extraIds.join('、'));
+    }else if(missingIds.length===1){
+      lines.push('ダウンロードデータにID「'+missingIds[0]+'」がありません。');
+    }else if(missingIds.length){
+      lines.push('不足ID：'+missingIds.join('、'));
+    }else if(extraIds.length===1){
+      lines.push('ダウンロードデータに余分なID「'+extraIds[0]+'」があります。');
+    }else if(extraIds.length){
+      lines.push('余分なID：'+extraIds.join('、'));
+    }
+    return { missingIds, extraIds, violatedIds, lines, text:lines.join('\n') };
+  }
+
   function getTverDisplayReason(entry){
     const safe=entry && typeof entry==='object' ? entry : {};
     if(safe.field==='creative_name' && safe.ruleBasis==='TVER_NO021_VIDEO_FILENAME_WITHOUT_EXTENSION' && safe.displayStatus==='不一致') return '動画拡張子を除いた期待名「'+deriveTverCreativeName(safe.settingRawValue)+'」とCSV名称が異なります';
     const status=projectTverDisplayStatus(safe.displayStatus || safe.comparisonStatus);
     if(status==='不一致'){
       if(safe.conservativeReason==='LOCAL_BROADCASTER_VALUE_WHEN_NOT_REQUIRED') return TVER_DISPLAY_REASON_MESSAGES[safe.conservativeReason];
+      // NO005：media／local_broadcaster は差分の数字 ID だけを理由として返す。
+      const idDiff=buildTverIdDiffDisplay(safe);
+      if(idDiff.text) return idDiff.text;
       const prefDiff=buildTverPrefDiffDisplay(safe);
       if(prefDiff.text) return prefDiff.text;
       const subgenreDiff=buildTverSubgenreDiffDisplay(safe);
@@ -8811,6 +8956,48 @@
     return `${sideLabel}：${parts.join(' / ')}`;
   }
 
+  // NO005：media／local_broadcaster の詳細は全 ID を列挙せず件数だけを示す。
+  // 差分の具体 ID は確認理由（buildTverIdDiffDisplay）に出す。内部監査データは entry 側に残す。
+  function tverDetailValueForField(entry, sourceKind){
+    const safe=entry && typeof entry==='object' ? entry : {};
+    const field=String(safe.field ?? '');
+    if(field==='local_broadcaster'){
+      // NO005-FIX1：local_broadcaster の表示は NO005 から変更しない（全選択＝ID N件／不要＝空欄／既存文言）。
+      if(isTverLocalDisplayHidden(safe)) return '';
+      const raw=sourceKind==='setting' ? safe.settingRawValue : safe.csvRawValue;
+      const text=String(raw ?? '').trim();
+      if(text!=='' && /^[\d\s,]+$/.test(text)){
+        const ids=parseTverIdSet(text).ids;
+        return ids.length ? 'ID '+ids.length+'件' : '';
+      }
+      return sourceKind==='setting' ? formatTverHorizontalSettingValue(safe, sourceKind) : text;
+    }
+    if(field==='media'){
+      // NO005-FIX1：詳細の「設定表値」は放送局名・除外局名を出さず、確定済み ID 件数だけを表示する。
+      if(sourceKind==='csv'){
+        const csvIds=parseTverIdSet(safe.csvRawValue).ids;
+        return csvIds.length ? 'ID '+csvIds.length+'件' : '';
+      }
+      const evaluation=safe.mediaEvaluation && typeof safe.mediaEvaluation==='object' ? safe.mediaEvaluation : null;
+      const excludedGroups=Array.isArray(evaluation && evaluation.excludedGroups) ? evaluation.excludedGroups : [];
+      if(excludedGroups.length){
+        // 除外指定：辞書に実在する除外 ID 数だけを示す（要求選択 ID と混同しない）。
+        const excludedIds=tverMediaIdsForGroups(excludedGroups);
+        if(excludedIds.length) return '除外ID '+excludedIds.length+'件';
+      }
+      const expectedIds=Array.isArray(evaluation && evaluation.expectedIds) ? evaluation.expectedIds : [];
+      if(expectedIds.length) return 'ID '+expectedIds.length+'件';
+      const text=String(safe.settingRawValue ?? '').trim();
+      if(text!=='' && /^[\d\s,]+$/.test(text)){
+        const ids=parseTverIdSet(text).ids;
+        if(ids.length) return 'ID '+ids.length+'件';
+      }
+      // 期待集合・除外集合を確認できない場合は件数を捏造せず、従来表示と要確認根拠を保持する。
+      return formatTverHorizontalSettingValue(safe, sourceKind);
+    }
+    return formatTverDisplayValue(safe, sourceKind);
+  }
+
   function buildTverHorizontalDetailViewModel(row, entriesRef, options={}){
     const safe=row && typeof row==='object' ? row : {};
     const cells=safe.cells && typeof safe.cells==='object' ? safe.cells : {};
@@ -8849,8 +9036,9 @@
         settingRawValue:entry.settingRawValue,
         csvRawValue:entry.csvRawValue,
         mediaEvaluation:entry.mediaEvaluation,
-        settingDisplayValue:tverDetailDisplayValue(formatTverDisplayValue(entry, 'setting')),
-        csvDisplayValue:tverDetailDisplayValue(formatTverDisplayValue(entry, 'csv')),
+        idDiff:entry.idDiff && typeof entry.idDiff==='object' ? { ...entry.idDiff } : null,
+        settingDisplayValue:tverDetailDisplayValue(tverDetailValueForField(entry, 'setting')),
+        csvDisplayValue:tverDetailDisplayValue(tverDetailValueForField(entry, 'csv')),
         reason:getTverDisplayReason(entry),
         settingSources:settingSources.length ? settingSources : [null],
         csvSources:csvSources.length ? csvSources : [null],
@@ -8914,33 +9102,19 @@
     return String(value);
   }
 
+  // NO005：根拠パネルも差分 ID だけを出す（期待集合・CSV 全量・放送局名・命中等の一覧は表示しない）。
+  // 全量の監査情報は detail.idDiff / detail.mediaEvaluation に保持し、表示だけを差分化する。
   function buildTverMediaBreakdownHtml(detail){
-    const dictionary=new Map((TVER_ID_DICTIONARIES.media || []).map(entry => [entry.id, entry]));
-    const ids=parseTverIdSet(detail.csvRawValue).ids;
-    const evaluation=detail.mediaEvaluation || null;
-    // NO004-FIX1：CSV ID 明細は数字のみ。放送局の命中／未命中／除外違反は業務理由としてそのまま残す。
-    const formatIds=idList => idList.join('、');
+    const safe=detail && typeof detail==='object' ? detail : {};
+    const field=String(safe.field ?? '');
     const lines=[];
-    if(evaluation){
-      if(evaluation.status==='需确认' && evaluation.detailIds && evaluation.detailIds.length) lines.push('確認が必要な媒体ID：'+formatIds(evaluation.detailIds));
-      if(Array.isArray(evaluation.expectedGroups) && evaluation.expectedGroups.length){
-        const hits=(evaluation.hitGroups || []).map(group => `${group}(${(evaluation.hitCounts || {})[group] || 0})`);
-        if(hits.length) lines.push('命中した放送局：'+hits.join(' / '));
-        if((evaluation.missingGroups || []).length) lines.push('未命中の放送局：'+evaluation.missingGroups.join(' / '));
-        if((evaluation.extraGroups || []).length) lines.push('CSVの其他放送局（判定対象外）：'+evaluation.extraGroups.join(' / '));
-        if((evaluation.unknownExpectedGroups || []).length) lines.push('解決できない期待放送局：'+evaluation.unknownExpectedGroups.join(' / '));
-      }
-      if(Array.isArray(evaluation.excludedGroups) && evaluation.excludedGroups.length){
-        if((evaluation.violatedGroups || []).length) lines.push('除外違反の放送局：'+evaluation.violatedGroups.join(' / '));
-        else if(evaluation.status==='一致') lines.push('除外成立：'+evaluation.excludedGroups.join(' / ')+' のIDはCSVにありません');
-        if((evaluation.violatedIds || []).length) lines.push('除外違反ID：'+formatIds(evaluation.violatedIds));
-        if((evaluation.unknownExcludedGroups || []).length) lines.push('解決できない除外放送局：'+evaluation.unknownExcludedGroups.join(' / '));
-      }
+    const diff=buildTverIdDiffDisplay(safe);
+    if(diff.text) lines.push(...diff.lines);
+    const evaluation=safe.mediaEvaluation || null;
+    if(evaluation && evaluation.status==='需确认' && Array.isArray(evaluation.detailIds) && evaluation.detailIds.length){
+      const label=field==='local_broadcaster' ? '確認が必要なローカル局ID' : '確認が必要な媒体ID';
+      lines.push(label+'：'+tverSortIdsForDisplay(evaluation.detailIds).join('、'));
     }
-    if(!ids.length) return lines.map(line => `<div class="tver-horizontal-detail-source">${escapeHtml(line)}</div>`).join('');
-    const parts=ids.slice(0,12);
-    const more=ids.length>12 ? ` / ほか${ids.length-12}件` : '';
-    lines.push('媒体内訳（CSV）：'+parts.join(' / ')+more);
     return lines.map(line => `<div class="tver-horizontal-detail-source">${escapeHtml(line)}</div>`).join('');
   }
 
@@ -8953,12 +9127,14 @@
       ...detail.csvSources.map(source => formatTverDetailSource('CSV', source)),
     ];
     const sourceHtml=sourceLines.map(line => `<div class="tver-horizontal-detail-source">${escapeHtml(line)}</div>`).join('');
-    const canonicalLines=[
+    // NO005：media／local_broadcaster は期待 ID / CSV ID の全量を表示せず、差分 ID だけを出す。
+    const showCanonicalSets=detail.field!=='media' && detail.field!=='local_broadcaster';
+    const canonicalLines=showCanonicalSets ? [
       detail.settingCanonicalValue ? '期待ID：'+detail.settingCanonicalValue : '',
       detail.csvCanonicalValue ? 'CSV ID：'+detail.csvCanonicalValue : '',
-    ].filter(Boolean);
+    ].filter(Boolean) : [];
     const canonicalHtml=canonicalLines.map(line => `<div class="tver-horizontal-detail-source">${escapeHtml(line)}</div>`).join('');
-    const mediaBreakdownHtml=detail.field==='media' ? buildTverMediaBreakdownHtml(detail) : '';
+    const mediaBreakdownHtml=detail.field==='media' || detail.field==='local_broadcaster' ? buildTverMediaBreakdownHtml(detail) : '';
     const validation=tverTechnicalValue(detail.validationCodes.length ? detail.validationCodes.join(' | ') : '');
     const technical=[
       ['conservativeReason', detail.conservativeReason],
