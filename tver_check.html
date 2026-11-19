@@ -651,14 +651,36 @@
 
   // 判断 targeting group 是否含有「实际业务值」（参与 structural 匹配或真实设定的字段）。
   // 模板说明 / 勾选标记 / 注记不算内容：去掉前导 '-'/'○'、'※…' 注记、'ADGをSPPC/CTVで分ける' 等说明文字后是否仍有内容。
+  // NO001（6299）：空テンプレート block の配信デバイス欄にだけ残るテンプレート注記
+  // （OS指定なし／SP／PC／CTV／スマートデバイス, Connected TV, PC）は業務値ではない。
+  // 実デバイス値（SP/CTV 等の単独指定）は従来どおり business content として扱う。
+  // NO001-FIX1：確認済みの完全テンプレート説明だけを非業務値とする。
+  // キーワードの包含では判定しない（部分一致で実業務値を巻き込まない）。
+  // 正規化＝前後の空白・先頭の -/○・空白/カンマを除去した完全一致。
+  const TVER_TARGETING_TEMPLATE_DEVICE_TEXTS=new Set([
+    'OS指定なし',
+    'OS指定なしスマートデバイスConnectedTVPC',
+    'SP／PC／CTVOS指定なしスマートデバイスConnectedTVPC',
+  ]);
+  function normalizeTverTargetingTemplateDeviceText(rawValue){
+    return String(rawValue ?? '').trim()
+      .replace(/^[-\s○]+/, '')
+      .replace(/[\s,，、]/g, '');
+  }
+  function isTverTargetingTemplateDeviceText(rawValue){
+    return TVER_TARGETING_TEMPLATE_DEVICE_TEXTS.has(normalizeTverTargetingTemplateDeviceText(rawValue));
+  }
   function hasRealTargetingValue(rawValue){
     if(!rawValue) return false;
+    if(isTverTargetingTemplateDeviceText(rawValue)) return false;
     const tokens=String(rawValue).split(/\s+/);
     return tokens.some(token => {
-      let cleaned=token.replace(/^[-\s○]+/, '');
+      let cleaned=token.replace(/^[-\s○]+/, '').replace(/,$/, '');
       if(!cleaned) return false;
       if(cleaned.startsWith('※')) return false;
       if(cleaned==='ADGをSPPC/CTVで分ける' || cleaned==='ADGをSP/CTVで分ける') return false;
+      // 独立した OS指定なし 注記のみ。同じ行に追加された実値は別 token として評価する。
+      if(cleaned==='OS指定なし') return false;
       return true;
     });
   }
@@ -5027,6 +5049,21 @@
         return tokens.length===1 ? tokens[0]==='CTV' ? 'CTV' : 'SP' : null;
       };
       const actualRoles=g=>[...new Set(tverCsvIdentityValues(g,'adgroup_name','adGroupName').map(value=>{const match=value.match(/(?:^|[_\s-])(SPPC|SP|CTV)$/);return match ? match[1]==='CTV' ? 'CTV' : 'SP' : null;}))];
+      // NO001（6299）：CPN訴求とターゲティング名が同一年齢表記の場合、P25 の任意トークン
+      // （ターゲティング名）を省略した CSV 名が実在する。省略できるのは「CPN訴求で既に
+      // 表されている部分」だけで、残りが DMP 識別子のときに限る。設定表の CPN訴求・
+      // ターゲティング名・DMP 識別子・Device 接尾辞以外は一切使わない。
+      const appealToken=String(parent && parent.fields && parent.fields.campaignAppeal || '').trim();
+      const optionalTargetingNameVariants=(anchor,target,suffix)=>{
+        const variants=[];
+        if(!appealToken) return variants;
+        if(target===appealToken) variants.push(anchor+suffix);
+        else if(target.startsWith(appealToken+'_')){
+          const remainder=target.slice(appealToken.length+1);
+          if(/^DMP(?:_|$)/.test(remainder)) variants.push(anchor+'_'+remainder+suffix);
+        }
+        return variants;
+      };
       const nameCandidates=g=>{
         const explicit=String(g.expectedName || '');if(explicit){const exact=candidates.filter(c=>tverCsvIdentityValues(c,'adgroup_name','adGroupName').includes(explicit));if(exact.length)return exact;}
         const role=sourceRole(g);
@@ -5035,7 +5072,13 @@
         if(target===undefined || !source || String(source.rawValue)!==target)return [];
         const same=siblings.filter(s=>s.displayIdentity && s.displayIdentity.targetingName===target);
         const suffixes=same.length===1 ? ['', '_CTV','_SPPC','_SP'] : role ? role==='CTV' ? ['_CTV'] : ['_SPPC','_SP'] : [];
-        const names=new Set(anchors.flatMap(anchor=>suffixes.map(suffix=>anchor+(target ? '_'+target : '')+suffix)));
+        const names=new Set(anchors.flatMap(anchor=>suffixes.flatMap(suffix=>{
+          const full=anchor+(target ? '_'+target : '')+suffix;
+          const variants=[full];
+          // 省略形は anchor が CPN訴求で終わる場合のみ（設定表の expectedName / CSV CP 名が証拠）。
+          if(anchor.endsWith('_'+appealToken)) variants.push(...optionalTargetingNameVariants(anchor,target,suffix));
+          return variants;
+        })));
         return candidates.filter(c=>tverCsvIdentityValues(c,'adgroup_name','adGroupName').some(name=>names.has(name)));
       };
       const sourceSignature=g=>{const ads=(model.ads || []).filter(a=>a.parentKey===g.key);return ads.length && ads.every(a=>String(a.expectedName || '')!=='') ? JSON.stringify(ads.map(a=>a.expectedName).sort()) : null;};
@@ -6988,6 +7031,23 @@
     if(components.campaignName && components.start && components.end
       && composeName(true)===expected && raw===composeName(false)){
       return {status:'表記ゆれ一致',reason:null,ruleBasis:'TVER_GROUP_NAME_P25_OPTIONAL_TARGETING_OMITTED'};
+    }
+    // NO001（6299）：CPN訴求と重複する年齢部分だけを省略し、DMP 識別子を残す実例。
+    // 期待名の構成要素（campaignName / 期間 / CPN訴求 / ターゲティング名 / Device 接尾辞）から
+    // 厳密に再構成でき、重複部分が CPN訴求そのもの + '_DMP' の場合だけを許容する。
+    if(components.campaignName && components.start && components.end){
+      const appeal=String(components.appeal || '');
+      const targetName=String(components.targetingName || '');
+      if(appeal && targetName.startsWith(appeal+'_')){
+        const remainder=targetName.slice(appeal.length+1);
+        if(/^DMP(?:_|$)/.test(remainder)){
+          const omitted=`${components.campaignName}_${components.start}-${components.end}`
+            +`_${appeal}_${remainder}`+(declared ? `_${declared}` : '');
+          if(composeName(true)===expected && raw===omitted){
+            return {status:'表記ゆれ一致',reason:null,ruleBasis:'TVER_GROUP_NAME_P25_DUPLICATE_APPEAL_OMITTED'};
+          }
+        }
+      }
     }
     return null;
   }
