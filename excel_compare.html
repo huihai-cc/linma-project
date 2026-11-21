@@ -304,6 +304,136 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
 /* 窄屏隐藏 Build 标记（信息性，不占位业务功能），避免 400px 横向溢出 */
 @media (max-width: 900px) { #xlcomp-build-id { display: none; } }
 </style>
+<style>
+/* ===== NO001 双显示模式（2026-11-21）：简洁显示 / 详细显示 =====
+   全部选择器限定在 #xlcomp-view-switch / #xlcomp-simple-result / .dv-hidden 内，
+   不改动既有结果区（#xlcomp-unified-nav / #xlcomp-result）的任何既有规则。 */
+#xlcomp-view-switch{display:none;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 12px;padding:10px 14px;background:#fff;border:1px solid #c9d4e0;border-radius:8px;box-shadow:0 1px 2px rgba(15,32,52,.06);}
+#xlcomp-view-switch.is-ready{display:flex;}
+#xlcomp-view-switch .dv-label{font-size:14px;font-weight:700;color:#2c3e50;font-family:inherit;}
+#xlcomp-view-switch .dv-btn{font-family:inherit;font-size:15px;font-weight:700;color:#22405c;background:#f2f6fb;border:1px solid #b9cfe4;border-radius:6px;padding:6px 18px;cursor:pointer;}
+#xlcomp-view-switch .dv-btn:hover{background:#e4eefa;}
+#xlcomp-view-switch .dv-btn[aria-pressed="true"]{background:#1f6feb;border-color:#1f6feb;color:#fff;}
+#xlcomp-view-switch .dv-hint{margin-left:auto;font-size:13px;color:#4a5a6a;}
+#xlcomp-view-switch .dv-btn:focus-visible{outline:3px solid #7aa7e8;outline-offset:2px;}
+.dv-hidden{display:none !important;}
+#xlcomp-simple-result{display:none;font-family:'Yu Gothic UI','Meiryo UI','Meiryo','Microsoft YaHei',sans-serif;color:#22303c;}
+#xlcomp-simple-result.is-active{display:block;}
+#xlcomp-simple-result .dv-panel{background:#fff;border:1px solid #c9d4e0;border-radius:8px;padding:14px 16px;margin-bottom:12px;}
+#xlcomp-simple-result .dv-headline{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+#xlcomp-simple-result .dv-total-label{font-size:15px;font-weight:700;color:#2c3e50;}
+#xlcomp-simple-result .dv-total-value{font-size:30px;line-height:1;font-weight:800;color:#b3261e;font-family:'Yu Gothic UI','Meiryo UI','Microsoft YaHei',sans-serif;}
+#xlcomp-simple-result .dv-total-value[data-zero="1"]{color:#0f5f51;}
+#xlcomp-simple-result .dv-total-unit{font-size:15px;color:#4a5a6a;}
+#xlcomp-simple-result .dv-chips{display:flex;flex-wrap:wrap;gap:8px;}
+#xlcomp-simple-result .dv-chip{font-family:inherit;font-size:15px;color:#22303c;background:#f7f9fc;border:1px solid #c9d4e0;border-radius:999px;padding:7px 15px;cursor:pointer;}
+#xlcomp-simple-result .dv-chip b{font-size:16px;margin-left:2px;}
+#xlcomp-simple-result .dv-chip[aria-pressed="true"]{border-color:#1f6feb;background:#e8f1ff;box-shadow:inset 0 0 0 1px #1f6feb;font-weight:700;}
+#xlcomp-simple-result .dv-chip[data-state="diff"]{border-color:#e0a9a4;background:#fdecea;color:#8a2027;}
+#xlcomp-simple-result .dv-chip[data-state="diff"][aria-pressed="true"]{border-color:#b3261e;box-shadow:inset 0 0 0 1px #b3261e;}
+#xlcomp-simple-result .dv-chip[data-state="partial"]{border-color:#e2c086;background:#fff7e8;color:#7a4a00;}
+#xlcomp-simple-result .dv-chip[data-state="failed"]{border-color:#d98b84;background:#fdecea;color:#8a2027;font-weight:700;}
+#xlcomp-simple-result .dv-chip[data-state="unchecked"]{color:#4a5a6a;background:#f2f4f7;}
+#xlcomp-simple-result .dv-chip:focus-visible{outline:3px solid #7aa7e8;outline-offset:2px;}
+#xlcomp-simple-result .dv-notes{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+#xlcomp-simple-result .dv-note{font-size:13px;padding:4px 10px;border-radius:6px;background:#f2f4f7;color:#33475b;border:1px solid #d7dee7;font-family:inherit;}
+#xlcomp-simple-result button.dv-note{cursor:pointer;}
+#xlcomp-simple-result .dv-note[data-state="partial"]{background:#fff7e8;border-color:#e2c086;color:#7a4a00;font-weight:700;}
+#xlcomp-simple-result .dv-note[data-state="failed"]{background:#fdecea;border-color:#d98b84;color:#8a2027;font-weight:700;}
+#xlcomp-simple-result .dv-note[data-state="pass"]{color:#0f5f51;}
+#xlcomp-simple-result .dv-note[data-state="diff"]{background:#fdecea;border-color:#e0a9a4;color:#8a2027;font-weight:700;}
+#xlcomp-simple-result .dv-table-title{font-size:15px;font-weight:700;color:#2c3e50;margin-bottom:8px;}
+#xlcomp-simple-result .dv-table-wrap{overflow:auto;max-height:520px;border:1px solid #dde4ec;border-radius:6px;}
+#xlcomp-simple-result table.dv-table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px;}
+#xlcomp-simple-result table.dv-table th{position:sticky;top:0;z-index:2;background:#eef3f8;color:#2c3e50;text-align:left;padding:8px 10px;border-bottom:2px solid #c9d4e0;font-size:13px;white-space:nowrap;}
+#xlcomp-simple-result table.dv-table td{padding:8px 10px;border-bottom:1px solid #e7ecf2;vertical-align:top;}
+#xlcomp-simple-result table.dv-table tbody tr:nth-child(even){background:#fbfcfe;}
+#xlcomp-simple-result .dv-sheet{font-weight:600;max-width:180px;word-break:break-all;}
+#xlcomp-simple-result .dv-loc{white-space:nowrap;color:#33475b;}
+#xlcomp-simple-result .dv-a,#xlcomp-simple-result .dv-b{max-width:280px;word-break:break-word;}
+#xlcomp-simple-result .dv-type{white-space:nowrap;color:#8a2027;font-weight:600;}
+#xlcomp-simple-result .dv-addr{display:inline-block;min-width:42px;color:#1f4e79;font-weight:700;margin-right:4px;font-family:'Consolas','Yu Gothic UI',monospace;}
+#xlcomp-simple-result .dv-mono{font-family:'Consolas','Yu Gothic UI',monospace;}
+#xlcomp-simple-result .dv-value{color:#22303c;}
+#xlcomp-simple-result .dv-fmt{margin-top:2px;font-family:'Consolas','Yu Gothic UI',monospace;font-size:13px;color:#4a5a6a;}
+#xlcomp-simple-result .dv-muted{color:#4a5a6a;font-size:13px;}
+#xlcomp-simple-result .dv-more{margin-top:2px;font-size:13px;color:#4a5a6a;}
+#xlcomp-simple-result .dv-swatch{display:inline-block;width:14px;height:14px;border:1px solid #8c9aa8;border-radius:3px;vertical-align:-2px;margin-right:5px;}
+#xlcomp-simple-result .dv-table-foot{margin-top:8px;font-size:13px;color:#4a5a6a;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+#xlcomp-simple-result .dv-more-btn{font-family:inherit;font-size:14px;padding:5px 14px;border-radius:6px;border:1px solid #b9cfe4;background:#f2f6fb;color:#22405c;cursor:pointer;font-weight:700;}
+#xlcomp-simple-result .dv-empty{padding:16px;border-radius:6px;font-size:15px;border:1px solid #dde4ec;background:#fbfcfe;color:#33475b;}
+#xlcomp-simple-result .dv-empty[data-state="pass"]{background:#eef8f4;border-color:#a8d8c9;color:#0f5f51;font-weight:700;}
+#xlcomp-simple-result .dv-empty[data-state="partial"]{background:#fff7e8;border-color:#e2c086;color:#7a4a00;font-weight:700;}
+#xlcomp-simple-result .dv-empty[data-state="failed"]{background:#fdecea;border-color:#d98b84;color:#8a2027;font-weight:700;}
+#xlcomp-simple-result .dv-details{border:1px solid #c9d4e0;border-radius:8px;background:#fff;padding:0 16px;margin-bottom:12px;}
+#xlcomp-simple-result .dv-details>summary{cursor:pointer;padding:12px 0;font-size:15px;font-weight:700;color:#22405c;}
+#xlcomp-simple-result .dv-details-body{padding-bottom:14px;font-size:14px;color:#22303c;}
+#xlcomp-simple-result .dv-details-body h4{margin:14px 0 6px;font-size:14px;color:#2c3e50;}
+#xlcomp-simple-result .dv-opt-list{margin:0;padding-left:20px;font-size:14px;columns:2;}
+#xlcomp-simple-result .dv-opt-list li[data-on="false"]{color:#4a5a6a;}
+
+/* ===== NO001-FIX1：Sheet 列表恢复常时显示 ===== */
+/* 「高级选项 · 选择 Sheet」开关已失去作用（列表始终显示），保留 DOM 但不再呈现 */
+#xlcomp-advanced-option{display:none !important;}
+/* 勾选状态一眼可辨：已勾选＝左侧红条，未勾选＝浅底（非表示项另有灰化样式，来自既有内联样式） */
+#xlcomp-sheet-list label:has(.xlcomp-sheet-cb:checked){border-color:#c0392b !important;box-shadow:inset 3px 0 0 #e74c3c;}
+#xlcomp-sheet-list label:has(.xlcomp-sheet-cb:not(:checked)){background:#f7f9fc !important;border-color:#d7dee7 !important;}
+#xlcomp-sheet-list label:has(.xlcomp-sheet-cb:not(:checked)) > span{color:#4a5a6a !important;}
+#xlcomp-sheet-list .xlcomp-sheet-cb{width:16px;height:16px;cursor:pointer;flex:0 0 auto;}
+/* Sheet 选择摘要（已勾选 / 全部 / 非表示） */
+#xlcomp-dv-sheet-summary{margin:0 0 10px;padding:8px 12px;border:1px solid #c9d4e0;border-radius:6px;background:#f2f6fb;color:#22405c;font-size:14px;font-weight:700;font-family:'Yu Gothic UI','Meiryo UI','Meiryo','Microsoft YaHei',sans-serif;}
+#xlcomp-dv-sheet-summary[data-warn="1"]{border-color:#e2c086;background:#fff7e8;color:#7a4a00;}
+#xlcomp-dv-sheet-summary .dv-sheet-summary-sub{font-weight:400;color:#4a5a6a;margin-left:8px;font-size:13px;}
+/* 简洁结果单卡片内的明细区 */
+#xlcomp-simple-result .dv-body{margin-top:12px;}
+
+/* ===== NO001-FIX1：旧版结果汇总条（对比结果 / 总差异 / 差异Sheet / 构成异常） ===== */
+#xlcomp-simple-result .dv-result-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid #e2e8ee;margin-bottom:10px;}
+#xlcomp-simple-result .dv-result-title{font-size:15px;color:#2c3e50;}
+#xlcomp-simple-result .dv-counter{font-size:13px;color:#33475b;background:#f2f6fb;border:1px solid #d7dee7;border-radius:6px;padding:3px 10px;}
+#xlcomp-simple-result .dv-counter[data-warn="1"]{background:#fff7e8;border-color:#e2c086;color:#7a4a00;font-weight:700;}
+#xlcomp-simple-result .dv-result-head .dv-total-value{font-size:22px;font-weight:800;color:#b3261e;margin:0 2px;line-height:1;}
+#xlcomp-simple-result .dv-result-head .dv-total-value[data-zero="1"]{color:#0f5f51;}
+/* Sheet 卡片行（每个 Sheet 的差异件数，可点击跳到该 Sheet 的结果块） */
+#xlcomp-simple-result .dv-sheet-chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
+#xlcomp-simple-result .dv-sheet-chip{font-family:inherit;font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid #c9d4e0;background:#fff;color:#33475b;cursor:pointer;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#xlcomp-simple-result .dv-sheet-chip[data-state="diff"]{border-color:#e0a9a4;background:#fdecea;color:#8a2027;font-weight:700;}
+#xlcomp-simple-result .dv-sheet-chip[data-state="onlyA"],#xlcomp-simple-result .dv-sheet-chip[data-state="onlyB"]{border-color:#e2c086;background:#fff7e8;color:#7a4a00;}
+#xlcomp-simple-result .dv-sheet-chip:focus-visible{outline:3px solid #7aa7e8;outline-offset:2px;}
+/* 旧版表格容器（沿用引擎渲染结果） */
+#xlcomp-simple-result .dv-simple-body>section{margin-bottom:14px;}
+
+/* ===== NO001-FIX2-1：Build 调试编号已从页面移除（C6），此规则仅作兜底的残留隐藏 ===== */
+#xlcomp-build-id{display:none !important;}
+
+/* ===== NO001-FIX2-2：条件格式只给一条中性提示 ===== */
+#xlcomp-simple-result .dv-note[data-state="cf"]{background:#eef4fb;border-color:#b9cfe4;color:#1f4e79;}
+#xlcomp-simple-result .dv-chip[data-state="cf"]{border-color:#b9cfe4;background:#f2f7fd;color:#1f4e79;}
+#xlcomp-simple-result .dv-chip[data-state="cf"][aria-pressed="true"]{border-color:#1f6feb;box-shadow:inset 0 0 0 1px #1f6feb;}
+
+/* ===== NO001-FIX2-4：详细模式不再大面积吸顶 ===== */
+/* 原有 #xlcomp-unified-nav 整块 sticky（含检查结果表）会在 1710x900 下遮住差异表；
+   改为普通文档流，保留原有的 scroll-margin-top 以便 scrollIntoView 不被门户 Header 遮挡。 */
+#xlcomp-unified-nav{position:static !important;}
+
+/* 检查结果（所选项目）折叠区 */
+#xlcomp-business-results .dv-check-details>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0;font-size:14px;font-weight:700;color:#22405c;}
+#xlcomp-business-results .dv-check-details>summary::-webkit-details-marker{display:none;}
+#xlcomp-business-results .dv-check-details>summary::before{content:'▶';font-size:11px;color:#4a5a6a;}
+#xlcomp-business-results .dv-check-details[open]>summary::before{content:'▼';}
+#xlcomp-business-results .dv-check-details[open]>summary{margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #e2e8ee;}
+#xlcomp-business-results .dv-check-title{font-size:14px;}
+#xlcomp-business-results .dv-check-toggle{font-weight:400;color:#4a5a6a;font-size:13px;}
+#xlcomp-business-results .dv-check-details[open] .dv-when-closed{display:none;}
+#xlcomp-business-results .dv-check-details:not([open]) .dv-when-open{display:none;}
+#xlcomp-business-results .dv-check-hint{font-weight:700;color:#8a2027;background:#fdecea;border:1px solid #e0a9a4;border-radius:6px;padding:1px 8px;font-size:13px;}
+#xlcomp-business-results .dv-check-details>summary:focus-visible{outline:3px solid #7aa7e8;outline-offset:2px;}
+@media (max-width:640px){
+  #xlcomp-view-switch .dv-hint{display:none;}
+  #xlcomp-simple-result .dv-total-value{font-size:26px;}
+  #xlcomp-simple-result .dv-opt-list{columns:1;}
+}
+</style>
 </head>
 <body>
 <script src="qc-auth.js"></script>
@@ -330,7 +460,7 @@ button { border:none; border-radius:4px; padding:8px 18px; font-size:0.88rem; fo
     user: u,
     logo: 'assets/brand/huihai-logo.png',
     logoAlt: '惠海信息技术',
-    brandActions: '<span id="xlcomp-build-id" style="font-size:.66rem;color:rgba(255,255,255,.55);white-space:nowrap;">Build: FASTMODE-DEBUG-20260724-01</span><button type="button" class="qc-slot-btn qc-lang-btn" id="langZh" onclick="qcHeaderLang(\'zh-CN\')">中文</button><span class="qc-slot-sep">|</span><button type="button" class="qc-slot-btn qc-lang-btn" id="langJa" onclick="qcHeaderLang(\'ja-JP\')">日本語</button>'
+    brandActions: '<!-- Build 表示は NO001-FIX2 で削除（内部 XLCOMP_BUILD_ID は維持） --><button type="button" class="qc-slot-btn qc-lang-btn" id="langZh" onclick="qcHeaderLang(\'zh-CN\')">中文</button><span class="qc-slot-sep">|</span><button type="button" class="qc-slot-btn qc-lang-btn" id="langJa" onclick="qcHeaderLang(\'ja-JP\')">日本語</button>'
   });
 })();
 </script>
@@ -532,6 +662,15 @@ function qcHeaderLang(lang){
   </div>
 </div>
 
+<!-- NO001 双显示模式：结果区上方的「简洁显示 / 详细显示」切换（默认简洁显示） -->
+<div id="xlcomp-view-switch" role="group" aria-label="表示モード">
+  <span class="dv-label" id="xlcomp-dv-title">显示模式</span>
+  <button type="button" class="dv-btn" id="xlcomp-dv-btn-simple" aria-pressed="true" onclick="xlcompDualSetMode('simple')">简洁显示</button>
+  <button type="button" class="dv-btn" id="xlcomp-dv-btn-detailed" aria-pressed="false" onclick="xlcompDualSetMode('detailed')">详细显示</button>
+  <span class="dv-hint" id="xlcomp-dv-hint">同一份比较结果，仅切换显示方式</span>
+</div>
+<!-- 简洁显示结果容器（与 #xlcomp-result 互斥显示，不重复渲染） -->
+<div id="xlcomp-simple-result" aria-live="polite"></div>
 <!-- 結果 -->
 <div id="xlcomp-result"></div>
 
@@ -1942,13 +2081,11 @@ async function runXlComp(){
     }finally{
         xlcompSetStandardBusy(false);
     }
-    const sheets=[...new Set([...xlcompWbA.SheetNames,...xlcompWbB.SheetNames])];
-    if(document.getElementById('xlcomp-limit-sheets').checked){
-        _showSheetSelect();
-    }else{
-        document.getElementById('xlcomp-sheet-select').style.display='none';
-        return doXlComp(sheets);
-    }
+    // NO001-FIX1（业务变更，已批准）：普通 Excel 模式恢复旧版流程——读完 A/B 后始终先显示
+    // 「全部 Sheet 列表」，由用户确认勾选后再开始比较；不再需要「高级选项 · 选择 Sheet」开关。
+    // 比较范围仍严格等于勾选集：doXlComp() 只读取 .xlcomp-sheet-cb:checked，
+    // 未勾选（含默认不勾选的「非表示」）的 Sheet 不会进入比较。
+    return _showSheetSelect();
 }
 
 function xlcompIsComparisonActive(){
@@ -2193,6 +2330,9 @@ function _showSheetSelect(){
         if(isHugeSheet) sizeTag=`<span style="background:#e74c3c;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;margin-left:4px;">⚠️ ${(rowCount/10000).toFixed(0)}万行</span>`;
         else if(isLargeSheet) sizeTag=`<span style="background:#f39c12;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;margin-left:4px;">${rowCount.toLocaleString()}行</span>`;
 
+        // NO001-FIX1（业务变更，已批准）：默认勾选恢复旧版口径——
+        // 可见 + 行数<5000 + 非超大表；「非表示」(Hidden=1/2) 默认不勾选。
+        const defaultCheck=rowCount<5000&&!isHidden&&!isHugeSheet;
         const item=document.createElement('label');
         const hiddenStyle=isHidden?'background:#f0f0f0;border:1px solid #ccc;opacity:0.6;':
                           isHugeSheet?'background:#fff5f5;border:1px solid #f5b7b1;':
@@ -2200,11 +2340,11 @@ function _showSheetSelect(){
         item.style.cssText=`display:flex;align-items:center;gap:6px;${hiddenStyle}border-radius:6px;padding:6px 12px;cursor:pointer;font-size:0.82rem;transition:all 0.15s;`;
         const hiddenTag=isHidden?'<span style="background:#95a5a6;color:white;border-radius:3px;padding:1px 5px;font-size:0.7rem;">非表示</span>':'';
         item.innerHTML=`
-            <input type="checkbox" class="xlcomp-sheet-cb" data-sheet="${xlcompEscapeAttr(name)}" checked
+            <input type="checkbox" class="xlcomp-sheet-cb" data-sheet="${xlcompEscapeAttr(name)}" data-hidden="${isHidden?1:0}"${defaultCheck?' checked':''}
                    style="accent-color:#e74c3c;">
             <span style="color:${isHidden?'#999':'#333'}">${esc(name)}</span>
             ${statusTag}${sizeTag}${hiddenTag}
-            <span style="color:#bbb;font-size:0.72rem;">${rowCount.toLocaleString()}行</span>
+            ${(isLargeSheet||isHugeSheet)?'':`<span style="color:#bbb;font-size:0.72rem;">${rowCount.toLocaleString()}行</span>`}
         `;
         item.addEventListener('mouseenter',()=>{ if(!isHidden) item.style.borderColor='#e74c3c'; });
         item.addEventListener('mouseleave',()=>{ item.style.borderColor=isHugeSheet?'#f5b7b1':'#ddd'; });
@@ -2233,9 +2373,29 @@ function _showSheetSelect(){
         listDiv.parentNode.insertBefore(warn, listDiv);
     }
 
-    document.getElementById('xlcomp-sheet-select').style.display='block';
+    // NO001-FIX1：Sheet 隐藏属性可读性检查——任一侧无法取得 Hidden 时明确标注限制，
+    // 不做「按可见处理」以外的任何猜测；此时非隐藏项仍按行数口径默认勾选。
+    const metaMissing=(wb)=>{
+        if(!wb||!Array.isArray(wb.SheetNames)) return true;
+        const meta=wb.Workbook&&Array.isArray(wb.Workbook.Sheets)?wb.Workbook.Sheets:null;
+        if(!meta) return true;
+        return wb.SheetNames.some(n=>{const hit=meta.find(s=>s&&s.name===n);return !hit||hit.Hidden===undefined;});
+    };
+    const hiddenMetaLimited=metaMissing(xlcompWbA)||metaMissing(xlcompWbB);
+    window.__xlcompHiddenMetaLimited=hiddenMetaLimited;
+    const sheetBox=document.getElementById('xlcomp-sheet-select');
+    sheetBox.querySelectorAll('.xlcomp-hidden-meta-note').forEach(node=>node.remove());
+    if(hiddenMetaLimited){
+        const note=document.createElement('div');
+        note.className='xlcomp-hidden-meta-note';
+        note.style.cssText='background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 14px;margin-bottom:10px;font-size:0.82rem;color:#856404;';
+        note.textContent=xlcompText('hiddenMetaLimited');
+        listDiv.parentNode.insertBefore(note, listDiv);
+    }
+    sheetBox.style.display='block';
     document.getElementById('xlcomp-result').innerHTML='';
     _xlcompSyncCompareEntryButtons();
+    sheetBox.scrollIntoView({block:'start'});
 }
 
 function xlcompSelectAll(val){
@@ -3281,6 +3441,8 @@ const XLCOMP_LOCAL_TEXT={
     fontAndContent:['内容／字体色','内容／文字色'], valueAndFormat:['值／格式','値／表示形式'],
     alsoContent:['同时存在内容差异','セル内容にも差異あり'], empty:['空','空欄'],
     advanced:['高级选项 · 选择 Sheet','詳細設定 · シートを選択'],
+    hiddenMetaLimited:['该文件格式无法读取 Sheet 的隐藏状态：列表按「可见」显示，隐藏 Sheet 可能被误判，请人工确认后再比较。',
+        'この形式ではシートの非表示状態を読み取れません：一覧は「表示」として扱うため、非表示シートを誤認する可能性があります。比較前にご確認ください。'],
     export:['导出 HTML','HTML出力'], prev:['上一差异','前の差異'], next:['下一差异','次の差異'],
     allDiffs:['跨分类定位','全項目を移動'], allSheets:['全部 Sheet','全シート'],
     sheetFilter:['差异定位的 Sheet','差異移動の対象シート'],
@@ -6583,8 +6745,8 @@ function syncFlags(){
   try{ if(typeof xlcompResults!=='undefined'&&xlcompResults){ xlcompClearResult(); const nav=el('xlcomp-unified-nav'); if(nav) nav.hidden=true; const bt=el('xlcomp-business-results'); if(bt) bt.innerHTML=''; const ds=el('xlcomp-display-summary'); if(ds) ds.innerHTML=''; } }catch(e){}
 }
 window.xlcompSelectAllOptions=function(v){ORDER.forEach(c=>{const b=box(c); if(b) b.checked=!!v;}); syncFlags();};
-window.xlcompResetCompareOptions=function(){ORDER.forEach(c=>{const b=box(c); if(b) b.checked=(c==='cell');}); try{xlcompFormulaResults=null;xlcompTextboxResults=null;}catch(e){} syncFlags();};
-window.xlcompResetOptions=function(){ORDER.forEach(c=>{const b=box(c); if(b) b.checked=(c==='cell');}); syncFlags();};
+window.xlcompResetCompareOptions=function(){ORDER.forEach(c=>{const b=box(c); if(b) b.checked=true;}); try{xlcompFormulaResults=null;xlcompTextboxResults=null;}catch(e){} syncFlags();};
+window.xlcompResetOptions=function(){ORDER.forEach(c=>{const b=box(c); if(b) b.checked=true;}); syncFlags();};
 window.xlcompOnCompareOptChange=syncFlags;
 
 function precheckXlsb(){
@@ -6707,9 +6869,9 @@ window.xlcompShowUnifiedNav=function(){
   const limitCats=new Set();
   (xlcompLimits||[]).forEach(l=>{[l.category,...(Array.isArray(l.categories)?l.categories:[])].filter(Boolean).forEach(c=>limitCats.add(c));});
   if(![...limitCats].some(c=>sel.has(c))){const sc=document.querySelector('.xlcomp-uncompared-scope');if(sc)sc.style.display='none';}
-  window.xlcompDetailsCollapsed=true;
-  hideDetails();
-  setTimeout(function(){ if(window.xlcompDetailsCollapsed) hideDetails(); },0);
+  // NO001-FIX2（业务变更，已批准）：不再自动收起实际差异表。
+  // 详细模式只把「检查结果（所选项目）」放入折叠区，分类差异表默认可见。
+  window.xlcompDetailsCollapsed=false;
 };
 
 // --- A2: unselected limits/warnings/export diff summary ---
@@ -6756,7 +6918,7 @@ const origRenderCurrent=window._xlcompRenderCurrentView;
 window._xlcompRenderCurrentView=function(result,view,exportMode){
   if(exportMode&&!selectedSet().has(view)){ if(result) result.innerHTML=''; return; }
   const r=origRenderCurrent.apply(this,arguments);
-  if(!exportMode&&result===el('xlcomp-result')&&window.xlcompDetailsCollapsed) hideDetails();
+  // NO001-FIX2：结果渲染后保持可见（不再联动 hideDetails）
   return r;
 };
 window.xlcompShowDetails=showDetails; window.xlcompHideDetails=hideDetails;
@@ -6820,8 +6982,10 @@ function init(){
   const cellOpt=[...document.querySelectorAll('#xlcomp-compare-options .xlcomp-compare-option')].find(x=>x.querySelector('[data-i18n="compareCellContentOpt"]'));
   if(cellOpt&&!el('xlcomp-cell')) cellOpt.outerHTML='<label id="xlcomp-opt-label-cell" class="xlcomp-compare-option"><span class="xlcomp-option-name" data-i18n="compareCellContentOpt">单元格内容</span><input type="checkbox" id="xlcomp-cell" checked onchange="xlcompOnCompareOptChange()"></label>';
   const structOpt=[...document.querySelectorAll('#xlcomp-compare-options .xlcomp-compare-option')].find(x=>x.querySelector('[data-xlcomp-label="structure"]'));
-  if(structOpt&&!el('xlcomp-structure')) structOpt.outerHTML='<label id="xlcomp-opt-label-structure" class="xlcomp-compare-option"><span class="xlcomp-option-name" data-xlcomp-label="structure">Sheet构成</span><input type="checkbox" id="xlcomp-structure" onchange="xlcompOnCompareOptChange()"></label>';
-  ['bgcolor','fontcolor','numfmt','formula','textbox','border'].forEach(c=>{const b=el('xlcomp-'+c);if(b)b.checked=false;});
+  if(structOpt&&!el('xlcomp-structure')) structOpt.outerHTML='<label id="xlcomp-opt-label-structure" class="xlcomp-compare-option"><span class="xlcomp-option-name" data-xlcomp-label="structure">Sheet构成</span><input type="checkbox" id="xlcomp-structure" checked onchange="xlcompOnCompareOptChange()"></label>';
+  // NO001-FIX2（业务变更，已批准）：首次打开默认勾选全部 8 类检查项目。
+  // 不支持的项目仍由 xlcompUpdateOptionAvailability() 按模式禁用并取消勾选。
+  ['bgcolor','fontcolor','numfmt','formula','textbox','border'].forEach(c=>{const b=el('xlcomp-'+c);if(b)b.checked=true;});
   const opts=el('xlcomp-compare-options');
   if(opts&&!el('xlcomp-opt-toolbar')){
     const bar=document.createElement('span');bar.id='xlcomp-opt-toolbar';bar.className='xlcomp-opt-toolbar';
@@ -6837,6 +7001,504 @@ function init(){
   syncFlags();
 }
 init();
+})();
+</script>
+<script>
+/* ===================================================================
+ * NO001 EXCEL DUAL VIEW — 简洁显示 / 详细显示（2026-11-21）
+ * -------------------------------------------------------------------
+ * 设计原则
+ *  1) 单一比较引擎 + 统一结果数据 + 双显示层。本块只做「显示」。
+ *  2) 不修改 compareSheet / xlcompCompareBorders / 条件格式签名 / 预算与裁剪
+ *     / 差异计数口径 / 导出逻辑中的任何一行。
+ *  3) 切换显示模式不重新读取文件、不重新执行比较、不修改比较设置或导出范围。
+ *  4) 默认简洁显示；详细显示＝改造前的既有界面（整块原样保留）。
+ *  5) 只渲染当前显示模式：简洁模式不构建详细结果 DOM，反之亦然（避免双份大 DOM）。
+ *  数据源（只读）：
+ *    xlcompResults / xlcompUnifiedIndex / xlcompBorderDiffs / xlcompFormulaResults /
+ *    xlcompTextboxResults / xlcompSheetStructureDiff / xlcompLimits /
+ *    xlcompCategoryIssues / xlcompSheetSummaryData()
+ * =================================================================== */
+(function(){
+'use strict';
+
+var DV_PAGE = 200;
+var DV = { mode:'simple', view:'cell', limit:DV_PAGE, detailedReady:false, renderedView:null };
+
+function L(zh,ja){ return (typeof getLanguage==='function' && getLanguage()==='ja-JP') ? ja : zh; }
+function gid(id){ return document.getElementById(id); }
+function esc(s){ return String(s===null||s===undefined?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s){ return esc(s).replace(/"/g,'&quot;'); }
+
+/* ---------- 检查项目勾选状态（与 NO033 层一致：直接读取实际复选框） ---------- */
+function dvSelected(cat){
+    var box=gid('xlcomp-'+cat);
+    if(!box) return cat==='cell';
+    return !!box.checked;
+}
+
+/* ---------- 旧版结果布局：按 Sheet 的差异件数（沿用引擎统一索引，不重新计算） ---------- */
+function dvPerSheetCounts(cat){
+    var map=Object.create(null);
+    (xlcompUnifiedIndex&&xlcompUnifiedIndex.items?xlcompUnifiedIndex.items:[]).forEach(function(item){
+        if(item.category!==cat) return;
+        map[item.sheet]=(map[item.sheet]||0)+1;
+    });
+    return map;
+}
+function dvSheetChipsHtml(cat){
+    var names=Object.keys(xlcompResults||{});
+    if(!names.length) return '';
+    var perSheet=dvPerSheetCounts(cat);
+    var chips=names.map(function(name){
+        var r=xlcompResults[name]||{};
+        var n=perSheet[name]||0;
+        var state=r.status==='only_a'?'onlyA':r.status==='only_b'?'onlyB':n?'diff':'pass';
+        var label=r.status==='only_a'?L('仅A有','Aのみ'):r.status==='only_b'?L('仅B有','Bのみ'):
+            n?n+L(' 处差异',' 件'):L('无差异','差異なし');
+        return '<button type="button" class="dv-sheet-chip" data-state="'+state+'" data-sheet="'+escAttr(name)+'"'+
+            ' onclick="xlcompDualJumpSheet(this.getAttribute(\'data-sheet\'))">'+esc(name)+' · '+esc(label)+'</button>';
+    });
+    return '<div class="dv-sheet-chips">'+chips.join('')+'</div>';
+}
+function dvHeadHtml(data){
+    var counts=(xlcompUnifiedIndex&&xlcompUnifiedIndex.counts)||{};
+    var structure=counts.structure||0;
+    var rows=data.rows||[];
+    /* 分母＝本次实际参与比较的 Sheet（勾选集，含仅A/仅B）；分子＝其中存在差异的 Sheet */
+    var compared=Object.keys(xlcompResults||{}).length;
+    var diffSheets=rows.filter(function(r){return r.diffTotal>0;}).length;
+    return '<div class="dv-result-head"><strong class="dv-result-title">'+L('对比结果','比較結果')+'</strong>'+
+        '<span class="dv-counter dv-total">'+L('总差异','差異合計')+' <b class="dv-total-value" data-zero="'+(data.diffTotal?0:1)+'">'+data.diffTotal+'</b> '+L('件','件')+'</span>'+
+        '<span class="dv-counter">'+L('差异Sheet','差異シート')+' '+diffSheets+' / '+compared+'</span>'+
+        (structure?'<span class="dv-counter" data-warn="1">⚠ '+L('Sheet构成异常','シート構成の差異')+' '+structure+' '+L('件','件')+'</span>':'')+
+        '</div>';
+}
+
+/* ---------- 分类标签 / 默认分类 ---------- */
+function dvCategoryStateKey(cat){
+    if(!dvSelected(cat)) return 'unchecked';
+    var st=xlcompCategoryState(cat);
+    if(st.state==='diff') return 'diff';
+    if(st.state==='pass') return 'pass';
+    if(st.state==='failed') return 'failed';
+    if(st.state==='unsupported'||st.state==='skipped') return 'unchecked';
+    /* FIX2-2：partial 再分两类——只剩条件格式影响范围时用中性「cf」，
+       存在真实未检查范围（裁剪/行列默认样式/解析失败等）才用「partial」警告。 */
+    var groups=xlcompLimitGroups(cat);
+    var nonCf=groups.filter(function(g){return !xlcompIsConditionalFormatItem(g);});
+    return nonCf.length?'partial':'cf';
+}
+
+/* ---------- FIX2-2：条件格式检测（只读结构化数据 xlcompLimits，不做文字匹配） ---------- */
+function dvCfState(){
+    var sel={}; xlcompCategories().forEach(function(c){ sel[c]=dvSelected(c); });
+    var compared={}; Object.keys(xlcompResults||{}).forEach(function(n){ compared[n]=1; });
+    var info=0,unknown=0,cats={};
+    (xlcompLimits||[]).forEach(function(item){
+        if(!xlcompIsConditionalFormatItem(item)) return;
+        var list=[item.category].concat(item.categories||[]).filter(Boolean);
+        if(!list.some(function(c){return sel[c];})) return;
+        if(item.sheet&&!compared[item.sheet]) return;      /* 只看本次真正参与比较的 Sheet */
+        if(item.cfUnknown||item.type==='condFormatDisplayUnknown') unknown++;
+        else info++;
+        list.forEach(function(c){ cats[c]=1; });
+    });
+    return {detected:(info+unknown)>0,info:info,unknown:unknown,cats:Object.keys(cats)};
+}
+
+/* 真实（非条件格式）部分检查的 Sheet 数 */
+function dvRealPartialCount(data){
+    var tally=(data&&data.tally)||{};
+    var partial=tally.partial||0;
+    if(!partial) return 0;
+    var cfOnly=0;
+    try{
+        cfOnly=(data.rows||[]).filter(function(row){
+            return typeof xlcompSheetIsCfInfoOnly==='function'&&xlcompSheetIsCfInfoOnly(row);
+        }).length;
+    }catch(err){ cfOnly=0; }
+    return Math.max(0,partial-cfOnly);
+}
+function dvDefaultView(){
+    var cats=xlcompCategories();
+    var firstDiff=cats.filter(function(c){return dvSelected(c)&&xlcompCategoryState(c).state==='diff';})[0];
+    if(firstDiff) return firstDiff;
+    var firstIssue=cats.filter(function(c){var s=dvCategoryStateKey(c);return s==='partial'||s==='failed';})[0];
+    return firstIssue||'cell';
+}
+
+/* ---------- 简洁显示渲染 ---------- */
+function dvChipsHtml(){
+    return xlcompCategories().map(function(cat){
+        var key=dvCategoryStateKey(cat);
+        var st=xlcompCategoryState(cat);
+        var value;
+        if(key==='unchecked') value=L('未检查','未比較');
+        else value=String(st.count||0);
+        var warn=(key==='partial'?' ⚠':key==='failed'?' ⚠':key==='cf'?' ⓘ':'');
+        return '<button type="button" class="dv-chip" data-cat="'+cat+'" data-state="'+key+'"'+
+            ' aria-pressed="'+(DV.view===cat)+'" onclick="xlcompDualSelect(\''+cat+'\')">'+
+            esc(xlcompText(cat))+' <b>'+esc(value)+'</b>'+warn+'</button>';
+    }).join('');
+}
+function dvScope(){
+    var boxes=document.querySelectorAll('.xlcomp-sheet-cb');
+    var compared=Array.isArray(window._xlcompSelectedSheets)?window._xlcompSelectedSheets.length:0;
+    return {total:boxes.length,compared:compared};
+}
+function dvNotesHtml(data){
+    var tally=data.tally||{},notes=[],scope=dvScope();
+    /* 比较范围：本次实际参与比较的 Sheet / 列表中的全部 Sheet（含非表示） */
+    if(scope.total) notes.push('<span class="dv-note" data-state="scope">'+
+        L('比较范围','比較範囲')+' '+scope.compared+' / '+scope.total+' '+L('Sheet','シート')+
+        L('（按上方列表勾选）','（上の一覧の選択どおり）')+'</span>');
+    /* FIX2-2：条件格式只给一条提示；解析不完整/无法确认影响范围时保留风险说明 */
+    var cf=dvCfState();
+    if(cf.detected){
+        if(cf.unknown){
+            notes.push('<span class="dv-note" data-state="partial">⚠ '+
+                L('条件格式解析不完整：'+cf.unknown+' 处影响范围无法确认（不视为已检查）',
+                  '条件付き書式の解析が不完全：'+cf.unknown+' 件の影響範囲を確認できません（未比較扱い）')+'</span>');
+        }else{
+            notes.push('<span class="dv-note" data-state="cf">ⓘ '+
+                L('检测到条件格式，规则及最终显示效果不在比较范围内',
+                  '条件付き書式を検出しました。ルールおよび最終的な表示結果は比較対象外です。')+'</span>');
+        }
+    }
+    /* 真实（非条件格式）部分检查仍单独提示 */
+    var realPartial=dvRealPartialCount(data);
+    if(realPartial) notes.push('<button type="button" class="dv-note" data-state="partial" onclick="xlcompDualShowReasons()">'+
+        L('部分检查','一部比較')+' '+realPartial+' '+L('Sheet','シート')+' · '+L('查看原因','原因を見る')+'</button>');
+    if(tally.failed) notes.push('<button type="button" class="dv-note" data-state="failed" onclick="xlcompDualShowReasons()">'+
+        L('检查失败','比較失敗')+' '+tally.failed+' '+L('Sheet','シート')+' · '+L('查看原因','原因を見る')+'</button>');
+    var unchecked=(tally.notSelected||0)+(tally.onlyA||0)+(tally.onlyB||0);
+    if(unchecked){
+        var parts=[];
+        if(tally.notSelected) parts.push(L('未选择','未選択')+' '+tally.notSelected);
+        if(tally.onlyA) parts.push(L('仅A有','Aのみ')+' '+tally.onlyA);
+        if(tally.onlyB) parts.push(L('仅B有','Bのみ')+' '+tally.onlyB);
+        notes.push('<span class="dv-note">'+L('未比较','未比較')+' '+unchecked+' '+L('Sheet','シート')+'（'+parts.join(' / ')+'）</span>');
+    }
+    return '<div class="dv-notes">'+notes.join('')+'</div>';
+}
+function dvEmptyStateHtml(cat){
+    if(!dvSelected(cat)) return '<div class="dv-empty" data-state="unchecked">'+L('未检查：当前没有选择该检查项目','未比較：この項目は選択されていません')+'</div>';
+    var st=xlcompCategoryState(cat);
+    if(st.state==='pass') return '<div class="dv-empty" data-state="pass">'+L('已确认无差异（检查范围已完整执行）','差異なし（比較範囲は完了しています）')+'</div>';
+    if(st.state==='failed') return '<div class="dv-empty" data-state="failed">'+L('检查失败：该项目无法确认，不能视为一致','比較失敗：この項目は確認できません。一致とは判定できません')+'</div>';
+    if(st.state==='unsupported'||st.state==='skipped') return '<div class="dv-empty" data-state="unchecked">'+L('未检查：当前文件格式或选项不支持该项目','未比較：現在の形式または設定では未対応です')+'</div>';
+    return '<div class="dv-empty" data-state="partial">'+L('没有已确认差异，但存在未检查范围，不能判定为完全一致','確定差異はありませんが未比較範囲があるため、完全一致とは判定できません')+'</div>';
+}
+function dvOptionsListHtml(){
+    return '<ul class="dv-opt-list">'+xlcompCategories().map(function(cat){
+        var on=dvSelected(cat);
+        return '<li data-on="'+on+'">'+(on?'☑':'☐')+' '+esc(xlcompText(cat))+'</li>';
+    }).join('')+'</ul>';
+}
+function dvDetailsHtml(data){
+    var sections=[];
+    /* FIX2-2：简洁模式只展示「非条件格式」的未检查范围；条件格式证据保留在详细显示与导出 */
+    var onlyNonCf=function(item){ return !xlcompIsConditionalFormatItem(item); };
+    var limitCats=xlcompCategories().filter(function(cat){
+        return dvSelected(cat)&&xlcompLimitGroups(cat,onlyNonCf).length>0;
+    });
+    if(limitCats.length){
+        limitCats.forEach(function(cat){
+            sections.push('<h4>'+esc(xlcompText(cat))+' · '+L('未检查范围与原因','未比較範囲と理由')+'</h4>'+
+                xlcompLimitTableHtml(cat,onlyNonCf));
+        });
+    }else{
+        sections.push('<h4>'+L('未检查范围与原因','未比較範囲と理由')+'</h4><p class="xlcomp-limit-note">'+L('没有未检查范围。','未比較範囲はありません。')+'</p>');
+    }
+    /* 条件格式的规则级证据不在简洁模式展开（避免重复大表）；详细显示/导出仍完整保留 */
+    if(dvCfState().detected){
+        sections.push('<p class="xlcomp-limit-note">'+L(
+            '条件格式的影响范围与规则明细请在「详细显示」或导出报告中查看。',
+            '条件付き書式の影響範囲とルール明細は「詳細表示」または出力レポートでご確認ください。')+'</p>');
+    }
+    sections.push('<h4>'+L('本次检查项目','今回の検査項目')+'</h4>'+dvOptionsListHtml());
+    return '<details class="dv-details" id="xlcomp-dv-details"><summary>'+
+        L('詳細情報（未检查范围 · 检查项目）','詳細情報（未比較範囲・検査項目）')+
+        '</summary><div class="dv-details-body">'+sections.join('')+'</div></details>';
+}
+function dvRender(){
+    var host=gid('xlcomp-simple-result');
+    if(!host) return;
+    if(!xlcompUnifiedIndex){ host.innerHTML=''; host.classList.remove('is-active'); return; }
+    var data=xlcompSheetSummaryData();
+    var cat=DV.view;
+    var count=(xlcompUnifiedIndex.counts&&xlcompUnifiedIndex.counts[cat])||0;
+
+    host.innerHTML='<div class="dv-panel">'+
+        dvHeadHtml(data)+
+        '<div class="dv-chips">'+dvChipsHtml()+'</div>'+
+        dvNotesHtml(data)+
+        dvSheetChipsHtml(cat)+
+        '<div class="dv-simple-body" id="dv-simple-body"></div>'+
+        '</div>'+
+        dvDetailsHtml(data);
+
+    var body=gid('dv-simple-body');
+    if(body){
+        if(count){
+            /* 沿用引擎既有渲染函数（与「详细显示」同一套表格），此处只换容器 */
+            _xlcompRenderCurrentView(body,cat,false);
+        }else{
+            body.innerHTML=dvEmptyStateHtml(cat);
+        }
+    }
+    host.classList.add('is-active');
+    dvApplyVisibility();
+}
+
+/* 点击 Sheet 卡片：滚动到该 Sheet 的结果块（不重算、不切换分类） */
+window.xlcompDualJumpSheet=function(sheetName){
+    var body=gid('dv-simple-body');
+    if(!body||!sheetName) return;
+    var sections=[].slice.call(body.querySelectorAll('section'));
+    var hit=sections.filter(function(node){
+        var h=node.querySelector('h3,div');
+        return h&&h.textContent.replace(/\s+/g,' ').trim().indexOf(sheetName)>=0;
+    })[0];
+    (hit||body).scrollIntoView({block:'start'});
+};
+
+/* ---------- 显示/隐藏与模式切换 ---------- */
+function dvSyncLabels(){
+    var title=gid('xlcomp-dv-title'),bs=gid('xlcomp-dv-btn-simple'),bd=gid('xlcomp-dv-btn-detailed'),hint=gid('xlcomp-dv-hint');
+    if(title) title.textContent=L('显示模式','表示モード');
+    if(bs) bs.textContent=L('简洁显示','簡易表示');
+    if(bd) bd.textContent=L('详细显示','詳細表示');
+    if(hint) hint.textContent=L('同一份比较结果，仅切换显示方式','同じ比較結果の表示だけを切り替えます');
+    var bar=gid('xlcomp-view-switch');
+    if(bar) bar.setAttribute('aria-label',L('显示模式','表示モード'));
+}
+function dvApplyVisibility(){
+    var ready=!!xlcompUnifiedIndex;
+    var bar=gid('xlcomp-view-switch');
+    if(bar) bar.classList.toggle('is-ready',ready);
+    var simple=gid('xlcomp-simple-result'),res=gid('xlcomp-result'),nav=gid('xlcomp-unified-nav');
+    var simpleOn=ready&&DV.mode==='simple';
+    if(simple) simple.classList.toggle('is-active',simpleOn);
+    [res,nav].forEach(function(node){ if(node) node.classList.toggle('dv-hidden',simpleOn); });
+    var bs=gid('xlcomp-dv-btn-simple'),bd=gid('xlcomp-dv-btn-detailed');
+    if(bs) bs.setAttribute('aria-pressed',String(DV.mode==='simple'));
+    if(bd) bd.setAttribute('aria-pressed',String(DV.mode==='detailed'));
+    dvSyncLabels();
+}
+function dvReset(){
+    DV.mode='simple'; DV.view='cell'; DV.limit=DV_PAGE; DV.detailedReady=false; DV.renderedView=null;
+    var simple=gid('xlcomp-simple-result');
+    if(simple){ simple.innerHTML=''; simple.classList.remove('is-active'); }
+    var bar=gid('xlcomp-view-switch');
+    if(bar) bar.classList.remove('is-ready');
+    dvApplyVisibility();
+}
+function dvSetMode(mode){
+    if(mode!=='simple'&&mode!=='detailed') return;
+    if(!xlcompUnifiedIndex) return;
+    if(mode==='detailed'){
+        /* 详细显示：整块沿用既有界面；只在「尚未渲染」或「已渲染分类 ≠ 当前分类」时补渲染。 */
+        var need=!DV.detailedReady||DV.renderedView!==DV.view;
+        DV.mode='detailed';
+        if(need){
+            origSwitchView.call(window,DV.view,false);
+            DV.detailedReady=true;
+            DV.renderedView=DV.view;
+        }
+    }else{
+        DV.mode='simple';
+    }
+    if(DV.mode==='simple') dvRender();
+    dvApplyVisibility();
+}
+
+/* ---------- 事件包装（只追加行为，不改既有函数体） ---------- */
+var origShowNav=window.xlcompShowUnifiedNav;
+window.xlcompShowUnifiedNav=function(){
+    var out=origShowNav.apply(this,arguments);
+    if(xlcompUnifiedIndex){
+        if(DV.mode==='simple'){
+            DV.view=dvDefaultView();
+            DV.limit=DV_PAGE;
+            dvRender();
+        }
+        dvApplyVisibility();
+    }
+    return out;
+};
+
+var origSwitchView=window.xlcompSwitchView;
+window.xlcompSwitchView=function(view,restore){
+    if(DV.mode==='simple'&&xlcompUnifiedIndex&&xlcompCategories().indexOf(view)>=0){
+        DV.view=view;
+        DV.limit=DV_PAGE;
+        dvRender();
+        if(restore&&gid('xlcomp-view-switch')) gid('xlcomp-view-switch').scrollIntoView({block:'start'});
+        return;
+    }
+    var out=origSwitchView.apply(this,arguments);
+    DV.detailedReady=true;
+    DV.renderedView=view;
+    return out;
+};
+
+var origRefreshLang=window.xlcompRefreshLocalLanguage;
+window.xlcompRefreshLocalLanguage=function(){
+    var keepView=DV.view;
+    var out=origRefreshLang.apply(this,arguments);
+    /* 既有刷新会重设详细视图分类；简洁显示需保持用户当前所选分类。 */
+    DV.view=keepView;
+    DV.detailedReady=false;
+    if(xlcompUnifiedIndex) dvRender();
+    dvApplyVisibility();
+    return out;
+};
+
+var origClearResult=window.xlcompClearResult;
+window.xlcompClearResult=function(){
+    var out=origClearResult.apply(this,arguments);
+    dvReset();
+    return out;
+};
+
+['xlcompSetMode','xlcompToggleFastMode','resetXlComp'].forEach(function(name){
+    var orig=window[name];
+    if(typeof orig!=='function') return;
+    window[name]=function(){
+        var out=orig.apply(this,arguments);
+        if(!xlcompUnifiedIndex) dvReset();
+        return out;
+    };
+});
+
+/* ---------- Sheet 选择摘要（已勾选 / 全部 / 非表示），与比较入口共用同一批复选框 ---------- */
+function dvSheetBoxes(){
+    return [].slice.call(document.querySelectorAll('#xlcomp-sheet-list .xlcomp-sheet-cb'));
+}
+function dvSheetSummaryText(){
+    var boxes=dvSheetBoxes();
+    if(!boxes.length) return null;
+    var checked=boxes.filter(function(b){return b.checked;}).length;
+    var hidden=boxes.filter(function(b){return b.dataset.hidden==='1';}).length;
+    var hiddenChecked=boxes.filter(function(b){return b.dataset.hidden==='1'&&b.checked;}).length;
+    var head=L('已勾选','選択済み')+' '+checked+' / '+boxes.length+' '+L('Sheet','シート');
+    var sub=[];
+    if(hidden) sub.push(L('非表示','非表示')+' '+hidden+L('（已勾选 '+hiddenChecked+'）','（選択 '+hiddenChecked+'）'));
+    if(!checked) sub.push(L('未选择任何 Sheet：请至少勾选 1 个','シートが未選択です：1 つ以上選択してください'));
+    return {text:head, sub:sub.join(' ・ '), checked:checked, total:boxes.length, hidden:hidden, hiddenChecked:hiddenChecked};
+}
+function dvRenderSheetSummary(){
+    var host=gid('xlcomp-sheet-select');
+    if(!host) return;
+    var bar=gid('xlcomp-dv-sheet-summary');
+    var info=dvSheetSummaryText();
+    if(!info){
+        if(bar) bar.remove();
+        return;
+    }
+    if(!bar){
+        bar=document.createElement('div');
+        bar.id='xlcomp-dv-sheet-summary';
+        bar.setAttribute('role','status');
+        bar.setAttribute('aria-live','polite');
+        var title=host.querySelector('h3');
+        if(title&&title.nextSibling) host.insertBefore(bar,title.nextSibling);
+        else host.insertBefore(bar,host.firstChild);
+    }
+    bar.dataset.warn=info.checked?'0':'1';
+    bar.textContent=info.text;
+    if(info.sub){
+        var sub=document.createElement('span');
+        sub.className='dv-sheet-summary-sub';
+        sub.textContent=info.sub;
+        bar.appendChild(sub);
+    }
+}
+var origShowSheetSelect=window._showSheetSelect;
+window._showSheetSelect=function(){
+    var out=origShowSheetSelect.apply(this,arguments);
+    dvRenderSheetSummary();
+    return out;
+};
+var origSelectAll=window.xlcompSelectAll;
+window.xlcompSelectAll=function(){
+    var out=origSelectAll.apply(this,arguments);
+    dvRenderSheetSummary();
+    return out;
+};
+document.addEventListener('change',function(ev){
+    var target=ev.target;
+    if(target&&target.classList&&target.classList.contains('xlcomp-sheet-cb')) dvRenderSheetSummary();
+});
+document.addEventListener('click',function(){
+    /* 全选/全不选按钮以外，若列表被重建也保持摘要最新（轻量，无副作用） */
+    if(gid('xlcomp-dv-sheet-summary')) dvRenderSheetSummary();
+});
+
+/* ---------- FIX2-4：「检查结果（所选项目）」折叠 + 详细模式布局 ---------- */
+function dvCheckStatusHint(){
+    var data={};
+    try{ data=xlcompSheetSummaryData()||{}; }catch(err){ data={}; }
+    var parts=[];
+    var real=dvRealPartialCount(data);
+    if(real) parts.push(L('⚠ 部分检查 '+real,'⚠ 一部比較 '+real));
+    if(data.tally&&data.tally.failed) parts.push(L('⚠ 检查失败 '+data.tally.failed,'⚠ 比較失敗 '+data.tally.failed));
+    if(dvCfState().detected) parts.push(L('ⓘ 条件格式','ⓘ 条件付き書式'));
+    return parts.length?'<span class="dv-check-hint">'+parts.join(' · ')+'</span>':'';
+}
+var origBizHtml=window.xlcompBusinessResultsHtml;
+window.xlcompBusinessResultsHtml=function(){
+    var html=origBizHtml.apply(this,arguments);
+    if(!html||html.indexOf('xlcomp-business-results')<0) return html;
+    var secEnd=html.indexOf('>')+1;
+    var h3End=html.indexOf('</h3>');
+    var secClose=html.lastIndexOf('</section>');
+    if(secEnd<=0||h3End<0||secClose<0) return html;
+    var body=html.slice(h3End+5,secClose);
+    var summary='<summary>'+
+        '<span class="dv-check-title">'+L('检查结果（所选项目）','検査結果（選択項目）')+'</span>'+
+        '<span class="dv-check-toggle dv-when-closed">'+L('点击展开','クリックで展開')+'</span>'+
+        '<span class="dv-check-toggle dv-when-open">'+L('点击收起','クリックで収納')+'</span>'+
+        dvCheckStatusHint()+'</summary>';
+    return html.slice(0,secEnd)+'<details id="xlcomp-dv-check-details" class="dv-check-details">'+summary+body+'</details></section>';
+};
+
+/* ---------- 对外接口 ---------- */
+window.xlcompDualSetMode=function(mode){ dvSetMode(mode); };
+window.xlcompDualSelect=function(cat){
+    if(xlcompCategories().indexOf(cat)<0||!xlcompUnifiedIndex) return;
+    DV.view=cat;
+    DV.limit=DV_PAGE;
+    dvRender();
+};
+window.xlcompDualShowMore=function(){
+    if(!xlcompUnifiedIndex) return;
+    DV.limit+=DV_PAGE;
+    dvRender();
+};
+window.xlcompDualShowReasons=function(){
+    var details=gid('xlcomp-dv-details');
+    if(!details) return;
+    details.open=true;
+    details.scrollIntoView({block:'nearest'});
+};
+window.xlcompDual={
+    version:'NO001-20261121',
+    state:DV,
+    page:DV_PAGE,
+    render:dvRender,
+    setMode:dvSetMode,
+    select:window.xlcompDualSelect,
+    selected:dvSelected,
+    categoryStateKey:dvCategoryStateKey,
+    defaultView:dvDefaultView,
+    sync:dvApplyVisibility,
+    reset:dvReset
+};
+
+dvApplyVisibility();
 })();
 </script>
 </body>
