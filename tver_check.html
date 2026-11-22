@@ -41,6 +41,19 @@
   <style>
     :root{--tver-back-nav-height:var(--qc-header-h,109px);--tver-level-tabs-height:44px}.tver-horizontal-sticky-header{top:calc(var(--tver-back-nav-height,var(--qc-header-h,109px)) + var(--tver-level-tabs-height,44px))}.results-table th{top:var(--tver-back-nav-height,var(--qc-header-h,109px))}@media(max-width:640px){.tver-level-tabs{gap:4px}.tver-level-tab{flex:1 1 0;padding-left:4px;padding-right:4px;font-size:14px}.tver-level-tab[aria-selected="true"]{padding-top:6px}}
   </style>
+<style>
+    /* 20261122_NO001：CSV追加項目（新規列）の表示。本文 15px／補助 13px、コントラスト 4.5:1 以上。 */
+    .tver-comparison-scope{margin:6px 0 0;padding:6px 10px;border-radius:4px;background:#eef3f6;color:#33454f;font-size:13px;font-weight:600}
+    .tver-csv-extra{margin:10px 0 0;padding:10px 12px;border:1px solid #cfd8dc;border-left:4px solid #b26a00;border-radius:6px;background:#fffaf0;color:#3a2f18;font-size:13px}
+    .tver-csv-extra-item+.tver-csv-extra-item{margin-top:10px;padding-top:10px;border-top:1px dashed #d8cdb4}
+    .tver-csv-extra-item strong{font-size:14px;color:#2c3e50}
+    .tver-csv-extra-note{display:block;margin-top:4px;color:#4a4a4a}
+    .tver-csv-extra-notice{margin:0 0 6px;color:#8a4b00;font-weight:700}
+    .tver-csv-extra ul{margin:6px 0 0;padding-left:20px}
+    .tver-csv-extra li{margin:4px 0}
+    .tver-csv-extra code{font-family:Consolas,'Courier New',monospace;font-size:13px;color:#1b3a4b}
+    .tver-csv-extra details summary{cursor:pointer}
+  </style>
 <link rel="stylesheet" href="qc-ui.css">
 <style>
 /* P2-B FIX2：TVer 補助情報（ID主データ / 外部送信なし）を公共 Header 第二行右側に低調表示。
@@ -165,6 +178,12 @@
     ...REGISTER_HEADERS_61.filter(header => !['budget_type', 'tver_video_duration', 'dmp_segment'].includes(header)),
     'campaign_id', 'adgroup_id', 'ad_id',
   ];
+  // 20261122_NO001：TVer 管理画面の登録／編集 CSV に tracking_url_impression
+  // （インプレッション計測地点。主にポーズ広告向け）が追加された。
+  // 既存 61 列は「必須」、追加列は「既知の任意列」として扱う。列数の一致は識別条件にしない。
+  const TVER_CSV_OPTIONAL_HEADERS = ['tracking_url_impression'];
+  const REGISTER_HEADERS_KNOWN = [...REGISTER_HEADERS_61, ...TVER_CSV_OPTIONAL_HEADERS];
+  const EDIT_HEADERS_KNOWN = [...EDIT_HEADERS_61, ...TVER_CSV_OPTIONAL_HEADERS];
 
   function parseCsvRows(text){
     const rows=[];
@@ -226,53 +245,58 @@
     return String(header ?? '').replace(/^\uFEFF/, '').trim().replace(/^\uFEFF/, '').trim();
   }
 
+  // 20261122_NO001：列数の完全一致を識別条件にしない。
+  // 必須列（既存 61 列）が揃っていれば Schema を識別し、追加列は unknownHeaders として報告する
+  // （既知の追加列 tracking_url_impression は TVER_CSV_OPTIONAL_HEADERS 側で除外）。
+  // ただし列見出しの重複は「データ構造の破損」として識別しない（理由は呼出側で明示）。
+  // canonicalHeaders は実ファイルの見出し順を保持する（列位置に依存した読み取りをしない）。
+  function inspectTverCsvHeaders(normalizedHeaders, requiredHeaders, knownHeaders){
+    const headerSet=new Set(normalizedHeaders);
+    return {
+      missingHeaders:requiredHeaders.filter(header => !headerSet.has(header)).sort(),
+      unknownHeaders:[...headerSet].filter(header => !knownHeaders.includes(header)).sort(),
+    };
+  }
+
   function detectTverCsvSchema(headers){
     const normalizedHeaders=headers.map(normalizeTverCsvHeader);
     const headerSet=new Set(normalizedHeaders);
     const duplicateHeaders=[...headerSet].filter(header => normalizedHeaders.filter(candidate => candidate===header).length>1).sort();
-    function inspect(expectedHeaders){
-      return {
-        missingHeaders:expectedHeaders.filter(header => !headerSet.has(header)).sort(),
-        unexpectedHeaders:[...headerSet].filter(header => !expectedHeaders.includes(header)).sort(),
-      };
-    }
-    const editInspection=inspect(EDIT_HEADERS_61);
-    const registerInspection=inspect(REGISTER_HEADERS_61);
-    const editExact=normalizedHeaders.length===EDIT_HEADERS_61.length && duplicateHeaders.length===0 &&
-      editInspection.missingHeaders.length===0 && editInspection.unexpectedHeaders.length===0;
-    const registerExact=normalizedHeaders.length===REGISTER_HEADERS_61.length && duplicateHeaders.length===0 &&
-      registerInspection.missingHeaders.length===0 && registerInspection.unexpectedHeaders.length===0;
+    const editInspection=inspectTverCsvHeaders(normalizedHeaders,EDIT_HEADERS_61,EDIT_HEADERS_KNOWN);
+    const registerInspection=inspectTverCsvHeaders(normalizedHeaders,REGISTER_HEADERS_61,REGISTER_HEADERS_KNOWN);
+    const looksLikeEdit=normalizedHeaders.some(header => ['campaign_id', 'adgroup_id', 'ad_id'].includes(header));
+    const editReady=looksLikeEdit && duplicateHeaders.length===0 && editInspection.missingHeaders.length===0;
+    const registerReady=!looksLikeEdit && duplicateHeaders.length===0 && registerInspection.missingHeaders.length===0;
 
-    if(editExact){
+    if(editReady){
       return {
         kind:'edit-with-ids',
         businessRole:'下载时点的后台当前状态',
-        canonicalHeaders:EDIT_HEADERS_61,
+        canonicalHeaders:normalizedHeaders,
         missingHeaders:[],
-        unexpectedHeaders:[],
+        unknownHeaders:editInspection.unknownHeaders,
         duplicateHeaders:[],
         unavailableFields:['budget_type', 'tver_video_duration', 'dmp_segment'],
       };
     }
-    if(registerExact){
+    if(registerReady){
       return {
         kind:'register-without-ids',
         businessRole:'入稿内容一致性检查：不能证明后台已经正确登记',
-        canonicalHeaders:REGISTER_HEADERS_61,
+        canonicalHeaders:normalizedHeaders,
         missingHeaders:[],
-        unexpectedHeaders:[],
+        unknownHeaders:registerInspection.unknownHeaders,
         duplicateHeaders:[],
         unavailableFields:[],
       };
     }
-    const looksLikeEdit=normalizedHeaders.some(header => ['campaign_id', 'adgroup_id', 'ad_id'].includes(header));
     const inspection=looksLikeEdit ? editInspection : registerInspection;
     return {
       kind:null,
       businessRole:null,
       canonicalHeaders:normalizedHeaders,
       missingHeaders:inspection.missingHeaders,
-      unexpectedHeaders:inspection.unexpectedHeaders,
+      unknownHeaders:inspection.unknownHeaders,
       duplicateHeaders,
       unavailableFields:[],
     };
@@ -336,7 +360,28 @@
     if(schema.kind===null){
       parseIssues.push({ code:'CSV_SCHEMA_UNRECOGNIZED', missingHeaders:schema.missingHeaders });
     }
-    return { schema, headers:rawHeaders, rawHeaders, canonicalHeaders, rows, parseIssues };
+    // 20261122_NO001：既存 61 列以外の列（新規追加列・未知列）を、値の有無と実内容つきで収集する。
+    // 比較判定には一切使わない（推測マッピングも作らない）。
+    function collectTverExtraColumn(headerName){
+      const columnNumber=canonicalHeaders.indexOf(headerName)+1;
+      const samples=[];
+      let rowCount=0;
+      let nonEmptyCount=0;
+      parsedRows.forEach((cells,rowIndex)=>{
+        if(cells.length===1 && cells[0]==='') return;
+        rowCount+=1;
+        const raw=columnNumber>0 && columnNumber-1<cells.length ? String(cells[columnNumber-1] ?? '') : '';
+        if(!raw.trim()) return;
+        nonEmptyCount+=1;
+        if(samples.length<20) samples.push({ rowNumber:rowIndex+2, value:raw.length>200 ? raw.slice(0,200)+'…' : raw });
+      });
+      return { name:headerName, columnNumber, rowCount, nonEmptyCount, blankCount:rowCount-nonEmptyCount, samples };
+    }
+    const unknownColumns=(schema.unknownHeaders || []).map(collectTverExtraColumn);
+    const optionalColumns=TVER_CSV_OPTIONAL_HEADERS
+      .filter(header => canonicalHeaders.includes(header) && !(schema.unknownHeaders || []).includes(header))
+      .map(collectTverExtraColumn);
+    return { schema, headers:rawHeaders, rawHeaders, canonicalHeaders, rows, parseIssues, unknownColumns, optionalColumns };
   }
 
   function isVisibleSheet(workbook, sheetName){
@@ -2776,7 +2821,7 @@
   }
 
   function isTrackingUrlField(field){
-    return /^tracking_url_(start|first_quartile|midpoint|third_quartile|complete)$/.test(field);
+    return /^tracking_url_(start|first_quartile|midpoint|third_quartile|complete|impression)$/.test(field);
   }
 
   function validateDateTime(field, rawValue, source){
@@ -2867,7 +2912,7 @@
     campaign_name:'キャンペーン名', start_datetime:'開始日時', end_datetime:'終了日時', adgroup_start_datetime:'GP開始日時', adgroup_end_datetime:'GP終了日時', budget:'総予算', daily_budget:'日予算', budget_type:'予算タイプ', hourly_bid_weight:'時間毎予算割合', campaign_status:'キャンペーンステータス', consumption_type:'予算消化タイプ', cv_point:'CVポイント', report_target_flag:'レポート対象',
     device:'デバイス', price:'入札単価', adgroup_status:'広告グループステータス', adgroup_name:'広告グループ名', bid_segment_exclude:'入札除外セグメント', affinity:'興味関心',
     media:'放送局', local_broadcaster:'ローカル局', pref:'都道府県', gender:'性別', age:'年齢', annual_income:'世帯年収', demography:'デモグラフィック', uid_suffix:'ASR', genre_exclude:'番組ジャンル（除外）', subgenre_exclude:'番組サブジャンル（除外）', status:'広告ステータス', other_settings_adg:'その他設定(ADG)',
-    creative_name:'素材名', url:'遷移先URL', tracking_url_start:'計測URL（開始）', tracking_url_first_quartile:'計測URL（25%）', tracking_url_midpoint:'計測URL（50%）', tracking_url_third_quartile:'計測URL（75%）', tracking_url_complete:'計測URL（100%）', creative_id:'素材ID', start_time:'開始時間', end_time:'終了時間', entity:'エンティティ',
+    creative_name:'素材名', url:'遷移先URL', tracking_url_start:'計測URL（開始）', tracking_url_first_quartile:'計測URL（25%）', tracking_url_midpoint:'計測URL（50%）', tracking_url_third_quartile:'計測URL（75%）', tracking_url_complete:'計測URL（100%）', tracking_url_impression:'計測URL（インプレッション）', creative_id:'素材ID', start_time:'開始時間', end_time:'終了時間', entity:'エンティティ',
   };
 
   function normalizeTverDateTimeForComparison(rawValue){
@@ -6640,6 +6685,34 @@
     });
   }
 
+  // 20261122_NO001：tracking_url_impression は TVer 登録／編集 CSV に新規追加された
+  // インプレッション計測地点（主にポーズ広告向け）。摺合せシートに本項目の指示欄が無いため、
+  // 値の一致／不一致は判定しない（推測で一致にしない）。
+  // ・全行空白：現行運用どおり許容。比較対象外として扱い、不一致にも要確認にもしない。
+  // ・値あり　：対応規則が未確定のため必ず「要確認」。
+  // tracking_url_start（0%）／tracking_url_complete（100%）の既存意味は変更しない。
+  function addTverImpressionTrackingInput(inputs,base,setting,csv,parsedCsv){
+    const field='tracking_url_impression';
+    if(!tverCsvSchemaHasField(parsedCsv,field)) return;
+    const rows=csv && Array.isArray(csv.rawRows) ? csv.rawRows : [];
+    if(!rows.length) return;
+    const evidence=collectFieldEvidence(rows,field);
+    const rawValues=[...new Set(evidence.map(source=>String((source && source.rawValue) ?? '')))];
+    const nonEmptyValues=rawValues.filter(value=>value.trim()!=='');
+    const hasValue=nonEmptyValues.length>0;
+    const csvSource=csvFieldSource(csv,field);
+    addFieldResult(inputs,base,field,'',hasValue ? nonEmptyValues.join(' | ') : '',null,hasValue ? (evidence[0] || csvSource) : csvSource,{
+      ruleBasis:hasValue ? 'TVER_TRACKING_IMPRESSION_RULE_PENDING' : 'TVER_TRACKING_IMPRESSION_BLANK_ALLOWED',
+      settingEvidenceState:'not_provided',
+      csvEvidenceState:hasValue ? 'available' : 'not_provided',
+      comparable:false, alwaysDisplay:true,
+      ...(hasValue
+        ? { comparisonStatus:'需确认', conservativeReason:'TRACKING_IMPRESSION_RULE_PENDING' }
+        : { deferred:true, notApplicable:true, conservativeReason:'TRACKING_IMPRESSION_BLANK_ALLOWED' }),
+      sourceEvidence:{ setting:[], csv:evidence, derivedFrom:[] },
+    });
+  }
+
   function entrySourceEvidence(setting, settingField, settingSource, csv, csvField, csvSource, derivedFrom){
     const derived=uniqueSourceRefs(derivedFrom || []);
     return {
@@ -7950,6 +8023,8 @@
               sourceEvidence:entrySourceEvidence(setting, '', tracking.sourceRef, csv, field, csv.sourceRefs && csv.sourceRefs[field], tracking.derivedFrom),
             });
           });
+          // 20261122_NO001：インプレッション計測地点（新規列）は毎 Ad 行に 1 件だけ生成する。
+          addTverImpressionTrackingInput(inputs,base,setting,csv,parsedCsv);
           // FIX4-A：当前Ad所属Targeting的明确时间优先；无指定时保留既有默认与空CSV defer。
           const settingGp=findEntityByKey(settingModel.adGroups || [], setting.parentKey);
           const adTime=resolveTverAdTimeContract(settingGp);
@@ -8103,6 +8178,9 @@
     applyTverCoverageGovernance(run,settingModel,parsedCsv,csvTree);
     run.statusCounts=Object.fromEntries(COMPARISON_STATUSES.map(status=>[status,run.entries.filter(entry=>entry.displayStatus===status).length]));
     run.coverage=buildTverCoverage(run);
+    // 20261122_NO001：CSV の追加列（既知の新規列／未知列）を結果へ引き継ぐ。判定には使わない。
+    run.unknownCsvColumns=Array.isArray(parsedCsv.unknownColumns) ? parsedCsv.unknownColumns : [];
+    run.optionalCsvColumns=Array.isArray(parsedCsv.optionalColumns) ? parsedCsv.optionalColumns : [];
     run.displayTree=buildTverDisplayTree({ settingModel, csvTree, matching, entries:run.entries });
     return run;
   }
@@ -8275,11 +8353,11 @@
   const TVER_HORIZONTAL_FIELD_LABELS={
     Campaign:{ campaign_name:'キャンペーン名', start_datetime:'開始日時', end_datetime:'終了日時', budget:'予算', daily_budget:'日予算', budget_type:'予算タイプ', hourly_bid_weight:'時間毎予算割合', campaign_status:'キャンペーンステータス', consumption_type:'予算消化タイプ', cv_point:'CVポイント', report_target_flag:'レポート対象' },
     'Ad Group':{ other_settings_adg:'その他設定(ADG)', adgroup_name:'広告グループ名', bid_segment_exclude:'入札除外セグメント', affinity:'興味関心', device:'デバイス', price:'単価', adgroup_start_datetime:'GP開始日時', adgroup_end_datetime:'GP終了日時', adgroup_status:'ステータス', media:'媒体', local_broadcaster:'ローカル局', gender:'性別', age:'年齢', annual_income:'世帯年収', demography:'デモグラフィック', tver_video_duration:'動画尺', dmp_segment:'DMPセグメント', pref:'都道府県', genre_exclude:'番組ジャンル除外', subgenre_exclude:'サブジャンル除外', store_segment:'店舗セグメント', bid_segment:'入札セグメント', auction_type:'オークション設定', dmp_segment_expansion_threshold:'DMPセグメントの拡張', uid_suffix:'ASR' },
-    Ad:{ creative_name:'クリエイティブ名', start_time:'開始時間', end_time:'終了時間', status:'広告ステータス' },
+    Ad:{ creative_name:'クリエイティブ名', start_time:'開始時間', end_time:'終了時間', status:'広告ステータス', tracking_url_impression:'計測URL（インプレッション）' },
   };
   // FIX1C：既存の正式な英文表示名。field keyからの推測翻訳は行わない。
   const TVER_HORIZONTAL_FIELD_EN_LABELS={
-    Ad:{ url:'URL', tracking_url_start:'Tracking Start', tracking_url_first_quartile:'Tracking 25%', tracking_url_midpoint:'Tracking 50%', tracking_url_third_quartile:'Tracking 75%', tracking_url_complete:'Tracking Complete', creative_id:'Creative ID' },
+    Ad:{ url:'URL', tracking_url_start:'Tracking Start', tracking_url_first_quartile:'Tracking 25%', tracking_url_midpoint:'Tracking 50%', tracking_url_third_quartile:'Tracking 75%', tracking_url_complete:'Tracking Complete', creative_id:'Creative ID', tracking_url_impression:'Tracking Impression' },
   };
   const TVER_HORIZONTAL_SOURCE_COLUMN_KEY='source';
   const TVER_HORIZONTAL_SOURCE_COLUMN_WIDTH=96;
@@ -8800,6 +8878,9 @@
     OTHER_SETTINGS_ADG_UNKNOWN_INSTRUCTION:'その他設定(ADG)に、現在のツールが校正規則を持たない指示が記載されています。開発者への追加依頼が必要です',
     TVER_A17_3A_VALUE_UNAVAILABLE:'設定表側の確認値を利用できないため確認が必要です',
     TVER_A17_3B_VALUE_UNAVAILABLE:'設定表側の確認値を利用できないため確認が必要です',
+    TRACKING_IMPRESSION_BLANK_ALLOWED:'インプレッション計測地点は設定表に指示欄がなく、CSVも全行空白です。現行運用では空白を許容します（比較対象外）',
+    TRACKING_IMPRESSION_RULE_PENDING:'インプレッション計測地点に値がありますが、設定表に対応する指示がなく比較規則が未確定です。日方の設定要否を確認してください',
+    CSV_UNKNOWN_HEADERS_PRESENT:'CSVに本ツールが未対応の列があります。新規ダウンロード項目については開発担当者へご連絡ください',
   };
 
   function tverDisplayReasonCodeMessage(code){
@@ -9898,6 +9979,48 @@
     });
   }
 
+  // 20261122_NO001：比較済みと未比較（＝一致ではない）を分けて示し、全項目 PASS と誤読させない。
+  function buildTverComparisonScopeMetaHtml(run){
+    const coverage=run && run.coverage;
+    if(!coverage || !Array.isArray(coverage.entries)) return '';
+    const compared=coverage.entries.filter(record=>record.category==='AUTO_COMPARED' || record.category==='DIFFERENCE').length;
+    const total=coverage.entries.length;
+    const uncovered=total-compared;
+    const unknown=Array.isArray(run.unknownCsvColumns) ? run.unknownCsvColumns.length : 0;
+    const parts=['比較済み '+compared+' 項目','未比較 '+uncovered+' 項目（一致ではありません）'];
+    if(unknown) parts.push('CSV未対応の新規項目 '+unknown+' 列');
+    return '<p class="tver-comparison-scope" data-comparison-scope>'+escapeHtml(parts.join(' ／ '))+'</p>';
+  }
+
+  // 20261122_NO001：CSV の追加列を可視化する。値の有無・実内容のみで、比較判定は行わない。
+  function buildTverCsvExtraHtml(run){
+    if(!run) return '';
+    const optional=Array.isArray(run.optionalCsvColumns) ? run.optionalCsvColumns : [];
+    const unknown=Array.isArray(run.unknownCsvColumns) ? run.unknownCsvColumns : [];
+    const blocks=[];
+    optional.filter(item=>item.name==='tracking_url_impression').forEach(item=>{
+      const note=item.nonEmptyCount>0
+        ? '設定表に本項目の指示欄がないため、値の妥当性は自動判定できません（要確認として表示しています）。'
+        : '全行空白です。現行ルールでは空白を許容します（比較対象外。不一致としては扱いません）。';
+      blocks.push('<div class="tver-csv-extra-item" data-csv-extra-known="tracking_url_impression">'
+        +'<strong>計測URL（インプレッション）</strong>：'+escapeHtml(item.columnNumber+'列目／値あり '+item.nonEmptyCount+' 件・空白 '+item.blankCount+' 件')
+        +'<span class="tver-csv-extra-note">'+escapeHtml(note)+'</span></div>');
+    });
+    if(unknown.length){
+      const items=unknown.map(item=>{
+        const sampleHtml=item.samples && item.samples.length
+          ? '<ul>'+item.samples.map(sample=>'<li>'+escapeHtml(sample.rowNumber+'行目：'+sample.value)+'</li>').join('')+'</ul>'
+          : '<p>値のある行はありません。</p>';
+        return '<li><details><summary><code>'+escapeHtml(item.name)+'</code>（'+item.columnNumber+'列目）値あり '+item.nonEmptyCount+' 件／空白 '+item.blankCount+' 件</summary>'
+          +'<p>実際の内容（先頭 '+String(item.samples ? item.samples.length : 0)+' 件）</p>'+sampleHtml+'</details></li>';
+      }).join('');
+      blocks.push('<div class="tver-csv-extra-item" data-csv-extra-unknown="1">'
+        +'<p class="tver-csv-extra-notice">新規ダウンロード項目については、開発担当者へご連絡ください。（未対応のCSV項目 '+unknown.length+' 件）</p>'
+        +'<ul>'+items+'</ul></div>');
+    }
+    return blocks.length ? '<section class="tver-csv-extra" aria-label="CSVの追加項目">'+blocks.join('')+'</section>' : '';
+  }
+
   function renderTverRun(run, options){
     const config=options || {};
     const filters={ ...defaultFilters(), ...(config.filters || tverPageState.filters) };
@@ -9918,7 +10041,7 @@
     }).join('');
     const horizontalView=buildTverHorizontalViewModel(run, activeLevel, filters);
     const horizontalHtml=`${buildTverLevelTabsHtml(activeLevel)}${buildTverHorizontalTableHtml(horizontalView)}`;
-    const summaryContentHtml=`<div class="status-counts">${statusHtml}</div>`;
+    const summaryContentHtml=`<div class="status-counts">${statusHtml}</div>${buildTverComparisonScopeMetaHtml(run)}${buildTverCsvExtraHtml(run)}`;
     const summaryHtml=`<div class="tver-result-summary" aria-label="チェック結果">${summaryContentHtml}</div>`;
     const diagnosticsHtml=run && run.diagnostics && run.diagnostics.length ? `<details><summary>診断コード（${run.diagnostics.length}件）</summary><pre>${escapeHtml(run.diagnostics.map(issue => issue.code || String(issue)).join('\n'))}</pre></details>` : '';
     const surveyParentScopeHtml=(run && run.diagnostics || []).filter(issue=>issue.code==='SURVEY_NORMAL_SP_PARENT_SCOPE_UNCONFIRMED')
@@ -9987,15 +10110,36 @@
     return {ok:true,role:'setting',code:issue && issue.code || null,workbook,model,candidate:model.selectedSheetName ? {sheetName:model.selectedSheetName} : null,availableSheetNames,selectedSheetName,validation,message:validation.message};
   }
 
+  // 20261122_NO001：識別できない理由を「列見出し重複／必須項目の欠落／その他」で言い分ける。
+  function tverCsvSchemaFailureMessage(schema){
+    const duplicate=(schema && schema.duplicateHeaders) || [];
+    const missing=(schema && schema.missingHeaders) || [];
+    if(duplicate.length) return 'CSVの列見出しが重複しています（'+duplicate.join('、')+'）。データ構造を確認してください。';
+    if(missing.length){
+      const head=missing.slice(0,10).join('、');
+      return 'CSVの必須項目が不足しています（'+head+(missing.length>10 ? ' 他'+String(missing.length-10)+'件' : '')+'）。';
+    }
+    return 'CSVとして識別できません（TVer CSV Schemaを確認できません）。';
+  }
+
   function identifyTverCsvText(text, options){
     const config=options || {};
     const parsed=parseCsvText(text, config);
     const issues=parsed && Array.isArray(parsed.parseIssues) ? parsed.parseIssues : [];
     const schema=parsed && parsed.schema || {};
     if(!schema.kind || issues.some(issue => issue && issue.code==='CSV_SCHEMA_UNRECOGNIZED')){
-      return { ok:false, role:'csv', code:'CSV_SCHEMA_UNRECOGNIZED', parsedCsv:null, schemaKind:null, message:'CSVとして識別できません（TVer CSV Schemaを確認できません）。' };
+      const duplicate=(schema.duplicateHeaders || []).length>0;
+      return {
+        ok:false, role:'csv',
+        code:duplicate ? 'CSV_HEADER_DUPLICATE' : (schema.missingHeaders || []).length ? 'CSV_REQUIRED_HEADER_MISSING' : 'CSV_SCHEMA_UNRECOGNIZED',
+        parsedCsv:null, schemaKind:null, message:tverCsvSchemaFailureMessage(schema),
+      };
     }
-    return { ok:true, role:'csv', code:null, parsedCsv:parsed, schemaKind:schema.kind, message:`${schema.kind} として識別しました。` };
+    const unknownHeaders=schema.unknownHeaders || [];
+    const notice=unknownHeaders.length
+      ? `／新規項目 ${unknownHeaders.length} 件：${unknownHeaders.slice(0,5).join('、')}${unknownHeaders.length>5 ? ' 他'+String(unknownHeaders.length-5)+'件' : ''}（比較対象外）`
+      : '';
+    return { ok:true, role:'csv', code:unknownHeaders.length ? 'CSV_UNKNOWN_HEADERS_PRESENT' : null, parsedCsv:parsed, schemaKind:schema.kind, unknownHeaders, message:`${schema.kind} として識別しました。${notice}` };
   }
 
   function tverLastVisibleSheetName(workbook){
@@ -10039,17 +10183,31 @@
     const recognition=result || {};
     const setting=recognition.setting;
     const csv=recognition.csv;
-    const lines=['設定表：'+fileNameDescription(setting && setting.file),'CSV：'+fileNameDescription(csv && csv.file)];
+    // 20261122_NO001：先頭行も「選択済みファイル」で表示する（識別失敗時に「未選択」と誤表示しない）。
+    const selectedFiles=Array.isArray(recognition.files) ? recognition.files : [];
+    const selectedSettingFile=(setting && setting.file) || selectedFiles.find(file=>/\.xlsx$/i.test(String(file && file.name || ''))) || null;
+    const selectedCsvFile=(csv && csv.file) || selectedFiles.find(file=>/\.csv$/i.test(String(file && file.name || ''))) || null;
+    const lines=['設定表：'+fileNameDescription(selectedSettingFile),'CSV：'+fileNameDescription(selectedCsvFile)];
     if(Array.isArray(recognition.conflicts) && recognition.conflicts.includes('setting')) lines.push('設定表が複数選択されています。1つだけ選択してください。');
     if(Array.isArray(recognition.conflicts) && recognition.conflicts.includes('csv')) lines.push('CSVが複数選択されています。1つだけ選択してください。');
     if(Array.isArray(recognition.unsupported) && recognition.unsupported.length) lines.push('対応外形式：'+recognition.unsupported.map(item=>fileNameDescription(item.file)).join('、')+'（.xlsx と .csv のみ）');
-    if(Array.isArray(recognition.unrecognized) && recognition.unrecognized.length) lines.push('識別できないファイル：'+recognition.unrecognized.map(item=>fileNameDescription(item.file)).join('、'));
-    if(!setting && !(Array.isArray(recognition.conflicts) && recognition.conflicts.includes('setting'))) lines.push('設定表が未選択です。');
-    if(!csv && !(Array.isArray(recognition.conflicts) && recognition.conflicts.includes('csv'))) lines.push('CSVが未選択です。');
+    if(Array.isArray(recognition.unrecognized) && recognition.unrecognized.length) lines.push('識別できないファイル：'+recognition.unrecognized.map(item=>{
+      const name=fileNameDescription(item.file);
+      // 20261122_NO001：CSV は識別できなかった理由まで示す（設定表のメッセージは既にファイル名を含む）。
+      return item && item.role==='csv' && item.message ? name+'（'+item.message+'）' : name;
+    }).join('、'));
+    // 20261122_NO001：ファイルは選択済みなのに「未選択」と表示される誤表示を防ぐ。
+    // 選択済みかどうかは「認識成功したか」ではなく「選択されたファイルの拡張子」で判定する。
+    const settingSelected=Boolean(selectedSettingFile);
+    const csvSelected=Boolean(selectedCsvFile);
+    if(!settingSelected && !(Array.isArray(recognition.conflicts) && recognition.conflicts.includes('setting'))) lines.push('設定表が未選択です。');
+    if(!csvSelected && !(Array.isArray(recognition.conflicts) && recognition.conflicts.includes('csv'))) lines.push('CSVが未選択です。');
     if(recognition.settingValidation && recognition.settingValidation.code==='SETTING_VISIBLE_SHEETS_EMPTY') lines.push(recognition.settingValidation.message);
     else if(recognition.ok && !recognition.selectedSheetName) lines.push('参照シート名（必須）を選択してください。');
     else if(recognition.ok && recognition.settingValidation && !recognition.settingValidation.ok) lines.push(recognition.settingValidation.message || '参照シートを確認できません。');
     else if(recognition.ok) lines.push('設定表とCSVを識別しました。チェック開始できます。');
+    const unknownHeaders=recognition.csv && Array.isArray(recognition.csv.unknownHeaders) ? recognition.csv.unknownHeaders : [];
+    if(unknownHeaders.length) lines.push('新規ダウンロード項目については、開発担当者へご連絡ください（'+unknownHeaders.join('、')+'）。');
     return lines.join('\n');
   }
 
@@ -10201,8 +10359,15 @@
     const sheetTarget=getElement(doc,'setting-sheet-name');
     const fileRecognized=Boolean(recognition && recognition.setting);
     const selectionValid=Boolean(recognition && recognition.ok && recognition.selectedSheetName && recognition.settingValidation && recognition.settingValidation.ok);
-    if(settingTarget){settingTarget.textContent='設定表：'+fileNameDescription(recognition && recognition.setting && recognition.setting.file);settingTarget.classList && settingTarget.classList.toggle('success',fileRecognized);}
-    if(csvTarget){csvTarget.textContent='CSV：'+fileNameDescription(recognition && recognition.csv && recognition.csv.file);csvTarget.classList && csvTarget.classList.toggle('success',Boolean(recognition && recognition.csv));}
+    // 20261122_NO001：選択済みファイルを「未選択」と表示しない。
+    // recognition.setting / recognition.csv は「識別に成功したファイル」であり、識別失敗時は null になる。
+    const selectedFiles=Array.isArray(recognition && recognition.files) ? recognition.files : [];
+    const selectedSettingFile=recognition && recognition.setting && recognition.setting.file
+      || selectedFiles.find(file=>/\.xlsx$/i.test(String(file && file.name || ''))) || null;
+    const selectedCsvFile=recognition && recognition.csv && recognition.csv.file
+      || selectedFiles.find(file=>/\.csv$/i.test(String(file && file.name || ''))) || null;
+    if(settingTarget){settingTarget.textContent='設定表：'+fileNameDescription(selectedSettingFile);settingTarget.classList && settingTarget.classList.toggle('success',fileRecognized);}
+    if(csvTarget){csvTarget.textContent='CSV：'+fileNameDescription(selectedCsvFile);csvTarget.classList && csvTarget.classList.toggle('success',Boolean(recognition && recognition.csv));}
     if(sheetTarget){
       const names=tverPageState.availableSheetNames || [];
       const options=['<option value="" selected>ファイル選択後にSheetを選択</option>',...names.map(name=>'<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>')].join('');
@@ -10422,8 +10587,8 @@
       const settingIssue=settingParseBlockingIssue(settingModel);
       if(settingIssue) throw new Error('設定表または参照シートを確認できません（'+settingIssue.code+'）。');
       const parsedCsv=parseCsvText(csvText,{fileName:config.csvFileName || csvFile && csvFile.name || ''});
-      if(!parsedCsv.schema.kind) throw new Error('CSV Schemaを識別できません。');
-      if(parsedCsv.parseIssues.some(issue=>issue.code==='CSV_SCHEMA_UNRECOGNIZED')) throw new Error('CSV Schemaを識別できません。');
+      if(!parsedCsv.schema.kind) throw new Error('CSVを比較に使用できません。'+tverCsvSchemaFailureMessage(parsedCsv.schema));
+      if(parsedCsv.parseIssues.some(issue=>issue.code==='CSV_SCHEMA_UNRECOGNIZED')) throw new Error('CSVを比較に使用できません。'+tverCsvSchemaFailureMessage(parsedCsv.schema));
       const dictionaryState=validateIdDictionaries(getTverIdDictionaries());
       if(!dictionaryState.valid) throw new Error('ID主データの検証に失敗しました。');
       const csvTree=parsedCsv.schema.kind==='edit-with-ids' ? buildEditTree(parsedCsv) : buildRegisterTree(parsedCsv);
