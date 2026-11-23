@@ -16,6 +16,29 @@
     .tver-sheet-selector select{flex:1 1 360px;min-height:42px;max-width:100%;padding:8px 10px;border:1px solid #95a5a6;border-radius:4px;background:#fff;color:#263238}
     .tver-sheet-selector select:disabled{background:#f0f3f4;color:#455a64}
     @media(max-width:640px){.tver-sheet-search{align-items:stretch;flex-direction:column}.tver-sheet-search input{flex-basis:auto;width:100%}.tver-sheet-selector{align-items:stretch;flex-direction:column}.tver-sheet-selector select{flex-basis:auto;width:100%}}
+    /* 20261123_NO003：Sheet 検索と参照シート名を同一行に集約（狭幅は折返し、はみ出しなし）。 */
+    .tver-sheet-row{display:flex;align-items:stretch;gap:12px;flex-wrap:wrap;min-width:0;max-width:100%}
+    .tver-sheet-row .tver-sheet-search{flex:1 1 320px;min-width:0;margin:0}
+    .tver-sheet-row .tver-sheet-search input{flex:1 1 140px;min-width:0}
+    .tver-sheet-row .tver-sheet-selector{flex:1 1 420px;min-width:0;margin:0}
+    /* 20261123_NO003：操作行（ボタン＋主要統計＋CSV 導線＋小型ヒント）を 1 行に集約。 */
+    .tver-result-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1 1 auto;min-width:0;max-width:100%}
+    .tver-result-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0;min-width:0}
+    .tver-result-tools>button{min-height:42px;padding:8px 12px;border:1px solid #bdc3c7;border-radius:4px;background:#f7f9fa;color:#2c3e50;font-weight:600;cursor:pointer}
+    .tver-result-tools>button:hover{background:#ecf0f1}
+    .tver-result-tools>button:focus-visible,.tver-hint-trigger:focus-visible{outline:3px solid #e74c3c;outline-offset:2px}
+    .tver-result-tools .tver-export-note{font-size:12px;color:#607d8b}
+    .tver-result-tools>p{flex:1 1 100%;margin:4px 0;font-size:13px}
+    .tver-hint{position:relative;display:inline-flex;min-width:0;max-width:100%}
+    .tver-hint-trigger{display:inline-flex;align-items:center;gap:6px;min-height:42px;padding:7px 11px;border:1px solid #b26a00;border-radius:4px;background:#fff8e1;color:#7a4b00;font-size:13px;font-weight:700;cursor:pointer;max-width:100%}
+    .tver-hint-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:17px;height:17px;border-radius:50%;background:#b26a00;color:#fff;font-size:11px;font-weight:700;line-height:1}
+    /* hover / キーボード focus / クリック（タップ）で開く。表のスクロール容器の外に置くのでクリップされない。 */
+    .tver-hint-body{display:none;position:absolute;z-index:80;top:calc(100% + 6px);left:0;width:min(340px,calc(100vw - 48px));max-width:calc(100vw - 32px);padding:10px 12px;border:1px solid #b26a00;border-radius:6px;background:#fff;color:#263238;font-size:13px;font-weight:500;line-height:1.55;white-space:normal;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+    .tver-hint:hover .tver-hint-body,.tver-hint:focus-within .tver-hint-body,.tver-hint[data-open="true"] .tver-hint-body{display:block}
+    /* 20261123_NO003：操作ボタンを結果ブロックの先頭行に揃える（縦中央寄せだと 1 行目がずれる）。 */
+    .tver-action-result{align-items:flex-start}
+    .tver-result-summary{align-items:flex-start;align-content:flex-start}
+    @media(max-width:640px){.tver-sheet-row{flex-direction:column}.tver-sheet-row .tver-sheet-search,.tver-sheet-row .tver-sheet-selector{flex:0 0 auto;width:100%}.tver-sheet-row .tver-sheet-search input,.tver-sheet-row .tver-sheet-selector select{flex:0 0 auto;width:100%;min-height:42px}.tver-hint-body{left:0;right:auto;width:min(320px,calc(100vw - 32px))}}
 
 .tver-coverage,.tver-manual-mapping{flex-basis:100%;width:100%;min-width:0;overflow-wrap:anywhere}.tver-coverage h3{margin:10px 0 6px}.tver-coverage p{margin:6px 0}.tver-manual-mapping label{display:block;margin:8px 0}.tver-manual-mapping select{max-width:100%}
 </style>
@@ -157,7 +180,7 @@
   <main class="page" id="tver-page">
     <section class="upload-grid" aria-label="ファイル選択">
       <label class="upload-zone" id="tver-upload-zone" for="tver-file-input"><h2>設定表 + CSV</h2><p>TVer 摺合せシート（.xlsx）とTVer管理画面の登録／編集CSV（.csv）</p><p>一度に2ファイル、または順番にドラッグ＆ドロップ／クリックで選択</p><input id="tver-file-input" type="file" multiple accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" aria-describedby="setting-file-state csv-file-state upload-recognition-state"><div class="file-state" id="setting-file-state">設定表：未選択</div><div class="file-state" id="csv-file-state">CSV：未選択</div><p class="upload-recognition-state" id="upload-recognition-state" role="status">.xlsx と .csv を選択してください。</p></label>
-<label class="tver-sheet-search" for="setting-sheet-search">Sheet 名称検索<input id="setting-sheet-search" type="search" autocomplete="off" placeholder="Sheet名を検索" aria-controls="setting-sheet-name"></label><span id="setting-sheet-search-empty" class="tver-sheet-search-empty" hidden>該当するSheetがありません。</span><div id="setting-cp-search-results" class="tver-cp-search-results" hidden role="listbox" aria-label="CP検索結果"></div><label class="tver-sheet-selector">参照シート名（必須）<select id="setting-sheet-name" required disabled><option value="" selected>ファイル選択後にSheetを選択</option></select></label>
+<div class="tver-sheet-row"><label class="tver-sheet-search" for="setting-sheet-search">Sheet 名称検索<input id="setting-sheet-search" type="search" autocomplete="off" placeholder="Sheet名を検索" aria-controls="setting-sheet-name"></label><span id="setting-sheet-search-empty" class="tver-sheet-search-empty" hidden>該当するSheetがありません。</span><div id="setting-cp-search-results" class="tver-cp-search-results" hidden role="listbox" aria-label="CP検索結果"></div><label class="tver-sheet-selector">参照シート名（必須）<select id="setting-sheet-name" required disabled><option value="" selected>ファイル選択後にSheetを選択</option></select></label></div>
     </section>
     <section class="control-bar tver-action-result" aria-label="チェック操作と結果"><button class="btn btn-primary" id="run-check" type="button" disabled>チェック開始</button><button class="btn btn-secondary" id="reset-check" type="button" disabled>リセット</button><div class="tver-result-summary hidden" id="tver-result-summary" aria-live="polite"></div></section>
     <p class="notice hidden" id="page-notice" role="status"></p>
@@ -7546,10 +7569,19 @@
 
   function buildTverCoverageHtml(run){
     if(!run.coverage) return '';
-    const warning=run.coverage.completed ? '' : '<p data-incomplete-warning>未完了の校正項目があります。要確認・未比較の内容と根拠を全件CSVで確認してください。</p>';
+    // 20261123_NO003：長文の注意書きは独立行をやめ、CSV 導線の隣の小型ヒント（i）へ移す。
+    // 判定条件は従来どおり run.coverage.completed のみ。未完了が無ければ警告自体を出さない。
+    const incomplete=!run.coverage.completed;
+    const hint=incomplete
+      ? '<span class="tver-hint" data-incomplete-hint>'
+        +'<button type="button" class="tver-hint-trigger" data-tooltip-toggle aria-expanded="false" aria-controls="tver-incomplete-tip" aria-describedby="tver-incomplete-tip">'
+        +'<span data-incomplete-warning>未完了項目あり</span><span class="tver-hint-icon" aria-hidden="true">i</span></button>'
+        +'<span class="tver-hint-body" id="tver-incomplete-tip" role="tooltip">未完了の校正項目があります。要確認・未比較の内容と根拠を全件CSVで確認してください。</span>'
+        +'</span>'
+      : '';
     const scopeMessage=run.csvObjectCounts && Object.values(run.csvObjectCounts).some(value=>value===null) ? '<p>CSVの実体数未確定の項目があります。対応未確認の範囲は手動で確認してください。</p>' : '';
     const localCoverage=isTverLocalAcceptanceMode() ? '<button type="button" data-action="export-coverage">比較範囲CSV（LOCAL TEST）</button>' : '';
-    return '<section class="tver-result-tools">'+warning+scopeMessage+'<button type="button" data-action="export-results-all">校正結果CSV（全件）</button><span>（判定・原値・根拠／全件）</span>'+localCoverage+'</section>';
+    return '<section class="tver-result-tools" aria-label="校正結果の出力"><button type="button" data-action="export-results-all">校正結果CSV（全件）</button><span class="tver-export-note">判定・原値・根拠／全件</span>'+hint+localCoverage+scopeMessage+'</section>';
   }
 
   function resolveTverRowField(entity,field){
@@ -10207,18 +10239,20 @@
     }).join('');
     const horizontalView=buildTverHorizontalViewModel(run, activeLevel, filters);
     const horizontalHtml=`${buildTverLevelTabsHtml(activeLevel)}${buildTverHorizontalTableHtml(horizontalView)}`;
-    const summaryContentHtml=`<div class="status-counts">${statusHtml}</div>${buildTverComparisonScopeMetaHtml(run)}${buildTverCsvExtraHtml(run)}`;
+    // 20261123_NO003：「操作ボタン＋主要統計＋CSV 導線＋小型ヒント」を同じ行に並べ、詳細は下段へ回す。
+    const resultToolsHtml=buildTverCoverageHtml(run);
+    const summaryContentHtml=`<div class="tver-result-bar"><div class="status-counts">${statusHtml}</div>${resultToolsHtml}</div>${buildTverComparisonScopeMetaHtml(run)}${buildTverCsvExtraHtml(run)}`;
     const summaryHtml=`<div class="tver-result-summary" aria-label="チェック結果">${summaryContentHtml}</div>`;
     const diagnosticsHtml=run && run.diagnostics && run.diagnostics.length ? `<details><summary>診断コード（${run.diagnostics.length}件）</summary><pre>${escapeHtml(run.diagnostics.map(issue => issue.code || String(issue)).join('\n'))}</pre></details>` : '';
     const surveyParentScopeHtml=(run && run.diagnostics || []).filter(issue=>issue.code==='SURVEY_NORMAL_SP_PARENT_SCOPE_UNCONFIRMED')
       .map(issue=>`<p class="notice" role="status" data-survey-parent-scope>${escapeHtml(issue.message)}</p>`).join('');
     const ctvDiagnosticsHtml=(run && run.diagnostics || []).filter(issue=>String(issue.code || '').startsWith('CTV_')).map(issue=>`<p class="tver-schema-notice" role="status">CTV 要確認：${escapeHtml(tverDisplayReasonCodeMessage(issue.code) || issue.code)}</p>`).join('');
     const mainHtml=`${horizontalHtml}${surveyParentScopeHtml}${ctvDiagnosticsHtml}${diagnosticsHtml}`;
-    const html=`${summaryHtml}${buildTverCoverageHtml(run)}${buildTverManualMappingHtml(run)}${mainHtml}`;
+    const html=`${summaryHtml}${buildTverManualMappingHtml(run)}${mainHtml}`;
     const doc=config.document===undefined ? (typeof document!=='undefined' ? document : null) : config.document;
     if(doc && typeof doc.getElementById==='function'){
       const resultSummary=doc.getElementById('tver-result-summary');
-      if(resultSummary){ resultSummary.innerHTML=summaryContentHtml+buildTverCoverageHtml(run)+buildTverManualMappingHtml(run); resultSummary.classList && resultSummary.classList.remove('hidden'); }
+      if(resultSummary){ resultSummary.innerHTML=summaryContentHtml+buildTverManualMappingHtml(run); resultSummary.classList && resultSummary.classList.remove('hidden'); }
       const panel=doc.getElementById('results-panel');
       if(panel){ panel.innerHTML=resultSummary ? mainHtml : html; panel.classList && panel.classList.remove('hidden'); bindTverHorizontalInteractions(panel); syncTverHorizontalScrollAccess(panel); syncTverHorizontalHeaderHeights(panel); scheduleTverHorizontalStickySync(panel); }
       syncTverUnifiedNavigator(doc, config);
@@ -10875,6 +10909,17 @@
     if(stage) stage.addEventListener('change',event=>selectTverComparisonStage(event.target.value,document));
     const coveragePanel=getElement(document,'tver-result-summary');
     if(coveragePanel) coveragePanel.addEventListener('click',event=>{if(event.target && event.target.getAttribute && event.target.getAttribute('data-action')==='export-results-all'){safeExportTverResultCsv(document);return;}if(event.target && event.target.getAttribute && event.target.getAttribute('data-action')==='confirm-manual-mapping'){const result=confirmTverManualMappings(document);if(!result.ok)showPageNotice(result.code,true,document);return;}if(event.target && event.target.getAttribute && event.target.getAttribute('data-action')==='export-coverage' && isTverLocalAcceptanceMode() && tverPageState.run) triggerExceptionDownload(buildTverCoverageCsv(tverPageState.run),{fileName:'tver-field-coverage.csv',document});});
+    // 20261123_NO003：未完了ヒントの開閉。hover / focus は CSS、クリック（タップ）はここで切り替える。
+    // 表示方法だけの変更で、校正判定・CSV 出力には影響しない。
+    if(coveragePanel){
+      const setTverHintOpen=(host,open)=>{if(!host)return;if(open)host.setAttribute('data-open','true');else host.removeAttribute('data-open');const trigger=host.querySelector('[data-tooltip-toggle]');if(trigger)trigger.setAttribute('aria-expanded',open?'true':'false');};
+      const closeTverHints=()=>{if(typeof document==='undefined'||!document.querySelectorAll)return;[...document.querySelectorAll('.tver-hint[data-open="true"]')].forEach(host=>setTverHintOpen(host,false));};
+      coveragePanel.addEventListener('click',event=>{const toggle=event.target&&typeof event.target.closest==='function'?event.target.closest('[data-tooltip-toggle]'):null;if(!toggle)return;const host=toggle.closest('.tver-hint');setTverHintOpen(host,!(host&&host.getAttribute('data-open')==='true'));});
+      document.addEventListener('click',event=>{const target=event.target;if(target&&typeof target.closest==='function'&&target.closest('.tver-hint'))return;closeTverHints();});
+      // Escape：開いているヒントを閉じる。トリガーにフォーカスが残ると :focus-within で開いたままになるため、
+      // ヒント内にフォーカスがある場合だけ blur して閉じる（他要素のフォーカスは動かさない）。
+      document.addEventListener('keydown',event=>{if(event.key!=='Escape')return;const host=event.target&&typeof event.target.closest==='function'?event.target.closest('.tver-hint'):null;if(host){const trigger=host.querySelector('[data-tooltip-toggle]');if(trigger&&typeof trigger.blur==='function')trigger.blur();}closeTverHints();});
+    }
     const runButton=getElement(document,'run-check'); if(runButton) runButton.addEventListener('click',()=>runTverCheck({selectedSheetName:tverPageState.selectedSheetName,comparisonStage:'unknown'}));
     const resetButton=getElement(document,'reset-check'); if(resetButton) resetButton.addEventListener('click',()=>clearTverPage());
     updateActionButtons(document);
