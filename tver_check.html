@@ -54,6 +54,18 @@
     .tver-csv-extra code{font-family:Consolas,'Courier New',monospace;font-size:13px;color:#1b3a4b}
     .tver-csv-extra details summary{cursor:pointer}
   </style>
+<style>
+    /* 20261123_NO001：Group 名称セルの根拠表示（行番号・候補）。本文 13px 以上・コントラスト 4.5:1 以上。 */
+    .tver-name-loc{display:block;margin-top:4px;color:#455a64;font-size:13px;font-weight:600;white-space:normal;overflow-wrap:anywhere}
+    .tver-name-candidates{margin-top:6px;color:#3a2f18;font-size:13px}
+    .tver-name-candidates summary{cursor:pointer;font-weight:700;color:#8a4b00}
+    .tver-name-candidates ul{margin:4px 0 0;padding-left:20px}
+    .tver-name-candidates li{margin:3px 0;white-space:normal;overflow-wrap:anywhere}
+    .tver-name-candidates code{font-family:Consolas,'Courier New',monospace;font-size:13px;color:#1b3a4b}
+    .tver-comparison-scope-detail{margin-top:6px;font-weight:500;color:#33454f}
+    .tver-comparison-scope-detail summary{cursor:pointer;font-weight:700}
+    .tver-comparison-scope-detail p{margin:4px 0;font-size:13px;line-height:1.5}
+  </style>
 <link rel="stylesheet" href="qc-ui.css">
 <style>
 /* P2-B FIX2：TVer 補助情報（ID主データ / 外部送信なし）を公共 Header 第二行右側に低調表示。
@@ -5071,6 +5083,28 @@
     sources.forEach(source=>visit(source,new Set()));return assignment;
   }
 
+  // 20261123_NO001：管理画面 CSV の「独立デバイス接尾辞」（_IOS / _Android / _PC / _CTV）。
+  // 設定表の row-level デバイス列が「単一デバイス」として証拠付きで確定している行だけ、
+  // そのデバイスに対応する接尾辞を名称の識別根拠として扱う。
+  // 既存の SPPC / SP / CTV / SPCTV / DMP 規則と、複合デバイス行（android ios pc 等）は変更しない。
+  const TVER_DEVICE_TOKEN_SUFFIX=Object.freeze({ ios:'IOS', android:'Android', pc:'PC', ctv:'CTV' });
+
+  function resolveTverSettingDeviceTokenSuffix(entity){
+    const device=resolveSettingAdGroupDevice(entity);
+    if(!device || !device.resolved) return null;
+    const tokens=new Set(String(device.device ?? '').split(' ').filter(Boolean));
+    if(tokens.size!==1) return null;
+    const token=[...tokens][0];
+    const suffix=TVER_DEVICE_TOKEN_SUFFIX[token];
+    if(!suffix) return null;
+    // 名称証拠は「実セル」に限定する（埋め込み規則・推定値では確定させない）。
+    const evidence=uniqueSourceRefs((device.sourceEvidence || []).filter(source=>source
+      && source.rowNumber!==null && source.rowNumber!==undefined
+      && String(source.rawValue ?? '').trim()!==''));
+    if(!evidence.length) return null;
+    return { suffix, device:token, sourceRef:device.primarySource || evidence[0], evidence };
+  }
+
   function resolveTverIndependentGroupCandidates(setting,model,candidates,csvAds,parentCsv,plans,uncertainScopes,parentScopeUncertain){
     const cache=plans || new Map(),uncertain=uncertainScopes || new Set();
     if(!cache.has(setting.parentKey)){
@@ -5083,6 +5117,20 @@
           ? device.device==='ctv' ? 'CTV' : device.device==='android ios pc' ? 'SP' : null : null;
         return [g.key,role];
       }));
+      // 20261123_NO001：同ターゲティング名の兄弟が「全て単一デバイスで確定・重複なし」のときだけ
+      // 独立デバイス接尾辞を名称候補に使う。1 行でも未確定なら従来経路（要確認側）に戻す。
+      const deviceTokenByGroup=new Map(siblings.map(g=>[g.key,resolveTverSettingDeviceTokenSuffix(g)]));
+      const deviceTokenFamilies=new Map();
+      siblings.forEach(g=>{
+        const name=String((g.displayIdentity && g.displayIdentity.targetingName) ?? '');
+        if(!deviceTokenFamilies.has(name)) deviceTokenFamilies.set(name,[]);
+        deviceTokenFamilies.get(name).push(g.key);
+      });
+      const deviceTokenReady=new Map();
+      deviceTokenFamilies.forEach((keys,name)=>{
+        const suffixes=keys.map(key=>{ const info=deviceTokenByGroup.get(key); return info ? info.suffix : null; });
+        deviceTokenReady.set(name,keys.length>1 && suffixes.every(Boolean) && new Set(suffixes).size===suffixes.length);
+      });
       const sourceRole=g=>{
         const number=String(g.fields && g.fields.targetingNumber || '');
         const family=siblings.filter(s=>number && String(s.fields && s.fields.targetingNumber || '')===number);
@@ -5116,7 +5164,14 @@
         const target=g.displayIdentity && g.displayIdentity.targetingName,source=g.displayIdentity && g.displayIdentity.sourceRefs && g.displayIdentity.sourceRefs.targetingName;
         if(target===undefined || !source || String(source.rawValue)!==target)return [];
         const same=siblings.filter(s=>s.displayIdentity && s.displayIdentity.targetingName===target);
-        const suffixes=same.length===1 ? ['', '_CTV','_SPPC','_SP'] : role ? role==='CTV' ? ['_CTV'] : ['_SPPC','_SP'] : [];
+        // 20261123_NO001：独立デバイス接尾辞（_IOS/_Android/_PC/_CTV）は、兄弟全員が単一デバイスで
+        // 確定し重複が無い場合だけ候補にする。M1/M2・通常/DMP は anchor と target の完全一致で分離され、
+        // CSV の device 列値や price/status は識別に使わない。
+        const deviceTokenInfo=deviceTokenByGroup.get(g.key);
+        const deviceToken=deviceTokenInfo && deviceTokenReady.get(target) ? deviceTokenInfo.suffix : null;
+        const suffixes=same.length===1 ? ['', '_CTV','_SPPC','_SP']
+          : deviceToken ? ['_'+deviceToken]
+          : role ? role==='CTV' ? ['_CTV'] : ['_SPPC','_SP'] : [];
         const names=new Set(anchors.flatMap(anchor=>suffixes.flatMap(suffix=>{
           const full=anchor+(target ? '_'+target : '')+suffix;
           const variants=[full];
@@ -7053,7 +7108,24 @@
     }
     // Preserve the existing evidenced DMP-only name contract; do not generalize single PC/iOS to other Groups.
     if(suffix===null && target==='DMP' && dmp.dmpKind==='dmp' && (exact(['pc']) || exact(['ios']))) suffix='';
-    if(suffix===null) return result(null,'DEVICE_SUFFIX_RULE_PENDING','TVER_NO021_DEVICE_COMBINATION_UNCONFIRMED');
+    if(suffix===null){
+      // 20261123_NO001：P25 の複合接尾辞では確定できないが、設定表の row-level デバイスが
+      // 単一デバイスとして証拠付きで確定している場合、独立デバイス接尾辞を「検証候補」として残す。
+      // 期待値として無条件採用はせず、CSV 名の本文完全一致を buildTverGroupNameInput で確認する。
+      // 20261123_NO002：suffix 未確定の早期 return でも、CP 名称派生の衝突保護を必ず通す。
+      // ここを迂回すると、CPN 訴求から再計算した名称と設定表側 CP 名が食い違ったまま
+      // expectedBody が作られ、CSV 名が「一致」へ昇格してしまう。
+      const campaignPart=buildCampaignExpectation(parent.fields);
+      if(parent.expectedName && parent.expectedName!==campaignPart) return result(null,'CP_NAME_SETTING_DERIVATION_CONFLICT');
+      const tokenInfo=resolveTverSettingDeviceTokenSuffix(setting);
+      const baseName=parent.expectedName || campaignPart;
+      Object.assign(components,{
+        campaignName:cpName.value,start:dates[0],end:dates[1],appeal:appeal.value,targetingName:target,deviceSuffix:null,
+        deviceTokenSuffix:tokenInfo ? tokenInfo.suffix : '', deviceTokenSource:tokenInfo ? tokenInfo.sourceRef : null,
+        expectedBody:`${baseName}${target ? '_'+target : ''}`,
+      });
+      return result(null,'DEVICE_SUFFIX_RULE_PENDING','TVER_NO021_DEVICE_COMBINATION_UNCONFIRMED');
+    }
     Object.assign(components,{campaignName:cpName.value,start:dates[0],end:dates[1],appeal:appeal.value,targetingName:target,deviceSuffix:suffix});
     const campaignPart=buildCampaignExpectation(parent.fields);
     if(parent.expectedName && parent.expectedName!==campaignPart) return result(null,'CP_NAME_SETTING_DERIVATION_CONFLICT');
@@ -7125,16 +7197,52 @@
     return null;
   }
 
+  // 20261123_NO001：DEVICE_SUFFIX_RULE_PENDING のうち、次の全てを満たす場合だけ一致へ昇格する。
+  // ①設定表 row-level デバイスが単一デバイス（実セル証拠あり）②CSV 名の接尾辞がそのデバイスと完全一致
+  // ③接尾辞を除いた本体が設定表由来の期待名と完全一致（重複するターゲティング名の省略のみ許容）。
+  // どれか欠ければ従来どおり要確認のまま（不一致へは倒さない）。
+  function resolveTverDeviceSuffixNameMatch(contract,actual){
+    const components=contract && contract.components || {};
+    const token=String(components.deviceTokenSuffix || '');
+    const body=String(components.expectedBody || '');
+    const raw=String(actual ?? '');
+    if(!token || !body || !raw) return null;
+    const full=body+'_'+token;
+    if(raw===full) return { status:'一致', value:full, ruleBasis:'TVER_NO002_DEVICE_SUFFIX_EVIDENCE' };
+    const appeal=String(components.appeal || ''),targeting=String(components.targetingName || '');
+    const escapeRegExp=text=>text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    // 既存 P25 規則と同じ「重複するターゲティング名の省略」だけを許容する。
+    if(appeal && targeting===appeal){
+      const omitted=body.replace(new RegExp('_'+escapeRegExp(targeting)+'$'),'')+'_'+token;
+      if(raw===omitted) return { status:'表記ゆれ一致', value:full, ruleBasis:'TVER_NO002_DEVICE_SUFFIX_APPEAL_OMITTED' };
+    }
+    if(appeal && targeting.startsWith(appeal+'_')){
+      const remainder=targeting.slice(appeal.length+1);
+      if(/^DMP(?:_|$)/.test(remainder)){
+        const omitted=body.replace(new RegExp('_'+escapeRegExp(targeting)+'$'),'_'+remainder)+'_'+token;
+        if(raw===omitted) return { status:'表記ゆれ一致', value:full, ruleBasis:'TVER_NO002_DEVICE_SUFFIX_APPEAL_OMITTED' };
+      }
+    }
+    return null;
+  }
+
   function buildTverGroupNameInput(setting,csv,model,base){
     const contract=resolveTverGroupNameContract(setting,model),evidence=collectFieldEvidence(csv.rawRows || [],'adgroup_name');
     const actual=String(csvField(csv, 'adGroupName', 'adgroup_name') ?? '');
     const conflict=new Set(evidence.map(s=>String(s.rawValue))).size>1;
-    const unavailable=!evidence.length,comparable=contract.comparable && !conflict && !unavailable;
-    const input={...base,field:'adgroup_name',settingValue:contract.value || '',csvValue:conflict ? '' : actual,
-      settingSource:contract.sourceEvidence.find(s=>!s.fileName.startsWith('embedded:')) || null,csvSource:conflict ? null : evidence[0] || null,
-      settingEvidenceState:contract.comparable ? 'available' : 'ambiguous',csvEvidenceState:conflict ? 'ambiguous' : unavailable ? 'unavailable' : 'available',
-      comparable,alwaysDisplay:true,comparisonStatus:comparable ? null : '需确认',ruleBasis:contract.ruleBasis,
-      conservativeReason:conflict ? 'CSV_GROUP_NAME_CONFLICT' : unavailable ? 'CSV_GROUP_NAME_SOURCE_UNAVAILABLE' : contract.reason,
+    const unavailable=!evidence.length;
+    const deviceUpgrade=!contract.comparable && !conflict && !unavailable ? resolveTverDeviceSuffixNameMatch(contract,actual) : null;
+    const comparable=(contract.comparable || Boolean(deviceUpgrade)) && !conflict && !unavailable;
+    const settingName=deviceUpgrade ? deviceUpgrade.value : contract.value || '';
+    const settingSource=deviceUpgrade
+      ? (contract.components && contract.components.deviceTokenSource) || contract.sourceEvidence[0] || null
+      : contract.sourceEvidence.find(s=>!s.fileName.startsWith('embedded:')) || null;
+    const input={...base,field:'adgroup_name',settingValue:settingName,csvValue:conflict ? '' : actual,
+      settingSource,csvSource:conflict ? null : evidence[0] || null,
+      settingEvidenceState:(contract.comparable || deviceUpgrade) ? 'available' : 'ambiguous',csvEvidenceState:conflict ? 'ambiguous' : unavailable ? 'unavailable' : 'available',
+      comparable,alwaysDisplay:true,comparisonStatus:deviceUpgrade ? deviceUpgrade.status : comparable ? null : '需确认',
+      ruleBasis:deviceUpgrade ? deviceUpgrade.ruleBasis : contract.ruleBasis,
+      conservativeReason:conflict ? 'CSV_GROUP_NAME_CONFLICT' : unavailable ? 'CSV_GROUP_NAME_SOURCE_UNAVAILABLE' : deviceUpgrade ? null : contract.reason,
       sourceEvidence:{setting:contract.sourceEvidence,csv:evidence,derivedFrom:contract.sourceEvidence}};
     if(comparable){
       input.__groupNameComponents=contract.components || null;
@@ -8881,6 +8989,8 @@
     TRACKING_IMPRESSION_BLANK_ALLOWED:'インプレッション計測地点は設定表に指示欄がなく、CSVも全行空白です。現行運用では空白を許容します（比較対象外）',
     TRACKING_IMPRESSION_RULE_PENDING:'インプレッション計測地点に値がありますが、設定表に対応する指示がなく比較規則が未確定です。日方の設定要否を確認してください',
     CSV_UNKNOWN_HEADERS_PRESENT:'CSVに本ツールが未対応の列があります。新規ダウンロード項目については開発担当者へご連絡ください',
+    TVER_NO002_DEVICE_SUFFIX_EVIDENCE:'設定表のデバイス行（単一デバイス）とCSV名のデバイス接尾辞が完全一致し、名称本体も設定表由来の期待名と一致しています',
+    TVER_NO002_DEVICE_SUFFIX_APPEAL_OMITTED:'設定表の単一デバイスとCSV名の接尾辞が一致し、重複するターゲティング名のみ省略されています（P25の任意トークン省略）',
   };
 
   function tverDisplayReasonCodeMessage(code){
@@ -9464,6 +9574,56 @@
         ? ` data-qc-status="${status==='不一致' ? 'mismatch' : 'review'}" data-qc-scope="${escapeHtml(level)}" data-field-key="${escapeHtml(entry.field)}"` : '';
       marker=` data-entry-index="${escapeHtml(projection.entryIndex)}" data-entry-status="${escapeHtml(status)}"${qcMismatchAttr}`;
     }
+    // 20261123_NO001：Group 名称の同一性が未確定のとき、候補名を主セルへ積み上げない。
+    // 主セルは「対応未確定」、候補は展開詳細（名称＋CSV行番号）へ退避する。
+    // 20261123_NO002：設定表の行番号は「実 Excel のセル由来」だけを表示する。
+    // embedded: で始まる fileName は TVer マニュアル（P22/P25 など）の規則根拠であり、
+    // 設定表の行ではないため行番号表示から除外する（規則根拠としては保持する）。
+    const tverIsEmbeddedSource=source=>String((source && source.fileName) || '').startsWith('embedded:');
+    const tverRowNumbersOf=sources=>[...new Set((sources || []).filter(source=>source && !tverIsEmbeddedSource(source)).map(source=>source.rowNumber).filter(value=>Number.isInteger(value)))].sort((a,b)=>a-b);
+    // 実 Sheet が複数あるときは Sheet をまたいで行番号を混ぜない（別 Sheet の行を同一視しない）。
+    const tverSettingRowGroupsOf=sources=>{
+      const groups=new Map();
+      (sources || []).forEach(source=>{
+        if(!source || tverIsEmbeddedSource(source) || !Number.isInteger(source.rowNumber)) return;
+        const label=String(source.sheetName || '');
+        if(!groups.has(label)) groups.set(label,new Set());
+        groups.get(label).add(source.rowNumber);
+      });
+      return [...groups.entries()].map(([label,rows])=>({label,rows:[...rows].sort((a,b)=>a-b)}));
+    };
+    let nameCandidatesHtml='';
+    if(entry && level==='Ad Group' && entry.field==='adgroup_name' && !expected){
+      const reason=String(entry.conservativeReason || '');
+      const identityPending=Boolean(entry.identityPending) || ['GROUP_IDENTITY_EVIDENCE_CONFLICT','GROUP_IDENTITY_UNCONFIRMED','CANDIDATE_CONTENTION','CSV_GROUP_SCOPE_GRAIN_AMBIGUOUS','MULTIPLE_HARD_CANDIDATES','CSV_GROUP_NAME_CONFLICT'].includes(reason);
+      const names=String(entry.csvRawValue || '').split(' | ').map(text=>text.trim()).filter(Boolean);
+      if(identityPending && names.length>1){
+        value='対応未確定（CSV候補 '+names.length+' 件）';
+        const rowsByValue=new Map();
+        (entry.sourceEvidence && entry.sourceEvidence.csv || []).forEach(source=>{
+          const key=String((source && source.rawValue) ?? '');
+          if(!rowsByValue.has(key)) rowsByValue.set(key,[]);
+          if(source && Number.isInteger(source.rowNumber)) rowsByValue.get(key).push(source.rowNumber);
+        });
+        nameCandidatesHtml='<details class="tver-name-candidates" data-name-candidates="1"><summary>候補を表示</summary><ul>'
+          +names.map(name=>{
+            const rows=[...new Set(rowsByValue.get(name) || [])].sort((a,b)=>a-b);
+            return '<li><code>'+escapeHtml(name)+'</code>'+(rows.length ? '（CSV '+rows.join(', ')+' 行）' : '')+'</li>';
+          }).join('')+'</ul></details>';
+      }
+    }
+    // 設定表の行番号と CSV の行番号を、名称の根拠として併記する（一致時も表示）。
+    let nameLocationHtml='';
+    if(entry && level==='Ad Group' && entry.field==='adgroup_name'){
+      const settingGroups=tverSettingRowGroupsOf(entry.sourceEvidence && entry.sourceEvidence.setting);
+      const csvRows=tverRowNumbersOf(entry.sourceEvidence && entry.sourceEvidence.csv);
+      const formatRows=rows=>rows.slice(0,4).join(', ')+(rows.length>4 ? ' ほか（全'+rows.length+'行）' : ' 行');
+      const parts=[];
+      if(settingGroups.length===1) parts.push('設定表 '+formatRows(settingGroups[0].rows));
+      else if(settingGroups.length>1) parts.push(settingGroups.map(group=>'設定表（'+(group.label || '名称未取得')+'）'+formatRows(group.rows)).join(' / '));
+      if(csvRows.length) parts.push('CSV '+formatRows(csvRows));
+      if(parts.length) nameLocationHtml='<span class="tver-name-loc">'+escapeHtml(parts.join(' / '))+'</span>';
+    }
     let projectionState='unique';
     if(!entry && level==='Ad'){
       const candidates=projection && Array.isArray(projection.candidates) ? projection.candidates : [];
@@ -9474,7 +9634,7 @@
     const variant=nameStatus==='表記ゆれ一致';
     const nameClass=variant ? 'tver-status-name-variant' : !entry && level==='Ad' ? 'tver-status-review' : tverHorizontalStatusClass(nameStatus);
     const label=variant ? '<span class="tver-name-variant-label" title="既存の正規化ルールによる表記ゆれ一致">表記ゆれ</span>' : '';
-    return `<td class="tver-horizontal-fixed tver-horizontal-name-col tver-horizontal-fixed-name ${nameClass}" data-column-key="name" data-source-kind="${sourceKind}" data-name-status="${escapeHtml(nameStatus)}"${level==='Ad' ? ` data-name-projection-state="${projectionState}"` : ''}><span class="tver-group-name-value"${marker} title="${escapeHtml(value)}">${escapeHtml(value)}</span>${label}</td>`;
+    return `<td class="tver-horizontal-fixed tver-horizontal-name-col tver-horizontal-fixed-name ${nameClass}" data-column-key="name" data-source-kind="${sourceKind}" data-name-status="${escapeHtml(nameStatus)}"${level==='Ad' ? ` data-name-projection-state="${projectionState}"` : ''}><span class="tver-group-name-value"${marker} title="${escapeHtml(value)}">${escapeHtml(value)}</span>${label}${nameLocationHtml}${nameCandidatesHtml}</td>`;
   }
 
   function buildTverHorizontalTableHtmlLegacy(viewModel, options){
@@ -9989,7 +10149,13 @@
     const unknown=Array.isArray(run.unknownCsvColumns) ? run.unknownCsvColumns.length : 0;
     const parts=['比較済み '+compared+' 項目','未比較 '+uncovered+' 項目（一致ではありません）'];
     if(unknown) parts.push('CSV未対応の新規項目 '+unknown+' 列');
-    return '<p class="tver-comparison-scope" data-comparison-scope>'+escapeHtml(parts.join(' ／ '))+'</p>';
+    // 20261123_NO001：数値の意味（口径）と、異常ナビゲーターの件数が「定位点数」であることを明示する。
+    const detail='<details class="tver-comparison-scope-detail" data-comparison-scope-detail><summary>集計の見方</summary>'
+      +'<p>「比較済み」は、設定表の期待値と CSV 実値の照合まで完了した項目数です（一致・不一致の合計）。</p>'
+      +'<p>「未比較」は、規則未確定・CSV 項目なし・対象の同一性未確認などで判定していない項目数です。未比較は一致ではありません。</p>'
+      +'<p>異常ナビゲーターの件数は「定位点（セル・項目）の数」です。1 つの対象（Group / Ad）に複数の項目が含まれるため、エラー対象の件数とは一致しません。</p>'
+      +'</details>';
+    return '<div class="tver-comparison-scope" data-comparison-scope>'+escapeHtml(parts.join(' ／ '))+detail+'</div>';
   }
 
   // 20261122_NO001：CSV の追加列を可視化する。値の有無・実内容のみで、比較判定は行わない。
