@@ -59,11 +59,22 @@
     .tver-horizontal-sticky-header.tver-horizontal-sticky-header-fit{background:transparent}.tver-horizontal-sticky-header.tver-horizontal-sticky-header-fit .tver-horizontal-sticky-header-fixed{background:#2c3e50}.tver-horizontal-sticky-header.tver-horizontal-sticky-header-fit .tver-horizontal-sticky-header-dynamic{background:transparent}
   </style>
   <style>
-    .tver-horizontal-cell-entry-with-reason{max-height:none;overflow:visible}.tver-horizontal-cell-reason{display:block;margin-top:4px;color:#455a64;font-size:11px;font-weight:700;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere}.qc-mismatch-focus{outline:3px solid #f39c12!important;outline-offset:-3px;box-shadow:0 0 0 4px rgba(243,156,18,.32)!important;position:relative;z-index:25}.qc-mismatch-nav-trigger{cursor:pointer}.qc-mismatch-nav-trigger:hover{text-decoration:underline;filter:brightness(.97)}.qc-mismatch-nav-floating{position:fixed;right:20px;bottom:20px;z-index:1000;display:flex;align-items:center;gap:7px;padding:8px 10px;background:#fff3cd;border:2px solid #dc3545;border-radius:7px;box-shadow:0 4px 16px rgba(0,0,0,.2);color:#842029;font-size:.78rem}.qc-mismatch-nav-floating[hidden]{display:none}.qc-mismatch-nav-label{font-weight:700;white-space:nowrap}.qc-mismatch-nav-count{min-width:64px;text-align:center;font-weight:700;white-space:nowrap}.qc-mismatch-nav-btn{min-width:38px;padding:4px 7px;border:1px solid #bdc3c7;border-radius:4px;background:#f7f9fa;color:#2c3e50;cursor:pointer;font-weight:700}.qc-mismatch-nav-btn:hover{background:#ecf0f1}.qc-mismatch-nav-btn:focus-visible{outline:2px solid #c0392b;outline-offset:2px}
+    .tver-horizontal-cell-entry-with-reason{max-height:none;overflow:visible}.tver-horizontal-cell-reason{display:block;margin-top:4px;color:#455a64;font-size:11px;font-weight:700;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere}.qc-mismatch-focus{outline:3px solid #f39c12!important;outline-offset:-3px;box-shadow:0 0 0 4px rgba(243,156,18,.32)!important;position:relative;z-index:25}.qc-mismatch-nav-trigger{cursor:pointer}.qc-mismatch-nav-trigger:hover{text-decoration:underline;filter:brightness(.97)}.qc-mismatch-nav-floating[hidden]{display:none}.qc-mismatch-nav-label{font-weight:700;white-space:nowrap}.qc-mismatch-nav-count{min-width:64px;text-align:center;font-weight:700;white-space:nowrap}.qc-mismatch-nav-btn{min-width:38px;padding:4px 7px;border:1px solid #bdc3c7;border-radius:4px;background:#f7f9fa;color:#2c3e50;cursor:pointer;font-weight:700}.qc-mismatch-nav-btn:hover{background:#ecf0f1}.qc-mismatch-nav-btn:focus-visible{outline:2px solid #c0392b;outline-offset:2px}
   </style>
   <style>
     :root{--tver-back-nav-height:var(--qc-header-h,109px);--tver-level-tabs-height:44px}.tver-horizontal-sticky-header{top:calc(var(--tver-back-nav-height,var(--qc-header-h,109px)) + var(--tver-level-tabs-height,44px))}.results-table th{top:var(--tver-back-nav-height,var(--qc-header-h,109px))}@media(max-width:640px){.tver-level-tabs{gap:4px}.tver-level-tab{flex:1 1 0;padding-left:4px;padding-right:4px;font-size:14px}.tver-level-tab[aria-selected="true"]{padding-top:6px}}
   </style>
+<style>
+  /* 20261124：异常导航在标签工具栏内参与正常布局，窄幅自然换行。 */
+  .tver-level-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;min-width:0;margin-top:18px;padding:0 0 5px;border-bottom:1px solid #cfd8dc;position:sticky;top:var(--tver-back-nav-height,var(--qc-header-h,109px));z-index:12;background:#f5f5f5}
+  .tver-level-toolbar .tver-level-tabs{display:flex;flex:0 0 auto;align-items:stretch;gap:6px;width:auto;height:auto;margin:0;border:0;position:static;top:auto;z-index:auto;background:transparent}
+  .tver-level-toolbar .tver-level-tab{height:40px}
+  .qc-mismatch-nav-floating{position:static;right:auto;bottom:auto;z-index:auto;display:flex;align-items:center;gap:7px;flex:1 1 520px;min-width:0;max-width:100%;flex-wrap:wrap;padding:6px 8px;background:#f5f8fa;border:1px solid #9aadb6;border-radius:6px;box-shadow:none;color:#263238;font-size:.78rem}
+  .qc-mismatch-nav-label{white-space:normal}
+  .qc-mismatch-nav-count{flex:1 1 120px;min-width:0;white-space:normal;overflow-wrap:anywhere}
+  .qc-mismatch-nav-btn{flex:0 0 auto}
+  @media(max-width:640px){.tver-level-toolbar .tver-level-tabs{flex:1 1 100%;width:100%;gap:4px}.tver-level-toolbar .tver-level-tab{flex:1 1 0;padding-left:4px;padding-right:4px;font-size:14px}.tver-level-toolbar .tver-level-tab[aria-selected="true"]{padding-top:6px}.qc-mismatch-nav-floating{flex-basis:100%}}
+</style>
 <style>
     /* 20261122_NO001：CSV追加項目（新規列）の表示。本文 15px／補助 13px、コントラスト 4.5:1 以上。 */
     .tver-comparison-scope{margin:6px 0 0;padding:6px 10px;border-radius:4px;background:#eef3f6;color:#33454f;font-size:13px;font-weight:600}
@@ -89,6 +100,42 @@
     .tver-comparison-scope-detail summary{cursor:pointer;font-weight:700}
     .tver-comparison-scope-detail p{margin:4px 0;font-size:13px;line-height:1.5}
   </style>
+<style>
+    #tver-result-summary[data-ui-language="zh"] [data-lang="ja"],#tver-result-summary[data-ui-language="ja"] [data-lang="zh"]{display:none!important}
+    .tver-comparison-scope{width:100%;margin-top:0;font-weight:500}
+    .tver-comparison-scope-inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+    .tver-comparison-scope-inline>strong{font-size:14px}
+    .tver-impression-summary{font-weight:600}
+    .tver-comparison-scope-detail{margin:0 0 0 auto;font-weight:500}
+    .tver-comparison-scope-detail>summary{cursor:pointer;font-weight:700}
+    .tver-comparison-scope-body{max-height:min(65vh,680px);overflow:auto;margin-top:8px;padding:10px;background:#fff;border:1px solid #cfd8dc;border-radius:6px}
+    .tver-coverage-breakdown{font-size:13px;line-height:1.5}
+    .tver-coverage-breakdown>p{margin:0 0 8px}
+    .tver-coverage-breakdown section{margin-top:10px}
+    .tver-coverage-breakdown h4{margin:8px 0;font-size:14px}
+    .tver-coverage-language{display:flex;gap:4px;margin:0 0 8px}
+    .tver-coverage-language button{padding:4px 8px;border:1px solid #8499a3;border-radius:4px;background:#fff;color:#263238;cursor:pointer}
+    .tver-coverage-language button[aria-pressed="true"]{background:#e8eff2;font-weight:700}
+    .tver-coverage-language button:focus-visible{outline:2px solid #247a9b;outline-offset:2px}
+    .tver-coverage-field{border-top:1px solid #e1e7ea;padding:5px 0}
+    .tver-coverage-field>summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;cursor:pointer}
+    .tver-coverage-field>summary>span:nth-child(2){font-weight:600}
+    .tver-coverage-category{padding:1px 5px;border:1px solid #c4d0d5;border-radius:999px;background:#f5f8fa;font-size:12px}
+    .tver-coverage-object{margin:6px 0 6px 16px;padding-left:6px;border-left:2px solid #dce5e9}
+    .tver-coverage-object>summary{cursor:pointer;overflow-wrap:anywhere}
+    .tver-coverage-detail-grid{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:2px 10px;margin:6px 0}
+    .tver-coverage-detail-grid strong{font-weight:500;overflow-wrap:anywhere}
+    .tver-coverage-detail-grid code,.tver-coverage-object code{overflow-wrap:anywhere}
+    .tver-coverage-source-block{margin-top:6px}
+    .tver-coverage-sources{margin:3px 0 0;padding-left:20px;overflow-wrap:anywhere}
+    .tver-coverage-unknown{margin-top:10px;padding-top:8px;border-top:1px solid #dce5e9}
+    .tver-coverage-unknown h4{margin:0 0 4px}
+    .tver-coverage-unknown ul{margin:0;padding-left:20px}
+    .tver-hint-trigger{border-color:#718690;background:#f5f8fa;color:#33454f}
+    .tver-hint-icon{background:#516b76}
+    .tver-hint-body{border-color:#718690}
+    @media(max-width:640px){.tver-comparison-scope-inline{align-items:flex-start}.tver-comparison-scope-detail{flex-basis:100%;margin-left:0}.tver-coverage-detail-grid{grid-template-columns:minmax(0,1fr)}}
+</style>
 <link rel="stylesheet" href="qc-ui.css">
 <style>
 /* P2-B FIX2：TVer 補助情報（ID主データ / 外部送信なし）を公共 Header 第二行右側に低調表示。
@@ -150,6 +197,7 @@
     /* NO032：不一致・要確認を単一の固定ナビゲーションへ統合 */
     .qc-unified-nav-floating{right:16px!important;bottom:16px!important;left:auto!important;display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:calc(100vw - 32px);z-index:1200;padding:8px 10px}
     .qc-unified-nav-floating .qc-mismatch-nav-count{font-weight:700;white-space:nowrap}
+    .tver-level-toolbar .qc-unified-nav-floating .qc-mismatch-nav-count{min-width:0;white-space:normal;overflow-wrap:anywhere}
     .qc-nav-mode{border:1px solid #90a4ae;background:#fff;border-radius:5px;padding:3px 7px;font-size:11px;cursor:pointer;white-space:nowrap}
     .qc-nav-mode.active{background:#2c3e50;border-color:#2c3e50;color:#fff}
     @media (max-width:640px){.qc-unified-nav-floating{left:8px!important;right:8px!important;bottom:8px!important;justify-content:center}}
@@ -5769,6 +5817,7 @@
   const TVER_HORIZONTAL_LEVELS=['Campaign', 'Ad Group', 'Ad'];
   const TVER_DISPLAY_STATUSES=['一致', '不一致', '要確認'];
   const TVER_DISPLAY_STATUS_MAP={ '一致':'一致', '表記ゆれ一致':'一致', '不一致':'不一致', '需确认':'要確認', '未匹配':'要確認', '要確認':'要確認' };
+  let tverUiLanguage='zh';
   let tverPageState={ settingFile:null, csvFile:null, settingWorkbook:null, sheetCpIndex:null, availableSheetNames:[], selectedSheetName:'', selectedSettingValidation:null, selectedSettingModel:null, recognitionPending:false, uploadFiles:[], recognition:null, recognitionToken:0, runToken:0, run:null, error:'', busy:false, activeLevel:'Campaign', filters:{ ...TVER_DEFAULT_FILTERS }, objectUrl:null };
   let tverUnifiedNavigator=null;
 
@@ -5793,6 +5842,7 @@
     let navToken=0;
     let manualClose=false;
     let floatingElement=null;
+    let floatingLabel=null;
     let floatingCount=null;
     let floatingModeButtons=null;
     const scopeKey=scope=>scope===undefined||scope===null||String(scope)===''?'__all__':String(scope);
@@ -5845,14 +5895,17 @@
       if(floatingCount) floatingCount.textContent='';
     }
     function ensureFloating(){
-      if(floatingElement) return floatingElement;
+      const host=root&&typeof root.querySelector==='function' ? root.querySelector('.tver-level-toolbar') : null;
+      if(floatingElement && floatingElement.parentNode===host) return floatingElement;
+      floatingElement=null;
+      floatingCount=null;
+      floatingLabel=null;
       if(!documentRef||typeof documentRef.createElement!=='function') return null;
       const panel=documentRef.createElement('div');
       if(!panel||typeof panel.setAttribute!=='function'||typeof panel.appendChild!=='function'||typeof panel.addEventListener!=='function') return null;
       panel.setAttribute('class','qc-mismatch-nav-floating'+(unified ? ' qc-unified-nav-floating' : ''));
       panel.setAttribute('role','region');
       panel.setAttribute('aria-label',unified ? '異常ナビゲーター' : statuses[0]==='review' ? '要確認ナビゲーター' : '不一致ナビゲーター');
-      panel.style.position='fixed';
       const label=documentRef.createElement('span');
       label.setAttribute('class','qc-mismatch-nav-label');
       label.textContent=unified ? '⚠ 異常' : statuses[0]==='review' ? '⚠ 要確認' : '⚠ 不一致';
@@ -5910,12 +5963,12 @@
       panel.appendChild(prev);
       panel.appendChild(next);
       panel.appendChild(close);
-      const host=documentRef.body||documentRef.documentElement||documentRef;
       if(!host||typeof host.appendChild!=='function') return null;
       host.appendChild(panel);
       panel.hidden=true;
       floatingElement=panel;
       floatingCount=count;
+      floatingLabel=label;
       floatingModeButtons=modeButtons;
       return panel;
     }
@@ -5937,13 +5990,15 @@
       const panel=ensureFloating();
       if(!panel) return;
       const target=targets[position];
+      const targetPanel=target && target.closest && target.closest('.tver-horizontal-panel');
+      const levelId=targetPanel&&targetPanel.id ? targetPanel.id.replace('tver-horizontal-panel-','') : '';
+      const level={'campaign':'Campaign','ad-group':'Ad Group','ad':'Ad'}[levelId] || '';
+      if(floatingLabel) floatingLabel.textContent=(unified ? '⚠ 異常' : statuses[0]==='review' ? '⚠ 要確認' : '⚠ 不一致')+(level ? ' '+level : '');
+      if(panel.setAttribute) panel.setAttribute('data-qc-navigator-level',level);
       const fieldCell=target && target.closest && target.closest('[data-field-key]');
       const fieldKey=fieldCell && fieldCell.getAttribute('data-field-key');
       let fieldLabel='';
       if(fieldKey){
-        const panelEl=target.closest && target.closest('.tver-horizontal-panel');
-        const levelId=panelEl&&panelEl.id ? panelEl.id.replace('tver-horizontal-panel-','') : '';
-        const level={'campaign':'Campaign','ad-group':'Ad Group','ad':'Ad'}[levelId] || '';
         fieldLabel=buildTverHorizontalFieldLabel(level, fieldKey) || fieldKey;
       }
       if(floatingCount) floatingCount.textContent=(unified && target && readScope(target)!=='__all__' ? readScope(target)+' ｜ ' : '')+`${position+1} / ${targets.length}`+(fieldLabel ? '｜'+fieldLabel : '');
@@ -5970,7 +6025,7 @@
     function readQcStickyBottom(view){
       let bottom=0;
       if(documentRef && typeof documentRef.querySelectorAll==='function'){
-        ['.qc-header', '.tver-level-tabs', '.tver-horizontal-sticky-header'].forEach(selector => {
+        ['.qc-header', '.tver-level-toolbar', '.tver-horizontal-sticky-header'].forEach(selector => {
           documentRef.querySelectorAll(selector).forEach(element => {
             const style=view.getComputedStyle(element);
             if(style.position!=='sticky' && style.position!=='fixed') return;
@@ -7575,8 +7630,8 @@
     const hint=incomplete
       ? '<span class="tver-hint" data-incomplete-hint>'
         +'<button type="button" class="tver-hint-trigger" data-tooltip-toggle aria-expanded="false" aria-controls="tver-incomplete-tip" aria-describedby="tver-incomplete-tip">'
-        +'<span data-incomplete-warning>未完了項目あり</span><span class="tver-hint-icon" aria-hidden="true">i</span></button>'
-        +'<span class="tver-hint-body" id="tver-incomplete-tip" role="tooltip">未完了の校正項目があります。要確認・未比較の内容と根拠を全件CSVで確認してください。</span>'
+        +'<span data-lang="zh">检查说明</span><span data-lang="ja">照合の説明</span><span class="tver-hint-icon" aria-hidden="true">i</span></button>'
+        +'<span class="tver-hint-body" id="tver-incomplete-tip" role="tooltip"><span data-lang="zh">自动比对已完成。需人工确认的字段可在检查范围中查看，完整结果可导出 CSV。</span><span data-lang="ja">自動照合が完了しました。確認が必要な項目は照合範囲から確認できます。詳細は結果CSVで出力できます。</span></span>'
         +'</span>'
       : '';
     const scopeMessage=run.csvObjectCounts && Object.values(run.csvObjectCounts).some(value=>value===null) ? '<p>CSVの実体数未確定の項目があります。対応未確認の範囲は手動で確認してください。</p>' : '';
@@ -9536,7 +9591,7 @@
       const selected=level===current;
       return `<button class="tver-level-tab" type="button" role="tab" data-action="switch-level" data-level="${escapeHtml(level)}" aria-selected="${String(selected)}" aria-controls="tver-horizontal-panel-${escapeHtml(tverHorizontalLevelId(level))}" tabindex="${selected ? '0' : '-1'}">${escapeHtml(level)}</button>`;
     }).join('');
-    return `<nav class="tver-level-tabs" role="tablist" aria-label="レベル">${tabs}</nav>`;
+    return `<div class="tver-level-toolbar"><nav class="tver-level-tabs" role="tablist" aria-label="レベル">${tabs}</nav></div>`;
   }
 
   function resolveTverHorizontalWidths(level, columns, storage){
@@ -9799,6 +9854,12 @@
 
   function syncTverHorizontalHeaderHeights(panel){
     if(!panel || typeof panel.querySelector!=='function') return 0;
+    const toolbar=panel.querySelector('.tver-level-toolbar');
+    const doc=panel.ownerDocument || (typeof document!=='undefined' ? document : null);
+    if(toolbar && doc && doc.documentElement && doc.documentElement.style && typeof doc.documentElement.style.setProperty==='function'){
+      const height=toolbar.getBoundingClientRect ? toolbar.getBoundingClientRect().height : toolbar.offsetHeight;
+      if(Number(height)>0) doc.documentElement.style.setProperty('--tver-level-tabs-height',Number(height)+'px');
+    }
     const row=panel.querySelector('.tver-horizontal-sticky-header-row');
     const fixed=panel.querySelector('.tver-horizontal-sticky-header-fixed');
     const dynamic=panel.querySelector('.tver-horizontal-sticky-header-dynamic');
@@ -10171,52 +10232,158 @@
     });
   }
 
-  // 20261122_NO001：比較済みと未比較（＝一致ではない）を分けて示し、全項目 PASS と誤読させない。
+  function tverCoverageSourceRefs(record){
+    const found=[],visited=new Set();
+    const visit=value=>{
+      if(!value || typeof value!=='object' || visited.has(value)) return;
+      visited.add(value);
+      if(Array.isArray(value)){ value.forEach(visit); return; }
+      if(value.fileName || value.sheetName || value.rowNumber || value.columnName){ found.push(value); return; }
+      Object.values(value).forEach(visit);
+    };
+    visit(record && record.sourceEvidence);
+    const seen=new Set();
+    return found.filter(source=>{
+      const key=[source.fileName,source.sheetName,source.rowNumber,source.columnName].map(value=>String(value ?? '')).join('|');
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function tverCoverageSourcesHtml(record){
+    const sources=tverCoverageSourceRefs(record).filter(source=>{
+      const fileName=String(source.fileName || '');
+      return fileName && !fileName.startsWith('embedded:');
+    });
+    if(!sources.length) return '<p class="tver-coverage-source"><span data-lang="zh">未记录可追溯的实际 Sheet / CSV 位置。</span><span data-lang="ja">実際の Sheet / CSV 位置は記録されていません。</span></p>';
+    return '<ul class="tver-coverage-sources">'+sources.map(source=>{
+      const location=[source.fileName,source.sheetName,source.rowNumber ? source.rowNumber+' 行' : '',source.columnName].filter(Boolean).join(' / ');
+      return '<li>'+escapeHtml(location)+'</li>';
+    }).join('')+'</ul>';
+  }
+
+  function tverCoverageCategoryLabel(category){
+    const labels={
+      RULE_PENDING:['业务规则待确认','ルール未確定'],
+      INPUT_INSUFFICIENT:['输入或来源不足','入力または根拠不足'],
+      CSV_NOT_VERIFIABLE:['CSV 中无可核验字段','CSV で検証できない項目'],
+      MANUAL_REQUIRED:['人工检查范围','手動確認範囲'],
+      NOT_APPLICABLE:['不适用（不需处理）','対象外（対応不要）'],
+    };
+    return labels[category] || ['未自动比较','自動照合対象外'];
+  }
+
+  function tverCoverageObjectHtml(entry,record){
+    const category=entry.category,labels=tverCoverageCategoryLabel(category);
+    const level=String(entry.level || record.level || '');
+    const field=String(entry.field || record.field || '');
+    const targetName=String(record.targetName || '');
+    const coverageOnly=Boolean(record.coverageOnly || (!record.entityKey && !record.csvEntityKey));
+    const sourceHtml=tverCoverageSourcesHtml(record);
+    const reason=String(record.reason || entry.reason || '');
+    const basis=String(record.ruleBasis || '');
+    const status=String(record.displayStatus || '');
+    const fieldLabel=String(record.fieldLabel || '');
+    const objectLabel=coverageOnly
+      ? '<span data-lang="zh">内部范围记录（不是实际 Campaign / Group / Ad）</span><span data-lang="ja">内部スコープ記録（実 Campaign / Group / Ad ではありません）</span>'
+      : escapeHtml(targetName || field);
+    const details=[
+      '<div class="tver-coverage-detail-grid"><span data-lang="zh">层级</span><span data-lang="ja">レベル</span><strong>'+escapeHtml(level)+'</strong>',
+      '<span data-lang="zh">对象</span><span data-lang="ja">対象</span><strong>'+objectLabel+'</strong>',
+      '<span data-lang="zh">字段</span><span data-lang="ja">項目</span><strong><code>'+escapeHtml(field)+'</code>'+(fieldLabel ? ' / '+escapeHtml(fieldLabel) : '')+'</strong>',
+      '<span data-lang="zh">分类</span><span data-lang="ja">分類</span><strong><span data-lang="zh">'+escapeHtml(labels[0])+'</span><span data-lang="ja">'+escapeHtml(labels[1])+'</span></strong>',
+      '<span data-lang="zh">结果状态</span><span data-lang="ja">結果状態</span><strong>'+escapeHtml(status || '—')+'</strong>',
+      '<span data-lang="zh">原始原因代码</span><span data-lang="ja">元の理由コード</span><strong><code>'+escapeHtml(reason || '—')+'</code></strong>',
+      '<span data-lang="zh">依据</span><span data-lang="ja">根拠</span><strong><code>'+escapeHtml(basis || '—')+'</code></strong></div>',
+      '<div class="tver-coverage-source-block"><strong><span data-lang="zh">来源位置</span><span data-lang="ja">出典位置</span></strong>'+sourceHtml+'</div>',
+    ].join('');
+    return '<details class="tver-coverage-object"><summary>'+escapeHtml(level)+' / '+escapeHtml(targetName || field)+' — '+escapeHtml(labels[0])+'</summary>'+details+'</details>';
+  }
+
+  function buildTverCoverageBreakdownHtml(run){
+    const coverage=run && run.coverage,entries=coverage && Array.isArray(coverage.entries) ? coverage.entries : [];
+    if(!entries.length) return '';
+    const records=Array.isArray(coverage.records) ? coverage.records : [];
+    const groupEntries=new Map();
+    entries.forEach(entry=>{
+      if(entry.category==='AUTO_COMPARED' || entry.category==='DIFFERENCE') return;
+      const record=records[entry.index] || {};
+      const key=String(entry.level || record.level || '')+'|'+String(entry.field || record.field || '');
+      if(!groupEntries.has(key)) groupEntries.set(key,{level:String(entry.level || record.level || ''),field:String(entry.field || record.field || ''),items:[]});
+      groupEntries.get(key).items.push({entry,record});
+    });
+    const renderGroups=groups=>groups.length ? groups.map(group=>{
+      const objectKeys=new Set(group.items.filter(item=>!item.record.coverageOnly).map(item=>String(item.record.entityKey || item.record.csvEntityKey || item.record.targetName || item.entry.index)));
+      const categories={};
+      group.items.forEach(item=>{categories[item.entry.category]=(categories[item.entry.category]||0)+1;});
+      const categoryText=Object.entries(categories).map(([category,count])=>{
+        const label=tverCoverageCategoryLabel(category);
+        return '<span class="tver-coverage-category"><span data-lang="zh">'+escapeHtml(label[0])+'</span><span data-lang="ja">'+escapeHtml(label[1])+'</span> '+count+'</span>';
+      }).join('');
+      const fieldLabel=String((group.items[0].record && group.items[0].record.fieldLabel) || '');
+      const indexes=group.items.map(item=>String(item.entry.index)).join(',');
+      return '<details class="tver-coverage-field" data-entry-indexes="'+escapeHtml(indexes)+'"><summary data-coverage-field><span>'+escapeHtml(group.level)+' / <code>'+escapeHtml(group.field)+'</code>'+(fieldLabel ? ' — '+escapeHtml(fieldLabel) : '')+'</span><span>'+group.items.length+' <span data-lang="zh">条</span><span data-lang="ja">件</span> / '+objectKeys.size+' <span data-lang="zh">个对象</span><span data-lang="ja">対象</span></span>'+categoryText+'</summary></details>';
+    }).join('') : '<p>—</p>';
+
+    const allGroups=[...groupEntries.values()];
+    const reviewItems=entries.map((entry,index)=>({entry,record:records[index] || {}}))
+      .filter(item=>item.entry.category!=='AUTO_COMPARED'&&item.entry.category!=='DIFFERENCE'&&['需确认','要確認'].includes(String(item.record.displayStatus || '')));
+    const otherItems=entries.map((entry,index)=>({entry,record:records[index] || {}}))
+      .filter(item=>item.entry.category!=='AUTO_COMPARED'&&item.entry.category!=='DIFFERENCE'&&item.entry.category!=='NOT_APPLICABLE'&&!['需确认','要確認'].includes(String(item.record.displayStatus || '')));
+    const notApplicableItems=entries.filter(item=>item.category==='NOT_APPLICABLE');
+    const reviewCount=reviewItems.length,otherCount=otherItems.length,notApplicableCount=notApplicableItems.length;
+    const reviewFields=new Map();
+    reviewItems.forEach(item=>{
+      const key=String(item.entry.level||'')+'|'+String(item.entry.field||'');
+      reviewFields.set(key,(reviewFields.get(key)||0)+1);
+    });
+    const reviewFieldText=[...reviewFields].map(([key,count])=>{
+      const [level,field]=key.split('|');
+      return '<code>'+escapeHtml(level)+' / '+escapeHtml(field)+'</code> '+count;
+    }).join('；');
+    const unknown=Array.isArray(run.unknownCsvColumns) ? run.unknownCsvColumns : [];
+    const compared=entries.filter(item=>item.category==='AUTO_COMPARED'||item.category==='DIFFERENCE').length;
+    const notCompared=entries.length-compared;
+    const unknownHtml=unknown.length ? '<section class="tver-coverage-unknown"><h4><span data-lang="zh">未知新增下载字段（不计入原始 coverage）</span><span data-lang="ja">未知の追加ダウンロード項目（元の coverage 件数には含めません）</span></h4><ul>'+unknown.map(item=>'<li><code>'+escapeHtml(item.name)+'</code>（'+escapeHtml(item.columnNumber)+' <span data-lang="zh">列</span><span data-lang="ja">列目</span>；'+escapeHtml(item.nonEmptyCount)+' <span data-lang="zh">有值</span><span data-lang="ja">値あり</span> / '+escapeHtml(item.blankCount)+' <span data-lang="zh">空白</span><span data-lang="ja">空白</span>）</li>').join('')+'</ul></section>' : '';
+    return '<div class="tver-coverage-breakdown">'
+      +'<div class="tver-coverage-language" role="group" aria-label="说明语言"><button type="button" data-action="scope-language" data-language="zh" aria-pressed="'+String(tverUiLanguage==='zh')+'">中文</button><button type="button" data-action="scope-language" data-language="ja" aria-pressed="'+String(tverUiLanguage==='ja')+'">日本語</button></div>'
+      +'<p><span data-lang="zh">原始 coverage 记录 '+entries.length+' 条：自动比较 '+compared+' 条，未自动比较 '+notCompared+' 条；其余按字段和层级分类。以下分组不是新增异常总数。</span><span data-lang="ja">元の coverage 記録は '+entries.length+' 件です。自動照合 '+compared+' 件、自動照合対象外 '+notCompared+' 件。残りは項目とレベルで分類しており、新たな異常合計ではありません。</span></p>'
+      +'<section><h4><span data-lang="zh">需人工确认（已计入上方“要確認”，不重复计数）</span><span data-lang="ja">人手確認が必要（上部の「要確認」に計上済み。重複集計しません）</span>：'+reviewCount+'</h4><p>'+reviewFieldText+'</p></section>'
+      +'<section><h4><span data-lang="zh">其他未自动比较（需按原因查看，不代表系统故障）</span><span data-lang="ja">その他の自動照合対象外（理由を確認。システム障害を意味しません）</span>：'+otherCount+'</h4></section>'
+      +'<section><h4><span data-lang="zh">不适用（不需处理）</span><span data-lang="ja">対象外（対応不要）</span>：'+notApplicableCount+'</h4></section>'
+      +'<section><h4><span data-lang="zh">按层级和字段查看明细</span><span data-lang="ja">レベルと項目ごとの詳細</span></h4>'+renderGroups(allGroups)+'</section>'
+      +unknownHtml+'</div>';
+  }
+
+  // 20261124：摘要保留自动比较数量；Impression 计数并入同一行，细项按真实 coverage 分组展开。
   function buildTverComparisonScopeMetaHtml(run){
     const coverage=run && run.coverage;
     if(!coverage || !Array.isArray(coverage.entries)) return '';
     const compared=coverage.entries.filter(record=>record.category==='AUTO_COMPARED' || record.category==='DIFFERENCE').length;
-    const total=coverage.entries.length;
-    const uncovered=total-compared;
-    const unknown=Array.isArray(run.unknownCsvColumns) ? run.unknownCsvColumns.length : 0;
-    const parts=['比較済み '+compared+' 項目','未比較 '+uncovered+' 項目（一致ではありません）'];
-    if(unknown) parts.push('CSV未対応の新規項目 '+unknown+' 列');
-    // 20261123_NO001：数値の意味（口径）と、異常ナビゲーターの件数が「定位点数」であることを明示する。
-    const detail='<details class="tver-comparison-scope-detail" data-comparison-scope-detail><summary>集計の見方</summary>'
-      +'<p>「比較済み」は、設定表の期待値と CSV 実値の照合まで完了した項目数です（一致・不一致の合計）。</p>'
-      +'<p>「未比較」は、規則未確定・CSV 項目なし・対象の同一性未確認などで判定していない項目数です。未比較は一致ではありません。</p>'
-      +'<p>異常ナビゲーターの件数は「定位点（セル・項目）の数」です。1 つの対象（Group / Ad）に複数の項目が含まれるため、エラー対象の件数とは一致しません。</p>'
-      +'</details>';
-    return '<div class="tver-comparison-scope" data-comparison-scope>'+escapeHtml(parts.join(' ／ '))+detail+'</div>';
+    const impression=(Array.isArray(run.optionalCsvColumns) ? run.optionalCsvColumns : []).find(item=>item.name==='tracking_url_impression');
+    const impressionHtml=impression
+      ? '<span class="tver-impression-summary" data-impression-summary><span data-lang="zh">Impression：有值 '+Number(impression.nonEmptyCount||0)+' / 空白 '+Number(impression.blankCount||0)+'（'+(Number(impression.nonEmptyCount||0)>0?'需确认':'允许')+'）</span><span data-lang="ja">Impression：値あり '+Number(impression.nonEmptyCount||0)+' / 空白 '+Number(impression.blankCount||0)+'（'+(Number(impression.nonEmptyCount||0)>0?'要確認':'許容')+'）</span></span>'
+      : '';
+    const detail=buildTverCoverageBreakdownHtml(run);
+    const detailHtml='<details class="tver-comparison-scope-detail" data-comparison-scope-detail><summary><span data-lang="zh">检查范围</span><span data-lang="ja">照合範囲</span></summary><div class="tver-comparison-scope-body">'+detail+'</div></details>';
+    return '<section class="tver-comparison-scope" data-comparison-scope><div class="tver-comparison-scope-inline"><strong><span data-lang="zh">已自动比较 '+compared+' 项</span><span data-lang="ja">比較済み '+compared+' 項目</span></strong>'+(impressionHtml ? '<span aria-hidden="true">｜</span>'+impressionHtml : '')+detailHtml+'</div></section>';
   }
 
-  // 20261122_NO001：CSV の追加列を可視化する。値の有無・実内容のみで、比較判定は行わない。
+  // 未知 CSV 列仍单独明确提示；已知 impression 摘要由 buildTverComparisonScopeMetaHtml 内联呈现。
   function buildTverCsvExtraHtml(run){
-    if(!run) return '';
-    const optional=Array.isArray(run.optionalCsvColumns) ? run.optionalCsvColumns : [];
-    const unknown=Array.isArray(run.unknownCsvColumns) ? run.unknownCsvColumns : [];
-    const blocks=[];
-    optional.filter(item=>item.name==='tracking_url_impression').forEach(item=>{
-      const note=item.nonEmptyCount>0
-        ? '設定表に本項目の指示欄がないため、値の妥当性は自動判定できません（要確認として表示しています）。'
-        : '全行空白です。現行ルールでは空白を許容します（比較対象外。不一致としては扱いません）。';
-      blocks.push('<div class="tver-csv-extra-item" data-csv-extra-known="tracking_url_impression">'
-        +'<strong>計測URL（インプレッション）</strong>：'+escapeHtml(item.columnNumber+'列目／値あり '+item.nonEmptyCount+' 件・空白 '+item.blankCount+' 件')
-        +'<span class="tver-csv-extra-note">'+escapeHtml(note)+'</span></div>');
-    });
-    if(unknown.length){
-      const items=unknown.map(item=>{
-        const sampleHtml=item.samples && item.samples.length
-          ? '<ul>'+item.samples.map(sample=>'<li>'+escapeHtml(sample.rowNumber+'行目：'+sample.value)+'</li>').join('')+'</ul>'
-          : '<p>値のある行はありません。</p>';
-        return '<li><details><summary><code>'+escapeHtml(item.name)+'</code>（'+item.columnNumber+'列目）値あり '+item.nonEmptyCount+' 件／空白 '+item.blankCount+' 件</summary>'
-          +'<p>実際の内容（先頭 '+String(item.samples ? item.samples.length : 0)+' 件）</p>'+sampleHtml+'</details></li>';
-      }).join('');
-      blocks.push('<div class="tver-csv-extra-item" data-csv-extra-unknown="1">'
-        +'<p class="tver-csv-extra-notice">新規ダウンロード項目については、開発担当者へご連絡ください。（未対応のCSV項目 '+unknown.length+' 件）</p>'
-        +'<ul>'+items+'</ul></div>');
-    }
-    return blocks.length ? '<section class="tver-csv-extra" aria-label="CSVの追加項目">'+blocks.join('')+'</section>' : '';
+    const unknown=Array.isArray(run && run.unknownCsvColumns) ? run.unknownCsvColumns : [];
+    if(!unknown.length) return '';
+    const items=unknown.map(item=>{
+      const sampleHtml=item.samples && item.samples.length
+        ? '<ul>'+item.samples.map(sample=>'<li>'+escapeHtml(sample.rowNumber+'行目：'+sample.value)+'</li>').join('')+'</ul>'
+        : '<p><span data-lang="zh">没有非空记录。</span><span data-lang="ja">値のある行はありません。</span></p>';
+      return '<li><details><summary><code>'+escapeHtml(item.name)+'</code>（'+item.columnNumber+'列目）値あり '+item.nonEmptyCount+' 件／空白 '+item.blankCount+' 件</summary>'
+        +'<p><span data-lang="zh">实际内容（前 '+String(item.samples ? item.samples.length : 0)+' 条）</span><span data-lang="ja">実際の内容（先頭 '+String(item.samples ? item.samples.length : 0)+' 件）</span></p>'+sampleHtml+'</details></li>';
+    }).join('');
+    return '<section class="tver-csv-extra" aria-label="CSVの追加項目"><div class="tver-csv-extra-item" data-csv-extra-unknown="1">'
+      +'<p class="tver-csv-extra-notice"><span data-lang="zh">检测到未支持的 CSV 新字段，请联系开发人员确认。（'+unknown.length+' 个字段）</span><span data-lang="ja">未対応の CSV 新規項目があります。開発担当者へご連絡ください。（'+unknown.length+' 項目）</span></p>'
+      +'<ul>'+items+'</ul></div></section>';
   }
 
   function renderTverRun(run, options){
@@ -10252,7 +10419,7 @@
     const doc=config.document===undefined ? (typeof document!=='undefined' ? document : null) : config.document;
     if(doc && typeof doc.getElementById==='function'){
       const resultSummary=doc.getElementById('tver-result-summary');
-      if(resultSummary){ resultSummary.innerHTML=summaryContentHtml+buildTverManualMappingHtml(run); resultSummary.classList && resultSummary.classList.remove('hidden'); }
+      if(resultSummary){ resultSummary.innerHTML=summaryContentHtml+buildTverManualMappingHtml(run); resultSummary.setAttribute && resultSummary.setAttribute('data-ui-language',tverUiLanguage); resultSummary.classList && resultSummary.classList.remove('hidden'); }
       const panel=doc.getElementById('results-panel');
       if(panel){ panel.innerHTML=resultSummary ? mainHtml : html; panel.classList && panel.classList.remove('hidden'); bindTverHorizontalInteractions(panel); syncTverHorizontalScrollAccess(panel); syncTverHorizontalHeaderHeights(panel); scheduleTverHorizontalStickySync(panel); }
       syncTverUnifiedNavigator(doc, config);
@@ -10263,6 +10430,19 @@
 
   function getElement(doc, id){
     return doc && typeof doc.getElementById==='function' ? doc.getElementById(id) : null;
+  }
+
+  function setTverUiLanguage(language,doc){
+    if(!['zh','ja'].includes(language)) return;
+    tverUiLanguage=language;
+    const summary=getElement(doc || (typeof document!=='undefined' ? document : null),'tver-result-summary');
+    if(!summary) return;
+    summary.setAttribute('data-ui-language',language);
+    if(typeof summary.querySelectorAll==='function'){
+      summary.querySelectorAll('[data-action="scope-language"]').forEach(button=>{
+        button.setAttribute('aria-pressed',String(button.getAttribute('data-language')===language));
+      });
+    }
   }
 
   function showPageNotice(message, isError, doc){
@@ -10908,7 +11088,32 @@
     const stage=getElement(document,'comparison-stage');
     if(stage) stage.addEventListener('change',event=>selectTverComparisonStage(event.target.value,document));
     const coveragePanel=getElement(document,'tver-result-summary');
-    if(coveragePanel) coveragePanel.addEventListener('click',event=>{if(event.target && event.target.getAttribute && event.target.getAttribute('data-action')==='export-results-all'){safeExportTverResultCsv(document);return;}if(event.target && event.target.getAttribute && event.target.getAttribute('data-action')==='confirm-manual-mapping'){const result=confirmTverManualMappings(document);if(!result.ok)showPageNotice(result.code,true,document);return;}if(event.target && event.target.getAttribute && event.target.getAttribute('data-action')==='export-coverage' && isTverLocalAcceptanceMode() && tverPageState.run) triggerExceptionDownload(buildTverCoverageCsv(tverPageState.run),{fileName:'tver-field-coverage.csv',document});});
+    if(coveragePanel) coveragePanel.addEventListener('click',event=>{
+      const target=event.target;
+      const fieldSummary=target&&typeof target.closest==='function' ? target.closest('summary[data-coverage-field]') : null;
+      if(fieldSummary){
+        if(event.preventDefault) event.preventDefault();
+        const field=fieldSummary.parentElement;
+        if(!field) return;
+        if(field.open){field.open=false;return;}
+        field.open=true;
+        if(field.getAttribute('data-coverage-loaded')==='true' || !tverPageState.run || !tverPageState.run.coverage) return;
+        const indexes=String(field.getAttribute('data-entry-indexes')||'').split(',').map(value=>Number(value)).filter(Number.isInteger);
+        const html=indexes.map(index=>{
+          const entry=tverPageState.run.coverage.entries[index];
+          const record=tverPageState.run.coverage.records[index];
+          return entry && record ? tverCoverageObjectHtml(entry,record) : '';
+        }).join('');
+        if(html && typeof field.insertAdjacentHTML==='function') field.insertAdjacentHTML('beforeend',html);
+        field.setAttribute('data-coverage-loaded','true');
+        return;
+      }
+      const action=target&&target.getAttribute&&target.getAttribute('data-action');
+      if(action==='scope-language'){setTverUiLanguage(target.getAttribute('data-language'),document);return;}
+      if(action==='export-results-all'){safeExportTverResultCsv(document);return;}
+      if(action==='confirm-manual-mapping'){const result=confirmTverManualMappings(document);if(!result.ok)showPageNotice(result.code,true,document);return;}
+      if(action==='export-coverage' && isTverLocalAcceptanceMode() && tverPageState.run) triggerExceptionDownload(buildTverCoverageCsv(tverPageState.run),{fileName:'tver-field-coverage.csv',document});
+    });
     // 20261123_NO003：未完了ヒントの開閉。hover / focus は CSS、クリック（タップ）はここで切り替える。
     // 表示方法だけの変更で、校正判定・CSV 出力には影響しない。
     if(coveragePanel){
