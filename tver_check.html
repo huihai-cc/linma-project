@@ -202,6 +202,41 @@
     .qc-nav-mode.active{background:#2c3e50;border-color:#2c3e50;color:#fff}
     @media (max-width:640px){.qc-unified-nav-floating{left:8px!important;right:8px!important;bottom:8px!important;justify-content:center}}
   </style>
+<style>
+  /* 20261125_NO001 FIX2：Sheet 選表メッセージ／異常ナビのグループ化と紅黄外枠／結果行の照合範囲グループ。 */
+  .tver-sheet-hint{margin:10px 0 0;padding:9px 12px;border:1px solid #c0392b;border-left:5px solid #c0392b;border-radius:6px;background:#fdecea;color:#7b1f16;font-size:14px;font-weight:600;line-height:1.55;overflow-wrap:anywhere}
+  .tver-sheet-hint[hidden]{display:none}
+  .tver-sheet-hint-line{display:block}
+  .tver-sheet-hint-line+.tver-sheet-hint-line{margin-top:3px}
+  .tver-sheet-hint-suggest{margin-top:8px;padding:8px 12px;border:1px solid #1b5e20;border-radius:5px;background:#e8f5e9;color:#1b5e20;font-size:14px;font-weight:700;cursor:pointer}
+  .tver-sheet-hint-suggest .tver-sheet-hint-line{display:block;margin-top:2px;font-size:12px;font-weight:600;color:#1b5e20}
+  .tver-sheet-hint-suggest:hover{background:#d7ecd9}
+  .tver-sheet-hint[data-sheet-design-state="empty"]{border-color:#b26a00;border-left-color:#b26a00;background:#fff8e1;color:#6b4200}
+  .tver-sheet-hint[data-sheet-design-state="unrecognized"]{border-color:#c0392b;border-left-color:#c0392b;background:#fdecea;color:#7b1f16}
+  /* 異常ナビ：タイトル／絞り込み／前後・閉じる の 3 グループを崩さず、幅は内容に合わせる。 */
+  .tver-level-toolbar .qc-mismatch-nav-floating{flex:0 1 auto;width:auto;max-width:100%;gap:8px}
+  .qc-mismatch-nav-group{display:flex;align-items:center;gap:6px;flex:0 0 auto;min-width:0}
+  .qc-mismatch-nav-group-title{flex:1 1 auto;min-width:0}
+  .qc-mismatch-nav-group-title .qc-mismatch-nav-count{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+  .qc-mismatch-nav-group-actions{gap:4px}
+  .qc-unified-nav-floating[data-qc-nav-severity="mismatch"]{border:2px solid #c0392b;background:#fff5f4}
+  .qc-unified-nav-floating[data-qc-nav-severity="review"]{border:2px solid #b26a00;background:#fff8e1}
+  /* 結果行：照合範囲グループは右側の余白へ。入り切らない時は次の行へ回す。 */
+  /* 余白を吸収するスペーサで右寄せする：入り切らない時はグループだけが次行の左端（内容区）へ回る。 */
+  .tver-result-bar-spacer{flex:1 1 0;min-width:0}
+  .tver-result-scope-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:0 1 auto;min-width:0}
+  .tver-result-scope-group .tver-comparison-scope{width:auto;margin:0;padding:0;background:transparent;font-weight:500}
+  .tver-result-scope-group .tver-comparison-scope-detail{margin:0}
+  .tver-result-scope-group .tver-compared-sheet{padding:4px 8px;border:1px solid #b0bec5;border-radius:4px;background:#f1f5f7;color:#1b3a4b;font-size:13px;font-weight:700;white-space:nowrap}
+  @media(max-width:1180px){.tver-result-bar-spacer{display:none}.tver-result-scope-group{flex:1 1 100%;justify-content:flex-start}}
+  /* 狭幅：ナビはタブの次行へ「整組」で移し、はみ出しを作らない（内容幅で押し広げない）。 */
+  @media(max-width:640px){
+    .tver-level-toolbar .qc-mismatch-nav-floating{flex:1 1 100%;width:100%;max-width:100%}
+    .qc-mismatch-nav-group{flex:0 1 auto}
+    .qc-mismatch-nav-group-title{flex:1 1 100%;min-width:0}
+    .qc-mismatch-nav-group-actions{flex:0 0 auto}
+  }
+</style>
 </head>
 <body>
   <script src="qc-auth.js"></script>
@@ -229,6 +264,7 @@
     <section class="upload-grid" aria-label="ファイル選択">
       <label class="upload-zone" id="tver-upload-zone" for="tver-file-input"><h2>設定表 + CSV</h2><p>TVer 摺合せシート（.xlsx）とTVer管理画面の登録／編集CSV（.csv）</p><p>一度に2ファイル、または順番にドラッグ＆ドロップ／クリックで選択</p><input id="tver-file-input" type="file" multiple accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" aria-describedby="setting-file-state csv-file-state upload-recognition-state"><div class="file-state" id="setting-file-state">設定表：未選択</div><div class="file-state" id="csv-file-state">CSV：未選択</div><p class="upload-recognition-state" id="upload-recognition-state" role="status">.xlsx と .csv を選択してください。</p></label>
 <div class="tver-sheet-row"><label class="tver-sheet-search" for="setting-sheet-search">Sheet 名称検索<input id="setting-sheet-search" type="search" autocomplete="off" placeholder="Sheet名を検索" aria-controls="setting-sheet-name"></label><span id="setting-sheet-search-empty" class="tver-sheet-search-empty" hidden>該当するSheetがありません。</span><div id="setting-cp-search-results" class="tver-cp-search-results" hidden role="listbox" aria-label="CP検索結果"></div><label class="tver-sheet-selector">参照シート名（必須）<select id="setting-sheet-name" required disabled><option value="" selected>ファイル選択後にSheetを選択</option></select></label></div>
+      <p class="tver-sheet-hint" id="setting-sheet-hint" role="status" aria-live="polite" hidden></p>
     </section>
     <section class="control-bar tver-action-result" aria-label="チェック操作と結果"><button class="btn btn-primary" id="run-check" type="button" disabled>チェック開始</button><button class="btn btn-secondary" id="reset-check" type="button" disabled>リセット</button><div class="tver-result-summary hidden" id="tver-result-summary" aria-live="polite"></div></section>
     <p class="notice hidden" id="page-notice" role="status"></p>
@@ -5970,7 +6006,10 @@
       focusTimers.clear();
     }
     function hideFloating(){
-      if(floatingElement) floatingElement.hidden=true;
+      if(floatingElement){
+        floatingElement.hidden=true;
+        if(floatingElement.setAttribute) floatingElement.setAttribute('data-qc-nav-severity','none');
+      }
       if(floatingCount) floatingCount.textContent='';
     }
     function ensureFloating(){
@@ -6036,12 +6075,25 @@
         if(event&&event.preventDefault) event.preventDefault();
         closeFloating();
       });
-      panel.appendChild(label);
-      panel.appendChild(count);
-      Object.values(modeButtons).forEach(button => panel.appendChild(button));
-      panel.appendChild(prev);
-      panel.appendChild(next);
-      panel.appendChild(close);
+      // 20261125_NO001 FIX2：タイトル／絞り込み／前後・閉じる を 3 つのグループにまとめ、
+      // 幅に応じて「グループ単位」で折り返す（ボタンだけが次行へ落ちる状態をなくす）。
+      const titleGroup=documentRef.createElement('span');
+      titleGroup.setAttribute('class','qc-mismatch-nav-group qc-mismatch-nav-group-title');
+      titleGroup.appendChild(label);
+      titleGroup.appendChild(count);
+      panel.appendChild(titleGroup);
+      if(unified){
+        const filterGroup=documentRef.createElement('span');
+        filterGroup.setAttribute('class','qc-mismatch-nav-group qc-mismatch-nav-group-filter');
+        Object.values(modeButtons).forEach(button => filterGroup.appendChild(button));
+        panel.appendChild(filterGroup);
+      }
+      const actionGroup=documentRef.createElement('span');
+      actionGroup.setAttribute('class','qc-mismatch-nav-group qc-mismatch-nav-group-actions');
+      actionGroup.appendChild(prev);
+      actionGroup.appendChild(next);
+      actionGroup.appendChild(close);
+      panel.appendChild(actionGroup);
       if(!host||typeof host.appendChild!=='function') return null;
       host.appendChild(panel);
       panel.hidden=true;
@@ -6072,7 +6124,8 @@
       const targetPanel=target && target.closest && target.closest('.tver-horizontal-panel');
       const levelId=targetPanel&&targetPanel.id ? targetPanel.id.replace('tver-horizontal-panel-','') : '';
       const level={'campaign':'Campaign','ad-group':'Ad Group','ad':'Ad'}[levelId] || '';
-      if(floatingLabel) floatingLabel.textContent=(unified ? (tverUiLanguage==='zh' ? '⚠ 异常' : '⚠ 異常') : statuses[0]==='review' ? '⚠ 要確認' : '⚠ 不一致')+(level ? ' '+level : '');
+      // 20261125_NO001 FIX2：現在層はタブで示されるため、見出しは「⚠ 異常」に縮める（層名は属性で保持）。
+      if(floatingLabel) floatingLabel.textContent=unified ? (tverUiLanguage==='zh' ? '⚠ 异常' : '⚠ 異常') : statuses[0]==='review' ? '⚠ 要確認' : '⚠ 不一致';
       if(panel.setAttribute){ panel.setAttribute('data-qc-navigator-level',level); panel.setAttribute('aria-label',unified ? (tverUiLanguage==='zh' ? '异常导航' : '異常ナビゲーター') : statuses[0]==='review' ? '要確認ナビゲーター' : '不一致ナビゲーター'); }
       const fieldCell=target && target.closest && target.closest('[data-field-key]');
       const fieldKey=fieldCell && fieldCell.getAttribute('data-field-key');
@@ -6080,9 +6133,19 @@
       if(fieldKey){
         fieldLabel=buildTverHorizontalFieldLabel(level, fieldKey) || fieldKey;
       }
-      if(floatingCount) floatingCount.textContent=(unified && target && readScope(target)!=='__all__' ? readScope(target)+' ｜ ' : '')+`${position+1} / ${targets.length}`+(fieldLabel ? '｜'+fieldLabel : '');
+      if(floatingCount){
+        // 20261125_NO001 FIX2：層名はタブで示されるため、定位表示は「順序 / 総数｜項目名」に限定する。
+        const countText=`${position+1} / ${targets.length}`+(fieldLabel ? '｜'+fieldLabel : '');
+        floatingCount.textContent=countText;
+        // 幅が足りない時はフィールド名を省略表示にし、全名は title で確認できるようにする。
+        if(floatingCount.setAttribute) floatingCount.setAttribute('title',countText);
+      }
       if(unified && floatingModeButtons){
         const counts={ mismatch:countByStatus('mismatch',activeScope), review:countByStatus('review',activeScope) };
+        // 20261125_NO001 FIX2：現在層＋現在の絞り込みで不一致が残るなら紅、要確認だけなら黄。
+        // 他層の要確認では紅を維持する（対象は表示中の層のみ＝isVisible 済み）。
+        const severity=(mode!=='review' && counts.mismatch>0) ? 'mismatch' : (counts.review>0 ? 'review' : 'none');
+        if(panel.setAttribute) panel.setAttribute('data-qc-nav-severity',severity);
         Object.entries(floatingModeButtons).forEach(([marker,button])=>{
           if(marker==='all'){ button.textContent=tverUiLanguage==='zh' ? '全部' : 'すべて'; button.classList && button.classList.toggle('active', mode==='all'); button.setAttribute && button.setAttribute('aria-pressed', String(mode==='all')); return; }
           button.textContent=(tverUiLanguage==='zh' ? (marker==='mismatch' ? '不一致 ' : '需确认 ') : (marker==='mismatch' ? '不一致 ' : '要確認 '))+counts[marker];
@@ -10508,7 +10571,12 @@
   // 20261124：摘要保留自动比较数量；Impression 计数并入同一行，细项按真实 coverage 分组展开。
   function buildTverComparisonScopeMetaHtml(run){
     const coverage=run && run.coverage;
-    if(!coverage || !Array.isArray(coverage.entries)) return '';
+    const comparedSheetName=run && typeof run.selectedSheetName==='string' ? run.selectedSheetName : '';
+    // 20261125_NO001 FIX2：今回の照合に使った Sheet を常に明示する（切替後の取り違えを防ぐ）。
+    const sheetHtml=comparedSheetName
+      ? '<span class="tver-compared-sheet" data-compared-sheet="'+escapeHtml(comparedSheetName)+'"><span data-lang="zh">本次比较 Sheet：'+escapeHtml(comparedSheetName)+'</span><span data-lang="ja">今回の照合Sheet：'+escapeHtml(comparedSheetName)+'</span></span>'
+      : '';
+    if(!coverage || !Array.isArray(coverage.entries)) return sheetHtml ? '<section class="tver-comparison-scope" data-comparison-scope><div class="tver-comparison-scope-inline">'+sheetHtml+'</div></section>' : '';
     const compared=coverage.entries.filter(record=>record.category==='AUTO_COMPARED' || record.category==='DIFFERENCE').length;
     const impression=(Array.isArray(run.optionalCsvColumns) ? run.optionalCsvColumns : []).find(item=>item.name==='tracking_url_impression');
     const impressionHtml=impression
@@ -10516,7 +10584,7 @@
       : '';
     const detail=buildTverCoverageBreakdownHtml(run);
     const detailHtml='<details class="tver-comparison-scope-detail" data-comparison-scope-detail><summary><span data-lang="zh">检查范围</span><span data-lang="ja">照合範囲</span></summary><div class="tver-comparison-scope-body">'+detail+'</div></details>';
-    return '<section class="tver-comparison-scope" data-comparison-scope><div class="tver-comparison-scope-inline"><strong><span data-lang="zh">已自动比较 '+compared+' 项</span><span data-lang="ja">比較済み '+compared+' 項目</span></strong>'+(impressionHtml ? '<span aria-hidden="true">｜</span>'+impressionHtml : '')+detailHtml+'</div></section>';
+    return '<section class="tver-comparison-scope" data-comparison-scope><div class="tver-comparison-scope-inline">'+sheetHtml+'<strong><span data-lang="zh">已自动比较 '+compared+' 项</span><span data-lang="ja">比較済み '+compared+' 項目</span></strong>'+(impressionHtml ? '<span aria-hidden="true">｜</span>'+impressionHtml : '')+detailHtml+'</div></section>';
   }
 
   // 未知 CSV 列仍单独明确提示；已知 impression 摘要由 buildTverComparisonScopeMetaHtml 内联呈现。
@@ -10557,7 +10625,10 @@
     const horizontalHtml=`${buildTverLevelTabsHtml(activeLevel)}${buildTverHorizontalTableHtml(horizontalView)}`;
     // 20261123_NO003：「操作ボタン＋主要統計＋CSV 導線＋小型ヒント」を同じ行に並べ、詳細は下段へ回す。
     const resultToolsHtml=buildTverCoverageHtml(run);
-    const summaryContentHtml=`<div class="tver-result-bar"><div class="status-counts">${statusHtml}</div>${resultToolsHtml}</div>${buildTverComparisonScopeMetaHtml(run)}${buildTverCsvExtraHtml(run)}`;
+    // 20261125_NO001 FIX2：操作行は「チェック開始・リセット・3 計数・CSV 導線・説明」を左から並べ、
+    // 「照合済み／Impression／照合範囲」は右側の余白にまとめる。入り切らない時はグループごと次行へ回す。
+    const scopeGroupHtml=`<span class="tver-result-bar-spacer" aria-hidden="true"></span><div class="tver-result-scope-group" data-result-scope-group>${buildTverComparisonScopeMetaHtml(run)}</div>`;
+    const summaryContentHtml=`<div class="tver-result-bar"><div class="status-counts">${statusHtml}</div>${resultToolsHtml}${scopeGroupHtml}</div>${buildTverCsvExtraHtml(run)}`;
     const summaryHtml=`<div class="tver-result-summary" aria-label="チェック結果">${summaryContentHtml}</div>`;
     const diagnosticsHtml=run && run.diagnostics && run.diagnostics.length ? `<details><summary>診断コード（${run.diagnostics.length}件）</summary><pre>${escapeHtml(run.diagnostics.map(issue => issue.code || String(issue)).join('\n'))}</pre></details>` : '';
     const surveyParentScopeHtml=(run && run.diagnostics || []).filter(issue=>issue.code==='SURVEY_NORMAL_SP_PARENT_SCOPE_UNCONFIRMED')
@@ -10692,10 +10763,15 @@
     }
     const model=parseTverSettingWorkbook(workbook,{...config,selectedSheetName,fileName:config.fileName || ''});
     const issue=settingParseBlockingIssue(model);
+    // 20261125_NO001 FIX2：テンプレートは読めても実案件行が 0 件のページは「照合に使える配信設計なし」として扱う。
+    // この状態で比較を実行すると、CSV の全对象が「要確認」として積み上がるだけで業務判定にならない。
+    const design=tverSheetDesignState(model,issue);
     const validation=issue
-      ? {ok:false,code:issue.code,issue,message:'参照シート「'+selectedSheetName+'」を確認できません（'+issue.code+'）。'}
-      : {ok:true,code:null,message:'参照シートを確認しました。'};
-    return {ok:true,role:'setting',code:issue && issue.code || null,workbook,model,candidate:model.selectedSheetName ? {sheetName:model.selectedSheetName} : null,availableSheetNames,selectedSheetName,validation,message:validation.message};
+      ? {ok:false,code:issue.code,issue,design,message:'参照シート「'+selectedSheetName+'」を確認できません（'+issue.code+'）。'}
+      : design.state===TVER_SHEET_DESIGN_EMPTY
+        ? {ok:false,code:TVER_SHEET_NO_CASE_DESIGN,design,message:'参照シート「'+selectedSheetName+'」には今回の照合に使用できる配信設計がありません。案件のあるSheetを選択してください。'}
+        : {ok:true,code:null,design,message:'参照シートを確認しました。'};
+    return {ok:true,role:'setting',code:issue && issue.code || null,design,workbook,model,candidate:model.selectedSheetName ? {sheetName:model.selectedSheetName} : null,availableSheetNames,selectedSheetName,validation,message:validation.message};
   }
 
   // 20261122_NO001：識別できない理由を「列見出し重複／必須項目の欠落／その他」で言い分ける。
@@ -10736,6 +10812,47 @@
     return '';
   }
 
+  // 20261125_NO001 FIX2：初期選択はブック保存時の activeTab。無い／非表示なら最後の表示シートへ退避する。
+  // 「最後のタブ」だけを根拠にすると、空の作業ページを既定選択してしまう（5886 の 2702 が該当）。
+  function tverWorkbookActiveSheetName(workbook){
+    const names=workbook && Array.isArray(workbook.SheetNames) ? workbook.SheetNames : [];
+    if(!names.length) return '';
+    const view=workbook && workbook.Workbook && Array.isArray(workbook.Workbook.WBView) ? workbook.Workbook.WBView[0] : null;
+    const activeTab=view && Number.isInteger(view.activeTab) ? view.activeTab : -1;
+    if(activeTab<0 || activeTab>=names.length) return '';
+    return isVisibleSheet(workbook,names[activeTab]) ? names[activeTab] : '';
+  }
+
+  function tverDefaultSettingSheetName(workbook){
+    return tverWorkbookActiveSheetName(workbook) || tverLastVisibleSheetName(workbook);
+  }
+
+  // 20261125_NO001 FIX2：選択シートが「今回の照合に使える配信設計」を持つかを、実案件行の解析結果だけで判定する。
+  // 空白テンプレート・旧VAST式・新TAP有無・「本」のプレースホルダは、それ自体では案件の存在を証明しない。
+  const TVER_SHEET_DESIGN_USABLE='usable';
+  const TVER_SHEET_DESIGN_EMPTY='empty';
+  const TVER_SHEET_DESIGN_UNRECOGNIZED='unrecognized';
+  const TVER_SHEET_DESIGN_BLOCKED='blocked';
+  const TVER_SHEET_NO_CASE_DESIGN='SETTING_SHEET_NO_CASE_DESIGN';
+  const TVER_SHEET_TEMPLATE_UNRECOGNIZED='SETTING_SHEET_TEMPLATE_UNRECOGNIZED';
+  const TVER_SHEET_TEMPLATE_ISSUE_CODES=['SETTING_HEADER_NOT_FOUND','SETTING_HEADER_AMBIGUOUS','SETTING_BUSINESS_HEADER_MISSING','SETTING_BUSINESS_HEADER_DUPLICATE','SETTING_TAG_APPEAL_ALIAS_CONFLICT'];
+
+  function tverCaseDesignCounts(model){
+    const campaigns=model && Array.isArray(model.campaigns) ? model.campaigns : [];
+    const adGroups=model && Array.isArray(model.adGroups) ? model.adGroups : [];
+    const ads=model && Array.isArray(model.ads) ? model.ads : [];
+    return {campaigns:campaigns.length,adGroups:adGroups.length,ads:ads.length,usable:campaigns.length+adGroups.length+ads.length>0};
+  }
+
+  function tverSheetDesignState(model,blockingIssue){
+    const counts=tverCaseDesignCounts(model);
+    const code=blockingIssue && blockingIssue.code || null;
+    if(code && TVER_SHEET_TEMPLATE_ISSUE_CODES.includes(code)) return {state:TVER_SHEET_DESIGN_UNRECOGNIZED,code,counts};
+    if(code) return {state:TVER_SHEET_DESIGN_BLOCKED,code,counts};
+    if(!counts.usable) return {state:TVER_SHEET_DESIGN_EMPTY,code:TVER_SHEET_NO_CASE_DESIGN,counts};
+    return {state:TVER_SHEET_DESIGN_USABLE,code:null,counts};
+  }
+
   async function identifyTverSettingFile(file, options){
     const config=options || {};
     if(!file || !/\.xlsx$/i.test(file.name || '')) return tverFileRecognitionFailure(file, 'setting', 'UNSUPPORTED_FILE_FORMAT', '対応外形式です（.xlsx と .csv のみ使用できます）。');
@@ -10743,7 +10860,7 @@
       const reader=config.readSettingWorkbook || readSettingWorkbook;
       const workbook=await reader(file);
       const requested=typeof config.selectedSheetName==='string' ? config.selectedSheetName : '';
-      const selectedSheetName=requested || tverLastVisibleSheetName(workbook);
+      const selectedSheetName=requested || tverDefaultSettingSheetName(workbook);
       if(!selectedSheetName){
         const message='設定表に表示中のSheetがありません。表示中のSheetを確認してください。';
         const info=identifyTverSettingWorkbook(workbook,{...config,fileName:file.name || '',selectedSheetName:''});
@@ -10969,6 +11086,120 @@
       messageTarget.classList && messageTarget.classList.toggle('success',selectionValid);
       messageTarget.classList && messageTarget.classList.toggle('error',Boolean(recognition && ((!recognition.ok && recognition.files && recognition.files.length) || recognition.selectedSheetName && recognition.settingValidation && !recognition.settingValidation.ok || recognition.settingValidation && recognition.settingValidation.code==='SETTING_VISIBLE_SHEETS_EMPTY')));
     }
+    renderTverSheetDesignHint(doc);
+    // 20261125_NO001 FIX2：取込直後にも候補検索を予約する（選択変更時にしか走らないと現場で推薦が出ない）。
+    scheduleTverSheetRecommendation(doc);
+  }
+
+  // 20261125_NO001 FIX2：選表メッセージ。原因（空ページ／テンプレート不明）と現在ページ名を中日併記する。
+  function buildTverSheetHintHtml(sheetName,design,recommendation){
+    const state=design && design.state || '';
+    const escaped=escapeHtml(sheetName || '');
+    const lines=[];
+    if(state===TVER_SHEET_DESIGN_EMPTY){
+      lines.push('<span class="tver-sheet-hint-line" data-hint-lang="zh">当前页「'+escaped+'」没有可用于本次校正的配信设计，请选择案件所在的 Sheet。</span>');
+      lines.push('<span class="tver-sheet-hint-line" data-hint-lang="ja">現在のSheet「'+escaped+'」には今回の照合に使用できる配信設計がありません。案件のあるSheetを選択してください。</span>');
+    }else if(state===TVER_SHEET_DESIGN_UNRECOGNIZED){
+      lines.push('<span class="tver-sheet-hint-line" data-hint-lang="zh">当前页「'+escaped+'」无法识别为 TVer 设定表模板，请选择案件所在的 Sheet。</span>');
+      lines.push('<span class="tver-sheet-hint-line" data-hint-lang="ja">現在のSheet「'+escaped+'」はTVer設定表として識別できません。案件のあるSheetを選択してください。</span>');
+    }
+    if(!lines.length) return '';
+    const suggestion=recommendation && recommendation.sheetName
+      ? '<button type="button" class="tver-sheet-hint-suggest" data-suggest-sheet="'+escapeHtml(recommendation.sheetName)+'">'
+        +'建议 '+escapeHtml(recommendation.sheetName)+'（'+escapeHtml(String(recommendation.campaignName || ''))+'）'
+        +'<span class="tver-sheet-hint-line" data-hint-lang="ja">「'+escapeHtml(recommendation.sheetName)+'」を選択</span>'
+        +'</button>'
+      : '';
+    return lines.join('')+suggestion;
+  }
+
+  function renderTverSheetDesignHint(doc,recommendation){
+    const hint=getElement(doc,'setting-sheet-hint');
+    if(!hint) return null;
+    const validation=tverPageState.selectedSettingValidation;
+    const design=validation && validation.design || null;
+    const sheetName=tverPageState.selectedSheetName || '';
+    const state=design && design.state || '';
+    const html=sheetName && validation && !validation.ok && (state===TVER_SHEET_DESIGN_EMPTY || state===TVER_SHEET_DESIGN_UNRECOGNIZED)
+      ? buildTverSheetHintHtml(sheetName,design,recommendation)
+      : '';
+    if(typeof hint.setAttribute==='function') hint.setAttribute('data-sheet-design-state',state || '');
+    if(!html){
+      hint.innerHTML='';
+      hint.hidden=true;
+      return null;
+    }
+    hint.innerHTML=html;
+    hint.hidden=false;
+    const button=hint.querySelector ? hint.querySelector('[data-suggest-sheet]') : null;
+    if(button && button.addEventListener){
+      button.addEventListener('click',event=>{
+        if(event && event.preventDefault) event.preventDefault();
+        const target=button.getAttribute('data-suggest-sheet');
+        if(target) selectTverSheet(target,doc);
+      });
+    }
+    return hint;
+  }
+
+  // 20261125_NO001 FIX2：空ページ時だけ「案件のある候補」を探す。推薦は本番と同じ照合器で
+  // Campaign が実一致したシートに限定し、唯一の候補のときだけ提示する（推測しない・自動切替しない）。
+  let tverSheetRecommendationCache={workbook:null,csv:null,selectedSheetName:'',result:null};
+  let tverSheetRecommendationTimer=null;
+
+  function computeTverSheetRecommendation(workbook,availableSheetNames,selectedSheetName,csvParsed,csvFileName){
+    if(!workbook || !csvParsed || !csvParsed.schema || !csvParsed.schema.kind) return null;
+    const sheetNames=(availableSheetNames || []).filter(name=>name!==selectedSheetName && isVisibleSheet(workbook,name));
+    if(!sheetNames.length) return null;
+    const found=[];
+    for(const sheetName of sheetNames){
+      if(found.length>1) return null;
+      let model=null;
+      try{ model=parseTverSettingWorkbook(workbook,{selectedSheetName:sheetName,fileName:csvFileName || ''}); }catch(error){ continue; }
+      if(!model || tverSheetDesignState(model,settingParseBlockingIssue(model)).state!==TVER_SHEET_DESIGN_USABLE) continue;
+      let matching=null;
+      try{
+        const csvTree=csvParsed.schema.kind==='edit-with-ids' ? buildEditTree(csvParsed) : buildRegisterTree(csvParsed);
+        const conversionContext=createTverConversionContext(csvParsed.schema.kind,csvTree);
+        matching=matchTverEntities(model,csvTree,{schemaKind:csvParsed.schema.kind,conversionContext});
+      }catch(error){ continue; }
+      const matchedCampaign=(matching && matching.matches || []).find(match=>match && match.level==='Campaign' && match.status==='matched');
+      if(!matchedCampaign) continue;
+      const campaign=(model.campaigns || []).find(item=>item && item.key===matchedCampaign.settingKey);
+      found.push({sheetName,campaignName:campaign && (campaign.expectedName || (campaign.fields && campaign.fields.campaignName)) || ''});
+    }
+    return found.length===1 ? found[0] : null;
+  }
+
+  function scheduleTverSheetRecommendation(doc){
+    const hint=getElement(doc,'setting-sheet-hint');
+    if(!hint || hint.hidden) return null;
+    const workbook=tverPageState.settingWorkbook;
+    const csvFile=tverPageState.csvFile;
+    const recognition=tverPageState.recognition;
+    const selectedSheetName=tverPageState.selectedSheetName || '';
+    const parsedCsv=recognition && recognition.csv && recognition.csv.parsedCsv;
+    if(!workbook || !csvFile || !parsedCsv) return null;
+    if(tverSheetRecommendationCache.workbook===workbook && tverSheetRecommendationCache.csv===csvFile && tverSheetRecommendationCache.selectedSheetName===selectedSheetName){
+      return renderTverSheetDesignHint(doc,tverSheetRecommendationCache.result);
+    }
+    const token=Number(tverPageState.recognitionToken) || 0;
+    const sheetNames=[...(tverPageState.availableSheetNames || [])];
+    // 連続取込・連続切替で探索が積み上がらないよう、前回のタイマーを必ず破棄する。
+    if(tverSheetRecommendationTimer) clearTimeout(tverSheetRecommendationTimer);
+    const timeout=setTimeout(()=>{
+      tverSheetRecommendationTimer=null;
+      if(token!==(Number(tverPageState.recognitionToken) || 0)) return;
+      if(tverPageState.selectedSheetName!==selectedSheetName) return;
+      let result=null;
+      try{ result=computeTverSheetRecommendation(workbook,sheetNames,selectedSheetName,parsedCsv,csvFile.name || ''); }catch(error){ result=null; }
+      tverSheetRecommendationCache={workbook,csv:csvFile,selectedSheetName,result};
+      const current=getElement(doc,'setting-sheet-hint');
+      if(!current || current.hidden) return;
+      renderTverSheetDesignHint(doc,result);
+    },40);
+    tverSheetRecommendationTimer=timeout;
+    return timeout;
   }
 
   function updateActionButtons(doc){
@@ -11120,6 +11351,8 @@
     else showPageNotice(tverPageState.selectedSettingValidation.message || '参照シートを確認できません。',true,doc);
     renderTverFileRecognition(doc);
     updateActionButtons(doc);
+    // 20261125_NO001 FIX2：切替後は必ず現在ページの設計状態でメッセージを引き直す（前ページの推薦を残さない）。
+    scheduleTverSheetRecommendation(doc);
     return {ok:tverPageState.selectedSettingValidation.ok,selectedSheetName:name,validation:tverPageState.selectedSettingValidation,model:tverPageState.selectedSettingModel};
   }
 
@@ -11183,6 +11416,8 @@
       const matching=matchTverEntities(settingModel,csvTree,{schemaKind:parsedCsv.schema.kind,conversionContext:createTverConversionContext(parsedCsv.schema.kind,csvTree)});
       settingModel.comparisonStage=['initial-setting','delivery-check','in-operation'].includes(config.comparisonStage) ? config.comparisonStage : 'unknown';
       const run=buildRunFromModels(settingModel,csvTree,matching,parsedCsv);
+      // 20261125_NO001 FIX2：結果・要約・エクスポートの識別子として「実際に照合したSheet」を保持する。
+      run.selectedSheetName=settingModel.selectedSheetName || selectedSheetName;
       if(runToken!==tverPageState.runToken) return {ok:false,cancelled:true};
       run.inputContext={settingModel,csvTree,parsedCsv,runToken,recognitionToken:tverPageState.recognitionToken,pairs:[]};
       tverPageState.run=run;
@@ -11267,6 +11502,9 @@
       const sheetSearch=getElement(doc,'setting-sheet-search'); if(sheetSearch) sheetSearch.value='';
       const sheetSearchEmpty=getElement(doc,'setting-sheet-search-empty'); if(sheetSearchEmpty) sheetSearchEmpty.hidden=true;
       const cpSearchResults=getElement(doc,'setting-cp-search-results'); if(cpSearchResults){cpSearchResults.innerHTML='';cpSearchResults.hidden=true;}
+      const sheetHint=getElement(doc,'setting-sheet-hint'); if(sheetHint){sheetHint.innerHTML='';sheetHint.hidden=true;sheetHint.setAttribute && sheetHint.setAttribute('data-sheet-design-state','');}
+      tverSheetRecommendationCache={workbook:null,csv:null,selectedSheetName:'',result:null};
+      if(tverSheetRecommendationTimer){clearTimeout(tverSheetRecommendationTimer);tverSheetRecommendationTimer=null;}
       const recognition=getElement(doc,'upload-recognition-state'); if(recognition){recognition.textContent='.xlsx と .csv を選択してください。';recognition.classList && recognition.classList.remove('success');recognition.classList && recognition.classList.remove('error');}
       const zone=getElement(doc,'tver-upload-zone'); if(zone && zone.classList) zone.classList.remove('drag-over');
       clearTverResults(doc); showPageNotice('',false,doc); updateActionButtons(doc);
