@@ -55,9 +55,8 @@
     },
     {
       "path": "excel_formula_cleaner_worker.js",
-      "source": "git",
-      "sha256": "9f857ca71c2b9cb1e252cf94ed29a4c8245fad6530bcac847332d07876499a98",
-      "revision": "bf6cf5a25754be70ed630d8d554912d9039d1d90"
+      "source": "workspace",
+      "sha256": "9f857ca71c2b9cb1e252cf94ed29a4c8245fad6530bcac847332d07876499a98"
     },
     {
       "path": "image_compare.html",
@@ -151,9 +150,8 @@
     },
     {
       "path": "workbench_concept.html",
-      "source": "git",
-      "sha256": "682ec5916e2bae6126bc47b3e9e2fa42f4ffd4c164d25e618185b57f29b42f89",
-      "revision": "bf6cf5a25754be70ed630d8d554912d9039d1d90"
+      "source": "workspace",
+      "sha256": "682ec5916e2bae6126bc47b3e9e2fa42f4ffd4c164d25e618185b57f29b42f89"
     },
     {
       "path": "xlsx.full.min.js",
