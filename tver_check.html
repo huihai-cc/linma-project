@@ -236,6 +236,17 @@
     .qc-mismatch-nav-group-title{flex:1 1 100%;min-width:0}
     .qc-mismatch-nav-group-actions{flex:0 0 auto}
   }
+  /* 20261125_NO002 FIX3：Ad Group の親グループ見出し（役割・件数・異常・折り畳み）。 */
+  tr.tver-hgroup-row th{background:#e3ebf2;color:#1b3a4b;font-weight:700;text-align:left;white-space:normal}
+  .tver-hgroup-toggle{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-right:6px;padding:0;border:1px solid #90a4ae;border-radius:4px;background:#fff;color:#1b3a4b;font-size:12px;font-weight:700;line-height:1;cursor:pointer;vertical-align:middle}
+  .tver-hgroup-toggle:hover{background:#f2f6f9}
+  .tver-hgroup-toggle:focus-visible{outline:2px solid #c0392b;outline-offset:1px}
+  .tver-hgroup-name{margin-right:8px}
+  .tver-hgroup-role{display:inline-block;margin-right:8px;padding:1px 7px;border:1px solid #8d6e63;border-radius:999px;background:#fff8e1;color:#6b4200;font-size:12px;font-weight:700}
+  .tver-hgroup-count{display:inline-block;margin-right:8px;color:#37474f;font-size:12px;font-weight:700}
+  .tver-hgroup-abnormal{padding:1px 7px;border-radius:4px;background:#fdecea;color:#9b1c1c;font-size:12px;font-weight:700}
+  tr[data-group-key][data-row-level][hidden]{display:none!important}
+  .tver-field-source-mark{display:inline-block;margin-left:4px;padding:0 4px;border:1px solid currentColor;border-radius:3px;font-size:10px;font-weight:700;line-height:1.5;vertical-align:middle;opacity:.85}
 </style>
 </head>
 <body>
@@ -5974,6 +5985,9 @@
       let current=element;
       while(current){
         if(current===revealable){current=current.parentElement;continue;}
+        // 20261125_NO002 FIX3-FIX1：折り畳みで隠れた行の業務異常は「ナビ対象」として残す
+        // （遷移時に expandTverGroupForTarget が展開してから位置合わせする）。
+        if(current.getAttribute&&current.getAttribute('data-qc-collapsed-hidden')!==null){current=current.parentElement||current.parentNode||null;continue;}
         if(current.hidden||(current.getAttribute&&current.getAttribute('hidden')!==null)) return false;
         const style=current.style||{};
         if(style.display==='none'||style.visibility==='hidden') return false;
@@ -6204,6 +6218,8 @@
     }
     function scrollQcMismatchTarget(target,options={}){
       if(!target || typeof target.getBoundingClientRect!=='function') return;
+      // 20261125_NO002 FIX3：折り畳みグループ内の対象へ移動するときは、先に展開して可視化する。
+      if(typeof expandTverGroupForTarget==='function') expandTverGroupForTarget(target);
       const view=documentRef && documentRef.defaultView ? documentRef.defaultView : (typeof window!=='undefined' ? window : null);
       if(!view) return;
       const rect=target.getBoundingClientRect();
@@ -6606,6 +6622,23 @@
     if(level!=='Ad Group') return fallbackDisplayName;
     if(settingEntity && settingEntity.businessType==='survey-ctv') return String(csvEntity && csvField(csvEntity,'adGroupName','adgroup_name') || settingEntity.expectedName);
     if(settingEntity){
+      // 20261125_NO002 FIX3：設定表に Group 名の直接記載が無い行（一般配信の通常／DMP 組）は、
+      // 実運用の Group 名（CSV 実名）を対象名として表示し、設定側が「直接記載なし」であることを併記する。
+      // 名称比較の結果（adgroup_name の一致）を捏造しないため、表示だけを変え entry は生成しない。
+      const TVER_GROUP_ROLE_ONLY_TOKENS=['DMP','SP','CTV','SPPC','通常','NORMAL'];
+      const isTverGroupRoleToken=value=>{
+        const text=strictText(value);
+        return !text || TVER_GROUP_ROLE_ONLY_TOKENS.includes(text.toUpperCase());
+      };
+      // 「直接記載」＝ 発注CPN名の派生名 or ターゲティング名（役割語 DMP/SP/CTV だけは名称とみなさない）。
+      const expectedName=strictText(settingEntity.expectedName);
+      const targetingName=strictText((settingEntity.displayIdentity || {}).targetingName);
+      const directSettingName=expectedName || (isTverGroupRoleToken(targetingName) ? '' : targetingName);
+      const csvActualName=strictText(csvEntity && csvField(csvEntity, 'adGroupName', 'adgroup_name'));
+      if(directSettingName) return directSettingName;
+      // 設定表に Group 名の直接記載が無い一般配信組は、実運用の CSV 実名を対象名にし、
+      // 「設定表：直接記載なし」を併記する（名称一致を捏造しない）。
+      if(csvActualName) return csvActualName+'（設定表：直接記載なし）';
       const shortName=resolveAdGroupShortDisplayName(settingEntity).value;
       // NO016: CSV 実 Group ID が無い論理GPであることを表示で明示（IDは捏造しない）。
       return settingEntity.gpIdentity && settingEntity.gpIdentity.logical ? shortName+'（論理GP・CSV ID未提供）' : shortName;
@@ -8752,6 +8785,360 @@
   const TVER_HORIZONTAL_FIELD_EN_LABELS={
     Ad:{ url:'URL', tracking_url_start:'Tracking Start', tracking_url_first_quartile:'Tracking 25%', tracking_url_midpoint:'Tracking 50%', tracking_url_third_quartile:'Tracking 75%', tracking_url_complete:'Tracking Complete', creative_id:'Creative ID', tracking_url_impression:'Tracking Impression' },
   };
+  // 20261125_NO002 FIX3-FIX1：項目名の単一ソース（三層＝比較ラベル／表ヘッダ／摘要・ナビ・詳細・範囲・全件CSV）。
+  // label   : 設定表の実ヘッダ原文（実ヘッダが無い項目は業務名）。● の記入マークは外す。
+  // block   : 設定表のブロック名（配信設計／ターゲティング／クリエイティブ／URL／計測タグ／基本情報）。
+  // kind    : direct=設定表の欄 / derived=設定表の複数列から派生 / rule=マニュアル規則 /
+  //           csv=CSV のみ（設定表に対応欄なし）/ mixed=来源が複数（行ごとに変わる）。
+  // zh      : 中国語の意味（ツールチップだけに出す。表示名は中日共通）。
+  // original: 原文に書式注記が付く場合の完全表記（ツールチップ用）。
+  // セル番地は固定値を持たない：実行時に entry.sourceRefs から解決する（別レイアウトの設定表でも追跡できる）。
+  const TVER_FIELD_HEADER_MODELS={
+    Campaign:{
+      campaign_name:{ label:'発注CPN名', block:'配信設計', kind:'direct', zh:'Campaign 名称（発注 CPN 名）' },
+      start_datetime:{ label:'開始日時', block:'配信設計', kind:'direct', zh:'配信開始日時', original:'開始日時(yyyy/mm/dd hh:mm)' },
+      end_datetime:{ label:'終了日時', block:'配信設計', kind:'direct', zh:'配信終了日時', original:'終了日時(yyyy/mm/dd hh:mm)' },
+      budget:{ label:'CPN予算', block:'配信設計', kind:'direct', zh:'CPN 予算' },
+      daily_budget:{ label:'初期設定日予算', block:'配信設計', kind:'direct', zh:'初期設定日予算' },
+      cv_point:{ label:'CVポイント', block:'基本情報', kind:'direct', zh:'CV 計分点' },
+      budget_type:{ label:'予算タイプ', block:'マニュアル規則', kind:'rule', zh:'预算类型（既定値規則）' },
+      campaign_status:{ label:'キャンペーンステータス', block:'マニュアル規則', kind:'rule', zh:'投放状态（既定 OFF 規則）' },
+      consumption_type:{ label:'予算消化タイプ', block:'マニュアル規則', kind:'rule', zh:'预算消耗方式（既定値規則）' },
+      hourly_bid_weight:{ label:'時間毎予算割合', block:'マニュアル規則', kind:'rule', zh:'每小时预算比例（既定値規則）' },
+      report_target_flag:{ label:'レポート対象', block:'マニュアル規則', kind:'rule', zh:'报表统计对象（既定値規則）' },
+    },
+    'Ad Group':{
+      adgroup_name:{ label:'広告グループ名', block:'配信設計＋ターゲティング', kind:'derived', zh:'广告组名称（発注CPN名＋ターゲティング番号から派生）' },
+      other_settings_adg:{ label:'その他設定(ADG)', block:'ターゲティング', kind:'direct', zh:'广告组其他设置' },
+      bid_segment:{ label:'入札セグメント', block:'ターゲティング', kind:'direct', zh:'竞价分群' },
+      bid_segment_exclude:{ label:'入札除外セグメント', block:'ターゲティング', kind:'direct', zh:'竞价排除分群' },
+      affinity:{ label:'興味関心', block:'ターゲティング', kind:'direct', zh:'兴趣类别' },
+      device:{ label:'配信デバイス', block:'配信設計の「デバイス」列／ターゲティングの「配信デバイス」', kind:'mixed', zh:'投放设备（行级指定／投放设置 两处来源）' },
+      price:{ label:'CPM', block:'配信設計', kind:'direct', zh:'入札単価（CPM）' },
+      auction_type:{ label:'オークションタイプ', block:'ターゲティング', kind:'display', zh:'竞价方式' },
+      adgroup_start_datetime:{ label:'ADG開始日時', block:'配信設計', kind:'mixed', zh:'广告组开始时间（未填写时沿用 CP）', original:'ADG開始日時(yyyy/mm/dd hh:mm)' },
+      adgroup_end_datetime:{ label:'ADG終了日時', block:'配信設計', kind:'mixed', zh:'广告组结束时间（未填写时沿用 CP）', original:'ADG終了日時(yyyy/mm/dd hh:mm)' },
+      adgroup_status:{ label:'ADGステータス', block:'配信設計', kind:'direct', zh:'广告组状态' },
+      media:{ label:'放送局', block:'ターゲティング', kind:'mixed', zh:'放送台（电视台）' },
+      local_broadcaster:{ label:'ローカル局', block:'ターゲティング', kind:'mixed', zh:'地方台' },
+      gender:{ label:'性別', block:'ターゲティング', kind:'mixed', zh:'性别' },
+      age:{ label:'年齢', block:'ターゲティング', kind:'mixed', zh:'年龄' },
+      annual_income:{ label:'世帯年収', block:'ターゲティング', kind:'mixed', zh:'家庭年收入' },
+      demography:{ label:'デモグラフィック', block:'ターゲティング', kind:'mixed', zh:'人口属性' },
+      tver_video_duration:{ label:'秒数', block:'配信設計', kind:'mixed', zh:'视频时长（秒）' },
+      dmp_segment:{ label:'DMPセグメント', block:'ターゲティング', kind:'mixed', zh:'DMP 分群' },
+      dmp_segment_exclude:{ label:'DMP除外セグメント', block:'ターゲティング', kind:'direct', zh:'DMP 排除分群' },
+      dmp_segment_expansion_threshold:{ label:'DMPセグメント拡張値', block:'ターゲティングの「DMPセグメント」', kind:'derived', zh:'DMP 分群扩展值（分群记事的派生）' },
+      pref:{ label:'都道府県/市区町村', block:'ターゲティング', kind:'mixed', zh:'都道府县／市区町村' },
+      genre:{ label:'番組ジャンル（指定）', block:'ターゲティング', kind:'mixed', zh:'节目类型（指定）' },
+      genre_exclude:{ label:'番組ジャンル（除外）', block:'ターゲティング', kind:'mixed', zh:'节目类型（排除）' },
+      subgenre:{ label:'番組サブジャンル（指定）', block:'ターゲティング', kind:'mixed', zh:'节目子类型（指定）' },
+      subgenre_exclude:{ label:'番組サブジャンル（除外）', block:'ターゲティング', kind:'mixed', zh:'节目子类型（排除）' },
+      contents_group:{ label:'コンテンツグループ', block:'ターゲティング', kind:'mixed', zh:'内容组' },
+      store_segment:{ label:'データ蓄積', block:'ターゲティング', kind:'direct', zh:'数据蓄积' },
+      bls_store_segment:{ label:'BLSデータ蓄積', block:'ターゲティング（BLS シナリオ）', kind:'derived', zh:'BLS 数据蓄积（问卷接触者分群）' },
+      uid_suffix:{ label:'ASR', block:'ターゲティング', kind:'mixed', zh:'ASR（广告主指定编号）' },
+      upload_segment_expansion_threshold:{ label:'入札セグメント拡張値', block:'ターゲティングの「入札セグメント」', kind:'derived', zh:'竞价分群扩展值（入札セグメント记事的派生）' },
+    },
+    Ad:{
+      creative_name:{ label:'クリエイティブ名', block:'クリエイティブ（ファイル名／Survey Creative）', kind:'mixed', zh:'素材名。普通素材はファイル名、问卷素材は Survey Creative。実セルは行ごとに表示' },
+      url:{ label:'遷移先URL', block:'URL', kind:'mixed', zh:'落地页 URL（入稿用 URL 与 CSV 的对应）' },
+      tracking_url_start:{ label:'計測URL（開始）', block:'計測タグ／マニュアル規則', kind:'mixed', zh:'计测 URL（开始）' },
+      tracking_url_first_quartile:{ label:'計測URL（25%）', block:'計測タグ／マニュアル規則', kind:'mixed', zh:'计测 URL（25%）' },
+      tracking_url_midpoint:{ label:'計測URL（50%）', block:'計測タグ／マニュアル規則', kind:'mixed', zh:'计测 URL（50%）' },
+      tracking_url_third_quartile:{ label:'計測URL（75%）', block:'計測タグ／マニュアル規則', kind:'mixed', zh:'计测 URL（75%）' },
+      tracking_url_complete:{ label:'計測URL（100%）', block:'計測タグ／マニュアル規則', kind:'mixed', zh:'计测 URL（100%）' },
+      tracking_url_impression:{ label:'計測URL（インプレッション）', block:'CSV', kind:'csv', zh:'计测 URL（Impression）。与 タグ訴求 0%/100% 是不同项目' },
+      creative_id:{ label:'クリエイティブID', block:'クリエイティブ／Survey Creative ID', kind:'mixed', zh:'素材 ID' },
+      start_time:{ label:'開始時間', block:'マニュアル規則', kind:'rule', zh:'投放开始时间（规则推导）' },
+      end_time:{ label:'終了時間', block:'マニュアル規則', kind:'rule', zh:'投放结束时间（规则推导）' },
+      status:{ label:'ADステータス', block:'配信設計', kind:'direct', zh:'广告（素材）状态' },
+    },
+  };
+  // 20261125_NO002 FIX3-FIX1b：主名に使ってよい「その項目自身のテンプレート列名」。
+  // 実行時に観測した直接列が 1 本で、かつこの一覧に含まれるときだけ列名を主名にする
+  // （Survey 参照列や、複数 URL を兼ねる「タグ」列などは業務名を維持する）。
+  const TVER_FIELD_COLUMN_ALIASES={
+    'Campaign|campaign_name':['発注CPN名'],
+    'Campaign|start_datetime':['開始日時','配信開始日時'],
+    'Campaign|end_datetime':['終了日時','配信終了日時'],
+    'Campaign|budget':['CPN予算','総予算'],
+    'Campaign|daily_budget':['初期設定日予算','日予算'],
+    'Campaign|cv_point':['CVポイント'],
+    'Ad Group|other_settings_adg':['その他設定(ADG)'],
+    'Ad Group|bid_segment':['入札セグメント'],
+    'Ad Group|bid_segment_exclude':['入札除外セグメント'],
+    'Ad Group|affinity':['興味関心'],
+    'Ad Group|device':['デバイス','配信デバイス'],
+    'Ad Group|price':['CPM','入札単価'],
+    'Ad Group|adgroup_start_datetime':['ADG開始日時','GP開始日時'],
+    'Ad Group|adgroup_end_datetime':['ADG終了日時','GP終了日時'],
+    'Ad Group|adgroup_status':['ADGステータス','広告グループステータス'],
+    'Ad Group|media':['放送局'],
+    'Ad Group|local_broadcaster':['ローカル局'],
+    'Ad Group|gender':['性別'],
+    'Ad Group|age':['年齢'],
+    'Ad Group|annual_income':['世帯年収'],
+    'Ad Group|demography':['デモグラフィック'],
+    'Ad Group|tver_video_duration':['秒数'],
+    'Ad Group|dmp_segment':['DMPセグメント'],
+    'Ad Group|dmp_segment_exclude':['DMP除外セグメント'],
+    'Ad Group|pref':['都道府県/市区町村','都道府県'],
+    'Ad Group|genre':['番組ジャンル'],
+    'Ad Group|genre_exclude':['番組ジャンル'],
+    'Ad Group|subgenre':['番組サブジャンル'],
+    'Ad Group|subgenre_exclude':['番組サブジャンル'],
+    'Ad Group|contents_group':['コンテンツグループ'],
+    'Ad Group|store_segment':['データ蓄積'],
+    'Ad Group|uid_suffix':['ASR'],
+    'Ad|creative_name':['ファイル名','クリエイティブ名','素材名','Survey Creative'],
+    'Ad|url':['入稿用URL','遷移先URL'],
+    'Ad|status':['ADステータス','広告ステータス'],
+    'Ad|creative_id':['クリエイティブID'],
+  };
+  // 列名を主名に使うときの表記ゆれ吸収（書式注記・記入マークは落とす。原文は title に残す）。
+  function tverColumnLabelName(columnName){
+    return String(columnName ?? '')
+      .replace(/[●◯]/g, '')
+      .replace(/\((?:yyyy\/mm\/dd hh:mm|\d+秒)\)$/i, '')
+      .trim();
+  }
+  function tverFieldColumnAliases(level, field){
+    const direct=TVER_FIELD_COLUMN_ALIASES[String(level ?? '')+'|'+String(field ?? '')];
+    if(direct) return direct;
+    const suffix='|'+String(field ?? '');
+    const hits=Object.keys(TVER_FIELD_COLUMN_ALIASES).filter(name => name.endsWith(suffix)).map(name => TVER_FIELD_COLUMN_ALIASES[name]);
+    return hits.length===1 ? hits[0] : null;
+  }
+  // 直接列が 1 本だけ & その列名が当該項目の許可列なら、その列名を主名として返す。
+  function tverSingleColumnPrimaryLabel(level, field){
+    const aliases=tverFieldColumnAliases(level, field);
+    if(!aliases || !aliases.length) return '';
+    const record=tverCurrentSourceRecord(level, field);
+    const direct=record && Array.isArray(record.direct) ? record.direct : [];
+    if(direct.length!==1) return '';
+    const raw=String(direct[0].columnName || '');
+    if(!raw) return '';
+    const normalized=tverColumnLabelName(raw);
+    if(!aliases.includes(raw) && !aliases.includes(normalized)) return '';
+    return normalized;
+  }
+
+  const TVER_FIELD_KIND_MARKERS={ csv:'※CSV', rule:'※規則', derived:'※派生' };
+  const TVER_FIELD_KIND_TEXT={
+    direct:'設定表の欄', derived:'設定表の複数列から派生', rule:'マニュアル規則',
+    csv:'CSV のみ（設定表に対応欄なし）', mixed:'来源は行ごとに異なる（詳細の「根拠を表示」に実セルを表示）', display:'表示のみ（比較対象外）',
+  };
+
+  function tverFieldModel(level, field){
+    const key=String(field ?? '');
+    const levelModels=TVER_FIELD_HEADER_MODELS[String(level ?? '')];
+    if(levelModels && levelModels[key]) return levelModels[key];
+    // 層が渡されない呼び出し（既存 API・単体テスト）では全層から一意に解決する。
+    const hits=Object.keys(TVER_FIELD_HEADER_MODELS).map(name => TVER_FIELD_HEADER_MODELS[name][key]).filter(Boolean);
+    return hits.length===1 ? hits[0] : null;
+  }
+
+  // 実行中の設定表来源索引（level|field -> {kind, cell, row, column, sheet, ruleId, manual, page}）。
+  // 固定セル番地を表示しないための唯一の供給元。
+  let tverSettingSourceIndex=null;
+  function tverSourceInfoOf(source){
+    if(!source || typeof source!=='object') return { kind:'csv', ruleId:'' };
+    const fileName=String(source.fileName || '');
+    const ruleId=String(source.ruleId || '');
+    if(fileName.startsWith('embedded:') || ruleId){
+      const sheetName=String(source.sheetName || '');
+      return { kind:'rule', ruleId, page:/^P\d+$/i.test(sheetName) ? sheetName : '', manual:fileName.replace(/^embedded:/, '') };
+    }
+    return {
+      kind:'direct',
+      sheetName:String(source.sheetName || ''),
+      rowNumber:Number(source.rowNumber) || null,
+      columnName:String(source.columnName || ''),
+      cellAddress:String(source.cellAddress || ''),
+    };
+  }
+
+  // 設定表の来源は「列（ヘッダ）単位」で束ねる。同じ列の行違いは 1 件として扱い、代表セルだけを残す。
+  function buildTverSettingSourceIndex(run){
+    const index={};
+    const entries=run && Array.isArray(run.entries) ? run.entries : [];
+    entries.forEach(entry => {
+      if(!entry || typeof entry!=='object') return;
+      const level=String(entry.level || '');
+      const field=String(entry.field || '');
+      if(!level || !field) return;
+      const info=tverSourceInfoOf(entry.sourceRefs && entry.sourceRefs.setting);
+      const key=level+'|'+field;
+      const rec=index[key] || (index[key]={ direct:[], rules:[], csvCount:0, unavailableCount:0, total:0 });
+      rec.total+=1;
+      if(info.kind==='csv'){
+        // 20261125_NO002 FIX3-FIX1b：設定表のセルが無い行は、その行の規則と証拠で出所を決める。
+        // （start_time/end_time のような「規則が値を供給する」項目を CSV 専用と誤表示しない）
+        const model=tverFieldModel(level, field);
+        const ruleId=String(entry.ruleBasis || '');
+        const hasValue=String(entry.settingRawValue ?? '')!=='';
+        const settingState=String((entry.evidenceStates || {}).setting || '');
+        const ruleSupplied=Boolean(ruleId) && (hasValue || settingState==='available');
+        if(ruleSupplied){
+          if(!rec.rules.some(item => item.ruleId===ruleId)) rec.rules.push({ kind:'rule', ruleId, manual:'', page:'' });
+        }else if(model && model.kind==='csv'){
+          rec.csvCount+=1;
+        }else{
+          rec.unavailableCount+=1;
+        }
+        index[key]=rec;
+        return;
+      }
+      if(info.kind==='rule'){
+        if(!rec.rules.some(item => item.ruleId===info.ruleId)) rec.rules.push(info);
+        index[key]=rec;
+        return;
+      }
+      const columnKey=String(info.columnName || '')+'|'+String(info.sheetName || '');
+      const existing=rec.direct.find(item => (String(item.columnName || '')+'|'+String(item.sheetName || ''))===columnKey);
+      if(existing){
+        // 代表セルは「最も上の行」に固定する（列の見出し位置として読みやすい）。
+        if(info.rowNumber && (!existing.rowNumber || info.rowNumber<existing.rowNumber)){
+          existing.rowNumber=info.rowNumber;
+          existing.cellAddress=info.cellAddress;
+        }
+      }else{
+        rec.direct.push({ ...info });
+      }
+      index[key]=rec;
+    });
+    return index;
+  }
+
+  function tverSetSettingSourceIndex(run){ tverSettingSourceIndex=run ? buildTverSettingSourceIndex(run) : null; }
+  function tverCurrentSourceRecord(level, field){
+    if(!tverSettingSourceIndex) return null;
+    const key=String(level ?? '')+'|'+String(field ?? '');
+    if(tverSettingSourceIndex[key]) return tverSettingSourceIndex[key];
+    const suffix='|'+String(field ?? '');
+    const hits=Object.keys(tverSettingSourceIndex).filter(name => name.endsWith(suffix)).map(name => tverSettingSourceIndex[name]);
+    return hits.length===1 ? hits[0] : null;
+  }
+
+  // 1 件の来源の説明（実測できた内容だけ）。
+  function tverSourceDescription(info){
+    if(!info) return '';
+    if(info.kind==='rule'){
+      const parts=[];
+      if(info.manual) parts.push(info.manual);
+      if(info.page) parts.push(info.page);
+      if(info.ruleId) parts.push(info.ruleId);
+      // マニュアル（埋め込み根拠）由来か、ruleBasis だけの規則かを書き分ける。
+      const head=info.manual ? 'マニュアル規則' : '規則';
+      return head+(parts.length ? '（'+parts.join(' / ')+'）' : '');
+    }
+    if(info.kind==='csv') return 'CSV のみ（設定表に対応欄なし）';
+    const sheet=String(info.sheetName || '');
+    if(info.cellAddress) return '設定表 '+(sheet ? sheet+'!' : '')+info.cellAddress+(info.columnName ? '「'+info.columnName+'」' : '');
+    if(info.rowNumber && info.columnName) return '設定表 '+(sheet ? sheet+' ' : '')+'行'+info.rowNumber+'「'+info.columnName+'」';
+    if(info.columnName) return '設定表「'+info.columnName+'」';
+    return '設定表';
+  }
+
+  // 見出し用の要約：列が 1 本なら代表セル、複数なら列名を並べる（行ごとの実セルは詳細側で確認）。
+  function tverSourceSummaryText(record, model){
+    if(!record) return '';
+    const direct=record.direct || [];
+    const rules=record.rules || [];
+    // CSV 専用項目は「Excel 欄が無い」ことを主文にし、規則は補足として後ろに置く。
+    if(model && model.kind==='csv'){
+      const base='設定表に対応欄なし（CSV のみ）';
+      return rules.length ? base+'／'+rules.map(tverSourceDescription).join('／') : base;
+    }
+    const pieces=[];
+    if(direct.length===1){
+      pieces.push(tverSourceDescription(direct[0]));
+    }else if(direct.length>1){
+      // 複数列のときは列名（と代表行）を並べる。行ごとの実セルは詳細の「根拠を表示」で確認する。
+      const names=direct.slice(0, 2).map(item => `「${item.columnName}」`+(item.rowNumber ? '行'+item.rowNumber : '')).join('・');
+      pieces.push('設定表 '+names+(direct.length>2 ? ` ほか${direct.length-2}列` : ''));
+    }
+    if(rules.length===1){
+      pieces.push(tverSourceDescription(rules[0]));
+    }else if(rules.length>1){
+      // 規則が複数あるときは、2 件までは ID を並べて見出しと詳細を対応させる。
+      const allManual=rules.every(item => Boolean(item.manual));
+      const head=allManual ? 'マニュアル規則' : '規則';
+      pieces.push(rules.length<=2
+        ? head+'（'+rules.map(item => item.ruleId || item.manual || '').filter(Boolean).join(' / ')+'）'
+        : `${head} ${rules.length} 件（詳細の「根拠を表示」参照）`);
+    }
+    if(!pieces.length){
+      if(model && model.kind==='csv') return 'CSV のみ（設定表に対応欄なし）';
+      if(model && model.kind==='derived') return '設定表の複数列から派生';
+      if(record.unavailableCount>0) return '設定表の直接来源を取得できません（この実行では値の出所を特定できませんでした）';
+      if(record.csvCount>0) return 'CSV のみ（設定表の値なし）';
+      return '';
+    }
+    if(pieces.length===1) return pieces[0];
+    return '来源が複数：'+pieces.join('／');
+  }
+
+  // 見出しのツールチップ：原文（中国語の意味／来源区分／実測した来源）。
+  function tverFieldHeaderHint(field, level){
+    const key=String(field ?? '');
+    const model=tverFieldModel(level, key);
+    if(!model) return '';
+    // 主名（1 本だけの明確な Excel 列があればその列名）を前置し、意味・来源を後置する。
+    const label=tverFieldPrimaryLabel(level, key) || String(model.label || '').replace(/[●◯]/g, '').trim();
+    const parts=[];
+    if(model.zh && model.zh!==label) parts.push(model.zh);
+    // 表示専用は判定に関わらないことを先に明示する（「参考」「場合がある」の曖昧表現は使わない）。
+    if(model.kind==='display') parts.push(TVER_FIELD_KIND_TEXT.display);
+    const record=tverCurrentSourceRecord(level, key);
+    const summary=model.kind==='display' ? '' : tverSourceSummaryText(record, model);
+    if(summary){
+      // 派生項目は「派生であること」を先に言い、その根拠（規則など）を続ける。
+      parts.push(model.kind==='derived' ? '設定表から派生：'+summary : summary);
+    }else if(model.kind!=='display' && model.block){
+      parts.push(TVER_FIELD_KIND_TEXT[model.kind] || '設定表 '+model.block);
+      if(model.kind!=='direct' && model.kind!=='csv' && model.block) parts.push(model.block);
+    }
+    if(model.original && model.original!==label) parts.push('原文 '+model.original);
+    return parts.length ? label+'（'+parts.join('／')+'）' : label;
+  }
+
+  // 表ヘッダに付ける来源マーク（csv/rule/derived のみ）。行ごとに変わる mixed は付けない。
+  function tverFieldSourceMarker(field, level){
+    const model=tverFieldModel(level, field);
+    if(!model) return '';
+    return TVER_FIELD_KIND_MARKERS[model.kind] || '';
+  }
+
+  // 主名：実行時に観測した「1 本だけの明確な Excel 列」があればその列名（テンプレート原名）、
+  // 無ければ辞書の業務名。● の記入マークは外す。
+  // 20261125_NO005 FIX1c：番組ジャンル／サブジャンルの 4 項目は「指定／除外」が業務上の区別そのもの。
+  // 設定表の欄名（番組ジャンル●／番組サブジャンル●）は指定側と除外側で同一のため、欄名をそのまま主名にすると
+  // 2 項目が同名になり、除外の不一致を指定と取り違える。主名＝設定表原名＋役割接尾辞として常に 4 項目を別名にする。
+  const TVER_FIELD_ROLE_SUFFIX={
+    'Ad Group|genre':'（指定）',
+    'Ad Group|genre_exclude':'（除外）',
+    'Ad Group|subgenre':'（指定）',
+    'Ad Group|subgenre_exclude':'（除外）',
+  };
+
+  function tverFieldPrimaryLabel(level, field){
+    const suffix=TVER_FIELD_ROLE_SUFFIX[`${level}|${field}`] || '';
+    const columnLabel=tverSingleColumnPrimaryLabel(level, field);
+    const model=tverFieldModel(level, field);
+    const base=columnLabel || (model && model.label ? String(model.label).replace(/[●◯]/g, '').trim() : '');
+    if(!base) return '';
+    if(!suffix) return base;
+    // 欄名側・辞書側のどちらに接尾辞が入っていても二重に付けない。
+    const stripped=base.replace(/\s*[（(](?:指定|除外)[）)]\s*$/, '').trim();
+    return (stripped || base)+suffix;
+  }
+
+  function tverSettingHeaderLabel(field, level){
+    return tverFieldPrimaryLabel(level, field);
+  }
+
   const TVER_HORIZONTAL_SOURCE_COLUMN_KEY='source';
   const TVER_HORIZONTAL_SOURCE_COLUMN_WIDTH=96;
   const TVER_COLUMN_WIDTH_STORAGE_KEY='tver-horizontal-column-widths-v4-ad-name';
@@ -8853,6 +9240,10 @@
 
   function resolveTverHorizontalFieldLabel(level, field){
     const key=String(field ?? '');
+    // 20261125_NO002 FIX3-FIX1：三層すべての項目を単一ソースから解決する。
+    // 設定表に実ヘッダがある項目は中日どちらの UI でも原文を主名にし、意味はツールチップへ回す。
+    const settingHeader=tverSettingHeaderLabel(key, level);
+    if(settingHeader) return settingHeader;
     const labels=tverUiLanguage==='zh' ? TVER_HORIZONTAL_FIELD_LABELS_ZH[level] : TVER_HORIZONTAL_FIELD_LABELS[level];
     const label=labels && labels[key];
     if(typeof label==='string' && label.trim()!=='') return label;
@@ -8966,9 +9357,33 @@
     return columns;
   }
 
+  // 20261125_NO002 FIX3-FIX1：名称 entry が無い実体（前置グループ等）でも、
+  // CSV 側の実名を「CSV 欄」にそのまま表示できるようにする（設定側への反填はしない）。
+  function tverCsvEntityDisplayName(csvEntityKey, csvTree){
+    const key=String(csvEntityKey || '');
+    if(!key) return '';
+    const entity=csvTree && csvTree.entityByKey ? csvTree.entityByKey[key] : null;
+    if(entity && entity.fields){
+      const name=entity.fields.adGroupName || entity.fields.creativeName || entity.fields.campaignName || '';
+      if(name) return String(name);
+    }
+    const brace=key.indexOf('{');
+    if(brace>=0){
+      try{
+        const payload=JSON.parse(key.slice(brace));
+        return String(payload.adGroupName || payload.creativeName || payload.campaignName || '');
+      }catch(error){ return ''; }
+    }
+    return '';
+  }
+
   function buildTverHorizontalViewModel(run, level, filters){
     const safeRun=run && typeof run==='object' ? run : {};
     const entries=Array.isArray(safeRun.entries) ? safeRun.entries : [];
+    // 20261125_NO002 FIX3-FIX1：Survey の親 CP（＝BLS 前置を実際に持つ CP）だけを役割判定に渡す。
+    const surveyParentKeys=collectTverSurveyParentKeys(safeRun);
+    // 項目名のツールチップ／詳細に出す「実際のセル」は、この実行の entry.sourceRefs から解決する。
+    tverSetSettingSourceIndex(safeRun);
     const columns=buildTverHorizontalColumns(safeRun, level);
     const columnByKey=new Map(columns.map(column => [column.key, column]));
     const projectedNameField=level==='Campaign' ? 'campaign_name' : level==='Ad Group' ? 'adgroup_name' : level==='Ad' ? 'creative_name' : null;
@@ -9031,6 +9446,7 @@
         parentPath:nodeView.parentPath.map(item => ({ ...item })),
         isUnattached:nodeView.isUnattached,
         entityDisplayStatus:projectTverEntityDisplayStatus(entityEntries),
+        csvEntityName:tverCsvEntityDisplayName(nodeView.node && nodeView.node.csvEntityKey, safeRun.inputContext && safeRun.inputContext.csvTree),
         rowLevelScope:(entityEntries.find(entry=>entry && entry.rowLevelScope && typeof entry.rowLevelScope==='object') || {}).rowLevelScope || null,
         directStatusCounts:{ ...(nodeView.node && nodeView.node.directStatusCounts || {}) },
         entryIndexes:[...nodeView.entryIndexes],
@@ -9047,7 +9463,17 @@
     });
 
     rows.forEach(row => { Object.defineProperty(row, 'entriesRef', { value:entries, enumerable:false, configurable:true }); });
-    return { level, columns, rows, entries };
+    return { level, columns, rows, entries, surveyParentKeys };
+  }
+
+  // 20261125_NO002 FIX3：導航・色・バッジ・集計は「最終判定（displayStatus）」だけで決める。
+  // 旧実装は `displayStatus || comparisonStatus` で比較状態へフォールバックしていたため、
+  // deferred / notApplicable（許可空白・対象外）まで業務異常としてナビに載っていた（6875 の
+  // Tracking Impression 空白 4 件が該当）。比較状態は業務判定ではないので参照しない。
+  function tverEntryJudgementStatus(entry){
+    if(!entry || typeof entry!=='object') return '';
+    if(entry.deferred || entry.notApplicable || entry.hidden || entry.coverageOnly) return '';
+    return projectTverDisplayStatus(entry.displayStatus);
   }
 
   function tverHorizontalStatusClass(status){
@@ -9132,8 +9558,7 @@
     const entryIndexes=Array.isArray(safeCell.entryIndexes) ? safeCell.entryIndexes : [];
     const blocks=entries.map((entry, position) => {
       const entryIndex=entryIndexes[position];
-      const status=entry && (entry.displayStatus || entry.comparisonStatus) || '';
-      const projected=projectTverDisplayStatus(status);
+      const projected=tverEntryJudgementStatus(entry);
       const value=entry ? formatTverDisplayValue(entry, sourceKind) : '';
       const prefDiff=sourceKind==='csv' && entry ? buildTverPrefDiffDisplay(entry).text : '';
       const entryClass=prefDiff ? 'tver-horizontal-cell-entry tver-horizontal-cell-entry-with-reason' : 'tver-horizontal-cell-entry';
@@ -9490,11 +9915,31 @@
     });
   }
 
-  function formatTverDetailSource(sideLabel, source){
-    if(!source) return `${sideLabel}側の直接確認元はありません`;
+  function formatTverDetailSource(sideLabel, source, context){
+    const info=context && typeof context==='object' ? context : {};
+    if(!source){
+      if(sideLabel!=='設定表') return `${sideLabel}側の直接確認元はありません`;
+      // 20261125_NO002 FIX3-FIX1b：項目の種別と、その行の規則・証拠で書き分ける。
+      if(info.kind==='csv') return '設定表：対応欄なし（CSV のみで比較）';
+      if(info.ruleSupplied) return '設定表の欄ではなく規則に基づく'+(info.ruleId ? `（${info.ruleId}）` : '');
+      if(info.kind==='rule') return '設定表の欄ではなく規則に基づく'+(info.ruleId ? `（${info.ruleId}）` : '');
+      if(info.kind==='derived') return '設定表の複数列から派生（この行に直接の記載なし）';
+      if(info.explicitBlank) return '設定表：この行は空欄（値の記載なし）';
+      return '設定表：直接来源を取得できません（この行の値の出所を特定できませんでした）';
+    }
+    const sourceInfo=tverSourceInfoOf(source);
+    if(sourceInfo.kind==='rule'){
+      const parts=['マニュアル規則'];
+      if(sourceInfo.manual) parts.push(sourceInfo.manual);
+      if(sourceInfo.page) parts.push(sourceInfo.page);
+      if(sourceInfo.ruleId) parts.push(sourceInfo.ruleId);
+      if(String(source.rawValue ?? '')!=='') parts.push('規則値 '+String(source.rawValue));
+      return `${sideLabel}：${parts.join(' / ')}`;
+    }
     const parts=[];
     parts.push(`ファイル ${source.fileName || '未提供'}`);
     if(source.sheetName) parts.push(`シート ${source.sheetName}`);
+    if(source.cellAddress) parts.push(`セル ${source.cellAddress}`);
     if(source.rowNumber!==null && source.rowNumber!==undefined) parts.push(`行 ${source.rowNumber}`);
     if(source.columnName) parts.push(`列 ${source.columnName}`);
     return `${sideLabel}：${parts.join(' / ')}`;
@@ -9666,9 +10111,17 @@
     const targetAttributes=navigationLevel
       ? ` data-qc-detail-target data-qc-scope="${escapeHtml(navigationLevel)}" data-field-key="${escapeHtml(detail.field)}" data-qc-status="${detail.displayStatus==='要確認' ? 'review' : 'mismatch'}"` : '';
     const status=detail.displayStatus || '要確認';
+    const fieldModel=tverFieldModel(navigationLevel || String(detail.level || ''), detail.field);
+    const sourceContext={
+      kind:fieldModel ? fieldModel.kind : '',
+      ruleId:String(detail.ruleBasis || ''),
+      // 規則が値を供給している行か、明示的な空欄かを切り分ける（一律「CSV 専有」にしない）。
+      ruleSupplied:Boolean(detail.ruleBasis) && (String(detail.settingRawValue ?? '')!=='' || String((detail.evidenceStates || {}).setting || '')==='available'),
+      explicitBlank:String((detail.evidenceStates || {}).setting || '')==='not_provided',
+    };
     const sourceLines=[
-      ...detail.settingSources.map(source => formatTverDetailSource('設定表', source)+(detail.conservativeReason==='SETTING_GP_FIELD_CONFLICT' ? ' / 原値 '+String(source.rawValue ?? '') : '')),
-      ...detail.csvSources.map(source => formatTverDetailSource('CSV', source)),
+      ...detail.settingSources.map(source => formatTverDetailSource('設定表', source, sourceContext)+(detail.conservativeReason==='SETTING_GP_FIELD_CONFLICT' ? ' / 原値 '+String(source.rawValue ?? '') : '')),
+      ...detail.csvSources.map(source => formatTverDetailSource('CSV', source, sourceContext)),
     ];
     const sourceHtml=sourceLines.map(line => `<div class="tver-horizontal-detail-source">${escapeHtml(line)}</div>`).join('');
     // NO005：media／local_broadcaster は期待 ID / CSV ID の全量を表示せず、差分 ID だけを出す。
@@ -9833,7 +10286,16 @@
 
   function buildTverColumnHeader(label, className, columnKey, level, storage, adjustable, resolvedWidths){
     const handle=adjustable ? `<span class="tver-column-resizer" data-action="resize-column" data-column-key="${escapeHtml(columnKey)}" role="separator" aria-label="${escapeHtml(label)}${tverUiLanguage==='zh'?'调整宽度':'の幅を調整'}"></span>` : '';
-    return `<th class="${className}" data-column-key="${escapeHtml(columnKey)}" ${buildTverColumnWidthStyle(level, columnKey, storage, resolvedWidths)}>${escapeHtml(label)}${handle}</th>`;
+    // 20261125_NO002 FIX3-FIX1：主名は設定表原文。意味（中国語）・来源区分・実セルは title で補う。
+    // 名前列は層ごとの名称フィールド（発注CPN名／広告グループ名／クリエイティブ名）の来源を出す。
+    const nameFieldKey=level==='Campaign' ? 'campaign_name' : level==='Ad Group' ? 'adgroup_name' : level==='Ad' ? 'creative_name' : '';
+    const hintField=columnKey==='name' && nameFieldKey ? nameFieldKey : columnKey;
+    const hint=tverFieldHeaderHint(hintField, level);
+    const titleAttr=hint ? ` title="${escapeHtml(hint)}"` : '';
+    // 「設定表に欄が無い／規則で決まる／派生」の項目だけ、見出しに小さな来源マークを付ける。
+    const marker=tverFieldSourceMarker(hintField, level);
+    const markerHtml=marker ? `<span class="tver-field-source-mark" data-field-source-mark="${escapeHtml(marker.replace('※', ''))}">${escapeHtml(marker)}</span>` : '';
+    return `<th class="${className}" data-column-key="${escapeHtml(columnKey)}"${titleAttr} ${buildTverColumnWidthStyle(level, columnKey, storage, resolvedWidths)}>${escapeHtml(label)}${markerHtml}${handle}</th>`;
   }
 
   function tverResolvedHorizontalDynamicWidth(resolvedWidths){
@@ -9857,12 +10319,16 @@
     const entry=projection && projection.entry;
     const expected=sourceKind==='setting';
     let value='', marker='', status='', nameStatus='';
+    // 20261125_NO002 FIX3：名称 entry が存在しない＝設定表に直接記載が無い。
+    // 空欄と「直接記載なし」を区別し、CSV 名を設定側へ反填しない。
+    if(!entry && expected) value='（設定表に直接記載なし）';
+    if(!entry && !expected && row && row.csvEntityName) value=String(row.csvEntityName);
     if(entry){
       const raw=String(expected && entry.field==='creative_name' && entry.ruleBasis==='TVER_NO021_VIDEO_FILENAME_WITHOUT_EXTENSION' ? deriveTverCreativeName(entry.settingRawValue) : expected ? entry.settingRawValue ?? '' : entry.csvRawValue ?? '');
       const evidenceState=entry.evidenceStates && entry.evidenceStates[expected ? 'setting' : 'csv'];
       value=raw!=='' ? raw : evidenceState==='available' ? '（空欄）' : '（要確認）';
-      nameStatus=entry.comparisonStatus || entry.displayStatus || '';
-      status=projectTverDisplayStatus(entry.displayStatus || entry.comparisonStatus);
+      nameStatus=entry.displayStatus || entry.comparisonStatus || '';
+      status=tverEntryJudgementStatus(entry);
       const qcMismatchAttr=expected && (status==='不一致' || status==='要確認')
         ? ` data-qc-status="${status==='不一致' ? 'mismatch' : 'review'}" data-qc-scope="${escapeHtml(level)}" data-field-key="${escapeHtml(entry.field)}"` : '';
       marker=` data-entry-index="${escapeHtml(projection.entryIndex)}" data-entry-status="${escapeHtml(status)}"${qcMismatchAttr}`;
@@ -9930,6 +10396,104 @@
     return `<td class="tver-horizontal-fixed tver-horizontal-name-col tver-horizontal-fixed-name ${nameClass}" data-column-key="name" data-source-kind="${sourceKind}" data-name-status="${escapeHtml(nameStatus)}"${level==='Ad' ? ` data-name-projection-state="${projectionState}"` : ''}><span class="tver-group-name-value"${marker} title="${escapeHtml(value)}">${escapeHtml(value)}</span>${label}${nameLocationHtml}${nameCandidatesHtml}</td>`;
   }
 
+  // 20261125_NO002 FIX3-FIX1：Ad Group の親グループ役割は「マッチ後の親実体の種類」と
+  // 「その親 CP から実際に Survey キャンペーンが派生しているか」の 2 点だけで決める。
+  // 名称の文字列検索・行順・共存（同じ Sheet に居るだけ）では判定しない。
+  const TVER_SURVEY_CAMPAIGN_KEY_PATTERN=/^survey-(?:sp|ctv)-campaign:/;
+  function collectTverSurveyParentKeys(run){
+    const model=run && run.inputContext && run.inputContext.settingModel;
+    const campaigns=model && Array.isArray(model.campaigns) ? model.campaigns : [];
+    const keys=[];
+    campaigns.forEach(campaign => {
+      const type=String(campaign && campaign.businessType || '');
+      if(!type.startsWith('survey')) return;
+      const parentKey=String(campaign.surveyParentKey || '');
+      if(parentKey && !keys.includes(parentKey)) keys.push(parentKey);
+    });
+    return keys;
+  }
+
+  function tverGroupRoleOfParentKey(parentKey, surveyParentKeys){
+    const normalized=String(parentKey || '').replace(/^match:/, '');
+    if(!normalized) return '';
+    if(TVER_SURVEY_CAMPAIGN_KEY_PATTERN.test(normalized)) return 'survey';
+    // マッチ済みノードは「設定側キー::CSV側キー」の合成キー。設定側だけを取り出して照合する。
+    const settingSide=normalized.split('::')[0];
+    if(!settingSide.startsWith('campaign:')) return '';
+    const parents=surveyParentKeys instanceof Set ? [...surveyParentKeys]
+      : Array.isArray(surveyParentKeys) ? surveyParentKeys : [];
+    const related=parents.some(parent => String(parent || '')===settingSide);
+    return related ? 'general' : '';
+  }
+
+  function tverGroupRoleLabel(role){
+    if(role==='general') return tverUiLanguage==='zh' ? '一般投放（BLS 前置）' : '一般配信（BLS 前置）';
+    if(role==='survey') return tverUiLanguage==='zh' ? '问卷投放（BLS）' : 'アンケート配信（BLS）';
+    return '';
+  }
+
+  // 折り畳みは表示だけの状態。件数・判定・エクスポートには影響させない。
+  const tverCollapsedGroups=new Set();
+  function tverGroupStateKey(level, groupKey){ return String(level || '')+'|'+String(groupKey || ''); }
+  function isTverGroupCollapsed(level, groupKey){ return tverCollapsedGroups.has(tverGroupStateKey(level, groupKey)); }
+  // 20261125_NO002 FIX3-FIX1：実行を跨いで状態を持ち越さない（リセット・案件切替で必ず消す）。
+  function resetTverGroupCollapseState(){ tverCollapsedGroups.clear(); }
+
+  function tverStampedRows(scope, selector){
+    if(!scope || typeof scope.querySelectorAll!=='function') return [];
+    const rows=[];
+    scope.querySelectorAll(selector).forEach(row => {
+      if(!row || !row.getAttribute) return;
+      // 版面が再構築された古い要素は操作しない（別パネルの同名グループを巻き込まない）。
+      if(row.isConnected===false) return;
+      rows.push(row);
+    });
+    return rows;
+  }
+
+  // 折り畳み対象は「現在の層・現在のグループのデータ行」だけ。見出し行・ボタン・異常数は触らない。
+  // グループキーは JSON 文字列なので CSS セレクタへ埋め込まず、属性値の完全一致で比較する。
+  function applyTverGroupCollapsedState(scope, level, groupKey, collapsed){
+    const safeLevel=String(level || '');
+    const safeKey=String(groupKey || '');
+    tverStampedRows(scope, 'tr[data-row-level]').forEach(row => {
+      if(row.getAttribute('data-row-level')!==safeLevel) return;
+      if(row.getAttribute('data-group-key')!==safeKey) return;
+      row.hidden=Boolean(collapsed);
+      if(collapsed) row.setAttribute('data-qc-collapsed-hidden', '1');
+      else row.removeAttribute('data-qc-collapsed-hidden');
+    });
+    tverStampedRows(scope, 'tr.tver-hgroup-row[data-hgroup-level]').forEach(header => {
+      if(header.getAttribute('data-hgroup-level')!==safeLevel) return;
+      if(header.getAttribute('data-group-key')!==safeKey) return;
+      header.setAttribute('data-hgroup-state', collapsed ? 'collapsed' : 'open');
+      const button=header.querySelector && header.querySelector('[data-action="toggle-hgroup"]');
+      if(!button) return;
+      button.setAttribute('aria-expanded', String(!collapsed));
+      const glyph=collapsed ? '▸' : '▾';
+      if(button.textContent!==glyph) button.textContent=glyph;
+    });
+  }
+
+  function tverSetGroupCollapsed(level, groupKey, collapsed, root){
+    const key=tverGroupStateKey(level, groupKey);
+    if(collapsed) tverCollapsedGroups.add(key); else tverCollapsedGroups.delete(key);
+    const scope=root || (typeof document!=='undefined' ? document : null);
+    applyTverGroupCollapsedState(scope, level, groupKey, collapsed);
+  }
+
+  // ナビが折り畳み行を指したら自動展開する（隠れた対象へスクロールしない）。
+  function expandTverGroupForTarget(target){
+    if(!target || typeof target.closest!=='function') return false;
+    const row=target.closest('tr[data-row-level][data-group-key]');
+    if(!row) return false;
+    const groupKey=row.getAttribute('data-group-key');
+    const level=row.getAttribute('data-row-level') || '';
+    if(!groupKey || !level || !isTverGroupCollapsed(level, groupKey)) return false;
+    tverSetGroupCollapsed(level, groupKey, false, row.ownerDocument || null);
+    return true;
+  }
+
   function buildTverHorizontalTableHtmlLegacy(viewModel, options){
     const view=viewModel && typeof viewModel==='object' ? viewModel : { level:'Campaign', columns:[], rows:[] };
     const config=options || {};
@@ -9939,7 +10503,9 @@
     const resolvedWidths=config.resolvedWidths || resolveTverHorizontalWidths(view.level, columns, storage);
     const levelId=tverHorizontalLevelId(view.level);
     const targetHeaderLabel=tverUiLanguage==='zh' ? (view.level==='Campaign' ? 'Campaign诉求' : '对象名') : (view.level==='Campaign' ? 'CPN訴求' : '対象名');
-    const nameLabel=tverUiLanguage==='zh' ? (view.level==='Campaign' ? 'Campaign名称' : view.level==='Ad Group' ? '广告组名称' : '素材名称') : (view.level==='Campaign' ? 'CP名' : view.level==='Ad Group' ? 'Group名' : 'クリエイティブ名');
+    // 20261125_NO002 FIX3-FIX1：名前列も「設定表の業務名」で統一する（汎用中国語ラベルを廃止）。
+    const nameField=view.level==='Campaign' ? 'campaign_name' : view.level==='Ad Group' ? 'adgroup_name' : 'creative_name';
+    const nameLabel=tverFieldPrimaryLabel(view.level, nameField) || (view.level==='Campaign' ? '発注CPN名' : view.level==='Ad Group' ? '広告グループ名' : 'クリエイティブ名');
     const comparisonHeaderLabel=tverUiLanguage==='zh' ? '比较结果' : '比較結果';
     const sourceHeaderLabel=tverUiLanguage==='zh' ? '来源' : '出典';
     const colgroup=`<colgroup><col class="tver-horizontal-col-no" data-column-key="no" ${buildTverColumnWidthStyle(view.level, 'no', storage, resolvedWidths)}><col class="tver-horizontal-col-target" data-column-key="target" ${buildTverColumnWidthStyle(view.level, 'target', storage, resolvedWidths)}><col class="tver-horizontal-name-col" data-column-key="name" ${buildTverColumnWidthStyle(view.level, 'name', storage, resolvedWidths)}><col class="tver-horizontal-col-comparison" data-column-key="comparison" ${buildTverColumnWidthStyle(view.level, 'comparison', storage, resolvedWidths)}>${buildTverHorizontalSourceColumnHtml()}${columns.map(column => `<col class="tver-horizontal-field-col" data-column-key="${escapeHtml(column.key)}" ${buildTverColumnWidthStyle(view.level, column.key, storage, resolvedWidths)}>`).join('')}</colgroup>`;
@@ -9947,11 +10513,40 @@
     const fieldColumns=new Set(columns.map(column => column.key));
     let previousGroupKey=null;
     const bodyRows=[];
+    // 20261125_NO002 FIX3：グループ見出しに「役割・件数・異常件数」を出し、Ad Group では折り畳めるようにする。
+    const groupMeta=new Map();
+    if(view.level==='Ad Group'){
+      rows.forEach(row => {
+        const key=row.parentNodeKey || (row.isUnattached ? 'unattached' : '');
+        if(!groupMeta.has(key)) groupMeta.set(key, { role:tverGroupRoleOfParentKey(row.parentNodeKey, view.surveyParentKeys), label:String(row.parentDisplayLabel || ''), count:0, abnormal:0 });
+        const meta=groupMeta.get(key);
+        meta.count+=1;
+        const status=projectTverDisplayStatus(row.entityDisplayStatus);
+        if(status==='不一致'||status==='要確認') meta.abnormal+=1;
+      });
+    }
     rows.forEach((row, index) => {
       const groupKey=row.parentNodeKey || (row.isUnattached ? 'unattached' : '');
+      const rowGroupKey=view.level==='Ad Group' ? groupKey : '';
       if(view.level!=='Campaign' && groupKey!==previousGroupKey){
         const groupLabel=row.parentDisplayLabel || (row.isUnattached ? '未接続' : '');
-        bodyRows.push(`<tr class="tver-horizontal-group-row" data-group-key="${escapeHtml(groupKey)}"><th colspan="${5 + columns.length}">${escapeHtml(groupLabel)}</th></tr>`);
+        const meta=groupMeta.get(groupKey) || null;
+        if(view.level==='Ad Group' && meta){
+          const collapsed=isTverGroupCollapsed(view.level, groupKey);
+          const abnormalHtml=meta.abnormal
+            ? '<span class="tver-hgroup-abnormal">'+ (tverUiLanguage==='zh' ? '本组异常 '+meta.abnormal+' 项' : 'この組の異常 '+meta.abnormal+' 件') +'</span>'
+            : '';
+          bodyRows.push(`<tr class="tver-horizontal-group-row tver-hgroup-row" data-group-key="${escapeHtml(groupKey)}" data-hgroup-level="${escapeHtml(view.level)}" data-hgroup-role="${escapeHtml(meta.role)}" data-hgroup-state="${collapsed ? 'collapsed' : 'open'}">`
+            +`<th colspan="${5 + columns.length}">`
+            +`<button type="button" class="tver-hgroup-toggle" data-action="toggle-hgroup" data-group-key="${escapeHtml(groupKey)}" data-group-level="${escapeHtml(view.level)}" aria-expanded="${String(!collapsed)}" aria-controls="panel-${escapeHtml(levelId)}">${collapsed ? '▸' : '▾'}</button>`
+            +`<span class="tver-hgroup-name">${escapeHtml(groupLabel)}</span>`
+            +(meta.role ? `<span class="tver-hgroup-role" data-hgroup-role-label>${escapeHtml(tverGroupRoleLabel(meta.role))}</span>` : '')
+            +`<span class="tver-hgroup-count">${meta.count}</span>`
+            +abnormalHtml
+            +`</th></tr>`);
+        }else{
+          bodyRows.push(`<tr class="tver-horizontal-group-row" data-group-key="${escapeHtml(groupKey)}"><th colspan="${5 + columns.length}">${escapeHtml(groupLabel)}</th></tr>`);
+        }
         previousGroupKey=groupKey;
       }
       const settingSourceCell=buildTverHorizontalSourceCellHtml('setting');
@@ -9979,7 +10574,10 @@
         : '<span class="tver-horizontal-entity-status '+tverHorizontalStatusClass(entityStatus)+'" data-entity-status="'+escapeHtml(entityStatus)+'">'+escapeHtml(entityStatus==='一致' ? '一致' : entityBadge)+'</span>';
       const fixedCells=`<td class="tver-horizontal-fixed tver-horizontal-col-no tver-horizontal-fixed-no" rowspan="2">${escapeHtml(index + 1)}</td><td class="tver-horizontal-fixed tver-horizontal-col-target tver-horizontal-fixed-target" rowspan="2">${escapeHtml(row.displayLabel)}</td>${buildTverHorizontalProjectedNameCellHtml(row, view.level, 'setting')}<td class="tver-horizontal-fixed tver-horizontal-col-comparison tver-horizontal-fixed-comparison" rowspan="2"><span data-entity-status="${escapeHtml(entityStatus)}">${comparisonControl}</span></td>`;
       const csvNameCells=buildTverHorizontalProjectedNameCellHtml(row, view.level, 'csv');
-      bodyRows.push(`<tr data-row-key="${escapeHtml(row.rowKey)}" data-row-variant="setting">${fixedCells}${settingSourceCell}${settingCells}</tr><tr data-row-key="${escapeHtml(row.rowKey)}" data-row-variant="csv">${csvNameCells}${csvSourceCell}${csvCells}</tr>`);
+      const rowGroupAttrs=rowGroupKey
+        ? ` data-group-key="${escapeHtml(rowGroupKey)}" data-row-level="${escapeHtml(view.level)}"${isTverGroupCollapsed(view.level, rowGroupKey) ? ' hidden data-qc-collapsed-hidden="1"' : ''}`
+        : '';
+      bodyRows.push(`<tr data-row-key="${escapeHtml(row.rowKey)}" data-row-variant="setting"${rowGroupAttrs}>${fixedCells}${settingSourceCell}${settingCells}</tr><tr data-row-key="${escapeHtml(row.rowKey)}" data-row-variant="csv"${rowGroupAttrs}>${csvNameCells}${csvSourceCell}${csvCells}</tr>`);
     });
     const body=bodyRows.length ? bodyRows.join('') : `<tr><td class="tver-horizontal-empty" colspan="${5 + columns.length}">現在の条件に一致する結果はありません。</td></tr>`;
     return `<section class="tver-horizontal-panel" id="tver-horizontal-panel-${escapeHtml(levelId)}" role="tabpanel" aria-label="${escapeHtml(view.level)}結果"><div class="tver-horizontal-scroll-shell" ${buildTverHorizontalTableLayoutStyle(view.level, storage, resolvedWidths)}><div class="tver-horizontal-scroll"><table class="tver-horizontal-table" data-level="${escapeHtml(view.level)}" ${buildTverHorizontalTableLayoutStyle(view.level, storage, resolvedWidths)}>${colgroup}${head}<tbody>${body}</tbody></table></div></div></section>`;
@@ -9993,7 +10591,9 @@
     const resolvedWidths=config.resolvedWidths || resolveTverHorizontalWidths(view.level, columns, storage);
     const layoutStyle=buildTverHorizontalTableLayoutStyle(view.level, storage, resolvedWidths);
     const targetHeaderLabel=tverUiLanguage==='zh' ? (view.level==='Campaign' ? 'Campaign诉求' : '对象名') : (view.level==='Campaign' ? 'CPN訴求' : '対象名');
-    const nameLabel=tverUiLanguage==='zh' ? (view.level==='Campaign' ? 'Campaign名称' : view.level==='Ad Group' ? '广告组名称' : '素材名称') : (view.level==='Campaign' ? 'CP名' : view.level==='Ad Group' ? 'Group名' : 'クリエイティブ名');
+    // 20261125_NO002 FIX3-FIX1：名前列も「設定表の業務名」で統一する（汎用中国語ラベルを廃止）。
+    const nameField=view.level==='Campaign' ? 'campaign_name' : view.level==='Ad Group' ? 'adgroup_name' : 'creative_name';
+    const nameLabel=tverFieldPrimaryLabel(view.level, nameField) || (view.level==='Campaign' ? '発注CPN名' : view.level==='Ad Group' ? '広告グループ名' : 'クリエイティブ名');
     const comparisonHeaderLabel=tverUiLanguage==='zh' ? '比较结果' : '比較結果';
     const sourceHeaderLabel=tverUiLanguage==='zh' ? '来源' : '出典';
     const fixedColgroup='<colgroup>'
@@ -10172,6 +10772,15 @@
         syncTverHorizontalScrollAccess(panel);
       }
       if(action==='toggle-detail-evidence') setTverHorizontalEvidenceExpanded(panel, control);
+      if(action==='toggle-hgroup'){
+        const groupKey=control.getAttribute && control.getAttribute('data-group-key');
+        const level=control.getAttribute && control.getAttribute('data-group-level');
+        if(groupKey && level){
+          const collapsed=!isTverGroupCollapsed(level, groupKey);
+          tverSetGroupCollapsed(level, groupKey, collapsed, panel);
+          syncTverHorizontalScrollAccess(panel);
+        }
+      }
       if(action==='toggle-result-detail'){
         const wrap=typeof control.closest==='function' ? control.closest('.tver-result-lines') : null;
         const detailPanel=wrap && typeof wrap.querySelector==='function' ? wrap.querySelector('[data-result-detail]') : null;
@@ -11245,6 +11854,8 @@
 
   function clearTverResults(doc){
     resetTverNavigator();
+    // 20261125_NO002 FIX3-FIX1：前回実行の折り畳み状態を次の結果へ持ち越さない。
+    if(typeof resetTverGroupCollapseState==='function') resetTverGroupCollapseState();
     const panel=getElement(doc, 'results-panel');
     if(panel){ panel.innerHTML=''; panel.scrollLeft=0; panel.classList && panel.classList.add('hidden'); }
     const summary=getElement(doc, 'tver-result-summary');
@@ -11421,6 +12032,7 @@
       if(runToken!==tverPageState.runToken) return {ok:false,cancelled:true};
       run.inputContext={settingModel,csvTree,parsedCsv,runToken,recognitionToken:tverPageState.recognitionToken,pairs:[]};
       tverPageState.run=run;
+      if(typeof resetTverGroupCollapseState==='function') resetTverGroupCollapseState();
       tverPageState.activeLevel='Campaign';
       tverPageState.filters=defaultFilters();
       renderTverRun(run,{document:doc,activeLevel:'Campaign',filters:tverPageState.filters,newLifecycle:true});
