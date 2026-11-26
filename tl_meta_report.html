@@ -78,6 +78,11 @@ td.pcell{white-space:nowrap;font-variant-numeric:tabular-nums}
 .wk-todo .hd{font-size:11.5px;font-weight:700;color:#8a5a12;margin-bottom:6px}
 .wk-paste{width:100%;border:1px solid var(--qc-line);border-radius:6px;padding:6px 8px;font:inherit;
   font-size:12px;resize:vertical;min-height:30px;background:#fff}
+.wk-meta{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:7px}
+.wk-meta .f{display:flex;flex-direction:column;gap:3px}
+.wk-meta label{font-size:11px;color:var(--qc-ink3);font-weight:600}
+.wk-meta input,.wk-meta select{border:1px solid var(--qc-line);border-radius:6px;padding:4px 7px;font:inherit;font-size:12px;background:#fff}
+.wk-meta .hint{align-self:center}
 .wk-period{margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .wk-period .p{padding:5px 8px;border-radius:6px;font-size:11.5px;border:1px solid var(--qc-line);background:#fff}
 .wk-period .p b{display:block;font-size:11px;font-weight:700;margin-bottom:1px}
@@ -410,6 +415,16 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.65;cursor:pointer;m
     <div class="wk-todo">
       <div class="hd" data-i18n="p.todoHd">TODO から 4 セルを貼り付け（グロス予算／マージン／開始日／終了日）</div>
       <textarea class="wk-paste" id="pTodoPaste" rows="1" data-i18n-ph="p.todoPh" placeholder="グロス予算　マージン　開始日　終了日 を貼り付け（1 行でも可）"></textarea>
+      <div class="wk-meta">
+        <span class="f"><label for="pWorkday" data-i18n="p.workday">作業日</label><input type="date" id="pWorkday"></span>
+        <span class="f"><label for="pType" data-i18n="p.type">レポート種別</label>
+          <select id="pType">
+            <option value="auto" data-i18n="p.typeAuto">自動（ファイル名から）</option>
+            <option value="final" data-i18n="p.typeFinal">掲載終了</option>
+            <option value="flash" data-i18n="p.typeFlash">速報値</option>
+          </select></span>
+        <span class="hint" id="pTypeHint"></span>
+      </div>
       <div class="msg" id="pTodoMsg"></div>
       <div class="wk-period" id="pPeriodWrap" style="display:none"></div>
     </div>
@@ -8963,16 +8978,58 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   //   ・報告頁＝ CP のレポート（広告・画像・Click/Reach・数値の対象）
   //   ・補助頁＝【レポート定義】…（納品物に残ってよい。CP 比較や広告・画像の対象外）
   //   ・"レポート定義" を含むだけの未知頁は補助頁にしない（誤って白名単化しない）
-  const AUX_RE = /^【レポート定義】/;
+  // NO26-FIX1：補助頁は「実 FMT で確認できた既知の頁」だけ。名前の接頭辞だけでは放行しない。
+  const AUX_KNOWN = ['【レポート定義】Meta', '【レポート定義】FB'];
+  const DEF_LIKE = /レポート定義/;
   function pageKindOf(name) {
     const n = String(name == null ? '' : name);
     if (RD_SHEETS.indexOf(n) >= 0) return 'raw';
-    if (AUX_RE.test(n)) return 'aux';
+    if (AUX_KNOWN.indexOf(n) >= 0) return 'aux';
+    if (DEF_LIKE.test(n)) return 'unknown';    // 未知の定義系は「要確認」へ（黙って通さない）
     return 'report';
   }
-  function reportPagesOf(book) {
-    return book.order.filter(n => pageKindOf(n) === 'report');
+  // 頁の実体から 4 分類する（名前だけでは決めない）
+  //   report  = レポート区块（クリエイティブレポート等）を持つ頁
+  //   raw     = 3 枚のローデータ
+  //   aux     = 実 FMT で確認済みの補助頁（【レポート定義】Meta / FB）
+  //   unknown = 上記以外（名前が「レポート定義」でも、区块が無ければ報告頁にしない）
+  function classifyPages(book) {
+    const out = { report: [], raw: [], aux: [], unknown: [] };
+    if (!book) return out;
+    for (const n of book.order) {
+      const k = pageKindOf(n);
+      if (k === 'raw') { out.raw.push(n); continue; }
+      if (k === 'aux') { out.aux.push(n); continue; }
+      const sh = book.sheets.get(n);
+      const br = sh ? blockRects(sh) : { blocks: [] };
+      const isReport = (br.blocks || []).some(b => /クリエイティブ/.test(b.key)) || (br.blocks || []).length >= 3;
+      if (isReport) out.report.push(n); else out.unknown.push(n);
+    }
+    return out;
   }
+  function unknownPagesOf(book) { return classifyPages(book).unknown; }
+  // 頁構成の比較対象＝報告頁＋未知頁（未知頁が増えていれば「余分」として出す）
+  function compositionPagesOf(book) {
+    const c = classifyPages(book);
+    return c.report.concat(c.unknown);
+  }
+  // 明細（集計部より下）に式が残っているか＝関数版の判定材料
+  function hasDetailFormula(book) {
+    for (const page of reportPagesOf(book)) {
+      const sh = book.sheets.get(page);
+      if (!sh) continue;
+      const br = blockRects(sh);
+      const first = br.blocks.length ? Math.min(...br.blocks.map(b => b.marker)) : Infinity;
+      for (const [ref, c] of sh.cells) {
+        if (c.f == null) continue;
+        const r = rowOf(ref);
+        if (br.summaryTotal && r <= br.summaryTotal) continue;
+        if (r > first) return true;
+      }
+    }
+    return false;
+  }
+  function reportPagesOf(book) { return classifyPages(book).report; }
   function auxPagesOf(book) {
     return book.order.filter(n => pageKindOf(n) === 'aux');
   }
@@ -9089,6 +9146,27 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   const textOf = (sh, ref) => { const c = sh.cells.get(ref); return c ? String(c.v) : ''; };
   const numOf = (sh, ref) => { const c = sh.cells.get(ref); return c ? c.n : null; };
 
+  // ---------------------------------------------------------------- 期待期間（作業頁・校正頁で共有）
+  //   final：期待終了日＝TODO 終了日 ／ flash：期待終了日＝作業日の前一日
+  //   作業日が無い flash は「決めない」（TODO 終了日で代用しない）
+  function expectedPeriodOf(o) {
+    o = o || {};
+    const todo = o.todo || null;
+    const reportType = o.reportType === 'flash' ? 'flash' : 'final';
+    const wd = o.workday || null;
+    const start = todo && todo.fields && todo.fields.start ? dstr(todo.fields.start) : null;
+    let end = null, reason = '';
+    if (reportType === 'flash') {
+      if (wd) {
+        const d = new Date(Date.UTC(wd.getUTCFullYear(), wd.getUTCMonth(), wd.getUTCDate()) - 86400000);
+        end = dstr({ y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() });
+      } else reason = 'noWorkday';
+    } else if (todo && todo.fields && todo.fields.end) {
+      end = dstr(todo.fields.end);
+    } else reason = 'noTodoEnd';
+    return { start, end, basis: reportType, reason, workday: wd ? dstr({ y: wd.getUTCFullYear(), m: wd.getUTCMonth() + 1, d: wd.getUTCDate() }) : null };
+  }
+
   // ---------------------------------------------------------------- RAW のダウンロード期間
   //   RAW は「レポート開始日 / レポート終了日」列を持つ型がある（実ファイルで確認）。
   //   ・列が無い型は「読めない」＝需確認（一致と判定しない）
@@ -9103,15 +9181,26 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     }
     if (!sc || !ec) return { readable: false, sheet: sh.name };
     let min = null, max = null;
+    const periodPairs = new Set();   // 開始≠終了 の行（＝期間を持つ行）
+    const dailyPairs = new Set();    // 開始＝終了 の行（＝日別の日付）
     const maxR = Math.min(sh.maxRow, 200000);
     for (let r = 2; r <= maxR; r++) {
       const s = parseDateLike(textOf(sh, sc + r));
       const e = parseDateLike(textOf(sh, ec + r));
       if (s) { const v = dateSerial(s); if (min == null || v < min.v) min = { v, d: s }; }
       if (e) { const v = dateSerial(e); if (max == null || v > max.v) max = { v, d: e }; }
+      if (!(s && e)) continue;
+      const a = dstr(s), b = dstr(e);
+      if (a === b) dailyPairs.add(a); else periodPairs.add(a + ' 〜 ' + b);
     }
-    if (!min || !max) return { readable: false };
-    return { readable: true, start: dstr(min.d), end: dstr(max.d) };
+    if (!min || !max) return { readable: false, sheet: sh.name };
+    const out = { readable: true, start: dstr(min.d), end: dstr(max.d) };
+    // 日別 RAW は 1 行 1 日（開始＝終了）が正常。期間行が複数種類あるときだけ「食い違い」。
+    if (periodPairs.size > 1) {
+      out.conflict = [...periodPairs].slice(0, 6);
+      out.conflictCount = periodPairs.size;
+    }
+    return out;
   }
   function periodOfRawBook(book) {
     for (const name of book.order) {
@@ -9287,21 +9376,24 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'open.vOkAll': 'open.v', 'open.vBadOne': 'open.v',
     'ads.attrOk': 'ads.attr', 'ads.attrBad': 'ads.attr', 'ads.attrNa': 'ads.attr',
     'ads.blueNone2': 'ads.blue', 'ads.blueLeak': 'ads.blue',
-    'ads.singleAdOk2': 'ads.single', 'ads.singleAdBad2': 'ads.single', 'ads.singleAdMulti': 'ads.single',
+    'ads.singleAdOk2': 'ads.images', 'ads.singleAdBad2': 'ads.single', 'ads.singleAdMulti': 'ads.images',
     'ads.widthOk2': 'ads.width', 'ads.widthBad2': 'ads.width',
+    'ads.countUnknown': 'ads.count',
     'ads.noShotsYet': 'ads.shots', 'ads.noDelivery': 'ads.shots', 'ads.logoMixed': 'ads.shots',
     'disp.fitOk2': 'disp.fit', 'disp.fitBad2': 'disp.fit',
     'case.startOk': 'case.period', 'case.startBad': 'case.period', 'case.endOk': 'case.period',
     'case.endBad': 'case.period', 'case.earlyEnd': 'case.period', 'case.overEnd': 'case.period',
     'case.lateStart': 'case.period', 'case.boundaryAsk': 'case.period', 'case.noPeriod': 'case.period',
     'case.noExpectedEnd': 'case.period', 'case.needWorkday': 'case.period', 'case.needFuncForPeriod': 'case.period',
-    'case.caseMismatch': 'case.name',
+    'case.caseMismatch': 'case.pair',
     'case.rawPeriodOk': 'case.rawPeriod', 'case.rawPeriodDiff': 'case.rawPeriod', 'case.rawPeriodUnreadable': 'case.rawPeriod',
     'p.budgetOk': 'param.budget', 'p.budgetBad': 'param.budget',
     'p.marginOk': 'param.margin', 'p.marginBad': 'param.margin',
     'p.reachNeedFunc': 'param.reach', 'p.reachUnreadable': 'param.reach',
     'p.reachInputInvalid': 'param.reach', 'p.reachInputDiff': 'param.reach',
     'p.clickReachSame': 'param.clickReach', 'p.clickUnreadable': 'param.clickReach',
+    'nf.rawLeft': 'nf.rawLeftRaw',
+    'sheet.unknownPage': 'sheet.unknown',
     'der.pageExtra': 'der.pages', 'der.pageMissing': 'der.pages', 'der.pageUnreadable': 'der.pages',
     'der.blockScope': 'der.pages', 'der.colDropped': 'der.pages', 'der.colExtra': 'der.pages',
     'der.dailyTrim': 'der.pages', 'der.zeroRowsDeleted': 'der.pages',
@@ -9320,16 +9412,21 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'ads.blue': { zh: '加工用蓝底残留', ja: '加工用青枠の残留' },
     'ads.single': { zh: '单一广告', ja: '単一広告' },
     'ads.width': { zh: '图片宽度', ja: '画像幅' },
+    'ads.images': { zh: '交付图片数量', ja: '交付画像の枚数' },
+    'ads.count': { zh: '有效广告数', ja: '有効広告数' },
     'ads.shots': { zh: '广告截图', ja: '広告スクリーンショット' },
     'disp.fit': { zh: '打印范围', ja: '印刷範囲' },
     'case.period': { zh: '掲載期間', ja: '掲載期間' },
     'case.rawPeriod': { zh: 'RAW 下载期间', ja: 'RAW ダウンロード期間' },
     'case.name': { zh: '案件名的一致', ja: '案件名の一致' },
+    'case.pair': { zh: '两份文件是否同一案件', ja: '2 冊が同一案件か' },
     'param.budget': { zh: '予算', ja: '予算' },
     'param.margin': { zh: 'マージン', ja: 'マージン' },
     'param.reach': { zh: 'Reach', ja: 'Reach' },
     'param.clickReach': { zh: 'Click 与 Reach', ja: 'Click と Reach' },
     'der.pages': { zh: 'Sheet 构成', ja: 'シート構成' },
+    'nf.rawLeftRaw': { zh: '非函数版残留 RAW', ja: '非関数版の RAW 残留' },
+    'sheet.unknown': { zh: '未知的辅助页', ja: '未知の補助頁' },
     'der.value': { zh: '明细数值', ja: '明細の値' },
     'der.rows': { zh: '明细行', ja: '明細行' },
     'der.total': { zh: 'Total', ja: 'Total' },
@@ -9346,6 +9443,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   function buildItems(findings) {
     const map = new Map();
     for (const f of (findings || [])) {
+      if (f.sev === 'na') continue;   // 不適用は表示も件数もしない（NO26-FIX1）
       const id = itemIdOf(f.key);
       if (!map.has(id)) map.set(id, { id, sev: 'ok', raws: [], title: ITEM_TITLE[id] || null, group: f.group || '' });
       map.get(id).raws.push(f);
@@ -9532,20 +9630,9 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     // 期間（RAW から確認できるダウンロード期間／実データの初日・最終日）
     //   NO24-FIX3：期待する終了日は「校正全体で 1 つ」。速報値＝作業日の前日、終了レポート＝TODO の終了日。
     //   ダウンロード期間の照合も、首尾のデータ無し警告も、同じ 1 つを参照する。
-    let expectedEnd = null, endReason = '';
-    if (reportType === 'flash') {
-      if (workday) {
-        const d = new Date(Date.UTC(workday.getUTCFullYear(), workday.getUTCMonth(), workday.getUTCDate()) - 86400000);
-        expectedEnd = dstr({ y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() });
-      } else {
-        endReason = 'noWorkday';   // 速報値なのに作業日が空 → TODO 終了日で代用しない
-      }
-    } else if (todo && todo.fields && todo.fields.end) {
-      expectedEnd = dstr(todo.fields.end);
-    } else {
-      endReason = 'noTodoEnd';
-    }
-    const expectedEndBasis = reportType === 'flash' ? 'flash' : 'final';
+    const expPeriod = expectedPeriodOf({ todo, reportType: reportType === 'flash' ? 'flash' : 'final', workday });
+    let expectedEnd = expPeriod.end, endReason = expPeriod.reason;
+    const expectedEndBasis = expPeriod.basis;
     F.ctx.expectedEnd = { date: expectedEnd, basis: expectedEndBasis, reason: endReason, workday: workday ? dstr({ y: workday.getUTCFullYear(), m: workday.getUTCMonth() + 1, d: workday.getUTCDate() }) : null };
     if (endReason === 'noWorkday') {
       push('ask', 'case', { file: 'both', sheet: '-', where: '作業日', key: 'case.needWorkday', args: [workday ? dstr({ y: workday.getUTCFullYear(), m: workday.getUTCMonth() + 1, d: workday.getUTCDate() }) : ''] });
@@ -9568,6 +9655,17 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
             continue;
           }
           const same = (p.start === wantS && p.end === wantE);
+          if (p.conflict) {
+            push('err', 'case', {
+              file: 'func', sheet: nm, where: 'ダウンロード期間（行内で不一致）',
+              key: 'case.rawPeriodConflict',
+              expect: wantS + ' ～ ' + wantE,
+              actual: p.conflict.join(' / '),
+              args: [nm, p.conflict.join(' / ')],
+              detail: [{ k: '実際', v: p.conflict.join(' / ') }, { k: '件数', v: String(p.conflictCount || p.conflict.length) }],
+            });
+            continue;
+          }
           push(same ? 'ok' : 'err', 'case', {
             file: 'func', sheet: nm, where: 'ダウンロード期間 ' + p.start + ' ～ ' + p.end,
             key: same ? 'case.rawPeriodOk' : 'case.rawPeriodDiff',
@@ -9730,10 +9828,33 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     if (func && nf && typeof TLCaseKeyOf === 'function') {
       const fk = TLCaseKeyOf(opts.funcName || ''), nk = TLCaseKeyOf(opts.nfName || '');
       if (fk && nk && fk !== nk) {
-        push('ask', 'case', {
+        push('err', 'case', {
           file: 'both', sheet: '-', where: 'ファイル名',
           key: 'case.caseMismatch', args: [],
           detail: [{ k: '関数版', v: String(opts.funcName || '').slice(0, 80) }, { k: '非関数版', v: String(opts.nfName || '').slice(0, 80) }],
+        });
+      }
+    }
+
+    // ---- ③.8 非関数版の RAW 残留（NO26-FIX1）
+    //   reportPagesOf は RAW を除外するので、それとは別に「頁の実在」で判定する。
+    if (nf) {
+      for (const nm of RD_SHEETS) {
+        if (!nf.sheets.has(nm)) continue;
+        push('err', 'rows', {
+          file: 'nf', sheet: nm, where: 'シート',
+          key: 'nf.rawLeft', args: [nm],
+          detail: [{ k: '判定', v: '非関数版に RAW が残っています。納品前に削除してください（関数版／非関数版の判定にも影響します）' }],
+        });
+      }
+    }
+    // ---- ③.9 未知の定義系頁（名前だけでは放行しない）
+    for (const [tag, bk] of [['func', func], ['nf', nf]]) {
+      if (!bk) continue;
+      for (const nm of unknownPagesOf(bk)) {
+        push('ask', 'rows', {
+          file: tag, sheet: nm, where: 'シート',
+          key: 'sheet.unknownPage', args: [label[tag], nm],
         });
       }
     }
@@ -9748,16 +9869,30 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
         if (!bk) continue;
         const pages = reportPagesOf(bk);
         const allPages = pages.concat(auxPagesOf(bk));   // 頁属性（印刷範囲）用
-        // 非関数版は RAW が無いので、クリエイティブ区块の行数から広告数を数える
-        const eff = effectiveAds(bk, pages[0], opts);
-        const pageSh = bk.sheets.get(pages[0]);
-        const adInfo = eff || { count: adCountFromPage(pageSh), names: new Set(), sets: new Set() };
-        const adCount = adInfo.count || adCountFromPage(pageSh);
-        F.ctx.ads[tag] = { adCount };
-        if (tag === 'func') F.ctx.adCount = adCount;
+        F.ctx.ads[tag] = { pages: {} };
         for (const page of pages) {
           const sh = bk.sheets.get(page);
           if (!sh) continue;
+          // NO26-FIX1：広告数は必ず「その頁」から取る（1 頁目の値で他都頁を上書きしない）。
+          //   関数版＝RAW の広告名を CP（頁 B2）で絞って distinct。
+          //   非関数版＝クリエイティブ区块の広告名を distinct（行数ではない）。
+          const eff = effectiveAds(bk, page, opts);
+          const adInfo = eff && eff.count ? eff : { count: 0, names: new Set(), sets: new Set() };
+          if (!adInfo.count) {
+            const fromPage = adNamesFromPage(sh);
+            adInfo.count = fromPage.count;
+            adInfo.names = fromPage.names;
+            adInfo.sets = fromPage.sets;
+          }
+          const adCount = adInfo.count;
+          F.ctx.ads[tag].pages[page] = { adCount, names: [...adInfo.names], cp: String(textOf(sh, 'B2')).trim() };
+          // 有効広告名が読めないときは「需確認」（画像枚数から広告数を推測しない）
+          if (!adCount) {
+            push('ask', 'ads', {
+              file: tag, sheet: page, where: 'クリエイティブ区块',
+              key: 'ads.countUnknown', args: [label[tag], page],
+            });
+          }
           const imgStart = imageAreaStart(sh);
           const anchors = parseAnchors(sh.drawing, sh.xml);
           const inArea = a => (imgStart ? a.row1 >= imgStart : true);
@@ -9776,7 +9911,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
             const onlyFrame = anchors.some(a => inArea(a) && a.isPlaceholder);
             if (singleAdMode && singles.length === 1) {
               const sn = singles[0].childPics[0] || {};
-              push('un', 'ads', {
+              push('na', 'ads', {
                 file: tag, sheet: page, where: '画像「' + (sn.name || '画像') + '」',
                 key: 'ads.attrNa', args: [label[tag], page, sn.name || '画像', singles[0].row1],
                 detail: [{ k: '判定', v: '有効広告 1 件・交付画像 1 枚のため、交付組の移動属性チェックは対象外（独立画像は twoCellAnchor で正常）' }],
@@ -10147,18 +10282,23 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     return '';
   }
   // ページの クリエイティブ 区块から広告数を数える（RAW が無い非関数版でも使える）
-  function adCountFromPage(sh) {
-    if (!sh) return 0;
+  // クリエイティブ区块の「広告名」を distinct で数える（行数ではない）。
+  //   NO26-FIX1：同じ広告名が複数行・複数素材でも 1 件として扱う。
+  function adNamesFromPage(sh) {
+    const out = { count: 0, names: new Set(), sets: new Set() };
+    if (!sh) return out;
     const br = blockRects(sh);
     const blk = br.blocks.find(b => /クリエイティブ/.test(b.key));
-    if (!blk || !blk.totalRow) return 0;
-    let n = 0;
+    if (!blk || !blk.totalRow) return out;
     for (let r = blk.marker + 2; r < blk.totalRow; r++) {
       const t = String(textOf(sh, 'A' + r)).trim();
-      if (t && t !== 'Total') n++;
+      if (!t || t === 'Total') continue;
+      out.names.add(t);
     }
-    return n;
+    out.count = out.names.size;
+    return out;
   }
+  function adCountFromPage(sh) { return adNamesFromPage(sh).count; }
   // 掲載原稿エリアの開始行（▼掲載原稿 のラベル行。無ければ最後の ■ 区块の Total 行＋1）
   function imageAreaStart(sh) {
     let found = 0;
@@ -10342,6 +10482,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     pages = pages.filter(n => func.sheets.has(n));
     if (!pages.length) pages = reportPagesOf(func);
     const nfPages = reportPagesOf(nf);
+    const nfComp = compositionPagesOf(nf);   // 頁構成の比較用（未知頁も「余分」として数える）
     ctx.pages = pages; ctx.nfPages = nfPages;
 
     // 頁の対応（同名優先、無ければ順番）
@@ -10353,7 +10494,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       if (!name) { push('err', 'rows', { file: 'nf', sheet: want, where: '-', expect: '頁あり', actual: '頁なし', key: 'der.pageMissing', args: [want] }); continue; }
       pairs.push([want, name]);
     }
-    for (const nm of nfPages) if (!pairs.some(p => p[1] === nm)) {
+    for (const nm of nfComp) if (!pairs.some(p => p[1] === nm)) {
       push('err', 'rows', { file: 'nf', sheet: nm, where: '-', expect: '導出結果に無い頁', actual: '頁あり', key: 'der.pageExtra', args: [nm] });
     }
     ctx.pairs = pairs;
@@ -10756,7 +10897,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     return out;
   }
 
-  root.TLReview = { openBook, parseTodo, parseDateLike, parseNumberLike, review, deriveNf, blockRects, parseAnchors, reportPagesOf, auxPagesOf, pageKindOf, rawDownloadPeriods, periodOfSheet, periodOfRawBook, buildItems, itemIdOf, ITEM_TITLE, PLACEHOLDER_BLUE, filterRdByCp, comparePage };
+  root.TLReview = { openBook, parseTodo, parseDateLike, parseNumberLike, review, deriveNf, blockRects, parseAnchors, reportPagesOf, auxPagesOf, pageKindOf, rawDownloadPeriods, periodOfSheet, periodOfRawBook, buildItems, itemIdOf, ITEM_TITLE, adNamesFromPage, effectiveAds, unknownPagesOf, classifyPages, compositionPagesOf, hasUnknown: pageKindOf, hasDetailFormula, expectedPeriodOf, PLACEHOLDER_BLUE, filterRdByCp, comparePage };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.TLReview;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 </script>
@@ -10873,6 +11014,17 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'p.periodAsk': { zh: '无法读取', ja: '読み取れません' },
     'p.periodNoCol': { zh: '（RAW 无「レポート開始日/終了日」列）', ja: '（RAW に「レポート開始日/終了日」列なし）' },
     'p.periodExp': { zh: '期望 {0}', ja: '期待 {0}' },
+    'p.workday': { zh: '作业日', ja: '作業日' },
+    'p.type': { zh: '报告类型', ja: 'レポート種別' },
+    'p.typeAuto': { zh: '自动（按文件名）', ja: '自動（ファイル名から）' },
+    'p.typeFinal': { zh: '掲載終了', ja: '掲載終了' },
+    'p.typeFlash': { zh: '速报值', ja: '速報値' },
+    'p.typeHintFlash': { zh: '速报值：预期截止日＝作业日前一日', ja: '速報値：期待終了日＝作業日の前一日' },
+    'p.typeHintFinal': { zh: '掲載終了：预期截止日＝TODO 終了日', ja: '掲載終了：期待終了日＝TODO 終了日' },
+    'p.ownerReset': { zh: '案件已更换：上一案件的预算・マージン・Reach・日期已清除，请重新输入。', ja: '案件が変わったため、前の案件の予算・マージン・Reach・日付をクリアしました。入れ直してください。' },
+    'p.needWorkday': { zh: '：速报值需要作业日（未填时不判定截止日）', ja: '：速報値は作業日が必要です（未入力のため終了日は判定しません）' },
+    'p.periodConflict': { zh: 'RAW 内的下载期间不一致', ja: 'RAW 内でダウンロード期間が不一致' },
+    'p.todoCleared': { zh: '未能识别粘贴内容：4 项已清空，请重新粘贴或手输入。', ja: '貼り付けを読み取れないため 4 項目をクリアしました。貼り直すか手で入力してください。' },
     'p.cpName': { zh: 'CP 名（{0}!B2）', ja: 'CP 名（{0}!B2）' },
     'p.cpHint': { zh: '仅在检测到多个 CP 时确认统一后的名称', ja: '複数 CP が検出された場合のみ、統一後の名称を確認' },
     'p.unified': { zh: '统一后的 CP 名（写入 Meta!B2）', ja: '統一後の CP 名（Meta!B2 に書き込み）' },
@@ -11387,6 +11539,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     state.unified = '';
     state.perCp = {};
     state.todoDates = null;
+    state.ownerKey = ''; state.ownerSrc = '';
     if ($('pTodoPaste')) $('pTodoPaste').value = '';
     if ($('pPeriodWrap')) { $('pPeriodWrap').style.display = 'none'; $('pPeriodWrap').innerHTML = ''; }
     clearMsg('pTodoMsg');
@@ -11431,7 +11584,22 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     const run = ++periodRun;   // 連続呼び出しで二重に描かない
     const t0 = state.todoDates;
     if (!t0 || !t0.start || !t0.end || !state.raws.length) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
-    const want = dstr3(t0.start) + ' 〜 ' + dstr3(t0.end);
+    // NO26-FIX1：期待終了日は校正頁と同じ規則（速報＝作業日前一日／終了＝TODO 終了日）
+    const exp = globalThis.TLReview.expectedPeriodOf({
+      todo: { fields: { start: t0.start, end: t0.end } }, reportType: reportTypeOf(), workday: workdayOf()
+    });
+    const hint = $('pTypeHint');
+    if (hint) hint.textContent = t(exp.basis === 'flash' ? 'p.typeHintFlash' : 'p.typeHintFinal');
+    if (!exp.end) {   // 速報で作業日が空 → 一致判定をしない（フェイクの一致を出さない）
+      wrap.style.display = 'grid';
+      wrap.innerHTML = '';
+      const b = el('div', 'p ask');
+      b.appendChild(el('b', '', t('p.periodAsk')));
+      b.appendChild(document.createTextNode(t('p.needWorkday')));
+      wrap.appendChild(b);
+      return;
+    }
+    const want = (exp.start || dstr3(t0.start)) + ' 〜 ' + exp.end;
     const L = ROLE_LABEL();
     wrap.style.display = 'grid';
     wrap.innerHTML = '';
@@ -11455,9 +11623,14 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
         box.appendChild(h);
       } else {
         const act = p.start + ' 〜 ' + p.end;
-        const same = (p.start === dstr3(t0.start) && p.end === dstr3(t0.end));
+        const same = (p.start === (exp.start || dstr3(t0.start)) && p.end === exp.end);
         box.classList.add(same ? 'ok' : 'ng');
-        box.appendChild(document.createTextNode((same ? '✓ ' + t('p.periodOk') : '✗ ' + t('p.periodNg')) + '　' + act));
+        if (p.conflict) {
+          box.classList.add('ng');
+          box.appendChild(document.createTextNode('✗ ' + t('p.periodConflict') + '　' + p.conflict.join(' / ')));
+        } else {
+          box.appendChild(document.createTextNode((same ? '✓ ' + t('p.periodOk') : '✗ ' + t('p.periodNg')) + '　' + act));
+        }
         if (!same) {
           const h = el('span', '', '　' + t('p.periodExp', want));
           h.style.fontSize = '10.5px'; h.style.opacity = '.85';
@@ -11467,6 +11640,47 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       wrap.appendChild(box);
     }
   }
+  function workdayOf() {
+    const v = ($('pWorkday') && $('pWorkday').value) || '';
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
+  }
+  function reportTypeOf() {
+    const sel = ($('pType') && $('pType').value) || 'auto';
+    if (sel !== 'auto') return sel;
+    const nm = (state.fmt && state.fmt.name) || '';
+    return /速報/.test(nm) ? 'flash' : 'final';
+  }
+  // 入力の持ち主（案件）を記録する。案件が変わったら黙って使い回さない。
+  function currentCaseKey() {
+    const CK = globalThis.TLCaseKey;
+    return (CK && state.fmt) ? CK.caseKey(state.fmt.name) : '';
+  }
+  function markOwner(src) {
+    const k = currentCaseKey();
+    if (k) { state.ownerKey = k; state.ownerSrc = src || 'manual'; }
+  }
+  function enforceOwner() {
+    const k = currentCaseKey();
+    if (!k) return false;
+    if (!state.ownerKey) { state.ownerKey = k; return false; }
+    if (k === state.ownerKey) return false;
+    // 案件が変わった：前の案件の入力値（予算・マージン・Reach・日付）を破棄する
+    $('pBudget').value = '';
+    $('pReach').value = '';
+    $('pMargin').value = 'custom';
+    $('pMarginCustom').value = '';
+    syncMarginInput();
+    state.todoDates = null;
+    state.ownerKey = ''; state.ownerSrc = '';
+    if ($('pTodoPaste')) $('pTodoPaste').value = '';
+    state.ownerKey = k; state.ownerSrc = '';
+    msg('pTodoMsg', 'warn', t('p.ownerReset'));
+    try { enforceOwner(); } catch (e) { }
+    if (typeof renderPeriodBoxes === 'function') { try { renderPeriodBoxes(); } catch (e) { } }
+    return true;
+  }
+
   function applyTodoPaste(text) {
     const RR = globalThis.TLReview;
     if (!RR) return;
@@ -11477,9 +11691,14 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     if (f.start && f.end) state.todoDates = { start: f.start, end: f.end };
     if (state.out) clearOutput('st.prevInvalid');
     if (p.errors.length) {
-      const detail = p.errors.map(e => String(e.key).replace(/^todo\./, '') + (e.args && e.args.length ? '(' + e.args.join(' / ') + ')' : '')).join('・');
-      msg('pTodoMsg', 'warn', t('p.todoErr', detail));
+      // 読み取れない貼り付け：古い値と混ぜない（4 項目を空にして入れ直させる）
+      $('pBudget').value = ''; $('pReach').value = '';
+      $('pMargin').value = 'custom'; $('pMarginCustom').value = ''; syncMarginInput();
+      state.todoDates = null;
+      state.ownerSrc = '';
+      msg('pTodoMsg', 'warn', t('p.todoCleared'));
     } else {
+      markOwner('paste');
       msg('pTodoMsg', 'ok', t('p.todoOk'));
       const one = [String(f.budget != null ? f.budget : ''),
         (Math.round((f.margin || 0) * 10000) / 100) + '%', dstr3(f.start), dstr3(f.end)].join('\t');
@@ -11493,9 +11712,13 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     let budget = null, margin = null;
     try { budget = numOf($('pBudget').value, 'm.errBudgetEmpty', 'm.errBudgetNum'); } catch (e) { budget = null; }
     try { margin = marginOf($('pMargin').value, $('pMarginCustom').value); } catch (e) { margin = null; }
+    const wd = workdayOf();
     return {
       budget, margin,
       dates: state.todoDates || null,
+      workday: wd ? (wd.getUTCFullYear() + '-' + String(wd.getUTCMonth() + 1).padStart(2, '0') + '-' + String(wd.getUTCDate()).padStart(2, '0')) : '',
+      reportType: reportTypeOf(),
+      ownerSrc: state.ownerSrc || '',
       caseName: (state.fmt && state.fmt.name) || '',
       caseKey: (globalThis.TLCaseKey && state.fmt) ? globalThis.TLCaseKey.caseKey(state.fmt.name) : ''
     };
@@ -11942,6 +12165,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       renderFmtChip(); resetDecision(); clearOutput('st.fmtRemoved'); recompute();
     }, state.fmt.replaced);
     renderAliasNote();
+    try { enforceOwner(); } catch (e) { }
     if (typeof renderPeriodBoxes === 'function') { try { renderPeriodBoxes(); } catch (e) { } }
     for (const role of ROLES) {
       const list = state.raws.filter(r => r.role === role);
@@ -13207,6 +13431,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
 
     ['pBudget', 'pReach', 'pMarginCustom'].forEach(id =>
       $(id).addEventListener('input', () => {
+        markOwner('manual');
         if (state.out) clearOutput('st.prevInvalid');
         refreshButtonsAndMsg();          // NO19 ④：確定済みの案内を、入力状況に合わせて出し分ける
       }));
@@ -13216,6 +13441,12 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       refreshButtonsAndMsg();
     });
     // NO26：TODO 4 セルの貼り付け（校正頁と同じ parseTodo）
+    if ($('pWorkday')) {
+      $('pWorkday').addEventListener('change', () => { markOwner('manual'); renderPeriodBoxes(); });
+    }
+    if ($('pType')) {
+      $('pType').addEventListener('change', () => { renderPeriodBoxes(); });
+    }
     const todoBox = $('pTodoPaste');
     if (todoBox) {
       todoBox.addEventListener('paste', () => { setTimeout(() => applyTodoPaste(todoBox.value), 0); });
@@ -13381,6 +13612,9 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'rv.itAsk': { zh: '需确认 {0} 处', ja: '要確認 {0} 件' },
     'rv.itUn': { zh: '未验证 {0} 处（不适用）', ja: '未検証 {0} 件（対象外）' },
     'rv.todoInherited': { zh: '已从作业页继承同一案件的 TODO（可手改）', ja: '同一案件のため作業頁の TODO を引き継ぎました（手で直せます）' },
+    'rv.ownerReset': { zh: '案件已更换：上一案件的 TODO・Reach 已清除，请重新输入。', ja: '案件が変わったため、前の案件の TODO・Reach をクリアしました。入れ直してください。' },
+    'rv.pairDiff': { zh: '两份文件属于不同案件：不继承任一方的 TODO，也不把两版比较作为确定结果。', ja: '2 冊が別案件です。どちらの TODO も引き継がず、両版比較も確定結果として扱いません。' },
+    'rv.itOkBoth': { zh: '两版均正常', ja: '両版とも正常' },
     'rv.todoDiffCase': { zh: '与作业页的案件不同，因此不继承 TODO。请确认后输入。', ja: '作業頁と別案件のため TODO は引き継ぎません。確認して入力してください。' },
     'rv.badCount': { zh: '需要处理 {0} 项（其余通过）', ja: '対応が必要な項目 {0} 件（ほかは通過）' },
   };
@@ -13628,7 +13862,18 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     const hasRaw = ['日別(ローデータ)', '性別年齢(ローデータ)', '配置(ローデータ)'].every(n => parts.has(n));
     const pages = tpl && tpl.ok && tpl.pages && tpl.pages.length ? tpl.pages.slice()
       : (tpl && tpl.ok && tpl.reportSheet ? [tpl.reportSheet] : []);
-    return { ok: true, kind: hasRaw ? 'func' : 'nf', parts, tpl, pages, hasRaw };
+    // NO26-FIX1：RAW 3 枚の有無だけで関数版と決めない。
+    //   明細に式が残っているときだけ関数版。式が無ければ（＝値化済み）非関数版として扱い、
+    //   残っている RAW は校正側で「残留」として指摘する。
+    let kind = hasRaw ? 'func' : 'nf';
+    if (hasRaw) {
+      try {
+        const R = globalThis.TLReview;
+        const bk = await R.openBook(buf, 'func');
+        if (!R.hasDetailFormula(bk)) kind = 'nf';
+      } catch (e) { /* 判定できないときは従来どおり */ }
+    }
+    return { ok: true, kind, parts, tpl, pages, hasRaw };
   }
 
   async function addFiles(fileList) {
@@ -13660,7 +13905,22 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       else if (!state.func || !state.nf) msgBox('rvFileMsg', 'info', fmt(S['rv.st.one'], !state.func ? '関数版' : '非関数版'));
       else msgBox('rvFileMsg', '', '');
       setStatus(!state.func || !state.nf ? 'rv.st.one' : 'rv.st.ready', !state.func ? '関数版' : '非関数版');
-      inheritTodo();
+      rvEnforceOwner();
+      if (rvPairDiff()) {
+        // 2 冊が別案件：どちらの TODO も「この案件の基準」にできない。
+        //   同じ組み合わせで何度も消さないよう、組み合わせが変わったときだけクリアする。
+        const pk = (state.func ? state.func.name : '') + '|' + (state.nf ? state.nf.name : '');
+        if (state.pairKey !== pk) {
+          state.pairKey = pk;
+          rvClearInputs();
+          msgBox('rvTodoMsg', 'warn', L(S['rv.pairDiff']));
+          invalidate();
+          refresh();
+        }
+      } else {
+        state.pairKey = '';
+        inheritTodo();
+      }
     } finally {
       state.busy = false;
       refresh();
@@ -13668,6 +13928,36 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   }
 
   // NO26：同一案件なら作業頁の TODO を引き継ぐ（手入力は上書きしない）
+  // NO26-FIX1：入力の持ち主（案件）を管理する。案件が変わったら黙って使い回さない。
+  function rvCaseKey() {
+    const CK = globalThis.TLCaseKey;
+    const cur = state.func || state.nf;
+    return (CK && cur) ? CK.caseKey(cur.name) : '';
+  }
+  function rvPairDiff() {
+    const CK = globalThis.TLCaseKey;
+    if (!CK || !state.func || !state.nf) return false;
+    return CK.caseKey(state.func.name) !== CK.caseKey(state.nf.name);
+  }
+  function rvMarkOwner(src) { const k = rvCaseKey(); if (k) { state.ownerKey = k; state.ownerSrc = src || 'manual'; } }
+  function rvClearInputs() {
+    ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd', 'rvReach'].forEach(id => { if ($(id)) $(id).value = ''; });
+    if ($('rvPaste')) $('rvPaste').value = '';
+    state.inheritedKey = '';
+  }
+  function rvEnforceOwner() {
+    const k = rvCaseKey();
+    if (!k) return false;
+    if (!state.ownerKey) { state.ownerKey = k; return false; }
+    if (k === state.ownerKey) return false;
+    rvClearInputs();
+    state.ownerKey = k; state.ownerSrc = '';
+    msgBox('rvTodoMsg', 'warn', L(S['rv.ownerReset']));
+    invalidate();
+    refresh();
+    return true;
+  }
+
   function rvTodoEmpty() {
     return ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd'].every(id => !($(id).value || '').trim());
   }
@@ -13679,6 +13969,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     let snap = null;
     try { snap = wk.todoSnapshot(); } catch (e) { return false; }
     if (!snap || !snap.caseKey) return false;
+    if (rvPairDiff()) return false;   // 2 冊が別案件：どちらの TODO も基準にしない
     const CK = globalThis.TLCaseKey;
     const key = CK ? CK.caseKey(cur.name) : '';
     if (!key) return false;
@@ -13746,6 +14037,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       const one = ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd'].map(id => ($(id).value || '').trim()).join('\t');
       if (one.trim()) $('rvPaste').value = one;
     }
+    rvMarkOwner('paste');
     invalidate();
     refresh();
   }
@@ -13837,15 +14129,43 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     const f0 = (it.raws && it.raws[0]) || {};
     return nameOf(f0) || it.id;
   }
+  // 正常時の言い回し（現場が読んで意味のある文にする。単なる「N 件」にしない）
+  function itemOkText(it) {
+    const both = !!(state.func && state.nf);
+    const a0 = (it.raws[0] && it.raws[0].args) ? it.raws[0].args[0] : '';
+    const T = (zhB, jaB, zhO, jaO) => L({ zh: both ? zhB : (zhO || zhB), ja: both ? jaB : (jaO || jaB) });
+    switch (it.id) {
+      case 'open.cursor': return T('两版均在 A1', '両版とも A1', 'A1', 'A1');
+      case 'open.tab': return T('两版均显示 ' + a0, '両版とも ' + a0 + ' を表示', a0 + ' を表示', a0 + ' を表示');
+      case 'open.h': return T('两版均在横向起点', '両版とも横は先頭', '横は先頭', '横は先頭');
+      case 'open.v': return T('两版均在纵向起点', '両版とも縦は先頭', '縦は先頭', '縦は先頭');
+      case 'ads.attr': return T('两版适用 Sheet 的交付组属性均正常', '両版の適用シートで交付属性は正常', '交付属性は正常', '交付属性は正常');
+      case 'ads.blue': return T('两版均无蓝底残留', '両版とも青枠残留なし', '青枠残留なし', '青枠残留なし');
+      case 'ads.width': return T('两版图片宽度正常', '両版とも画像幅は正常', '画像幅は正常', '画像幅は正常');
+      case 'ads.images': return T('交付图片数量正常', '交付画像の枚数は正常', '交付画像の枚数は正常', '交付画像の枚数は正常');
+      case 'disp.fit': return T('两版适用 Sheet 均在打印范围内', '両版の適用シートはすべて印刷範囲内', '適用シートは印刷範囲内', '適用シートは印刷範囲内');
+      case 'der.value': return T('两版数值一致', '両版の値は一致', '値は一致', '値は一致');
+      case 'der.total': return T('两版 Total 一致', '両版とも Total 一致', 'Total 一致', 'Total 一致');
+      case 'der.pages': return T('Sheet 构成正常', 'シート構成は正常', 'シート構成は正常', 'シート構成は正常');
+      case 'nf.formula': return T('非函数版明细为值', '非関数版の明細は値のみ', '非関数版の明細は値のみ', '非関数版の明細は値のみ');
+      case 'case.period': return T('两版期间与预期一致', '両版とも期待期間と一致', '期待期間と一致', '期待期間と一致');
+      case 'case.rawPeriod': return T('三份 RAW 的下载期间与预期一致', 'RAW 3 枚の期間は期待どおり', 'RAW の期間は期待どおり', 'RAW の期間は期待どおり');
+      case 'param.budget': case 'param.margin': case 'param.reach':
+        return T('两版一致', '両版とも一致', '一致', '一致');
+      default:
+        return T('两版均正常', '両版とも正常', '正常', '正常');
+    }
+  }
   function itemConcl(it) {
     const bad = it.bad || [];
-    if (it.sev === 'ok') return fmt(S['rv.itOk'], it.raws.length);
-    const head = it.sev === 'err' ? fmt(S['rv.itErr'], bad.length)
-      : it.sev === 'warn' ? fmt(S['rv.itWarn'], bad.length)
-        : it.sev === 'un' ? fmt(S['rv.itUn'], bad.length) : fmt(S['rv.itAsk'], bad.length);
-    const locs = [];
-    for (const f of bad) { const x = locOf(f); if (x && locs.indexOf(x) < 0) locs.push(x); }
-    return head + (locs.length ? '：' + locs.slice(0, 3).join(' / ') + (locs.length > 3 ? ' …' : '') : '');
+    if (it.sev === 'ok') return itemOkText(it);
+    // 異常は「具体的な問題＋位置」を主結果に出す（件数だけにしない）
+    const order = { err: 0, warn: 1, ask: 2, un: 3, ok: 4 };
+    const worst = bad.slice().sort((a, b) => (order[a.sev] - order[b.sev]))[0];
+    const head = worst ? conclOf(worst) : L(S['rv.itErr']);
+    const loc = worst ? locOf(worst) : '';
+    const more = bad.length > 1 ? '　' + (lang() === 'ja' ? 'ほか ' + (bad.length - 1) + ' 件' : '另 ' + (bad.length - 1) + ' 处') : '';
+    return (loc ? loc + '：' : '') + head + more;
   }
   function itemEl(it) {
     const d = el('div', 'rr ' + it.sev);
@@ -13948,7 +14268,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd', 'rvReach', 'rvWorkday', 'rvType', 'rvMemo'].forEach(id => {
       const e = $(id);
       if (!e) return;
-      e.addEventListener('input', () => { invalidate(); refresh(); });
+      e.addEventListener('input', () => { rvMarkOwner('manual'); invalidate(); refresh(); });
       e.addEventListener('change', () => { invalidate(); refresh(); });
     });
     $('btnReview').addEventListener('click', run);
