@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TL Meta Report Studio｜1課</title>
+<title>トーチライトレポートMeta用｜1課</title>
 <link rel="stylesheet" href="qc-ui.css">
 <style>
 :root{
@@ -192,9 +192,11 @@ aside#panel{position:sticky;top:calc(var(--qc-header-h, 108px) + 6px);max-height
 .cpc-h{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .cpc-t{font-size:11.5px;font-weight:700;color:#1e4b7a}
 .cpc-badge{font-size:11.5px;font-weight:700;color:#0a7d33}
+.cpc-badge.ask{color:#92400E;background:#FEF3C7;border-radius:999px;padding:1px 9px}
+.cpc-hint.ask{color:#92400E}
 .cpc-name{font-family:"Meiryo UI","ＭＳ Ｐゴシック",system-ui,sans-serif;font-size:12.5px;line-height:1.55;
   color:#0f172a;background:#fff;border:1px solid #cddff2;border-radius:6px;padding:6px 8px;
-  word-break:break-all;overflow-wrap:anywhere;white-space:pre-wrap;user-select:text;cursor:text;max-height:6.4em;overflow:auto}
+  word-break:break-all;overflow-wrap:anywhere;white-space:pre-wrap;user-select:text;cursor:text}
 .cpc-opts{display:flex;align-items:center;gap:7px;margin-top:7px;flex-wrap:wrap}
 .cpc-btn{font:inherit;font-size:11.5px;padding:3px 12px;border-radius:999px;border:1px solid #b9cde6;
   background:#fff;color:#24507c;cursor:pointer}
@@ -346,7 +348,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.65;cursor:pointer;m
   if (typeof QCHeader === 'undefined') return;
   QCHeader.mount({
     target: '#qcHeaderMount',
-    title: 'TL Meta Report Studio',
+    title: 'トーチライトレポートMeta用',   // NO26-FIX4：表示名のみ変更（統計 TOOL Key は別）
     note: 'トーチライト｜レポート作成・納品前チェック',
     iconId: 'report',
     badges: [{ text: '完全ローカル処理', tone: 'ok' }],
@@ -464,7 +466,6 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.65;cursor:pointer;m
         <label id="lbReach" data-i18n="p.reach">Reach（Meta!D5）</label>
         <input type="text" id="pReach" inputmode="decimal" placeholder="例：72760">
         <span class="hint" data-i18n="p.reachH">人手入力。Total 比較の対象外</span>
-        <span class="hint" id="hReachD5"></span>
       </div>
     </div>
     <div class="field" id="cpNameWrap" style="margin-top:12px;display:none">
@@ -587,7 +588,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.65;cursor:pointer;m
     <div class="cpc-opts">
       <button type="button" class="cpc-btn" id="cpkSame" data-i18n="cpk.same">一致</button>
       <button type="button" class="cpc-btn" id="cpkDiff" data-i18n="cpk.diff">不一致</button>
-      <span class="cpc-hint" data-i18n="cpk.hint">对照日方 TODO 后选择。不选也可以下载。</span>
+      <span class="cpc-hint" id="cpkHint" data-i18n="cpk.hint">对照日方 TODO 后选择。不选也可以下载。</span>
     </div>
     <div class="cpc-todo" id="cpkTodo" style="display:none">
       <div class="cpc-sent" id="cpkSent"></div>
@@ -9526,7 +9527,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'case.lateStart': 'case.period', 'case.boundaryAsk': 'case.period', 'case.noPeriod': 'case.period',
     'case.noExpectedEnd': 'case.period', 'case.needWorkday': 'case.period', 'case.needFuncForPeriod': 'case.period',
     'case.caseMismatch': 'case.pair',
-    'case.cpNameOk': 'case.cp', 'case.cpNameDiff': 'case.cp', 'case.cpNameUnreadable': 'case.cp',
+    'case.cpNameOk': 'case.cp', 'case.cpNameDiff': 'case.cp', 'case.cpNameUnreadable': 'case.cp', 'case.cpNameBlank': 'case.cp',
     'case.rawPeriodOk': 'case.rawPeriod', 'case.rawPeriodDiff': 'case.rawPeriod', 'case.rawPeriodUnreadable': 'case.rawPeriod',
     'p.budgetOk': 'param.budget', 'p.budgetBad': 'param.budget',
     'p.marginOk': 'param.margin', 'p.marginBad': 'param.margin',
@@ -9994,33 +9995,43 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
           actuals.push({ tag: tag2, sheet: pg, cp });
         }
       }
-      const named = actuals.filter(a => a.cp);
+      // NO26-FIX4：比較する報告頁が「全部」CP 名を持つときだけ一致を認める。
+      //   片側の B2 が空／読めないときは、もう片側が一致していても要確認（空を無視して一致にしない）。
       F.ctx.cpName = { want, actuals };
-      if (!named.length) {
+      const blanks = actuals.filter(a => !a.cp);
+      const uniq = [];
+      for (const a of actuals) if (a.cp && !uniq.some(u => u.cp === a.cp)) uniq.push(a);
+      const evAll = actuals.map(a => ({
+        k: '実ファイル（' + label[a.tag] + ' / ' + a.sheet + '）',
+        v: a.cp ? a.cp : '（空・読み取れません）',
+      }));
+      if (!actuals.length) {
         push('ask', 'case', {
           file: 'both', sheet: '-', where: 'Meta!B2',
           key: 'case.cpNameUnreadable', args: [want],
           detail: [{ k: 'TODO', v: want }],
         });
+      } else if (blanks.length) {
+        // 空の頁がある → 一致とは言わない（要確認）。空の頁も根拠に残す。
+        push('ask', 'case', {
+          file: 'both', sheet: blanks[0].sheet, where: 'Meta!B2',
+          key: 'case.cpNameBlank',
+          args: [want, blanks.map(a => label[a.tag] + ' / ' + a.sheet).join('、')],
+          detail: [{ k: 'TODO', v: want }].concat(evAll),
+        });
+      } else if (uniq.length === 1 && uniq[0].cp === want) {
+        push('ok', 'case', {
+          file: 'both', sheet: uniq[0].sheet, where: 'Meta!B2',
+          key: 'case.cpNameOk', args: [want, uniq[0].cp],
+          detail: [{ k: 'TODO', v: want }].concat(evAll),
+        });
       } else {
-        const uniq = [];
-        for (const a of named) if (!uniq.some(u => u.cp === a.cp)) uniq.push(a);
-        const hit = uniq.filter(u => u.cp === want);
-        const where = uniq.map(u => label[u.tag] + ' / ' + u.sheet).join('、');
-        if (uniq.length === 1 && hit.length === 1) {
-          push('ok', 'case', {
-            file: 'both', sheet: uniq[0].sheet, where: 'Meta!B2',
-            key: 'case.cpNameOk', args: [want, uniq[0].cp],
-            detail: [{ k: 'TODO', v: want }, { k: '実ファイル（' + label[uniq[0].tag] + '）', v: uniq[0].cp }],
-          });
-        } else {
-          // 一致しない／一意に対応づけられない → 要確認（一致と誤報しない）
-          push('ask', 'case', {
-            file: 'both', sheet: uniq[0].sheet, where: 'Meta!B2',
-            key: 'case.cpNameDiff', args: [want, uniq.map(u => u.cp).join(' / '), where],
-            detail: [{ k: 'TODO', v: want }].concat(uniq.map(u => ({ k: '実ファイル（' + label[u.tag] + ' / ' + u.sheet + '）', v: u.cp }))),
-          });
-        }
+        // 一致しない／一意に対応づけられない → 要確認（一致と誤報しない）
+        push('ask', 'case', {
+          file: 'both', sheet: uniq.length ? uniq[0].sheet : actuals[0].sheet, where: 'Meta!B2',
+          key: 'case.cpNameDiff', args: [want, uniq.map(u => u.cp).join(' / '), uniq.map(u => label[u.tag] + ' / ' + u.sheet).join('、')],
+          detail: [{ k: 'TODO', v: want }].concat(evAll),
+        });
       }
     }
 
@@ -11381,6 +11392,11 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'cpk.diff': { zh: '不一致', ja: '不一致' },
     'cpk.hint': { zh: '与日方 TODO 对照后选择。未选也能下载。', ja: '日方 TODO と突合して選んでください。未選択でもダウンロードできます。' },
     'cpk.ok': { zh: '✅ 一致', ja: '✅ 一致' },
+    'cpk.okAuto': { zh: '✓ 一致（已与 TODO 自动比对）', ja: '✓ 一致（TODO と自動照合）' },
+    'cpk.askAuto': { zh: '要确认（与 TODO 不一致）', ja: '要確認（TODO と不一致）' },
+    'cpk.autoSame': { zh: 'TODO 的 CP 名与实际一致，无需操作。', ja: 'TODO の CP 名と一致しています。操作は不要です。' },
+    'cpk.autoDiff': { zh: '与 TODO 的 CP 名不一致。请复制下面的备考并使用。生成与下载不受影响。', ja: 'TODO の CP 名と一致しません。下の備考をコピーしてご使用ください。生成・DL は可能です。' },
+    'cpk.autoMulti': { zh: '存在多个 CP，无法唯一对应。请确认后自行判断（不生成备考）。', ja: '複数 CP のため一意に対応づけできません。確認のうえご判断ください（備考は作成しません）。' },
     'cpk.copy': { zh: '复制备考', ja: '備考をコピー' },
     'cpk.copied': { zh: '已复制', ja: 'コピーしました' },
     'cpk.copyFail': { zh: '复制失败，请手动选中后复制', ja: 'コピーできませんでした。選択してコピーしてください' },
@@ -11889,37 +11905,6 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       el.classList.toggle('reach-empty', String(el.value == null ? '' : el.value).trim() === '');
     });
   }
-  // FMT の Reach（Meta!D5／日経は G!D5）を読む。手入力値とは別物として表示する。
-  const d5Cache = {};
-  async function refreshD5() {
-    const el = $('hReachD5');
-    if (!el) return;
-    const f = state.fmt;
-    if (!f) { el.className = 'hint'; el.textContent = ''; return; }
-    const key = (f.sig || '') + '|' + (f.name || '');
-    let r = d5Cache[key];
-    if (!r) {
-      r = { ok: false, reason: 'p.d5WhyError' };
-      try {
-        const R = globalThis.TLReview;
-        const sites = paramSites();
-        const bk = await R.openBook(f.buf, 'func');
-        const sh = bk.sheets.get(sites.reach.sheet);
-        if (!sh) r = { ok: false, reason: 'p.d5WhyNoSheet', at: sites.reach.sheet };
-        else {
-          const c = sh.cells.get(sites.reach.cell);
-          const v = c && c.v != null ? String(c.v).trim() : '';
-          r = v === '' ? { ok: false, reason: 'p.d5WhyEmpty', at: sites.reach.sheet + '!' + sites.reach.cell }
-            : !/^-?[0-9][0-9,.]*$/.test(v) ? { ok: false, reason: 'p.d5WhyNotNum', at: sites.reach.sheet + '!' + sites.reach.cell, value: v }
-              : { ok: true, value: v, at: sites.reach.sheet + '!' + sites.reach.cell };
-        }
-      } catch (e) { r = { ok: false, reason: 'p.d5WhyError' }; }
-      d5Cache[key] = r;
-    }
-    if (r.ok) { el.className = 'hint'; el.textContent = t('p.d5Ok', r.at, r.value); }
-    else { el.className = 'hint d5ask'; el.textContent = t('p.d5Ask', r.at || 'Meta!D5', t(r.reason, r.value || '')); }
-  }
-
   // 種別ヒント（自動判定の結果と理由）。判定できないときは要確認を出す。
   function refreshTypeHint() {
     const el = $('pTypeHint');
@@ -11928,7 +11913,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     if (d.manual) { el.className = 'hint'; el.textContent = t(d.type === 'flash' ? 'p.typeFlash' : 'p.typeFinal'); return; }
     if (d.type === 'unknown') {
       el.className = 'hint d5ask';
-      el.textContent = t(d.reason === 'conflict' ? 'p.typeConflict' : 'p.typeUnknown');
+      el.textContent = t(d.reason === 'conflict' ? 'p.typeConflict' : d.reason === 'pairDiff' ? 'p.typePairDiff' : 'p.typeUnknown');
     } else { el.className = 'hint'; el.textContent = t(d.type === 'flash' ? 'p.typeFlash' : 'p.typeFinal'); }
   }
 
@@ -11943,7 +11928,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     const hit = u.filter(x => x === want);
     return { state: 'ask', why: hit.length ? 'multi' : 'diff', uniq: u };
   }
-  function cpNoteText(actual) { return 'キャンペーン名『' + String(actual || '').trim() + '』にて対応しております。'; }
+  function cpNoteText(actual) { return 'キャンペーン名「' + String(actual || '').trim() + '」にて対応しております。'; }
   function copyText(text, okMsgKey) {
     const done = () => msg('pTodoMsg', 'ok', t(okMsgKey || 'p.copied'));
     const fail = () => msg('pTodoMsg', 'warn', t('p.copyFail'));
@@ -11982,6 +11967,8 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     const canCopy = m.state === 'ask' && m.uniq.length === 1;
     btn.style.display = canCopy ? '' : 'none';
     btn.onclick = () => copyText(cpNoteText(m.uniq[0]));
+    // NO26-FIX4：右パネルの CP 判定も同じ入力で作り直す（古い判定を残さない）
+    if (state.out) { try { renderCpCheck(state.out.report); } catch (e) { } }
   }
 
   // 入力の持ち主（案件）を記録する。案件が変わったら黙って使い回さない。
@@ -12005,6 +11992,13 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     $('pMarginCustom').value = '';
     syncMarginInput();
     state.todoDates = null;
+    // NO26-FIX4：旧案件の CP 名・一致判定・备考・コピー結果を残さない
+    state.todoCpName = '';
+    state.cpCheck = null; state.cpAuto = null; state.cpCheckName = '';
+    const cbSent = $('cpkSent'), cbTodo = $('cpkTodo'), cbBadge = $('cpkBadge');
+    if (cbSent) cbSent.textContent = '';
+    if (cbTodo) cbTodo.style.display = 'none';
+    if (cbBadge) { cbBadge.style.display = 'none'; cbBadge.textContent = ''; }
     state.ownerKey = ''; state.ownerSrc = '';
     if ($('pTodoPaste')) $('pTodoPaste').value = '';
     state.ownerKey = k; state.ownerSrc = '';
@@ -12055,6 +12049,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       budget, margin,
       dates: state.todoDates || null,
       workday: wd ? (wd.getUTCFullYear() + '-' + String(wd.getUTCMonth() + 1).padStart(2, '0') + '-' + String(wd.getUTCDate()).padStart(2, '0')) : '',
+      todoCpName: String(state.todoCpName || ''),   // NO26-FIX4：CP 名も同一案件なら引き継ぐ
       reportType: reportTypeOf(),
       ownerSrc: state.ownerSrc || '',
       caseName: (state.fmt && state.fmt.name) || '',
@@ -12505,7 +12500,6 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     renderAliasNote();
     try { enforceOwner(); } catch (e) { }
     try { refreshTodoCp(); } catch (e) { }        // NO26-FIX3：実 CP 名が変われば再判定
-    try { refreshD5(); } catch (e) { }            // NO26-FIX3：FMT の D5 を表示
     try { refreshTypeHint(); } catch (e) { }      // NO26-FIX3：種別の自動判定を表示
     if (typeof renderPeriodBoxes === 'function') { try { renderPeriodBoxes(); } catch (e) { } }
     for (const role of ROLES) {
@@ -13165,30 +13159,72 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   // ---------------------------------------------------------------- 単一 CP 名の校正欄
   //   今回の RAW から実際に識別できた CP が 1 つのときだけ出す（2 つ以上は既存の多 CP フロー）。
   //   名称は原文のまま（short() もシート名も使わない）。
-  function cpTodoText(name) {
-    return 'キャンペン名「' + name + '」にて対応しております。';
-  }
+  // NO26-FIX4：綴りを「キャンペーン名」に統一し、生成元を cpNoteText に一本化
+  function cpTodoText(name) { return cpNoteText(name); }
   function renderCpCheck(rep) {
     const box = $('cpCheck');
     if (!box) return;
     const cps = (rep && (rep.cps && rep.cps.length ? rep.cps : (rep.cp ? [rep.cp] : []))) || [];
     const single = !!rep && rep.mode !== 'split' && !rep.multiCP && cps.length === 1;
-    if (!single) { box.style.display = 'none'; return; }
+    if (!single) { box.style.display = 'none'; state.cpAuto = null; return; }
     const name = String(cps[0]);
     // 結果が替わったら選択は破棄（同じ結果の再描画では保つ）
-    if (name !== state.cpCheckName) { state.cpCheckName = name; state.cpCheck = null; }
+    if (name !== state.cpCheckName) { state.cpCheckName = name; state.cpCheck = null; state.cpAuto = null; }
     box.style.display = 'block';
     $('cpkName').textContent = name;
     $('cpkName').title = name;
+
+    const want = String(state.todoCpName || '').trim();
+    // NO26-FIX4：左の TODO に P 列（キャンペーン名）があるときは同じ自動照合を使う。
+    //   手で「一致／不一致」を押させない（規則を二重に持たない）。
+    const auto = want ? cpCompare(want, cps) : null;
+    state.cpAuto = auto;
+    const badge = $('cpkBadge'), hint = $('cpkHint'), todo = $('cpkTodo');
+    const bSame = $('cpkSame'), bDiff = $('cpkDiff');
+
+    if (auto) {
+      state.cpCheck = auto.state === 'ok' ? 'same' : 'diff';
+      bSame.style.display = 'none';
+      bDiff.style.display = 'none';
+      bSame.classList.remove('on');
+      bDiff.classList.remove('on');
+      if (auto.state === 'ok') {
+        badge.style.display = '';
+        badge.className = 'cpc-badge ok';
+        badge.textContent = t('cpk.okAuto');
+        todo.style.display = 'none';
+        $('cpkSent').textContent = '';
+        if (hint) { hint.className = 'cpc-hint'; hint.textContent = t('cpk.autoSame'); }
+      } else {
+        badge.style.display = '';
+        badge.className = 'cpc-badge ask';
+        badge.textContent = t('cpk.askAuto');
+        // 実 CP 名が 1 つに定まるときだけ备考を出す（複数は誤った备考を作らない）
+        const note = auto.uniq.length === 1 ? cpNoteText(name) : '';
+        todo.style.display = note ? '' : 'none';
+        $('cpkSent').textContent = note;
+        if (hint) {
+          hint.className = 'cpc-hint ask';
+          hint.textContent = t(auto.why === 'multi' ? 'cpk.autoMulti' : 'cpk.autoDiff');
+        }
+      }
+      return;
+    }
+
+    // P 列が無い（I:L の 4 セルだけ）→ 従来どおり人手で選ぶ
+    bSame.style.display = '';
+    bDiff.style.display = '';
     const same = state.cpCheck === 'same', diff = state.cpCheck === 'diff';
-    $('cpkSame').classList.toggle('on', same);
-    $('cpkDiff').classList.toggle('on', diff);
-    const badge = $('cpkBadge');
+    bSame.classList.toggle('on', same);
+    bDiff.classList.toggle('on', diff);
     badge.style.display = same ? '' : 'none';
+    badge.className = 'cpc-badge ok';
     badge.textContent = same ? t('cpk.ok') : '';
-    $('cpkTodo').style.display = diff ? '' : 'none';
+    if (hint) { hint.className = 'cpc-hint'; hint.textContent = t('cpk.hint'); }
+    todo.style.display = diff ? '' : 'none';
     $('cpkSent').textContent = diff ? cpTodoText(name) : '';
   }
+
   async function copyTodo() {
     const name = state.cpCheckName || '';
     if (!name) return;
@@ -14333,7 +14369,14 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       if (state.inheritMsgKey !== key) { state.inheritMsgKey = key; msgBox('rvTodoMsg', 'warn', L(S['rv.todoDiffCase'])); }
       return false;
     }
-    if (!rvTodoEmpty()) return false;   // 手入力（他案件の値も含む）は絶対に上書きしない
+    // NO26-FIX4：CP 名（P 列）は 4 欄とは別物。同一案件で空のときだけ引き継ぐ。
+    let didCp = false;
+    if (snap.todoCpName && !String(state.todoCpName || '').trim()) {
+      state.todoCpName = String(snap.todoCpName);
+      didCp = true;
+      try { rvRefreshCp(); } catch (e) { }
+    }
+    if (!rvTodoEmpty()) return didCp;   // 手入力（他案件の値も含む）は絶対に上書きしない
     let did = false;
     if (snap.budget != null) { $('rvBudget').value = String(snap.budget); did = true; }
     if (snap.margin != null) { $('rvMargin').value = (Math.round(snap.margin * 10000) / 100) + '%'; did = true; }
@@ -14379,24 +14422,29 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   function applyPaste(text) {
     const p = R.parseTodo(text || '');
     const f = p.fields || {};
+    // NO26-FIX4：読み取れない貼り付けは、古い値と混ぜずに 4 欄＋CP 名をまとめてクリアする
+    if (p.errors.length) {
+      ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd'].forEach(id => { if ($(id)) $(id).value = ''; });
+      state.todoCpName = '';
+      msgBox('rvTodoMsg', 'warn', p.errors.map(e => conclOf({ key: e.key, args: e.args })).join('／'));
+      rvMarkOwner('paste');
+      invalidate();
+      refresh();
+      try { rvRefreshCp(); } catch (e) { }
+      return;
+    }
     if (f.budget != null) $('rvBudget').value = String(f.budget);
     if (f.margin != null) $('rvMargin').value = (Math.round(f.margin * 10000) / 100) + '%';
     if (f.start) $('rvStart').value = f.start.y + '/' + f.start.m + '/' + f.start.d;
     if (f.end) $('rvEnd').value = f.end.y + '/' + f.end.m + '/' + f.end.d;
     // NO26-FIX3：貼り付け欄は 4 値に畳まれるので、P 列の CP 名は state に退避する
     state.todoCpName = String((p.cp && p.cp.name) || '').trim();
-    const filled = ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd'].every(id => ($(id).value || '').trim());
-    if (p.errors.length) {
-      // すでに 4 欄が埋まっているなら、畳んだ 1 行を読み直しただけなので警告しない
-      if (!filled) msgBox('rvTodoMsg', 'warn', p.errors.map(e => conclOf({ key: e.key, args: e.args })).join('／'));
-    } else {
-      msgBox('rvTodoMsg', '', '');   // 4 欄に展開済みなので、成功の色塊は出さない
-      // 貼り付け欄は 1 行に畳む（タブ区切りなので読み直しても 4 項目のまま）
-      const one = ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd'].map(id => ($(id).value || '').trim()).join('\t');
-      // NO26-FIX3：P 列（CP 名）を含む貼り付けは畳まない
-      if (p.cp && p.cp.name) $('rvPaste').value = String(text || '').replace(/\r/g, '');
-      else if (one.trim()) $('rvPaste').value = one;
-    }
+    msgBox('rvTodoMsg', '', '');   // 4 欄に展開済みなので、成功の色塊は出さない
+    // 貼り付け欄は 1 行に畳む（タブ区切りなので読み直しても 4 項目のまま）
+    const one = ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd'].map(id => ($(id).value || '').trim()).join('\t');
+    // NO26-FIX3：P 列（CP 名）を含む貼り付けは畳まない
+    if (p.cp && p.cp.name) $('rvPaste').value = String(text || '').replace(/\r/g, '');
+    else if (one.trim()) $('rvPaste').value = one;
     rvMarkOwner('paste');
     invalidate();
     refresh();
