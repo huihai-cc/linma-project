@@ -69,6 +69,22 @@ th,td{padding:6px 8px;border-bottom:1px solid var(--qc-line);text-align:left;ver
 th{color:var(--qc-ink3);font-weight:600;font-size:11.5px;background:#fafbfd}
 td.num{font-variant-numeric:tabular-nums}
 td.fn{max-width:330px;overflow-wrap:anywhere}
+/* NO26：期間列は 1 行で見せる（折り返すと読み違える）。ファイル名側で省略する */
+td.pcell{white-space:nowrap;font-variant-numeric:tabular-nums}
+#tblFiles td.fn{max-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dropR2{min-height:96px;display:flex;flex-direction:column;justify-content:center;padding:14px 12px}
+#dropR2 .s{margin-top:4px}
+.wk-todo{margin-top:10px;background:#fffdf7;border:1px dashed #e0b96a;border-radius:7px;padding:8px 10px}
+.wk-todo .hd{font-size:11.5px;font-weight:700;color:#8a5a12;margin-bottom:6px}
+.wk-paste{width:100%;border:1px solid var(--qc-line);border-radius:6px;padding:6px 8px;font:inherit;
+  font-size:12px;resize:vertical;min-height:30px;background:#fff}
+.wk-period{margin-top:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.wk-period .p{padding:5px 8px;border-radius:6px;font-size:11.5px;border:1px solid var(--qc-line);background:#fff}
+.wk-period .p b{display:block;font-size:11px;font-weight:700;margin-bottom:1px}
+.wk-period .p.ok{border-color:#a7f3d0;background:#ecfdf5;color:#065f46}
+.wk-period .p.ng{border-color:#fecaca;background:#fdecec;color:#991b1b}
+.wk-period .p.ask{border-color:#fde68a;background:#fff7e6;color:#8a5a12}
+@media(max-width:900px){.wk-period{grid-template-columns:1fr}}
 .chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600}
 .chip.daily{background:#eff6ff;color:#1d4ed8}
 .chip.gender{background:#f5f3ff;color:#6d28d9}
@@ -346,7 +362,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.65;cursor:pointer;m
     </div>
     <div id="fileListWrap" style="margin-top:12px;display:none">
       <table id="tblFiles">
-        <thead><tr><th style="width:96px" data-i18n="c1.th1">役割</th><th data-i18n="c1.th2">ファイル</th><th style="width:64px" data-i18n="c1.th3">行数</th><th style="width:170px" data-i18n="c1.th4">期間</th><th style="width:64px"></th></tr></thead>
+        <thead><tr><th style="width:96px" data-i18n="c1.th1">役割</th><th data-i18n="c1.th2">ファイル</th><th style="width:64px" data-i18n="c1.th3">行数</th><th style="width:232px" data-i18n="c1.th4">期間</th><th style="width:64px"></th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -391,6 +407,12 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.65;cursor:pointer;m
 
   <section class="card">
     <h2><span class="n">3</span><span data-i18n="p.title">業務パラメータ（作業者が入力）</span></h2>
+    <div class="wk-todo">
+      <div class="hd" data-i18n="p.todoHd">TODO から 4 セルを貼り付け（グロス予算／マージン／開始日／終了日）</div>
+      <textarea class="wk-paste" id="pTodoPaste" rows="1" data-i18n-ph="p.todoPh" placeholder="グロス予算　マージン　開始日　終了日 を貼り付け（1 行でも可）"></textarea>
+      <div class="msg" id="pTodoMsg"></div>
+      <div class="wk-period" id="pPeriodWrap" style="display:none"></div>
+    </div>
     <div class="rows" id="paramRows">
       <div class="field">
         <label id="lbBudget" data-i18n="p.budget">予算 / Budget（Meta!A5）</label>
@@ -453,10 +475,10 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.65;cursor:pointer;m
     <div class="rv-layout">
       <div class="rv-left">
         <section class="card">
-          <h2><span class="n">1</span><span data-i18n="rv.c1">入力ファイル（関数版・非関数版の 2 冊）</span></h2>
-          <p class="lead" data-i18n="rv.c1lead">2 冊まとめて／1 冊ずつで可。中身で関数版・非関数版を判定します（読み取りのみ）。</p>
+          <h2><span class="n">1</span><span data-i18n="rv.c1">入力ファイル（関数版／非関数版）</span></h2>
+          <p class="lead" data-i18n="rv.c1lead">1 冊からチェックできます（2 冊そろえば両版照合も実施）。中身で関数版・非関数版を判定します（読み取りのみ）。</p>
           <div class="drop" id="dropR2">
-            <div class="t" data-i18n="rv.dropT">ここに納品 2 冊をドロップ／クリックして選択</div>
+            <div class="t" data-i18n="rv.dropT">関数版・非関数版をドラッグ、またはクリックして選択（1 冊からチェック可能）</div>
             <input type="file" id="fileR2" accept=".xlsm,.xlsx" multiple style="display:none">
           </div>
           <div class="rv-files">
@@ -8761,6 +8783,152 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   if (typeof module !== 'undefined' && module.exports) module.exports = root.TLPipeline;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 </script>
+<script>/* case_name.js — NO26：案件名の正規化と Case Key（統計の案件識別用）
+ * ---------------------------------------------------------------------------
+ * 目的：同じ案件の「FMT／Wチェック中関数／Wチェック中（非関数版）」を 1 つに寄せ、
+ *       別案件・別期間・別報告種別は絶対に寄せない。
+ *
+ * 正規化で落とすのは「実ファイルで確認できた加工・版の印」だけ：
+ *   ・拡張子（.xlsm/.xlsx/.xls）
+ *   ・先頭の版印（Wチェック中関数／Wチェック中／Wチェック／【FMT_…】／FMT）
+ *   ・複製印（" (1)" " - コピー" "のコピー"）
+ * 落とさない：案件コード（B0000412487 等）、顧客名、CP、報告種別（【掲載終了レポート】等）、
+ *             期間（20261020-1120 等）。→ 期間違い・種別違いは別 Key になる。
+ *
+ * Case Key = SHA-256(正規化名) の hex。ブラウザ・Node で同一結果（同期実装）。
+ * 生のファイル名は外部へ送らない（Key だけを送る）。
+ * --------------------------------------------------------------------------- */
+(function (root) {
+  'use strict';
+
+  // 先頭に付く「版・加工」の印（実ファイルで確認できたものだけ）
+  var LEAD = [
+    /^Wチェック中関数/,
+    /^Wチェック中/,
+    /^Wチェック/,
+    /^【FMT_[^】]*】/,
+    /^【FMT】/,
+    /^FMT[_\-\s]*/,
+    /^関数版[_\-\s]*/,
+    /^非関数版[_\-\s]*/,
+    /^Meta_Report_Output[_\-\s]*/
+  ];
+  // 末尾の複製印
+  var TAIL = [
+    /\s*\(\d+\)\s*$/,
+    /\s*（\d+）\s*$/,
+    /\s*[-_－]\s*コピー\s*$/,
+    /\s*のコピー\s*$/,
+    /\s*[-_－]\s*copy\s*$/i
+  ];
+
+  function baseName(name) {
+    var s = String(name == null ? '' : name).replace(/\\/g, '/');
+    s = s.slice(s.lastIndexOf('/') + 1);
+    return s.replace(/\.(xlsm|xlsx|xls|csv)$/i, '');
+  }
+
+  function normalize(name) {
+    var s = baseName(name).replace(/\u3000/g, ' ').trim();
+    // 末尾の複製印を先に落とす（"… (1)" の後ろに版印は来ない）
+    for (var t = 0; t < 2; t++) {
+      for (var i = 0; i < TAIL.length; i++) s = s.replace(TAIL[i], '');
+      s = s.trim();
+    }
+    // 先頭の版印は繰り返し落とす（"Wチェック中関数【FMT_…】" のような重なりに備える）
+    for (var k = 0; k < 3; k++) {
+      var before = s;
+      for (var j = 0; j < LEAD.length; j++) s = s.replace(LEAD[j], '');
+      s = s.replace(/^[\s_\-－]+/, '');
+      if (s === before) break;
+    }
+    return s.trim();
+  }
+
+  // ---- SHA-256（同期・ブラウザ/Node 共通） ----
+  var K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ];
+  function utf8Bytes(str) {
+    var out = [], i, c;
+    for (i = 0; i < str.length; i++) {
+      c = str.charCodeAt(i);
+      if (c < 0x80) out.push(c);
+      else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+      else if (c >= 0xd800 && c <= 0xdbff && i + 1 < str.length) {
+        var c2 = str.charCodeAt(i + 1);
+        if (c2 >= 0xdc00 && c2 <= 0xdfff) {
+          var cp = 0x10000 + ((c - 0xd800) << 10) + (c2 - 0xdc00);
+          out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+          i++; continue;
+        }
+        out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+      } else out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+    }
+    return out;
+  }
+  function sha256Hex(str) {
+    var bytes = utf8Bytes(String(str));
+    var l = bytes.length;
+    bytes.push(0x80);
+    while (bytes.length % 64 !== 56) bytes.push(0);
+    var bits = l * 8;
+    bytes.push(0, 0, 0, 0, (bits >>> 24) & 255, (bits >>> 16) & 255, (bits >>> 8) & 255, bits & 255);
+    var H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    var w = new Array(64);
+    for (var off = 0; off < bytes.length; off += 64) {
+      var t;
+      for (t = 0; t < 16; t++) {
+        w[t] = (bytes[off + t * 4] << 24) | (bytes[off + t * 4 + 1] << 16) | (bytes[off + t * 4 + 2] << 8) | bytes[off + t * 4 + 3];
+      }
+      for (t = 16; t < 64; t++) {
+        var a0 = w[t - 15], b0 = w[t - 2];
+        var s0 = ((a0 >>> 7) | (a0 << 25)) ^ ((a0 >>> 18) | (a0 << 14)) ^ (a0 >>> 3);
+        var s1 = ((b0 >>> 17) | (b0 << 15)) ^ ((b0 >>> 19) | (b0 << 13)) ^ (b0 >>> 10);
+        w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0;
+      }
+      var A = H[0], B = H[1], C = H[2], D = H[3], E = H[4], F = H[5], G = H[6], Hh = H[7];
+      for (t = 0; t < 64; t++) {
+        var S1 = ((E >>> 6) | (E << 26)) ^ ((E >>> 11) | (E << 21)) ^ ((E >>> 25) | (E << 7));
+        var ch = (E & F) ^ (~E & G);
+        var tmp1 = (Hh + S1 + ch + K[t] + w[t]) | 0;
+        var S0 = ((A >>> 2) | (A << 30)) ^ ((A >>> 13) | (A << 19)) ^ ((A >>> 22) | (A << 10));
+        var maj = (A & B) ^ (A & C) ^ (B & C);
+        var tmp2 = (S0 + maj) | 0;
+        Hh = G; G = F; F = E; E = (D + tmp1) | 0; D = C; C = B; B = A; A = (tmp1 + tmp2) | 0;
+      }
+      H[0] = (H[0] + A) | 0; H[1] = (H[1] + B) | 0; H[2] = (H[2] + C) | 0; H[3] = (H[3] + D) | 0;
+      H[4] = (H[4] + E) | 0; H[5] = (H[5] + F) | 0; H[6] = (H[6] + G) | 0; H[7] = (H[7] + Hh) | 0;
+    }
+    var hex = '';
+    for (var q = 0; q < 8; q++) hex += ('00000000' + (H[q] >>> 0).toString(16)).slice(-8);
+    return hex;
+  }
+
+  function caseKey(name) {
+    var n = normalize(name);
+    if (!n) return '';
+    return sha256Hex(n);
+  }
+  // 2 冊が同じ案件か（正規化名の一致で判定）
+  function sameCase(a, b) {
+    var x = normalize(a), y = normalize(b);
+    if (!x || !y) return null;
+    return x === y;
+  }
+
+  var api = { baseName: baseName, normalize: normalize, caseKey: caseKey, sameCase: sameCase, sha256Hex: sha256Hex };
+  root.TLCaseKey = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
 <script>/* ===========================================================================
  * qc_review.js — 「校正」頁の読み取り専用チェック（NO24 ③）
  *
@@ -8791,6 +8959,23 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
 
   const RD_SHEETS = ['日別(ローデータ)', '性別年齢(ローデータ)', '配置(ローデータ)'];
   const FB = '【レポート定義】FB';
+  // NO26：頁の用途を 4 分類する（報告頁／RAW／レポート定義等の補助頁／その他）
+  //   ・報告頁＝ CP のレポート（広告・画像・Click/Reach・数値の対象）
+  //   ・補助頁＝【レポート定義】…（納品物に残ってよい。CP 比較や広告・画像の対象外）
+  //   ・"レポート定義" を含むだけの未知頁は補助頁にしない（誤って白名単化しない）
+  const AUX_RE = /^【レポート定義】/;
+  function pageKindOf(name) {
+    const n = String(name == null ? '' : name);
+    if (RD_SHEETS.indexOf(n) >= 0) return 'raw';
+    if (AUX_RE.test(n)) return 'aux';
+    return 'report';
+  }
+  function reportPagesOf(book) {
+    return book.order.filter(n => pageKindOf(n) === 'report');
+  }
+  function auxPagesOf(book) {
+    return book.order.filter(n => pageKindOf(n) === 'aux');
+  }
   const PLACEHOLDER_BLUE = '5B9BD5';
   const EMU_CM = 360000;
 
@@ -8900,13 +9085,52 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     return book;
   }
 
+  const TLCaseKeyOf = (nm) => (globalThis.TLCaseKey && nm) ? globalThis.TLCaseKey.caseKey(nm) : '';
   const textOf = (sh, ref) => { const c = sh.cells.get(ref); return c ? String(c.v) : ''; };
   const numOf = (sh, ref) => { const c = sh.cells.get(ref); return c ? c.n : null; };
 
-  // ---------------------------------------------------------------- 種別・頁
-  function reportPagesOf(book) {
-    return book.order.filter(n => RD_SHEETS.indexOf(n) < 0 && n !== FB);
+  // ---------------------------------------------------------------- RAW のダウンロード期間
+  //   RAW は「レポート開始日 / レポート終了日」列を持つ型がある（実ファイルで確認）。
+  //   ・列が無い型は「読めない」＝需確認（一致と判定しない）
+  //   ・実際にデータがある日（明細の有無）とは別物として扱う
+  function periodOfSheet(sh) {
+    if (!sh) return { readable: false };
+    let sc = '', ec = '';
+    for (let c = 1; c <= Math.min(sh.maxCol, 60); c++) {
+      const t = norm(textOf(sh, T.numCol(c) + '1'));
+      if (t === norm('レポート開始日')) sc = T.numCol(c);
+      if (t === norm('レポート終了日')) ec = T.numCol(c);
+    }
+    if (!sc || !ec) return { readable: false, sheet: sh.name };
+    let min = null, max = null;
+    const maxR = Math.min(sh.maxRow, 200000);
+    for (let r = 2; r <= maxR; r++) {
+      const s = parseDateLike(textOf(sh, sc + r));
+      const e = parseDateLike(textOf(sh, ec + r));
+      if (s) { const v = dateSerial(s); if (min == null || v < min.v) min = { v, d: s }; }
+      if (e) { const v = dateSerial(e); if (max == null || v > max.v) max = { v, d: e }; }
+    }
+    if (!min || !max) return { readable: false };
+    return { readable: true, start: dstr(min.d), end: dstr(max.d) };
   }
+  function periodOfRawBook(book) {
+    for (const name of book.order) {
+      const p = periodOfSheet(book.sheets.get(name));
+      if (p.readable) return p;
+    }
+    return { readable: false };
+  }
+  // 報告頁（関数版）内の 3 枚 RAW の期間
+  function rawDownloadPeriods(book) {
+    const out = {};
+    for (const name of RD_SHEETS) {
+      const key = /日別/.test(name) ? 'daily' : /性別/.test(name) ? 'gender' : 'placement';
+      out[key] = Object.assign({ sheet: name }, periodOfSheet(book.sheets.get(name)));
+    }
+    return out;
+  }
+
+  // ---------------------------------------------------------------- 種別・頁
   function blockRects(sh) {
     // ■ ブロックと Total 行（A 列の文字で判定）
     const out = [];
@@ -9051,6 +9275,100 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   }
 
   // ---------------------------------------------------------------- 本体
+  // ---------------------------------------------------------------- 業務項目へのまとめ（NO26）
+  //   現場は「同じ検査が関数版・非関数版・複数シートで何度も出る」ことを望まない。
+  //   1 つの業務項目＝1 行にまとめ、異常は全部その行の展開に並べる。
+  const ITEM_SEV = { err: 0, warn: 1, ask: 2, un: 3, ok: 4 };
+  const ITEM_GRP = ['open', 'case', 'param', 'xlerr', 'ads', 'disp', 'rows', 'nf', 'total'];
+  const ITEM_OF = {
+    'open.cellOkAll': 'open.cursor', 'open.cellBadOne': 'open.cursor',
+    'open.tabOkAll': 'open.tab', 'open.tabBadOne': 'open.tab',
+    'open.hOkAll': 'open.h', 'open.hBadOne': 'open.h',
+    'open.vOkAll': 'open.v', 'open.vBadOne': 'open.v',
+    'ads.attrOk': 'ads.attr', 'ads.attrBad': 'ads.attr', 'ads.attrNa': 'ads.attr',
+    'ads.blueNone2': 'ads.blue', 'ads.blueLeak': 'ads.blue',
+    'ads.singleAdOk2': 'ads.single', 'ads.singleAdBad2': 'ads.single', 'ads.singleAdMulti': 'ads.single',
+    'ads.widthOk2': 'ads.width', 'ads.widthBad2': 'ads.width',
+    'ads.noShotsYet': 'ads.shots', 'ads.noDelivery': 'ads.shots', 'ads.logoMixed': 'ads.shots',
+    'disp.fitOk2': 'disp.fit', 'disp.fitBad2': 'disp.fit',
+    'case.startOk': 'case.period', 'case.startBad': 'case.period', 'case.endOk': 'case.period',
+    'case.endBad': 'case.period', 'case.earlyEnd': 'case.period', 'case.overEnd': 'case.period',
+    'case.lateStart': 'case.period', 'case.boundaryAsk': 'case.period', 'case.noPeriod': 'case.period',
+    'case.noExpectedEnd': 'case.period', 'case.needWorkday': 'case.period', 'case.needFuncForPeriod': 'case.period',
+    'case.caseMismatch': 'case.name',
+    'case.rawPeriodOk': 'case.rawPeriod', 'case.rawPeriodDiff': 'case.rawPeriod', 'case.rawPeriodUnreadable': 'case.rawPeriod',
+    'p.budgetOk': 'param.budget', 'p.budgetBad': 'param.budget',
+    'p.marginOk': 'param.margin', 'p.marginBad': 'param.margin',
+    'p.reachNeedFunc': 'param.reach', 'p.reachUnreadable': 'param.reach',
+    'p.reachInputInvalid': 'param.reach', 'p.reachInputDiff': 'param.reach',
+    'p.clickReachSame': 'param.clickReach', 'p.clickUnreadable': 'param.clickReach',
+    'der.pageExtra': 'der.pages', 'der.pageMissing': 'der.pages', 'der.pageUnreadable': 'der.pages',
+    'der.blockScope': 'der.pages', 'der.colDropped': 'der.pages', 'der.colExtra': 'der.pages',
+    'der.dailyTrim': 'der.pages', 'der.zeroRowsDeleted': 'der.pages',
+    'der.valueOk': 'der.value', 'der.valueDiff': 'der.value',
+    'der.rowsMissing': 'der.rows', 'der.rowsExtra': 'der.rows',
+    'der.totalOk': 'der.total', 'der.totalDiff': 'der.total',
+    'der.deriveFail': 'der.derive', 'der.needFunc': 'der.derive', 'der.noEngine': 'der.derive',
+    'nf.noFormula': 'nf.formula', 'nf.formulaLeft': 'nf.formula'
+  };
+  const ITEM_TITLE = {
+    'open.cursor': { zh: '保存光标', ja: '保存カーソル' },
+    'open.tab': { zh: '默认打开页', ja: '既定タブ' },
+    'open.h': { zh: '横向滚动', ja: '横スクロール' },
+    'open.v': { zh: '纵向滚动', ja: '縦スクロール' },
+    'ads.attr': { zh: '交付组图片属性', ja: '交付画像の属性' },
+    'ads.blue': { zh: '加工用蓝底残留', ja: '加工用青枠の残留' },
+    'ads.single': { zh: '单一广告', ja: '単一広告' },
+    'ads.width': { zh: '图片宽度', ja: '画像幅' },
+    'ads.shots': { zh: '广告截图', ja: '広告スクリーンショット' },
+    'disp.fit': { zh: '打印范围', ja: '印刷範囲' },
+    'case.period': { zh: '掲載期間', ja: '掲載期間' },
+    'case.rawPeriod': { zh: 'RAW 下载期间', ja: 'RAW ダウンロード期間' },
+    'case.name': { zh: '案件名的一致', ja: '案件名の一致' },
+    'param.budget': { zh: '予算', ja: '予算' },
+    'param.margin': { zh: 'マージン', ja: 'マージン' },
+    'param.reach': { zh: 'Reach', ja: 'Reach' },
+    'param.clickReach': { zh: 'Click 与 Reach', ja: 'Click と Reach' },
+    'der.pages': { zh: 'Sheet 构成', ja: 'シート構成' },
+    'der.value': { zh: '明细数值', ja: '明細の値' },
+    'der.rows': { zh: '明细行', ja: '明細行' },
+    'der.total': { zh: 'Total', ja: 'Total' },
+    'der.derive': { zh: '非関数版导出的核对', ja: '非関数版導出の照合' },
+    'nf.formula': { zh: '明细公式', ja: '明細の式' },
+    'x.err': { zh: 'Excel 错误', ja: 'Excel エラー' }
+  };
+  function itemIdOf(key) {
+    const k = String(key == null ? '' : key);
+    if (ITEM_OF[k]) return ITEM_OF[k];
+    if (/^x\./.test(k)) return 'x.err';
+    return k;
+  }
+  function buildItems(findings) {
+    const map = new Map();
+    for (const f of (findings || [])) {
+      const id = itemIdOf(f.key);
+      if (!map.has(id)) map.set(id, { id, sev: 'ok', raws: [], title: ITEM_TITLE[id] || null, group: f.group || '' });
+      map.get(id).raws.push(f);
+    }
+    const arr = [...map.values()];
+    for (const it of arr) {
+      it.n = { err: 0, warn: 0, ask: 0, ok: 0, un: 0 };
+      for (const f of it.raws) it.n[f.sev] = (it.n[f.sev] || 0) + 1;
+      const worst = it.raws.slice().sort((a, b) => ITEM_SEV[a.sev] - ITEM_SEV[b.sev])[0];
+      it.sev = worst.sev;
+      it.where = worst.where || '';
+      it.file = worst.file || 'both';
+      it.sheet = worst.sheet || '';
+      it.key = worst.key;
+      it.args = worst.args || [];
+      it.bad = it.raws.filter(f => f.sev !== 'ok');
+    }
+    arr.sort((a, b) =>
+      (ITEM_SEV[a.sev] - ITEM_SEV[b.sev]) ||
+      (ITEM_GRP.indexOf(a.group) - ITEM_GRP.indexOf(b.group)));
+    return arr;
+  }
+
   async function review(opts) {
     const F = { findings: [], ctx: {} };
     const push = (sev, group, o) => {
@@ -9234,6 +9552,30 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     }
 
     if (primary) {
+      // ---- RAW のダウンロード期間（レポート開始日/終了日 列）と TODO の開始日・終了日
+      //   NO26：期間そのものを突き合わせる。列が無い型は「読めない」＝需確認。
+      F.ctx.rawPeriods = func ? rawDownloadPeriods(func) : null;
+      if (todo && todo.fields && todo.fields.start && expectedEnd) {
+        const wantS = dstr(todo.fields.start), wantE = expectedEnd;
+        const KIND = [['daily', '日別(ローデータ)'], ['gender', '性別年齢(ローデータ)'], ['placement', '配置(ローデータ)']];
+        for (const [k, nm] of KIND) {
+          const p = F.ctx.rawPeriods && F.ctx.rawPeriods[k];
+          if (!p || !p.readable) {
+            push('ask', 'case', {
+              file: 'func', sheet: nm, where: 'レポート開始日／終了日',
+              key: 'case.rawPeriodUnreadable', args: [nm],
+            });
+            continue;
+          }
+          const same = (p.start === wantS && p.end === wantE);
+          push(same ? 'ok' : 'err', 'case', {
+            file: 'func', sheet: nm, where: 'ダウンロード期間 ' + p.start + ' ～ ' + p.end,
+            key: same ? 'case.rawPeriodOk' : 'case.rawPeriodDiff',
+            expect: wantS + ' ～ ' + wantE, actual: p.start + ' ～ ' + p.end,
+            args: [nm, wantS + ' ～ ' + wantE, p.start + ' ～ ' + p.end],
+          });
+        }
+      }
       const per = rawPeriodOf(primary);
       F.ctx.rawPeriod = per;
       if (!func) {
@@ -9384,6 +9726,18 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       }
     }
 
+    // ---- ③.5 案件名（NO26）：関数版と非関数版が別案件なら黙って同じものとして扱わない
+    if (func && nf && typeof TLCaseKeyOf === 'function') {
+      const fk = TLCaseKeyOf(opts.funcName || ''), nk = TLCaseKeyOf(opts.nfName || '');
+      if (fk && nk && fk !== nk) {
+        push('ask', 'case', {
+          file: 'both', sheet: '-', where: 'ファイル名',
+          key: 'case.caseMismatch', args: [],
+          detail: [{ k: '関数版', v: String(opts.funcName || '').slice(0, 80) }, { k: '非関数版', v: String(opts.nfName || '').slice(0, 80) }],
+        });
+      }
+    }
+
     // ---- ④ 画像・交付外観（関数版・非関数版の両方）
     //   ・「掲載原稿」エリア（▼掲載原稿の行以降）にある図形だけを交付対象とする
     //   ・表頭の LOGO 組は原位置なら対象外（交付組に入っていたら別項目で指摘）
@@ -9393,6 +9747,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       for (const [tag, bk] of [['func', func], ['nf', nf]]) {
         if (!bk) continue;
         const pages = reportPagesOf(bk);
+        const allPages = pages.concat(auxPagesOf(bk));   // 頁属性（印刷範囲）用
         // 非関数版は RAW が無いので、クリエイティブ区块の行数から広告数を数える
         const eff = effectiveAds(bk, pages[0], opts);
         const pageSh = bk.sheets.get(pages[0]);
@@ -9412,13 +9767,26 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
           F.ctx.ads[tag][page] = { imgStart, delivery: delivery.map(d => ({ name: d.grpName || d.name, row: d.row1, pics: d.childPics.length })), singles: singles.length, logo: logoLike.map(d => d.grpName || d.name) };
 
           // (a) 交付対象の属性（縦横比・移動）
-          const targets = delivery.concat(singles.map(a => Object.assign({}, a, { _single: true })));
+          //   NO26：有効広告が 1 件のときの独立画像は「組にしない」のが正しい業務状態。
+          //          交付組専用の移動属性（oneCell）は独立画像には要求せず、【不適用】として明示する
+          //          （未実施を PASS として扱わない）。複数広告のときは従来どおり全件に要求する。
+          const singleAdMode = adCount === 1;
+          const targets = delivery.concat(singleAdMode ? [] : singles.map(a => Object.assign({}, a, { _single: true })));
           if (!targets.length) {
             const onlyFrame = anchors.some(a => inArea(a) && a.isPlaceholder);
-            push('ask', 'ads', {
-              file: tag, sheet: page, where: '掲載原稿エリア（' + (imgStart || '?') + ' 行以降）',
-              key: onlyFrame ? 'ads.noShotsYet' : 'ads.noDelivery', args: [label[tag], page, imgStart || '?'],
-            });
+            if (singleAdMode && singles.length === 1) {
+              const sn = singles[0].childPics[0] || {};
+              push('un', 'ads', {
+                file: tag, sheet: page, where: '画像「' + (sn.name || '画像') + '」',
+                key: 'ads.attrNa', args: [label[tag], page, sn.name || '画像', singles[0].row1],
+                detail: [{ k: '判定', v: '有効広告 1 件・交付画像 1 枚のため、交付組の移動属性チェックは対象外（独立画像は twoCellAnchor で正常）' }],
+              });
+            } else {
+              push('ask', 'ads', {
+                file: tag, sheet: page, where: '掲載原稿エリア（' + (imgStart || '?') + ' 行以降）',
+                key: onlyFrame ? 'ads.noShotsYet' : 'ads.noDelivery', args: [label[tag], page, imgStart || '?'],
+              });
+            }
           } else {
             const bad = [];
             const okList = [];
@@ -9463,8 +9831,11 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
           }
 
           // (b) 加工用の青枠（実際に青で塗られた矩形だけ）
+          //   NO26：MR_PH_* の加工用プレースホルダ枠は「貼る前から青い」のが仕様。
+          //          画像が入っていないプレースホルダの青は残留ではない（未貼付は (a) で出している）。
           const blues = [];
           for (const a of anchors) {
+            if (a.isPlaceholder && !a.childPics.length) continue;
             for (const sp of (a.spDetails || [])) {
               if (!sp.blue) continue;
               if (imgStart && a.row1 < imgStart) continue;      // 表頭・レポート帯は対象外
@@ -9499,24 +9870,37 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
             });
           }
 
-          // (d) 単一広告：独立した広告名が残っていないか
+          // (d) 単一広告：独立した広告名が残っていないか／交付画像が 1 枚か
           if (adCount === 1) {
             const nameSet = new Set([...adInfo.names, ...adInfo.sets].map(x => String(x).trim()).filter(Boolean));
             const stray = anchors.filter(a => inArea(a) && !a.childPics.length
               && (a.spDetails || []).some(sp => nameSet.has(String(sp.text || '').trim())));
             const npic = delivery.reduce((n, g) => n + g.childPics.length, 0) + singles.length;
-            if (stray.length || npic !== 1) {
+            if (stray.length) {
               push('err', 'ads', {
                 file: tag, sheet: page, where: '掲載原稿エリア',
                 key: 'ads.singleAdBad2', args: [label[tag], page, npic, stray.map(a => (a.spDetails || []).map(s => s.name).join('/')).filter(Boolean).join('、') || 'なし'],
                 detail: stray.map(a => ({ k: '残留', v: a.row1 + ' 行 ' + (a.spDetails || []).map(s => s.name + '「' + s.text + '」').join('、') })),
               });
-            } else {
+            } else if (npic > 1) {
+              // 広告は 1 件なのに交付画像が複数 → 余分な画像（旧版の残り等）の可能性
+              push('err', 'ads', {
+                file: tag, sheet: page, where: '掲載原稿エリア',
+                key: 'ads.singleAdMulti', args: [label[tag], page, npic],
+              });
+            } else if (npic === 1) {
               push('ok', 'ads', { file: tag, sheet: page, key: 'ads.singleAdOk2', args: [label[tag], page] });
             }
+            // npic === 0 は (a) の「未貼付」で扱う（同じ内容を二重に出さない）
           }
 
-          // (e) 印刷範囲に収まっているか
+          // (e) 印刷範囲に収まっているか（頁属性なので補助頁も対象。下の allPages ループで実施）
+        }
+        // 頁属性（印刷範囲）は補助頁も含めて確認する
+        for (const page of allPages) {
+          const sh = bk.sheets.get(page);
+          if (!sh) continue;
+          const anchors = parseAnchors(sh.drawing, sh.xml);
           const pa = printAreaOf(bk, page);
           if (pa && anchors.length) {
             const geom = XG.makeGeom(sh.xml);
@@ -9745,6 +10129,12 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     const cnt = { err: 0, warn: 0, ask: 0, ok: 0, un: 0 };
     for (const f of F.findings) cnt[f.sev] = (cnt[f.sev] || 0) + 1;
     F.summary = cnt;
+    // NO26：表示用の「業務項目」単位にまとめる（1 項目 = 1 行）。
+    //   ・下の F.findings（底層の検査結果）は一切削らない。展開で全部見える。
+    F.items = buildItems(F.findings);
+    const ic = { err: 0, warn: 0, ask: 0, ok: 0, un: 0 };
+    for (const it of F.items) ic[it.sev] = (ic[it.sev] || 0) + 1;
+    F.itemSummary = ic;
     return F;
   }
 
@@ -10366,7 +10756,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     return out;
   }
 
-  root.TLReview = { openBook, parseTodo, parseDateLike, parseNumberLike, review, deriveNf, blockRects, parseAnchors, reportPagesOf, PLACEHOLDER_BLUE, filterRdByCp, comparePage };
+  root.TLReview = { openBook, parseTodo, parseDateLike, parseNumberLike, review, deriveNf, blockRects, parseAnchors, reportPagesOf, auxPagesOf, pageKindOf, rawDownloadPeriods, periodOfSheet, periodOfRawBook, buildItems, itemIdOf, ITEM_TITLE, PLACEHOLDER_BLUE, filterRdByCp, comparePage };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.TLReview;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 </script>
@@ -10474,6 +10864,15 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'p.marginH': { zh: '大于 0 小于 100。20 与 0.2 含义相同', ja: '0 超 100 未満。20 と 0.2 は同じ意味' },
     'p.reach': { zh: 'Reach（{0}!D5）', ja: 'Reach（{0}!D5）' },
     'p.reachH': { zh: '人工输入，不参与 Total 比较', ja: '人手入力。Total 比較の対象外' },
+    'p.todoHd': { zh: '从 TODO 粘贴 4 格（グロス予算／マージン／開始日／終了日）', ja: 'TODO から 4 セルを貼り付け（グロス予算／マージン／開始日／終了日）' },
+    'p.todoPh': { zh: 'グロス予算　マージン　開始日　終了日 を貼り付け（1 行でも可）', ja: 'グロス予算　マージン　開始日　終了日 を貼り付け（1 行でも可）' },
+    'p.todoOk': { zh: '已展开到下面的参数（可手改）', ja: '下のパラメータに展開しました（手で直せます）' },
+    'p.todoErr': { zh: '未能识别：{0}', ja: '読み取れません：{0}' },
+    'p.periodOk': { zh: '一致', ja: '一致' },
+    'p.periodNg': { zh: '不一致', ja: '不一致' },
+    'p.periodAsk': { zh: '无法读取', ja: '読み取れません' },
+    'p.periodNoCol': { zh: '（RAW 无「レポート開始日/終了日」列）', ja: '（RAW に「レポート開始日/終了日」列なし）' },
+    'p.periodExp': { zh: '期望 {0}', ja: '期待 {0}' },
     'p.cpName': { zh: 'CP 名（{0}!B2）', ja: 'CP 名（{0}!B2）' },
     'p.cpHint': { zh: '仅在检测到多个 CP 时确认统一后的名称', ja: '複数 CP が検出された場合のみ、統一後の名称を確認' },
     'p.unified': { zh: '统一后的 CP 名（写入 Meta!B2）', ja: '統一後の CP 名（Meta!B2 に書き込み）' },
@@ -10987,6 +11386,10 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     $('pCp').value = '';
     state.unified = '';
     state.perCp = {};
+    state.todoDates = null;
+    if ($('pTodoPaste')) $('pTodoPaste').value = '';
+    if ($('pPeriodWrap')) { $('pPeriodWrap').style.display = 'none'; $('pPeriodWrap').innerHTML = ''; }
+    clearMsg('pTodoMsg');
     clearMsg('cpMsg2'); clearMsg('splitMsg');
     syncMarginInput();
   }
@@ -10995,6 +11398,107 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     $('mgWrap').classList.toggle('two', custom);
     $('pMarginCustom').style.display = custom ? '' : 'none';
     $('pMarginCustom').disabled = !custom;
+  }
+
+  // ---------------------------------------------------------------- NO26：TODO 4 セルの貼り付け
+  //   校正頁と同じ parseTodo を使う（解析規則を 2 つ持たない）。
+  //   貼り付け＝入力の補助。生成側は下の pBudget / pMargin を読むので、
+  //   ここで値を入れておけば「表示だけ変わって生成は旧値」にはならない。
+  const periodCache = {};
+  const dstr3 = d => (d ? d.y + '-' + String(d.m).padStart(2, '0') + '-' + String(d.d).padStart(2, '0') : '-');
+  async function rawPeriodOf(r) {
+    const key = (r && r.name ? r.name : '') + '#' + ((r && r.sig) || '');
+    if (periodCache[key] !== undefined) return periodCache[key];
+    let out = { readable: false };
+    try {
+      const RR = globalThis.TLReview;
+      const bk = await RR.openBook(r.buf, 'func');
+      out = RR.periodOfRawBook(bk);
+    } catch (e) { out = { readable: false }; }
+    periodCache[key] = out;
+    return out;
+  }
+  function marginToInputs(m) {
+    if (Math.abs(m - 0.15) < 1e-9) { $('pMargin').value = '0.15'; $('pMarginCustom').value = ''; }
+    else if (Math.abs(m - 0.2) < 1e-9) { $('pMargin').value = '0.2'; $('pMarginCustom').value = ''; }
+    else { $('pMargin').value = 'custom'; $('pMarginCustom').value = String(Math.round(m * 1000000) / 10000); }
+    syncMarginInput();
+  }
+  let periodRun = 0;
+  async function renderPeriodBoxes() {
+    const wrap = $('pPeriodWrap');
+    if (!wrap) return;
+    const run = ++periodRun;   // 連続呼び出しで二重に描かない
+    const t0 = state.todoDates;
+    if (!t0 || !t0.start || !t0.end || !state.raws.length) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+    const want = dstr3(t0.start) + ' 〜 ' + dstr3(t0.end);
+    const L = ROLE_LABEL();
+    wrap.style.display = 'grid';
+    wrap.innerHTML = '';
+    for (const role of ROLES) {
+      const r = state.raws.find(x => x.role === role);
+      const box = el('div', 'p');
+      box.appendChild(el('b', '', L[role]));
+      if (!r) {
+        box.classList.add('ask');
+        box.appendChild(document.createTextNode(t('p.periodAsk')));
+        wrap.appendChild(box);
+        continue;
+      }
+      const p = await rawPeriodOf(r);
+      if (run !== periodRun) return;   // 新しい描画が始まっていたら破棄
+      if (!p || !p.readable) {
+        box.classList.add('ask');
+        box.appendChild(document.createTextNode(t('p.periodAsk') + '　'));
+        const h = el('span', '', t('p.periodNoCol'));
+        h.style.fontSize = '10.5px'; h.style.opacity = '.8';
+        box.appendChild(h);
+      } else {
+        const act = p.start + ' 〜 ' + p.end;
+        const same = (p.start === dstr3(t0.start) && p.end === dstr3(t0.end));
+        box.classList.add(same ? 'ok' : 'ng');
+        box.appendChild(document.createTextNode((same ? '✓ ' + t('p.periodOk') : '✗ ' + t('p.periodNg')) + '　' + act));
+        if (!same) {
+          const h = el('span', '', '　' + t('p.periodExp', want));
+          h.style.fontSize = '10.5px'; h.style.opacity = '.85';
+          box.appendChild(h);
+        }
+      }
+      wrap.appendChild(box);
+    }
+  }
+  function applyTodoPaste(text) {
+    const RR = globalThis.TLReview;
+    if (!RR) return;
+    const p = RR.parseTodo(text || '');
+    const f = p.fields || {};
+    if (f.budget != null) $('pBudget').value = String(f.budget);
+    if (f.margin != null) marginToInputs(f.margin);
+    if (f.start && f.end) state.todoDates = { start: f.start, end: f.end };
+    if (state.out) clearOutput('st.prevInvalid');
+    if (p.errors.length) {
+      const detail = p.errors.map(e => String(e.key).replace(/^todo\./, '') + (e.args && e.args.length ? '(' + e.args.join(' / ') + ')' : '')).join('・');
+      msg('pTodoMsg', 'warn', t('p.todoErr', detail));
+    } else {
+      msg('pTodoMsg', 'ok', t('p.todoOk'));
+      const one = [String(f.budget != null ? f.budget : ''),
+        (Math.round((f.margin || 0) * 10000) / 100) + '%', dstr3(f.start), dstr3(f.end)].join('\t');
+      $('pTodoPaste').value = one;
+    }
+    renderPeriodBoxes();
+    refreshButtonsAndMsg();
+  }
+  // 校正頁へ引き継ぐ（同一案件のときだけ使う）
+  function todoSnapshot() {
+    let budget = null, margin = null;
+    try { budget = numOf($('pBudget').value, 'm.errBudgetEmpty', 'm.errBudgetNum'); } catch (e) { budget = null; }
+    try { margin = marginOf($('pMargin').value, $('pMarginCustom').value); } catch (e) { margin = null; }
+    return {
+      budget, margin,
+      dates: state.todoDates || null,
+      caseName: (state.fmt && state.fmt.name) || '',
+      caseKey: (globalThis.TLCaseKey && state.fmt) ? globalThis.TLCaseKey.caseKey(state.fmt.name) : ''
+    };
   }
 
   // ---------------------------------------------------------------- 出力の無効化
@@ -11427,7 +11931,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       if (replaced) { const tag = el('span', 'small', ' ' + t('c1.replacedTag')); tag.style.color = '#b45309'; tag.style.marginLeft = '6px'; td2.appendChild(tag); }
       tr.appendChild(td2);
       tr.appendChild(el('td', 'num', rows));
-      tr.appendChild(el('td', '', period));
+      tr.appendChild(el('td', 'pcell', period));
       const td5 = el('td');
       if (onRemove) { const b = el('button', 'btn ghost mini', t('c1.remove')); b.addEventListener('click', onRemove); td5.appendChild(b); }
       tr.appendChild(td5);
@@ -11438,6 +11942,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       renderFmtChip(); resetDecision(); clearOutput('st.fmtRemoved'); recompute();
     }, state.fmt.replaced);
     renderAliasNote();
+    if (typeof renderPeriodBoxes === 'function') { try { renderPeriodBoxes(); } catch (e) { } }
     for (const role of ROLES) {
       const list = state.raws.filter(r => r.role === role);
       if (!list.length) addRow(L[role], 'no', t('c1.notFound'), '-', '—', null);
@@ -12710,6 +13215,12 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       if (state.out) clearOutput('st.prevInvalid');
       refreshButtonsAndMsg();
     });
+    // NO26：TODO 4 セルの貼り付け（校正頁と同じ parseTodo）
+    const todoBox = $('pTodoPaste');
+    if (todoBox) {
+      todoBox.addEventListener('paste', () => { setTimeout(() => applyTodoPaste(todoBox.value), 0); });
+      todoBox.addEventListener('input', () => { if (/[\t\n]/.test(todoBox.value)) applyTodoPaste(todoBox.value); });
+    }
     $('pCp').addEventListener('input', () => {
       state.unified = $('pCp').value;
       if (state.cpMode === 'merge') {
@@ -12772,6 +13283,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   }
 
   // NO24：校正頁（ui_review.js）が同じ文言表と再描画を使えるようにする
+  globalThis.__TLWORK = { todoSnapshot: () => todoSnapshot(), state };
   globalThis.__TLI18N = STR;
   globalThis.__TLAPPLY = applyLang;
   globalThis.__TLT = t;
@@ -12814,9 +13326,9 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'tab.review': { zh: '校正', ja: '校正' },
     'tab.hint': { zh: '2 个页面各自保留本次输入与结果', ja: '2 つの頁は入力・結果を別々に保持します' },
 
-    'rv.c1': { zh: '输入文件（函数版・非函数版 2 份）', ja: '入力ファイル（関数版・非関数版の 2 冊）' },
-    'rv.c1lead': { zh: '2 份一起拖入／一次多选／分两次添加都可以。按文件内容判定函数版・非函数版。只读，不改写、不另存。', ja: '2 冊まとめてドロップ／一度に複数選択／分けて追加のどれでも可。中身から関数版・非関数版を判定します。読み取りのみで、書き換え・保存はしません。' },
-    'rv.dropT': { zh: '把纳品的 2 份拖到这里，或点击选择', ja: 'ここに納品 2 冊をドロップ／クリックして選択' },
+    'rv.c1': { zh: '输入文件（函数版／非函数版）', ja: '入力ファイル（関数版／非関数版）' },
+    'rv.c1lead': { zh: '1 份也能校正（两份齐全时同时做两版照合）。按文件内容判定函数版・非函数版。只读，不改写、不另存。', ja: '1 冊からチェックできます（2 冊そろえば両版照合も実施）。中身で関数版・非関数版を判定します。読み取りのみで、書き換え・保存はしません。' },
+    'rv.dropT': { zh: '请拖入函数版／非函数版，支持单份或两份校正。', ja: '関数版・非関数版をドラッグ、またはクリックして選択（1 冊からチェック可能）' },
     'rv.dropS': { zh: '顺序不限，也可以一份一份加。判定按文件内容。', ja: '順不同・1 冊ずつでも可。判定はファイル内容で行います。' },
     'rv.c2': { zh: 'TODO 4 格与校正基准', ja: 'TODO 4 セルと校正の基準' },
     'rv.c2lead': { zh: '从 Google Sheet／Excel 横向复制 4 格，直接 Ctrl+V 到下面。只复制数据行也可以。粘贴后展开为 4 个可改字段。', ja: 'Google Sheet／Excel から 4 セルを横にコピーして、下の枠にそのまま Ctrl+V。データ行だけでも構いません。貼ると 4 つの欄に展開され、手で直せます。' },
@@ -12834,12 +13346,12 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'rv.note': { zh: '备注', ja: 'メモ' },
     'rv.c3': { zh: '执行校正', ja: '校正の実行' },
     'rv.c4': { zh: '校正结果', ja: '校正結果' },
-    'rv.resHint': { zh: '左侧放入 2 份后按「校正」，这里只显示结论。点某一行可展开依据（位置・期望・实际值）。', ja: '左で 2 冊を入れて「校正する」を押すと、ここに結論だけが並びます。行を押すと根拠（位置・期待・実測）が開きます。' },
+    'rv.resHint': { zh: '左侧放入文件后按「校正」，这里按业务项目各显示一条结论（异常优先）。点一行展开，可看两版・各 Sheet 的依据。', ja: '左でファイルを入れて「校正する」を押すと、業務項目ごとに結論が 1 行ずつ並びます（異常が上）。行を押すと両版・各シートの根拠が開きます。' },
     'rv.go': { zh: '校正', ja: '校正する' },
     'rv.reset': { zh: '重置', ja: 'リセット' },
-    'rv.foot': { zh: '只读：不改写、不保存上传的 2 份文件；图片按 Excel 的实际显示宽度（cm・小数 1 位）比较。', ja: '読み取り専用：2 冊を書き換えず保存もしません。画像は Excel の実表示幅（cm・小数 1 桁）で比較します。' },
+    'rv.foot': { zh: '只读：不改写、不保存上传的文件；图片按 Excel 的实际显示宽度（cm・小数 1 位）比较。同一项目跨版本・跨 Sheet 汇总为 1 条，展开可看全部证据。', ja: '読み取り専用：アップロードした冊子を書き換えず保存もしません。画像は Excel の実表示幅（cm・小数 1 桁）で比較します。同じ項目は版・シートをまたいで 1 行にまとめ、展開で全根拠が見えます。' },
 
-    'rv.st.pick': { zh: '请放入函数版与非函数版 2 份文件', ja: '関数版と非関数版の 2 冊を入れてください' },
+    'rv.st.pick': { zh: '请放入函数版或非函数版（1 份即可校正）', ja: '関数版または非関数版を入れてください（1 冊から校正できます）' },
     'rv.st.one': { zh: '还差 1 份（{0}）：现在也可以校正，配对项会显示「待上传」', ja: 'あと 1 冊（{0}）：このままでも校正できます（対になる項目は「アップロード待ち」）' },
     'rv.st.ready': { zh: '可以校正', ja: '校正できます' },
     'rv.st.run': { zh: '校正中…（含函数版→非函数版推导）', ja: '校正中…（関数版→非関数版の導出も実行します）' },
@@ -12863,6 +13375,13 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'rv.passHint': { zh: '展开查看 {0} 项通过内容', ja: '{0} 件の通過内容を開く' },
     'rv.noFinding': { zh: '没有需要修正的项目。', ja: '修正が必要な項目はありません。' },
     'rv.allPass': { zh: '校正完成：{0} 项全部通过', ja: '校正完了：{0} 項目すべて通過' },
+    'rv.itOk': { zh: '正常（{0} 份证据）', ja: '正常（根拠 {0} 件）' },
+    'rv.itErr': { zh: '错误 {0} 处', ja: 'エラー {0} 件' },
+    'rv.itWarn': { zh: '需确认 {0} 处', ja: '要確認 {0} 件' },
+    'rv.itAsk': { zh: '需确认 {0} 处', ja: '要確認 {0} 件' },
+    'rv.itUn': { zh: '未验证 {0} 处（不适用）', ja: '未検証 {0} 件（対象外）' },
+    'rv.todoInherited': { zh: '已从作业页继承同一案件的 TODO（可手改）', ja: '同一案件のため作業頁の TODO を引き継ぎました（手で直せます）' },
+    'rv.todoDiffCase': { zh: '与作业页的案件不同，因此不继承 TODO。请确认后输入。', ja: '作業頁と別案件のため TODO は引き継ぎません。確認して入力してください。' },
     'rv.badCount': { zh: '需要处理 {0} 项（其余通过）', ja: '対応が必要な項目 {0} 件（ほかは通過）' },
   };
 
@@ -13141,10 +13660,45 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       else if (!state.func || !state.nf) msgBox('rvFileMsg', 'info', fmt(S['rv.st.one'], !state.func ? '関数版' : '非関数版'));
       else msgBox('rvFileMsg', '', '');
       setStatus(!state.func || !state.nf ? 'rv.st.one' : 'rv.st.ready', !state.func ? '関数版' : '非関数版');
+      inheritTodo();
     } finally {
       state.busy = false;
       refresh();
     }
+  }
+
+  // NO26：同一案件なら作業頁の TODO を引き継ぐ（手入力は上書きしない）
+  function rvTodoEmpty() {
+    return ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd'].every(id => !($(id).value || '').trim());
+  }
+  function inheritTodo() {
+    const wk = globalThis.__TLWORK;
+    if (!wk || typeof wk.todoSnapshot !== 'function') return false;
+    const cur = state.func || state.nf;
+    if (!cur) return false;
+    let snap = null;
+    try { snap = wk.todoSnapshot(); } catch (e) { return false; }
+    if (!snap || !snap.caseKey) return false;
+    const CK = globalThis.TLCaseKey;
+    const key = CK ? CK.caseKey(cur.name) : '';
+    if (!key) return false;
+    if (key !== snap.caseKey) {
+      if (state.inheritMsgKey !== key) { state.inheritMsgKey = key; msgBox('rvTodoMsg', 'warn', L(S['rv.todoDiffCase'])); }
+      return false;
+    }
+    if (!rvTodoEmpty()) return false;   // 手入力（他案件の値も含む）は絶対に上書きしない
+    let did = false;
+    if (snap.budget != null) { $('rvBudget').value = String(snap.budget); did = true; }
+    if (snap.margin != null) { $('rvMargin').value = (Math.round(snap.margin * 10000) / 100) + '%'; did = true; }
+    if (snap.dates && snap.dates.start) { $('rvStart').value = snap.dates.start.y + '/' + snap.dates.start.m + '/' + snap.dates.start.d; did = true; }
+    if (snap.dates && snap.dates.end) { $('rvEnd').value = snap.dates.end.y + '/' + snap.dates.end.m + '/' + snap.dates.end.d; did = true; }
+    if (did) {
+      state.inheritedKey = key;
+      msgBox('rvTodoMsg', 'ok', L(S['rv.todoInherited']));
+      const one = ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd'].map(id => ($(id).value || '').trim()).join('\t');
+      $('rvPaste').value = one;
+    }
+    return did;
   }
 
   function invalidate() {
@@ -13237,6 +13791,8 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
         reportType: reportTypeOf(),
         paramSites: paramSitesOf(),
         fmtName: (state.func || state.nf).name,
+        funcName: state.func ? state.func.name : '',
+        nfName: state.nf ? state.nf.name : '',
       });
       state.out = res;
       renderResult(res);
@@ -13271,55 +13827,42 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   const SEV_ORDER = { err: 0, warn: 1, ask: 2, un: 3, ok: 4 };
   const GRP_ORDER = ['open', 'case', 'param', 'xlerr', 'ads', 'disp', 'rows', 'nf', 'total'];
 
-  function renderResult(res) {
-    const box = $('rvResult');
-    box.innerHTML = '';
-    $('rvResultHint').style.display = 'none';
-    const s = res.summary || {};
-    const sum = $('rvSum');
-    sum.innerHTML = '';
-    const chipLabel = lang() === 'ja'
-      ? { err: 'エラー', warn: '警告', ask: '要確認', ok: '通過', un: '未検証' }
-      : { err: '错误', warn: '警告', ask: '需确认', ok: '通过', un: '未验证' };
-    for (const k of ['err', 'warn', 'ask', 'ok', 'un']) {
-      if (!s[k]) continue;
-      sum.appendChild(el('span', 'rv-chip ' + k, chipLabel[k] + ' ' + s[k]));
-    }
+  const FILE_LABEL = f => f === 'func' ? L({ zh: '函数版', ja: '関数版' })
+    : f === 'nf' ? L({ zh: '非函数版', ja: '非関数版' }) : L({ zh: '两版', ja: '両版' });
+  const locOf = f => [FILE_LABEL(f.file), f.sheet, f.where].filter(Boolean).join(' / ');
 
-    // エラー → 警告 → 要確認/未検証 → 通過 の順。通過も既定で全部見せる。
-    const all = res.findings.slice().sort((a, b) =>
-      (SEV_ORDER[a.sev] - SEV_ORDER[b.sev]) || (GRP_ORDER.indexOf(a.group) - GRP_ORDER.indexOf(b.group)));
-    const bad = all.filter(f => f.sev !== 'ok');
-    const pass = all.filter(f => f.sev === 'ok');
-
-    if (!bad.length) {
-      const okline = el('div', 'rv-allok');
-      okline.appendChild(el('span', 'ic', '✓'));
-      okline.appendChild(el('span', '', fmt(S['rv.allPass'], pass.length)));
-      box.appendChild(okline);
-    } else {
-      box.appendChild(el('div', 'rv-badline', fmt(S['rv.badCount'], bad.length)));
-    }
-    for (const f of bad) box.appendChild(rowEl(f));
-    for (const f of pass) box.appendChild(rowEl(f, true));
+  // NO26：1 業務項目 = 1 行。異常は全部この行の展開に並べる（1 件目だけにしない）。
+  function itemTitle(it) {
+    if (it.title) return L(it.title);
+    const f0 = (it.raws && it.raws[0]) || {};
+    return nameOf(f0) || it.id;
   }
-
-  function rowEl(f, compact) {
-    const d = el('div', 'rr ' + f.sev);
+  function itemConcl(it) {
+    const bad = it.bad || [];
+    if (it.sev === 'ok') return fmt(S['rv.itOk'], it.raws.length);
+    const head = it.sev === 'err' ? fmt(S['rv.itErr'], bad.length)
+      : it.sev === 'warn' ? fmt(S['rv.itWarn'], bad.length)
+        : it.sev === 'un' ? fmt(S['rv.itUn'], bad.length) : fmt(S['rv.itAsk'], bad.length);
+    const locs = [];
+    for (const f of bad) { const x = locOf(f); if (x && locs.indexOf(x) < 0) locs.push(x); }
+    return head + (locs.length ? '：' + locs.slice(0, 3).join(' / ') + (locs.length > 3 ? ' …' : '') : '');
+  }
+  function itemEl(it) {
+    const d = el('div', 'rr ' + it.sev);
     const h = document.createElement('button');
     h.type = 'button'; h.className = 'rr-h';
-    h.appendChild(el('span', 'ic', ICON[f.sev] || '·'));
-    h.appendChild(el('span', 'nm', nameOf(f)));
-    h.appendChild(el('span', 'cc', conclOf(f)));
+    h.appendChild(el('span', 'ic', ICON[it.sev] || '·'));
+    h.appendChild(el('span', 'nm', itemTitle(it)));
+    h.appendChild(el('span', 'cc', itemConcl(it)));
     d.appendChild(h);
 
+    // 展開：底層の検査結果を全部出す（版・シートごとの根拠）。既定は畳んだまま。
     const rows = [];
-    for (const x of (f.detail || [])) if (x && x.v) rows.push([x.k || '根拠', String(x.v)]);
-    if (!rows.length) {
-      if (f.expect) rows.push([L({ zh: '期望', ja: '期待' }), String(f.expect)]);
-      if (f.actual) rows.push([L({ zh: '实际值', ja: '実測' }), String(f.actual)]);
-      const loc = [f.file === 'func' ? '関数版' : f.file === 'nf' ? '非関数版' : (lang() === 'zh' ? '两版' : '両版'), f.sheet, f.where].filter(Boolean).join(' → ');
-      if (loc && !compact) rows.push([L({ zh: '位置', ja: '位置' }), loc]);
+    for (const f of (it.raws || [])) {
+      const cc = conclOf(f);
+      rows.push([locOf(f) || FILE_LABEL(f.file), (f.sev === 'ok' ? '' : '[' + (f.sev === 'err' ? L({ zh: '错误', ja: 'エラー' }) : f.sev === 'warn' ? L({ zh: '警告', ja: '警告' }) : f.sev === 'un' ? L({ zh: '未验证', ja: '未検証' }) : L({ zh: '需确认', ja: '要確認' })) + '] ') + cc]);
+      if (f.expect || f.actual) rows.push([L({ zh: '期望 / 实际', ja: '期待 / 実測' }), (f.expect || '-') + ' / ' + (f.actual || '-')]);
+      for (const x of (f.detail || [])) if (x && x.v) rows.push([x.k || L({ zh: '依据', ja: '根拠' }), String(x.v)]);
     }
     if (rows.length) {
       h.appendChild(el('span', 'ar', '▾'));
@@ -13334,6 +13877,44 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       h.addEventListener('click', () => { d.classList.toggle('open'); });
     }
     return d;
+  }
+
+  function renderResult(res) {
+    const box = $('rvResult');
+    box.innerHTML = '';
+    $('rvResultHint').style.display = 'none';
+    const items = (res.items && res.items.length) ? res.items : null;
+    const s = (res.itemSummary || res.summary || {});
+    const sum = $('rvSum');
+    sum.innerHTML = '';
+    const chipLabel = lang() === 'ja'
+      ? { err: 'エラー', warn: '警告', ask: '要確認', ok: '通過', un: '未検証' }
+      : { err: '错误', warn: '警告', ask: '需确认', ok: '通过', un: '未验证' };
+    for (const k of ['err', 'warn', 'ask', 'ok', 'un']) {
+      if (!s[k]) continue;
+      sum.appendChild(el('span', 'rv-chip ' + k, chipLabel[k] + ' ' + s[k]));
+    }
+
+    if (!items) {   // 互換：items が無い結果は従来どおり 1 検査 1 行
+      const all = res.findings.slice().sort((a, b) =>
+        (SEV_ORDER[a.sev] - SEV_ORDER[b.sev]) || (GRP_ORDER.indexOf(a.group) - GRP_ORDER.indexOf(b.group)));
+      for (const f of all) box.appendChild(itemEl({ id: f.key, sev: f.sev, raws: [f], bad: f.sev === 'ok' ? [] : [f], n: {} }));
+      return;
+    }
+
+    // エラー → 警告 → 要確認/未検証 → 通過（通過も既定で表示）
+    const bad = items.filter(i => i.sev !== 'ok');
+    const pass = items.filter(i => i.sev === 'ok');
+    if (!bad.length) {
+      const okline = el('div', 'rv-allok');
+      okline.appendChild(el('span', 'ic', '✓'));
+      okline.appendChild(el('span', '', fmt(S['rv.allPass'], pass.length)));
+      box.appendChild(okline);
+    } else {
+      box.appendChild(el('div', 'rv-badline', fmt(S['rv.badCount'], bad.length)));
+    }
+    for (const it of bad) box.appendChild(itemEl(it));
+    for (const it of pass) box.appendChild(itemEl(it));
   }
 
   // ---------------------------------------------------------------- 初期化
@@ -13399,18 +13980,36 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
 })();
 </script>
 <script>
-/* NO025：使用頻度（レポート作成／レポート校正）
+/* NO025/NO026：使用頻度（レポート作成／レポート校正）
    ・能動クリック 1 回 = 1 件。内部の自動ステップでは送信しない。
    ・統計の失敗・遅延は業務（加工・校正・DL）を絶対に止めない。
-   ・送信項目は ツール名／操作種別／回数 のみ。ファイル名・案件名・CP 名・数値は送らない。 */
+   ・送信するのは ツール名／操作種別／案件キー（正規化ファイル名の SHA-256）だけ。
+     顧客名・案件名・CP 名・ファイル名・金額・指標は送らない。 */
 (function () {
   'use strict';
   var TOOL = 'TL Meta Report Studio';
   var EVENTS = { btnRun: 'report_create', btnReview: 'report_check' };
+  // 案件キー：作成＝アップロードされた FMT、校正＝関数版（無ければ非関数版）。
+  //   どちらも「中身で判定済みの役割」から取るので、アップロード順に依存しない。
+  function caseKeyFor(kind) {
+    try {
+      var CK = globalThis.TLCaseKey;
+      if (!CK) return '';
+      var nm = '';
+      if (kind === 'report_create') {
+        var st = globalThis.__TLSTATE;
+        nm = (st && st.fmt && st.fmt.name) || '';
+      } else {
+        var rv = globalThis.__TLRVSTATE;
+        nm = (rv && rv.func && rv.func.name) || (rv && rv.nf && rv.nf.name) || '';
+      }
+      return nm ? CK.caseKey(nm) : '';
+    } catch (e) { return ''; }
+  }
   function send(kind) {
     try {
       if (typeof sendLog !== 'function') return;
-      var r = sendLog(TOOL, 0, 0, kind, '', '');
+      var r = sendLog(TOOL, 0, 0, kind, caseKeyFor(kind), '');
       if (r && typeof r.catch === 'function') r.catch(function () {});
     } catch (e) { /* 統計失敗は業務に影響させない */ }
   }
