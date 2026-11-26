@@ -89,6 +89,18 @@ td.pcell{white-space:nowrap;font-variant-numeric:tabular-nums}
 .wk-period .p.ok{border-color:#a7f3d0;background:#ecfdf5;color:#065f46}
 .wk-period .p.ng{border-color:#fecaca;background:#fdecec;color:#991b1b}
 .wk-period .p.ask{border-color:#fde68a;background:#fff7e6;color:#8a5a12}
+/* NO26-FIX3：Reach 未入力の視覚警告と、TODO CP 名の一致表示（作業頁・校正頁で共通） */
+input.reach-empty{background:#FEF3C7;border-color:#F59E0B;box-shadow:0 0 0 2px rgba(245,158,11,.15)}
+.cpbox{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;font-size:12px}
+.cpbox .k{color:var(--qc-ink3);font-weight:600}
+.cpbox .v{font-weight:600;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cpbox .st{padding:2px 8px;border-radius:999px;font-weight:700;font-size:11.5px}
+.cpbox .st.ok{color:#166534;background:#DCFCE7}
+.cpbox .st.ask{color:#92400E;background:#FEF3C7}
+.cpbox .st.na{color:#64748B;background:#F1F5F9}
+.btn.mini{padding:3px 10px;font-size:11.5px}
+.hint.d5ask{color:#92400E;background:#FEF3C7;border-radius:4px;padding:1px 6px}
+
 @media(max-width:900px){.wk-period{grid-template-columns:1fr}}
 .chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600}
 .chip.daily{background:#eff6ff;color:#1d4ed8}
@@ -427,6 +439,12 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.65;cursor:pointer;m
       </div>
       <div class="msg" id="pTodoMsg"></div>
       <div class="wk-period" id="pPeriodWrap" style="display:none"></div>
+      <div class="cpbox" id="pTodoCpWrap" style="display:none">
+        <span class="k" data-i18n="p.todoCpk">TODO の CP 名（P列）</span>
+        <span class="v" id="pTodoCpName" title=""></span>
+        <span class="st na" id="pTodoCpState"></span>
+        <button class="btn mini ghost" id="pTodoCpCopy" type="button" data-i18n="p.copyNote">備考をコピー</button>
+      </div>
     </div>
     <div class="rows" id="paramRows">
       <div class="field">
@@ -446,6 +464,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.65;cursor:pointer;m
         <label id="lbReach" data-i18n="p.reach">Reach（Meta!D5）</label>
         <input type="text" id="pReach" inputmode="decimal" placeholder="例：72760">
         <span class="hint" data-i18n="p.reachH">人手入力。Total 比較の対象外</span>
+        <span class="hint" id="hReachD5"></span>
       </div>
     </div>
     <div class="field" id="cpNameWrap" style="margin-top:12px;display:none">
@@ -521,11 +540,18 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.65;cursor:pointer;m
                 <option value="final" data-i18n="rv.typeFinal">掲載終了レポート</option>
                 <option value="flash" data-i18n="rv.typeFlash">速報値</option>
               </select>
+              <span class="hint" id="rvTypeHint"></span>
             </div>
-            <div class="field"><label data-i18n="rv.reach">Reach（手入力・任意）</label><input type="text" id="rvReach" inputmode="decimal" placeholder="例：72760"></div>
+            <div class="field"><label data-i18n="rv.reach">Reach（手入力・任意）</label><input type="text" id="rvReach" inputmode="decimal" placeholder="例：72760"><span class="hint" id="rvReachD5"></span></div>
             <div class="field"><label data-i18n="rv.note">メモ</label><input type="text" id="rvMemo" placeholder=""></div>
           </div>
           <div class="msg" id="rvTodoMsg"></div>
+          <div class="cpbox" id="rvTodoCpWrap" style="display:none">
+            <span class="k" data-i18n="p.todoCpk">TODO の CP 名（P列）</span>
+            <span class="v" id="rvTodoCpName" title=""></span>
+            <span class="st na" id="rvTodoCpState"></span>
+            <button class="btn mini ghost" id="rvTodoCpCopy" type="button" data-i18n="p.copyNote">備考をコピー</button>
+          </div>
           <div class="rv-run">
             <button class="btn" id="btnReview" disabled data-i18n="rv.go">校正する</button>
             <button class="btn ghost" id="btnReviewReset" data-i18n="rv.reset">リセット</button>
@@ -8944,6 +8970,65 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 </script>
+<script>/* report_type.js — 報告種別（速報値／掲載終了レポート）の自動判定
+ * ---------------------------------------------------------------------------
+ * 実 FMT を調査した結果（2026-11-26）：
+ *   ・FMT 内部（sharedStrings / sheet 名 / パラメータセル）に「速報値」「掲載終了」等の
+ *     種別を表す権威ある文字列は存在しない（313 件の共有文字列に該当なし）。
+ *   ・実ファイル名には必ず種別が入っている：
+ *       例）Wチェック中関数【速報値(0909)】…
+ *           Wチェック中関数261020_1120【掲載終了レポート】…
+ *   したがって判定材料は「ファイル名の明示キーワード」だけにする。
+ *   **TODO の終了日などから推測しない**（推測は誤判定の温床）。
+ *
+ * 返り値：{ type:'flash'|'final'|'unknown', reason, hits:{flash,final} }
+ *   unknown は「判定できない」＝要確認。既定で final に倒さない。
+ * --------------------------------------------------------------------------- */
+(function (root) {
+  'use strict';
+
+  var FLASH_RE = /速報値|速報/;
+  var FINAL_RE = /掲載終了レポート|終了レポート/;
+
+  function scan(name) {
+    var nm = String(name == null ? '' : name);
+    // 拡張子は判定に不要（付いていても害はないが、ログを読みやすくする）
+    nm = nm.replace(/\.(xlsm|xlsx|xls)$/i, '');
+    return {
+      flash: FLASH_RE.test(nm),
+      final: FINAL_RE.test(nm),
+    };
+  }
+
+  /** 1 つのファイル名から判定する */
+  function detect(name) {
+    var h = scan(name);
+    if (h.flash && !h.final) return { type: 'flash', reason: 'nameFlash', hits: h };
+    if (h.final && !h.flash) return { type: 'final', reason: 'nameFinal', hits: h };
+    if (h.flash && h.final) return { type: 'unknown', reason: 'conflict', hits: h };
+    return { type: 'unknown', reason: 'noKeyword', hits: h };
+  }
+
+  /** 関数版・非関数版の 2 冊から判定する（校正頁）
+   *  両方が同じ種別のときだけ確定。片方でも判定できなければ要確認。 */
+  function detectFrom(names) {
+    var list = (names || []).filter(function (x) { return x; });
+    if (!list.length) return { type: 'unknown', reason: 'noFile', hits: {} };
+    var out = null;
+    for (var i = 0; i < list.length; i++) {
+      var d = detect(list[i]);
+      if (d.type === 'unknown') return { type: 'unknown', reason: d.reason === 'conflict' ? 'conflict' : 'noKeyword', hits: d.hits, file: list[i] };
+      if (out && out.type !== d.type) return { type: 'unknown', reason: 'pairDiff', hits: d.hits, file: list[i] };
+      out = d;
+    }
+    return out;
+  }
+
+  var api = { detect: detect, detectFrom: detectFrom, scan: scan };
+  root.TLReportType = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
 <script>/* ===========================================================================
  * qc_review.js — 「校正」頁の読み取り専用チェック（NO24 ③）
  *
@@ -9152,11 +9237,16 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   function expectedPeriodOf(o) {
     o = o || {};
     const todo = o.todo || null;
-    const reportType = o.reportType === 'flash' ? 'flash' : 'final';
+    // NO26-FIX3：種別が確定できない（unknown）ときは final に倒さず「決めない」。
+    //   final / flash の規則そのものは変えない。
+    const rt = (o.reportType === 'flash' || o.reportType === 'final') ? o.reportType : 'unknown';
+    const reportType = rt;
     const wd = o.workday || null;
     const start = todo && todo.fields && todo.fields.start ? dstr(todo.fields.start) : null;
     let end = null, reason = '';
-    if (reportType === 'flash') {
+    if (reportType === 'unknown') {
+      reason = 'unknownType';
+    } else if (reportType === 'flash') {
       if (wd) {
         const d = new Date(Date.UTC(wd.getUTCFullYear(), wd.getUTCMonth(), wd.getUTCDate()) - 86400000);
         end = dstr({ y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() });
@@ -9281,8 +9371,18 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   const dstr = d => d ? d.y + '-' + String(d.m).padStart(2, '0') + '-' + String(d.d).padStart(2, '0') : '';
   function dateSerial(d) { return Math.floor(Date.UTC(d.y, d.m - 1, d.d) / 86400000); }
 
-  function parseTodo(text) {
-    const raw = String(text == null ? '' : text).replace(/\r/g, '');
+  function parseTodoCore(text) {
+    let raw = String(text == null ? '' : text).replace(/\r/g, '');
+    // NO26-FIX3：I:P を表頭ごとコピーした場合に備え、1 行目が見出しなら落とす
+    //   （4 セルだけの貼り付けは従来どおり。見出しが無ければ何もしない）
+    {
+      const rows0 = raw.split(/\n/);
+      if (rows0.length > 1) {
+        const h = rows0[0].split('\t').map(c => String(c).trim());
+        const n = h.filter(c => /グロス予算|マージン|開始日|終了日|キャンペーン名|広告アカウントID/.test(c)).length;
+        if (n >= 2) raw = rows0.slice(1).join('\n');
+      }
+    }
     const cells = raw.split(/\n/).join('\t').split('\t').map(s => s.trim()).filter((s, i, a) => !(s === '' && a.length === 4));
     const picked = cells.filter(s => s !== '');
     const out = { ok: false, fields: {}, errors: [], raw: picked };
@@ -9305,6 +9405,46 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     if (e) out.fields.end = e;
     if (s && e && dateSerial(e) < dateSerial(s)) out.errors.push({ key: 'todo.order', args: [dstr(s), dstr(e)] });
     out.ok = out.errors.length === 0;
+    return out;
+  }
+
+  // ---------------------------------------------------------------- TODO のセル位置（NO26-FIX3）
+  //   TODO は I:P を横にコピーしてくる（I=グロス予算 J=マージン K=開始日 L=終了日
+  //   M=広告アカウントID N/O=空 P=キャンペーン名）。空セルを詰めると P がずれるので、
+  //   元の列位置を保ったまま読む。
+  function todoGrid(text) {
+    const raw = String(text == null ? '' : text).replace(/\r/g, '');
+    const rows = raw.split(/\n/).map(r => r.split('\t').map(c => String(c == null ? '' : c).trim()));
+    // 末尾の空行だけ落とす（途中の空セル・空行は**詰めない**：P 列の位置がずれる）
+    while (rows.length && rows[rows.length - 1].every(c => c === '')) rows.pop();
+    if (rows.length === 1 && rows[0].every(c => c === '')) return [];
+    return rows;
+  }
+  /** P 列（キャンペーン名）を取り出す。表頭があれば見出しで、無ければ I:P の固定位置。 */
+  function todoCpOf(text) {
+    const rows = todoGrid(text);
+    if (!rows.length) return { name: '', source: 'none' };
+    const head = rows[0];
+    const isHeader = head.filter(c => /グロス予算|マージン|開始日|終了日|キャンペーン名|広告アカウントID/.test(c)).length >= 2;
+    if (isHeader) {
+      const ci = head.findIndex(c => /キャンペーン名/.test(c));
+      // 「広告アカウントID」しか無い場合は CP 名にしない
+      if (ci < 0) return { name: '', source: 'headerNoCp' };
+      const data = rows[1] || [];
+      return { name: String(data[ci] == null ? '' : data[ci]).trim(), source: 'header', col: ci };
+    }
+    // 横 1 行（I:P の 8 セル以上）→ 8 番目（0 起点 7）が P
+    if (head.length >= 8) return { name: head[7], source: 'fixed', col: 7 };
+    // 縦 1 列（8 行以上）→ 8 行目が P
+    if (head.length <= 1 && rows.length >= 8) {
+      return { name: String((rows[7] || [''])[0] == null ? '' : (rows[7] || [''])[0]).trim(), source: 'fixed', col: 7 };
+    }
+    return { name: '', source: 'none' };
+  }
+
+  function parseTodo(text) {
+    const out = parseTodoCore(text);
+    out.cp = todoCpOf(text);
     return out;
   }
 
@@ -9386,6 +9526,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'case.lateStart': 'case.period', 'case.boundaryAsk': 'case.period', 'case.noPeriod': 'case.period',
     'case.noExpectedEnd': 'case.period', 'case.needWorkday': 'case.period', 'case.needFuncForPeriod': 'case.period',
     'case.caseMismatch': 'case.pair',
+    'case.cpNameOk': 'case.cp', 'case.cpNameDiff': 'case.cp', 'case.cpNameUnreadable': 'case.cp',
     'case.rawPeriodOk': 'case.rawPeriod', 'case.rawPeriodDiff': 'case.rawPeriod', 'case.rawPeriodUnreadable': 'case.rawPeriod',
     'p.budgetOk': 'param.budget', 'p.budgetBad': 'param.budget',
     'p.marginOk': 'param.margin', 'p.marginBad': 'param.margin',
@@ -9420,6 +9561,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'case.rawPeriod': { zh: 'RAW 下载期间', ja: 'RAW ダウンロード期間' },
     'case.name': { zh: '案件名的一致', ja: '案件名の一致' },
     'case.pair': { zh: '两份文件是否同一案件', ja: '2 冊が同一案件か' },
+    'case.cp': { zh: 'CP 名称（TODO 与实际）', ja: 'CP 名称（TODO と実ファイル）' },
     'param.budget': { zh: '予算', ja: '予算' },
     'param.margin': { zh: 'マージン', ja: 'マージン' },
     'param.reach': { zh: 'Reach', ja: 'Reach' },
@@ -9818,7 +9960,8 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
           push('warn', 'param', { file: primaryTag, sheet: primaryPages[0], where: 'Reach（入力）',
             key: 'p.reachInputInvalid', args: [reachRaw] });
         } else if (g0.reachWb != null && Math.abs(reachInNum - g0.reachWb) > 1e-9) {
-          push('ask', 'param', { file: primaryTag, sheet: primaryPages[0], where: g0.reachCell || 'Reach',
+          // NO26-FIX3：数値が明確に違うときは「要確認」ではなく赤のエラー
+          push('err', 'param', { file: primaryTag, sheet: primaryPages[0], where: g0.reachCell || 'Reach',
             key: 'p.reachInputDiff', args: [fmtNum(reachInNum), fmtNum(g0.reachWb), g0.reachCell || '-'] });
         }
       }
@@ -9833,6 +9976,51 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
           key: 'case.caseMismatch', args: [],
           detail: [{ k: '関数版', v: String(opts.funcName || '').slice(0, 80) }, { k: '非関数版', v: String(opts.nfName || '').slice(0, 80) }],
         });
+      }
+    }
+
+    // ---- ③.6 CP 名（NO26-FIX3）：TODO の P 列（キャンペーン名）と実ファイルの B2 を突き合わせる
+    //   TODO 名が空（I:L の 4 セルだけ）なら NA＝何も出さない。
+    //   完全一致のみ。部分一致・類似・記号除去などの補正はしない。
+    if (opts.todoCp && String(opts.todoCp).trim()) {
+      const want = String(opts.todoCp).trim();
+      const actuals = [];
+      for (const [tag2, bk2] of [['func', func], ['nf', nf]]) {
+        if (!bk2) continue;
+        for (const pg of reportPagesOf(bk2)) {
+          const sh2 = bk2.sheets.get(pg);
+          if (!sh2) continue;
+          const cp = String(textOf(sh2, 'B2') == null ? '' : textOf(sh2, 'B2')).trim();
+          actuals.push({ tag: tag2, sheet: pg, cp });
+        }
+      }
+      const named = actuals.filter(a => a.cp);
+      F.ctx.cpName = { want, actuals };
+      if (!named.length) {
+        push('ask', 'case', {
+          file: 'both', sheet: '-', where: 'Meta!B2',
+          key: 'case.cpNameUnreadable', args: [want],
+          detail: [{ k: 'TODO', v: want }],
+        });
+      } else {
+        const uniq = [];
+        for (const a of named) if (!uniq.some(u => u.cp === a.cp)) uniq.push(a);
+        const hit = uniq.filter(u => u.cp === want);
+        const where = uniq.map(u => label[u.tag] + ' / ' + u.sheet).join('、');
+        if (uniq.length === 1 && hit.length === 1) {
+          push('ok', 'case', {
+            file: 'both', sheet: uniq[0].sheet, where: 'Meta!B2',
+            key: 'case.cpNameOk', args: [want, uniq[0].cp],
+            detail: [{ k: 'TODO', v: want }, { k: '実ファイル（' + label[uniq[0].tag] + '）', v: uniq[0].cp }],
+          });
+        } else {
+          // 一致しない／一意に対応づけられない → 要確認（一致と誤報しない）
+          push('ask', 'case', {
+            file: 'both', sheet: uniq[0].sheet, where: 'Meta!B2',
+            key: 'case.cpNameDiff', args: [want, uniq.map(u => u.cp).join(' / '), where],
+            detail: [{ k: 'TODO', v: want }].concat(uniq.map(u => ({ k: '実ファイル（' + label[u.tag] + ' / ' + u.sheet + '）', v: u.cp }))),
+          });
+        }
       }
     }
 
@@ -10897,7 +11085,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     return out;
   }
 
-  root.TLReview = { openBook, parseTodo, parseDateLike, parseNumberLike, review, deriveNf, blockRects, parseAnchors, reportPagesOf, auxPagesOf, pageKindOf, rawDownloadPeriods, periodOfSheet, periodOfRawBook, buildItems, itemIdOf, ITEM_TITLE, adNamesFromPage, effectiveAds, unknownPagesOf, classifyPages, compositionPagesOf, hasUnknown: pageKindOf, hasDetailFormula, expectedPeriodOf, PLACEHOLDER_BLUE, filterRdByCp, comparePage };
+  root.TLReview = { openBook, parseTodo, todoCpOf, todoGrid, parseDateLike, parseNumberLike, review, deriveNf, blockRects, parseAnchors, reportPagesOf, auxPagesOf, pageKindOf, rawDownloadPeriods, periodOfSheet, periodOfRawBook, buildItems, itemIdOf, ITEM_TITLE, adNamesFromPage, effectiveAds, unknownPagesOf, classifyPages, compositionPagesOf, hasUnknown: pageKindOf, hasDetailFormula, expectedPeriodOf, PLACEHOLDER_BLUE, filterRdByCp, comparePage };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.TLReview;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 </script>
@@ -11014,6 +11202,27 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'p.periodAsk': { zh: '无法读取', ja: '読み取れません' },
     'p.periodNoCol': { zh: '（RAW 无「レポート開始日/終了日」列）', ja: '（RAW に「レポート開始日/終了日」列なし）' },
     'p.periodExp': { zh: '期望 {0}', ja: '期待 {0}' },
+    'p.todoCpk': { zh: 'TODO 的 CP 名（P 列）', ja: 'TODO の CP 名（P列）' },
+    'p.copyNote': { zh: '复制备考', ja: '備考をコピー' },
+    'p.copied': { zh: '已复制备考', ja: '備考をコピーしました' },
+    'p.copyFail': { zh: '复制失败（请手动选择文字）', ja: 'コピーできません（手動で選択してください）' },
+    'p.cpNa': { zh: 'NA（未粘贴 P 列）', ja: 'NA（P列なし）' },
+    'p.cpOk': { zh: '✓ 一致', ja: '✓ 一致' },
+    'p.cpAskDiff': { zh: '要确认（与 TODO 不一致）', ja: '要確認（TODO と不一致）' },
+    'p.cpAskMulti': { zh: '要确认（多个 CP，无法唯一对应）', ja: '要確認（複数 CP で一意に対応づけできません）' },
+    'p.cpAskUnread': { zh: '要确认（无法读取实际 CP 名）', ja: '要確認（実ファイルの CP 名を読めません）' },
+    'p.d5Ok': { zh: 'FMT 实际值 {0}：{1}', ja: 'FMT 実値 {0}：{1}' },
+    'p.d5Ask': { zh: 'FMT 的 {0} {1} → 需确认（不是人工输入值）', ja: 'FMT の {0} は{1} → 要確認（手入力値ではありません）' },
+    'p.d5WhyEmpty': { zh: '为空', ja: '空です' },
+    'p.d5WhyNoSheet': { zh: '工作表不存在', ja: 'シートがありません' },
+    'p.d5WhyError': { zh: '无法读取', ja: '読み取れません' },
+    'p.d5WhyNotNum': { zh: '不是数值（{0}）', ja: '数値ではありません（{0}）' },
+    'p.d5WhyNoFile': { zh: '尚未选择 FMT', ja: 'FMT 未選択' },
+    'p.typeUnknown': { zh: '要确认：无法从文件名判断报告类型', ja: '要確認：ファイル名から種別を判別できません' },
+    'p.typeConflict': { zh: '要确认：文件名里速报与终了两类关键字都有', ja: '要確認：ファイル名に速報と終了の両方の語があります' },
+    'p.typePairDiff': { zh: '要确认：函数版与非函数版的类型判断不同', ja: '要確認：関数版と非関数版で種別の判定が異なります' },
+    'p.typeNeedWorkday': { zh: '：速报值需要作业日（未填时不判定截止日）', ja: '：速報値は作業日が必要です（未入力のため終了日は判定しません）' },
+    'p.typeNoTodoEnd': { zh: '：掲載終了需要 TODO 的结束日', ja: '：掲載終了は TODO の終了日が必要です' },
     'p.workday': { zh: '作业日', ja: '作業日' },
     'p.type': { zh: '报告类型', ja: 'レポート種別' },
     'p.typeAuto': { zh: '自动（按文件名）', ja: '自動（ファイル名から）' },
@@ -11540,6 +11749,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     state.perCp = {};
     state.todoDates = null;
     state.ownerKey = ''; state.ownerSrc = '';
+    state.todoCpName = '';
     if ($('pTodoPaste')) $('pTodoPaste').value = '';
     if ($('pPeriodWrap')) { $('pPeriodWrap').style.display = 'none'; $('pPeriodWrap').innerHTML = ''; }
     clearMsg('pTodoMsg');
@@ -11588,14 +11798,17 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     const exp = globalThis.TLReview.expectedPeriodOf({
       todo: { fields: { start: t0.start, end: t0.end } }, reportType: reportTypeOf(), workday: workdayOf()
     });
-    const hint = $('pTypeHint');
-    if (hint) hint.textContent = t(exp.basis === 'flash' ? 'p.typeHintFlash' : 'p.typeHintFinal');
-    if (!exp.end) {   // 速報で作業日が空 → 一致判定をしない（フェイクの一致を出さない）
+    const det = reportTypeDetail();
+    refreshTypeHint();
+    if (!exp.end) {   // 種別不明／作業日なし／終了日なし → 一致判定をしない（フェイクの一致を出さない）
       wrap.style.display = 'grid';
       wrap.innerHTML = '';
       const b = el('div', 'p ask');
       b.appendChild(el('b', '', t('p.periodAsk')));
-      b.appendChild(document.createTextNode(t('p.needWorkday')));
+      const why = exp.reason === 'unknownType'
+        ? t(det.reason === 'conflict' ? 'p.typeConflict' : 'p.typeUnknown')
+        : exp.reason === 'noWorkday' ? t('p.typeNeedWorkday') : t('p.typeNoTodoEnd');
+      b.appendChild(document.createTextNode(why));
       wrap.appendChild(b);
       return;
     }
@@ -11645,12 +11858,132 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
     return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
   }
-  function reportTypeOf() {
+  // NO26-FIX3：共通の判定関数（作業頁・校正頁で同じ規則）。
+  //   'unknown' は「判定できない」＝要確認。既定で final に倒さない。
+  function reportTypeDetail() {
     const sel = ($('pType') && $('pType').value) || 'auto';
-    if (sel !== 'auto') return sel;
+    if (sel !== 'auto') return { type: sel, reason: 'manual', manual: true };
     const nm = (state.fmt && state.fmt.name) || '';
-    return /速報/.test(nm) ? 'flash' : 'final';
+    const RT = globalThis.TLReportType;
+    if (!RT) return { type: 'unknown', reason: 'noModule' };
+    return RT.detect(nm);
   }
+  function reportTypeOf() { return reportTypeDetail().type; }
+
+  // ---------------------------------------------------------------- NO26-FIX3：共通の小物
+  // ブラウザのローカル日付（UTC 変換しない）
+  function localToday() {
+    const d = new Date();
+    const p2 = n => ('0' + n).slice(-2);
+    return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+  }
+  function ensureWorkdayToday() {
+    const el = $('pWorkday');
+    if (el && !el.value) el.value = localToday();   // 既に入力があれば触らない
+  }
+  // Reach が空のときだけ黄色（作業頁・校正頁で同じ規則）
+  const REACH_IDS = ['pReach', 'rvReach'];
+  function refreshReachStyle() {
+    REACH_IDS.forEach(id => {
+      const el = $(id); if (!el) return;
+      el.classList.toggle('reach-empty', String(el.value == null ? '' : el.value).trim() === '');
+    });
+  }
+  // FMT の Reach（Meta!D5／日経は G!D5）を読む。手入力値とは別物として表示する。
+  const d5Cache = {};
+  async function refreshD5() {
+    const el = $('hReachD5');
+    if (!el) return;
+    const f = state.fmt;
+    if (!f) { el.className = 'hint'; el.textContent = ''; return; }
+    const key = (f.sig || '') + '|' + (f.name || '');
+    let r = d5Cache[key];
+    if (!r) {
+      r = { ok: false, reason: 'p.d5WhyError' };
+      try {
+        const R = globalThis.TLReview;
+        const sites = paramSites();
+        const bk = await R.openBook(f.buf, 'func');
+        const sh = bk.sheets.get(sites.reach.sheet);
+        if (!sh) r = { ok: false, reason: 'p.d5WhyNoSheet', at: sites.reach.sheet };
+        else {
+          const c = sh.cells.get(sites.reach.cell);
+          const v = c && c.v != null ? String(c.v).trim() : '';
+          r = v === '' ? { ok: false, reason: 'p.d5WhyEmpty', at: sites.reach.sheet + '!' + sites.reach.cell }
+            : !/^-?[0-9][0-9,.]*$/.test(v) ? { ok: false, reason: 'p.d5WhyNotNum', at: sites.reach.sheet + '!' + sites.reach.cell, value: v }
+              : { ok: true, value: v, at: sites.reach.sheet + '!' + sites.reach.cell };
+        }
+      } catch (e) { r = { ok: false, reason: 'p.d5WhyError' }; }
+      d5Cache[key] = r;
+    }
+    if (r.ok) { el.className = 'hint'; el.textContent = t('p.d5Ok', r.at, r.value); }
+    else { el.className = 'hint d5ask'; el.textContent = t('p.d5Ask', r.at || 'Meta!D5', t(r.reason, r.value || '')); }
+  }
+
+  // 種別ヒント（自動判定の結果と理由）。判定できないときは要確認を出す。
+  function refreshTypeHint() {
+    const el = $('pTypeHint');
+    if (!el) return;
+    const d = reportTypeDetail();
+    if (d.manual) { el.className = 'hint'; el.textContent = t(d.type === 'flash' ? 'p.typeFlash' : 'p.typeFinal'); return; }
+    if (d.type === 'unknown') {
+      el.className = 'hint d5ask';
+      el.textContent = t(d.reason === 'conflict' ? 'p.typeConflict' : 'p.typeUnknown');
+    } else { el.className = 'hint'; el.textContent = t(d.type === 'flash' ? 'p.typeFlash' : 'p.typeFinal'); }
+  }
+
+  // ---------------------------------------------------------------- NO26-FIX3：TODO の CP 名
+  // 完全一致だけ。部分一致・記号除去・類似度はしない。
+  function cpCompare(want, actuals) {
+    const u = [];
+    for (const a of actuals) { const x = String(a == null ? '' : a).trim(); if (x && u.indexOf(x) < 0) u.push(x); }
+    if (!want) return { state: 'na', uniq: u };
+    if (!u.length) return { state: 'ask', why: 'unread', uniq: u };
+    if (u.length === 1) return (u[0] === want) ? { state: 'ok', uniq: u } : { state: 'ask', why: 'diff', uniq: u };
+    const hit = u.filter(x => x === want);
+    return { state: 'ask', why: hit.length ? 'multi' : 'diff', uniq: u };
+  }
+  function cpNoteText(actual) { return 'キャンペーン名『' + String(actual || '').trim() + '』にて対応しております。'; }
+  function copyText(text, okMsgKey) {
+    const done = () => msg('pTodoMsg', 'ok', t(okMsgKey || 'p.copied'));
+    const fail = () => msg('pTodoMsg', 'warn', t('p.copyFail'));
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(() => fallback());
+        return;
+      }
+    } catch (e) { /* fall through */ }
+    fallback();
+    function fallback() {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok ? done() : fail();
+      } catch (e) { fail(); }
+    }
+  }
+  function refreshTodoCp() {
+    const wrap = $('pTodoCpWrap');
+    if (!wrap) return;
+    const want = String(state.todoCpName || '').trim();
+    const m = cpCompare(want, state.cpList || []);
+    wrap.style.display = '';
+    const nmEl = $('pTodoCpName'), stEl = $('pTodoCpState'), btn = $('pTodoCpCopy');
+    nmEl.textContent = want || '—';
+    nmEl.title = want || '';
+    stEl.className = 'st ' + (m.state === 'ok' ? 'ok' : m.state === 'ask' ? 'ask' : 'na');
+    stEl.textContent = m.state === 'ok' ? t('p.cpOk')
+      : m.state === 'na' ? t('p.cpNa')
+        : t(m.why === 'multi' ? 'p.cpAskMulti' : m.why === 'unread' ? 'p.cpAskUnread' : 'p.cpAskDiff');
+    stEl.title = m.uniq.join(' / ');
+    const canCopy = m.state === 'ask' && m.uniq.length === 1;
+    btn.style.display = canCopy ? '' : 'none';
+    btn.onclick = () => copyText(cpNoteText(m.uniq[0]));
+  }
+
   // 入力の持ち主（案件）を記録する。案件が変わったら黙って使い回さない。
   function currentCaseKey() {
     const CK = globalThis.TLCaseKey;
@@ -11676,7 +12009,6 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     if ($('pTodoPaste')) $('pTodoPaste').value = '';
     state.ownerKey = k; state.ownerSrc = '';
     msg('pTodoMsg', 'warn', t('p.ownerReset'));
-    try { enforceOwner(); } catch (e) { }
     if (typeof renderPeriodBoxes === 'function') { try { renderPeriodBoxes(); } catch (e) { } }
     return true;
   }
@@ -11690,21 +12022,27 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     if (f.margin != null) marginToInputs(f.margin);
     if (f.start && f.end) state.todoDates = { start: f.start, end: f.end };
     if (state.out) clearOutput('st.prevInvalid');
+    // NO26-FIX3：貼り付け欄は 4 値に畳まれるので、P 列の CP 名は state に退避する
+    state.todoCpName = String((p.cp && p.cp.name) || '').trim();
     if (p.errors.length) {
       // 読み取れない貼り付け：古い値と混ぜない（4 項目を空にして入れ直させる）
       $('pBudget').value = ''; $('pReach').value = '';
       $('pMargin').value = 'custom'; $('pMarginCustom').value = ''; syncMarginInput();
       state.todoDates = null;
       state.ownerSrc = '';
+      state.todoCpName = '';
       msg('pTodoMsg', 'warn', t('p.todoCleared'));
     } else {
       markOwner('paste');
       msg('pTodoMsg', 'ok', t('p.todoOk'));
       const one = [String(f.budget != null ? f.budget : ''),
         (Math.round((f.margin || 0) * 10000) / 100) + '%', dstr3(f.start), dstr3(f.end)].join('\t');
-      $('pTodoPaste').value = one;
+      // NO26-FIX3：P 列（CP 名）を含む貼り付けは畳まない（畳むと P 列が消えて再読で NA になる）
+      $('pTodoPaste').value = (p.cp && p.cp.name) ? String(text || '').replace(/\r/g, '') : one;
     }
     renderPeriodBoxes();
+    refreshTodoCp();          // NO26-FIX3：TODO の CP 名を更新
+    refreshTypeHint();
     refreshButtonsAndMsg();
   }
   // 校正頁へ引き継ぐ（同一案件のときだけ使う）
@@ -12166,6 +12504,9 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     }, state.fmt.replaced);
     renderAliasNote();
     try { enforceOwner(); } catch (e) { }
+    try { refreshTodoCp(); } catch (e) { }        // NO26-FIX3：実 CP 名が変われば再判定
+    try { refreshD5(); } catch (e) { }            // NO26-FIX3：FMT の D5 を表示
+    try { refreshTypeHint(); } catch (e) { }      // NO26-FIX3：種別の自動判定を表示
     if (typeof renderPeriodBoxes === 'function') { try { renderPeriodBoxes(); } catch (e) { } }
     for (const role of ROLES) {
       const list = state.raws.filter(r => r.role === role);
@@ -13406,6 +13747,9 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     clearLog(); showLog(false);
     resetParams();
     renderFiles(); renderParams(); renderPanel(null); renderNotes();
+    ensureWorkdayToday();          // NO26-FIX3：リセット後は当日
+    refreshReachStyle();
+    refreshTodoCp();
     $('btnRun').disabled = true;
     $('btnFunc').disabled = true; $('btnNf').disabled = true; $('btnZip').disabled = true;
     setStatus('', 'st.pick');
@@ -13432,6 +13776,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     ['pBudget', 'pReach', 'pMarginCustom'].forEach(id =>
       $(id).addEventListener('input', () => {
         markOwner('manual');
+        if (id === 'pReach') refreshReachStyle();   // NO26-FIX3
         if (state.out) clearOutput('st.prevInvalid');
         refreshButtonsAndMsg();          // NO19 ④：確定済みの案内を、入力状況に合わせて出し分ける
       }));
@@ -13445,7 +13790,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       $('pWorkday').addEventListener('change', () => { markOwner('manual'); renderPeriodBoxes(); });
     }
     if ($('pType')) {
-      $('pType').addEventListener('change', () => { renderPeriodBoxes(); });
+      $('pType').addEventListener('change', () => { refreshTypeHint(); renderPeriodBoxes(); });
     }
     const todoBox = $('pTodoPaste');
     if (todoBox) {
@@ -13514,7 +13859,8 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   }
 
   // NO24：校正頁（ui_review.js）が同じ文言表と再描画を使えるようにする
-  globalThis.__TLWORK = { todoSnapshot: () => todoSnapshot(), state };
+  globalThis.__TLWORK = { todoSnapshot: () => todoSnapshot(), state,
+    refreshReachStyle, ensureWorkdayToday, localToday, cpCompare, cpNoteText, copyText, t };
   globalThis.__TLI18N = STR;
   globalThis.__TLAPPLY = applyLang;
   globalThis.__TLT = t;
@@ -13522,6 +13868,10 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   window.addEventListener('DOMContentLoaded', () => {
     bindInput();
     resetParams();
+    // NO26-FIX3：作業日は既定で当日（既に入力があれば触らない）／Reach の見た目／CP 名表示
+    ensureWorkdayToday();
+    refreshReachStyle();
+    refreshTodoCp();
     applyLang();
     renderNotes();
     renderPanel(null);
@@ -13573,6 +13923,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     'rv.typeAuto': { zh: '自动判定（按文件名）', ja: '自動判定（ファイル名）' },
     'rv.typeFinal': { zh: '掲載終了レポート', ja: '掲載終了レポート' },
     'rv.typeFlash': { zh: '速报值', ja: '速報値' },
+    'rv.cpPending': { zh: '判定在「校正」后（现在还未比对）', ja: '「校正する」で判定します（未比較）' },
     'rv.reach': { zh: 'Reach（手输入・任意）', ja: 'Reach（手入力・任意）' },
     'rv.note': { zh: '备注', ja: 'メモ' },
     'rv.c3': { zh: '执行校正', ja: '校正の実行' },
@@ -13921,6 +14272,10 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
         state.pairKey = '';
         inheritTodo();
       }
+      // NO26-FIX3：ファイルが変われば D5・種別・CP 名の表示を作り直す
+      try { rvRefreshD5(); } catch (e) { }
+      try { rvRefreshTypeHint(); } catch (e) { }
+      try { rvRefreshCp(); } catch (e) { }
     } finally {
       state.busy = false;
       refresh();
@@ -13943,6 +14298,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   function rvClearInputs() {
     ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd', 'rvReach'].forEach(id => { if ($(id)) $(id).value = ''; });
     if ($('rvPaste')) $('rvPaste').value = '';
+    state.todoCpName = '';
     state.inheritedKey = '';
   }
   function rvEnforceOwner() {
@@ -14027,6 +14383,8 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     if (f.margin != null) $('rvMargin').value = (Math.round(f.margin * 10000) / 100) + '%';
     if (f.start) $('rvStart').value = f.start.y + '/' + f.start.m + '/' + f.start.d;
     if (f.end) $('rvEnd').value = f.end.y + '/' + f.end.m + '/' + f.end.d;
+    // NO26-FIX3：貼り付け欄は 4 値に畳まれるので、P 列の CP 名は state に退避する
+    state.todoCpName = String((p.cp && p.cp.name) || '').trim();
     const filled = ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd'].every(id => ($(id).value || '').trim());
     if (p.errors.length) {
       // すでに 4 欄が埋まっているなら、畳んだ 1 行を読み直しただけなので警告しない
@@ -14035,7 +14393,9 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       msgBox('rvTodoMsg', '', '');   // 4 欄に展開済みなので、成功の色塊は出さない
       // 貼り付け欄は 1 行に畳む（タブ区切りなので読み直しても 4 項目のまま）
       const one = ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd'].map(id => ($(id).value || '').trim()).join('\t');
-      if (one.trim()) $('rvPaste').value = one;
+      // NO26-FIX3：P 列（CP 名）を含む貼り付けは畳まない
+      if (p.cp && p.cp.name) $('rvPaste').value = String(text || '').replace(/\r/g, '');
+      else if (one.trim()) $('rvPaste').value = one;
     }
     rvMarkOwner('paste');
     invalidate();
@@ -14047,13 +14407,108 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     return R.parseTodo(v.join('\t'));
   }
 
+  // ---------------------------------------------------------------- NO26-FIX3：共通の小物（作業頁と共有）
+  const W = () => globalThis.__TLWORK || null;
+  function rvRefreshReach() { const w = W(); if (w && w.refreshReachStyle) w.refreshReachStyle(); }
+  function rvEnsureWorkday() {
+    const el = $('rvWorkday');
+    if (!el || el.value) return;             // 手入力を上書きしない
+    const w = W();
+    el.value = w && w.localToday ? w.localToday() : new Date().toISOString().slice(0, 10);
+  }
+  const rvTodoCpName = () => String(state.todoCpName || '').trim();
+  // CP 名ボックス（実行前は「校正後に判定」、実行後は結果から一致／要確認を反映）
+  function rvShowCp(state_, uniq, why) {
+    const wrap = $('rvTodoCpWrap');
+    if (!wrap) return;
+    const name = rvTodoCpName();
+    wrap.style.display = '';
+    const nmEl = $('rvTodoCpName'), stEl = $('rvTodoCpState'), btn = $('rvTodoCpCopy');
+    nmEl.textContent = name || '—';
+    nmEl.title = name || (uniq || []).join(' / ');
+    const w = W();
+    const txt = (k) => (w && w.t ? w.t(k) : k);
+    stEl.className = 'st ' + (state_ === 'ok' ? 'ok' : state_ === 'ask' ? 'ask' : 'na');
+    stEl.textContent = state_ === 'ok' ? txt('p.cpOk')
+      : state_ === 'ask' ? txt(why === 'multi' ? 'p.cpAskMulti' : why === 'unread' ? 'p.cpAskUnread' : 'p.cpAskDiff')
+        : state_ === 'na' ? txt('p.cpNa') : txt('rv.cpPending');
+    stEl.title = (uniq || []).join(' / ');
+    const canCopy = state_ === 'ask' && (uniq || []).length === 1;
+    btn.style.display = canCopy ? '' : 'none';
+    btn.onclick = () => { const ww = W(); if (ww && ww.copyText) ww.copyText(ww.cpNoteText(uniq[0])); };
+  }
+  function rvRefreshCp() {
+    const w = W();
+    const name = rvTodoCpName();
+    if (!name) { rvShowCp('na', []); return; }
+    rvShowCp('pending', []);
+  }
+  function rvApplyResultCp(res) {
+    const name = rvTodoCpName();
+    if (!name) { rvShowCp('na', []); return; }
+    const it = (res.items || []).find(i => i.id === 'case.cp');
+    if (!it) { rvShowCp('pending', []); return; }
+    if (it.sev === 'ok') { rvShowCp('ok', []); return; }
+    const det = (it.bad && it.bad[0] && it.bad[0].detail) || [];
+    const actual = det.filter(x => /実ファイル/.test(x.k)).map(x => x.v);
+    rvShowCp('ask', actual, it.bad && it.bad[0] && it.bad[0].key === 'case.cpNameUnreadable' ? 'unread'
+      : actual.length > 1 ? 'multi' : 'diff');
+  }
+
+  // FMT の Reach（Meta!D5）を表示（手入力値とは別物）
+  const rvD5Cache = {};
+  async function rvRefreshD5() {
+    const el = $('rvReachD5');
+    if (!el) return;
+    const f = state.func || state.nf;
+    if (!f) { el.className = 'hint'; el.textContent = ''; return; }
+    const key = (f.sig || '') + '|' + f.name;
+    let r = rvD5Cache[key];
+    if (!r) {
+      r = { ok: false, reason: 'p.d5WhyError' };
+      try {
+        const R = globalThis.TLReview;
+        const sites = paramSitesOf();
+        const bk = await R.openBook(f.buf, 'func');
+        const sh = bk.sheets.get(sites.reach.sheet);
+        if (!sh) r = { ok: false, reason: 'p.d5WhyNoSheet', at: sites.reach.sheet };
+        else {
+          const c = sh.cells.get(sites.reach.cell);
+          const v = c && c.v != null ? String(c.v).trim() : '';
+          r = v === '' ? { ok: false, reason: 'p.d5WhyEmpty', at: sites.reach.sheet + '!' + sites.reach.cell }
+            : !/^-?[0-9][0-9,.]*$/.test(v) ? { ok: false, reason: 'p.d5WhyNotNum', at: sites.reach.sheet + '!' + sites.reach.cell, value: v }
+              : { ok: true, value: v, at: sites.reach.sheet + '!' + sites.reach.cell };
+        }
+      } catch (e) { r = { ok: false, reason: 'p.d5WhyError' }; }
+      rvD5Cache[key] = r;
+    }
+    const w = W(); const txt = k => (w && w.t ? w.t(k) : k);
+    if (r.ok) { el.className = 'hint'; el.textContent = txt('p.d5Ok').replace('{0}', r.at).replace('{1}', r.value); }
+    else { el.className = 'hint d5ask'; el.textContent = txt('p.d5Ask').replace('{0}', r.at || 'Meta!D5').replace('{1}', txt(r.reason).replace('{0}', r.value || '')); }
+  }
+  // 種別ヒント（自動判定の結果と理由）
+  function rvRefreshTypeHint() {
+    const el = $('rvTypeHint');
+    if (!el) return;
+    const d = reportTypeDetail();
+    const w = W(); const txt = k => (w && w.t ? w.t(k) : k);
+    if (d.manual) { el.className = 'hint'; el.textContent = txt(d.type === 'flash' ? 'rv.typeFlash' : 'rv.typeFinal'); return; }
+    if (d.type === 'unknown') {
+      el.className = 'hint d5ask';
+      el.textContent = txt(d.reason === 'pairDiff' ? 'p.typePairDiff' : d.reason === 'conflict' ? 'p.typeConflict' : 'p.typeUnknown');
+    } else { el.className = 'hint'; el.textContent = txt(d.type === 'flash' ? 'rv.typeFlash' : 'rv.typeFinal'); }
+  }
+
   // ---------------------------------------------------------------- 実行
-  const reportTypeOf = () => {
+  // NO26-FIX3：作業頁と同じ共通判定。関数版・非関数版で判定が違う場合は要確認（unknown）。
+  const reportTypeDetail = () => {
     const sel = $('rvType').value;
-    if (sel !== 'auto') return sel;
-    const nm = (state.func && state.func.name) || (state.nf && state.nf.name) || '';
-    return /速報/.test(nm) ? 'flash' : 'final';
+    if (sel !== 'auto') return { type: sel, reason: 'manual', manual: true };
+    const RT = globalThis.TLReportType;
+    if (!RT) return { type: 'unknown', reason: 'noModule' };
+    return RT.detectFrom([(state.func && state.func.name) || '', (state.nf && state.nf.name) || '']);
   };
+  const reportTypeOf = () => reportTypeDetail().type;
   const workdayDate = () => {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec($('rvWorkday').value || '');
     return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null;
@@ -14085,9 +14540,11 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
         fmtName: (state.func || state.nf).name,
         funcName: state.func ? state.func.name : '',
         nfName: state.nf ? state.nf.name : '',
+        todoCp: String(state.todoCpName || ''),
       });
       state.out = res;
       renderResult(res);
+      try { rvApplyResultCp(res); } catch (e) { }   // NO26-FIX3：CP 名の判定を反映
       setStatus('rv.st.done', ((Date.now() - t0) / 1000).toFixed(1));
       const card = document.querySelector('.rv-right .card');
       if (card) card.scrollTop = 0;
@@ -14133,6 +14590,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
   function itemOkText(it) {
     const both = !!(state.func && state.nf);
     const a0 = (it.raws[0] && it.raws[0].args) ? it.raws[0].args[0] : '';
+    const a1 = (it.raws[0] && it.raws[0].args) ? it.raws[0].args[1] : '';
     const T = (zhB, jaB, zhO, jaO) => L({ zh: both ? zhB : (zhO || zhB), ja: both ? jaB : (jaO || jaB) });
     switch (it.id) {
       case 'open.cursor': return T('两版均在 A1', '両版とも A1', 'A1', 'A1');
@@ -14148,6 +14606,7 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       case 'der.total': return T('两版 Total 一致', '両版とも Total 一致', 'Total 一致', 'Total 一致');
       case 'der.pages': return T('Sheet 构成正常', 'シート構成は正常', 'シート構成は正常', 'シート構成は正常');
       case 'nf.formula': return T('非函数版明细为值', '非関数版の明細は値のみ', '非関数版の明細は値のみ', '非関数版の明細は値のみ');
+      case 'case.cp': return T('两版均与 TODO 的 CP 名一致（' + a1 + '）', '両版とも TODO の CP 名と一致（' + a1 + '）', 'TODO の CP 名と一致（' + a1 + '）', 'TODO の CP 名と一致（' + a1 + '）');
       case 'case.period': return T('两版期间与预期一致', '両版とも期待期間と一致', '期待期間と一致', '期待期間と一致');
       case 'case.rawPeriod': return T('三份 RAW 的下载期间与预期一致', 'RAW 3 枚の期間は期待どおり', 'RAW の期間は期待どおり', 'RAW の期間は期待どおり');
       case 'param.budget': case 'param.margin': case 'param.reach':
@@ -14265,6 +14724,10 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
 
     $('rvPaste').addEventListener('paste', () => setTimeout(() => applyPaste($('rvPaste').value), 0));
     $('rvPaste').addEventListener('input', () => { if (($('rvPaste').value || '').length > 3) applyPaste($('rvPaste').value); });
+    // NO26-FIX3：Reach の見た目・CP 名・種別ヒントを随時更新
+    if ($('rvReach')) $('rvReach').addEventListener('input', () => rvRefreshReach());
+    if ($('rvType')) $('rvType').addEventListener('change', () => rvRefreshTypeHint());
+    if ($('rvPaste')) $('rvPaste').addEventListener('input', () => rvRefreshCp());
     ['rvBudget', 'rvMargin', 'rvStart', 'rvEnd', 'rvReach', 'rvWorkday', 'rvType', 'rvMemo'].forEach(id => {
       const e = $(id);
       if (!e) return;
@@ -14276,16 +14739,18 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       state.func = null; state.nf = null; state.out = null; state.statusKey = '';
       $('rvPaste').value = ''; $('rvBudget').value = ''; $('rvMargin').value = '';
       $('rvStart').value = ''; $('rvEnd').value = ''; $('rvReach').value = '';
+      state.todoCpName = '';
       $('rvResult').innerHTML = ''; $('rvSum').innerHTML = '';
       $('rvResultHint').style.display = '';
       msgBox('rvFileMsg', '', ''); msgBox('rvTodoMsg', '', ''); msgBox('rvRunMsg', '', '');
       renderFiles(); setStatus('rv.st.pick'); refresh();
+      rvEnsureWorkday(); rvRefreshReach(); rvRefreshCp(); rvRefreshTypeHint(); rvRefreshD5();
     });
 
-    if (!$('rvWorkday').value) {
-      const t = new Date();
-      $('rvWorkday').value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
-    }
+    rvEnsureWorkday();          // NO26-FIX3：既定は当日（手入力があれば触らない）
+    rvRefreshReach();
+    rvRefreshCp();
+    rvRefreshTypeHint();
     switchTab('work');
     renderFiles();
     setStatus('rv.st.pick');
