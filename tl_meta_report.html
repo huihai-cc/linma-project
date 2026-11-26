@@ -14300,36 +14300,19 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
 })();
 </script>
 <script>
-/* NO025/NO026：使用頻度（レポート作成／レポート校正）
+/* NO025/NO026-FIX2：使用頻度（レポート作成／レポート校正）
    ・能動クリック 1 回 = 1 件。内部の自動ステップでは送信しない。
    ・統計の失敗・遅延は業務（加工・校正・DL）を絶対に止めない。
-   ・送信するのは ツール名／操作種別／案件キー（正規化ファイル名の SHA-256）だけ。
-     顧客名・案件名・CP 名・ファイル名・金額・指標は送らない。 */
+   ・送るのはツール名と操作種別だけ。案件名・顧客名・ファイル名・
+     案件キー（ハッシュ）は一切送らない（業務側の案件識別とは完全に分離）。 */
 (function () {
   'use strict';
   var TOOL = 'TL Meta Report Studio';
   var EVENTS = { btnRun: 'report_create', btnReview: 'report_check' };
-  // 案件キー：作成＝アップロードされた FMT、校正＝関数版（無ければ非関数版）。
-  //   どちらも「中身で判定済みの役割」から取るので、アップロード順に依存しない。
-  function caseKeyFor(kind) {
-    try {
-      var CK = globalThis.TLCaseKey;
-      if (!CK) return '';
-      var nm = '';
-      if (kind === 'report_create') {
-        var st = globalThis.__TLSTATE;
-        nm = (st && st.fmt && st.fmt.name) || '';
-      } else {
-        var rv = globalThis.__TLRVSTATE;
-        nm = (rv && rv.func && rv.func.name) || (rv && rv.nf && rv.nf.name) || '';
-      }
-      return nm ? CK.caseKey(nm) : '';
-    } catch (e) { return ''; }
-  }
   function send(kind) {
     try {
       if (typeof sendLog !== 'function') return;
-      var r = sendLog(TOOL, 0, 0, kind, caseKeyFor(kind), '');
+      var r = sendLog(TOOL, 0, 0, kind, '', '');
       if (r && typeof r.catch === 'function') r.catch(function () {});
     } catch (e) { /* 統計失敗は業務に影響させない */ }
   }
