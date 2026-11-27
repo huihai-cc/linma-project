@@ -9980,9 +9980,11 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
       }
     }
 
-    // ---- ③.6 CP 名（NO26-FIX3）：TODO の P 列（キャンペーン名）と実ファイルの B2 を突き合わせる
-    //   TODO 名が空（I:L の 4 セルだけ）なら NA＝何も出さない。
-    //   完全一致のみ。部分一致・類似・記号除去などの補正はしない。
+    // ---- ③.6 CP 名（NO26-FIX3／NO26-FIX5 で「仕様空」を区別）
+    //   TODO の P 列（キャンペーン名）と実ファイルの B2 を突き合わせる。TODO 名が空なら NA。
+    //   生成器は B2 を関数版にだけ書く（tlmeta_gen: if (!isN) put('cp','B2',…)）ため、
+    //   非関数版の B2 が空なのは仕様。ただし「全頁が空」のときだけ仕様とし、
+    //   一部だけ空・読めない・片側しか無い場合は従来どおり要確認にする。
     if (opts.todoCp && String(opts.todoCp).trim()) {
       const want = String(opts.todoCp).trim();
       const actuals = [];
@@ -9990,49 +9992,61 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
         if (!bk2) continue;
         for (const pg of reportPagesOf(bk2)) {
           const sh2 = bk2.sheets.get(pg);
-          if (!sh2) continue;
-          const cp = String(textOf(sh2, 'B2') == null ? '' : textOf(sh2, 'B2')).trim();
-          actuals.push({ tag: tag2, sheet: pg, cp });
+          if (!sh2) { actuals.push({ tag: tag2, sheet: pg, cp: '', state: 'error' }); continue; }
+          let cp = '', state = 'read';
+          try {
+            const v = textOf(sh2, 'B2');
+            cp = v == null ? '' : String(v).trim();
+          } catch (e) { state = 'error'; }
+          if (state === 'read') state = cp ? 'read' : 'blank';
+          actuals.push({ tag: tag2, sheet: pg, cp, state });
         }
       }
-      // NO26-FIX4：比較する報告頁が「全部」CP 名を持つときだけ一致を認める。
-      //   片側の B2 が空／読めないときは、もう片側が一致していても要確認（空を無視して一致にしない）。
-      F.ctx.cpName = { want, actuals };
-      const blanks = actuals.filter(a => !a.cp);
+      const F = actuals.filter(a => a.tag === 'func');
+      const N = actuals.filter(a => a.tag === 'nf');
+      // 非関数版の B2 は仕様上いつも空 → 「全頁空」なら判定から外す（根拠には残す）
+      const nfSpecBlank = N.length > 0 && N.every(a => a.state === 'blank');
+      const isSpec = a => a.tag === 'nf' && a.state === 'blank' && nfSpecBlank;
+      const judged = actuals.filter(a => !isSpec(a));
       const uniq = [];
-      for (const a of actuals) if (a.cp && !uniq.some(u => u.cp === a.cp)) uniq.push(a);
+      for (const a of judged) if (a.state === 'read' && !uniq.some(u => u.cp === a.cp)) uniq.push(a);
+      const badF = judged.filter(a => a.tag === 'func' && a.state !== 'read');
+      const badN = judged.filter(a => a.tag === 'nf' && a.state !== 'read');
       const evAll = actuals.map(a => ({
         k: '実ファイル（' + label[a.tag] + ' / ' + a.sheet + '）',
-        v: a.cp ? a.cp : '（空・読み取れません）',
+        v: a.state === 'read' ? a.cp
+          : a.state === 'blank' ? (isSpec(a) ? '（空・仕様：非関数版は B2 を持たない）' : '（空）')
+            : '（読めません）',
       }));
-      if (!actuals.length) {
-        push('ask', 'case', {
-          file: 'both', sheet: '-', where: 'Meta!B2',
-          key: 'case.cpNameUnreadable', args: [want],
-          detail: [{ k: 'TODO', v: want }],
-        });
-      } else if (blanks.length) {
-        // 空の頁がある → 一致とは言わない（要確認）。空の頁も根拠に残す。
-        push('ask', 'case', {
-          file: 'both', sheet: blanks[0].sheet, where: 'Meta!B2',
-          key: 'case.cpNameBlank',
-          args: [want, blanks.map(a => label[a.tag] + ' / ' + a.sheet).join('、')],
-          detail: [{ k: 'TODO', v: want }].concat(evAll),
-        });
+      const detail = [{ k: 'TODO', v: want }].concat(evAll);
+
+      let decision = 'ask', key = '', reason = '';
+      if (badF.length) {
+        reason = badF.some(a => a.state === 'error') ? 'funcUnreadable' : 'funcBlank';
+        key = badF.some(a => a.state === 'error') ? 'case.cpNameUnreadable' : 'case.cpNameBlank';
+      } else if (badN.length) {
+        reason = badN.some(a => a.state === 'error') ? 'nfUnreadable' : 'nfPartialBlank';
+        key = badN.some(a => a.state === 'error') ? 'case.cpNameUnreadable' : 'case.cpNameBlank';
+      } else if (!uniq.length) {
+        reason = 'noName'; key = 'case.cpNameUnreadable';
       } else if (uniq.length === 1 && uniq[0].cp === want) {
-        push('ok', 'case', {
-          file: 'both', sheet: uniq[0].sheet, where: 'Meta!B2',
-          key: 'case.cpNameOk', args: [want, uniq[0].cp],
-          detail: [{ k: 'TODO', v: want }].concat(evAll),
-        });
+        decision = 'ok'; key = 'case.cpNameOk'; reason = 'same';
+      } else if (uniq.length === 1) {
+        reason = 'diff'; key = 'case.cpNameDiff';
       } else {
-        // 一致しない／一意に対応づけられない → 要確認（一致と誤報しない）
-        push('ask', 'case', {
-          file: 'both', sheet: uniq.length ? uniq[0].sheet : actuals[0].sheet, where: 'Meta!B2',
-          key: 'case.cpNameDiff', args: [want, uniq.map(u => u.cp).join(' / '), uniq.map(u => label[u.tag] + ' / ' + u.sheet).join('、')],
-          detail: [{ k: 'TODO', v: want }].concat(evAll),
-        });
+        reason = 'multi'; key = 'case.cpNameDiff';   // 多 CP：一意に対応づけない（従来どおり）
       }
+
+      const meta = {
+        want, decision, reason,
+        actuals: actuals.map(a => ({ tag: a.tag, sheet: a.sheet, cp: a.cp, state: a.state, spec: isSpec(a) })),
+      };
+      const firstSheet = (uniq[0] || judged[0] || actuals[0] || { sheet: '-' }).sheet;
+      push(decision, 'case', {
+        file: 'both', sheet: firstSheet, where: 'Meta!B2',
+        key, args: [want, uniq.map(u => u.cp).join(' / '), uniq.map(u => label[u.tag] + ' / ' + u.sheet).join('、')],
+        detail, cp: meta,
+      });
     }
 
     // ---- ③.8 非関数版の RAW 残留（NO26-FIX1）
@@ -14491,16 +14505,30 @@ if (typeof module !== 'undefined' && typeof require !== 'undefined' && require.m
     if (!name) { rvShowCp('na', []); return; }
     rvShowCp('pending', []);
   }
+  // NO26-FIX5：結果の CP 判定を表示へ反映する。
+  //   ・根拠の表示文字（「（空・仕様…）」等）を実 CP 名として扱わない（構造化データ `cp` だけを見る）
+  //   ・実 CP 名は重複除去してから「1 つに定まるか」を判断する
+  //   ・読めない／空は「要確認（読めません）」であって、複数 CP でも不一致でもない
+  //   ・备考は実 CP 名が一意のときだけ
   function rvApplyResultCp(res) {
     const name = rvTodoCpName();
     if (!name) { rvShowCp('na', []); return; }
     const it = (res.items || []).find(i => i.id === 'case.cp');
     if (!it) { rvShowCp('pending', []); return; }
     if (it.sev === 'ok') { rvShowCp('ok', []); return; }
-    const det = (it.bad && it.bad[0] && it.bad[0].detail) || [];
-    const actual = det.filter(x => /実ファイル/.test(x.k)).map(x => x.v);
-    rvShowCp('ask', actual, it.bad && it.bad[0] && it.bad[0].key === 'case.cpNameUnreadable' ? 'unread'
-      : actual.length > 1 ? 'multi' : 'diff');
+    const f = (it.bad || [])[0] || {};
+    const meta = f.cp || null;
+    const uniq = [];
+    if (meta && meta.actuals) {
+      for (const a of meta.actuals) {
+        if (!a || a.state !== 'read' || !a.cp) continue;   // 空・読めない・仕様空は数えない
+        if (uniq.indexOf(a.cp) < 0) uniq.push(a.cp);       // 重複除去
+      }
+    }
+    const reason = (meta && meta.reason)
+      || (f.key === 'case.cpNameDiff' ? 'diff' : 'unread');
+    const why = reason === 'multi' ? 'multi' : reason === 'diff' ? 'diff' : 'unread';
+    rvShowCp('ask', uniq, why);
   }
 
   // FMT の Reach（Meta!D5）を表示（手入力値とは別物）
