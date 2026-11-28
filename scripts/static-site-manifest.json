@@ -23,7 +23,7 @@
     {
       "path": "amazon_dsp_check.html",
       "source": "workspace",
-      "sha256": "e1a561651de9232d876d63d6d970d0eeb2f7b1ed121cc8a00908db1f009aeafe"
+      "sha256": "8e5328d1c0eb14aff8ae7ec1c73b13408ff81681843f37d7249ccec2212cb8bc"
     },
     {
       "path": "assets/brand/huihai-logo.png",
@@ -33,12 +33,12 @@
     {
       "path": "bpo_weekly_report_malin.html",
       "source": "workspace",
-      "sha256": "c649c89c167d0dd47605385b8c11c8918727102acc54e155cc873eb3341cc10a"
+      "sha256": "e3400289486b5436388245103f9503066cc4ecf8c67c9884f383038d1200bebd"
     },
     {
       "path": "dv360_check.html",
       "source": "workspace",
-      "sha256": "6f06a4e03ce85b871d43f679353cac484c502912bf17e645847750c7e13f025d"
+      "sha256": "872d29eeeba6a58167170bb194918beabb3e637494e489ba679fa54fd376711b"
     },
     {
       "path": "encoding.min.js",

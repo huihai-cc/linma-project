@@ -214,6 +214,25 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
 
 /* ===== Phase 6: Result Header Bar ===== */
 .dv-result-header{display:none;background:#2c3e50;color:white;border-radius:8px 8px 0 0;padding:12px 16px;display:none;align-items:center;gap:10px;flex-wrap:wrap;font-size:0.82rem;}
+/* ポータル共通ヘッダー下沿に吸着（--qc-header-h は qc-ui.css の実高）*/
+.dv-result-header.show{display:flex;position:sticky;top:var(--qc-header-h,110px);z-index:30;box-shadow:0 2px 6px rgba(0,0,0,0.18);}
+/* ===== 詳細区（折り畳み）===== */
+.dv-detail-toggle-row{display:none;padding:6px 2px 0;justify-content:flex-end;}
+.dv-detail-toggle-row.show{display:flex;}
+.dv-detail-toggle{background:#ecf0f1;color:#2c3e50;border:1px solid #bdc3c7;border-radius:6px;padding:3px 12px;font-size:0.78rem;font-weight:600;cursor:pointer;}
+.dv-detail-toggle:hover{background:#e0e5e8;}
+.dv-detail-toggle[aria-expanded="true"]{background:#d6dbdf;}
+.dv-detail-panel[hidden]{display:none;}
+/* ===== ヘッダー内インライン不一致ナビ ===== */
+.dv-hdr-mismatch-nav{display:inline-flex;align-items:center;gap:6px;}
+.dv-hdr-mismatch-nav[hidden]{display:none;}
+.qc-mismatch-nav-inline[hidden]{display:none;}
+.qc-mismatch-nav-inline{display:inline-flex;align-items:center;gap:6px;background:#fff6f6;border:1px solid #f5b7b1;border-radius:12px;padding:1px 6px;color:#922b21;font-size:0.76rem;font-weight:600;}
+.qc-mismatch-nav-inline .qc-mismatch-nav-label{display:none;}
+.qc-mismatch-nav-inline .qc-mismatch-nav-count{white-space:nowrap;}
+.qc-mismatch-nav-inline .qc-mismatch-nav-btn{background:#e74c3c;color:#fff;border:none;border-radius:8px;padding:1px 8px;font-size:0.74rem;cursor:pointer;font-weight:600;line-height:1.6;}
+.qc-mismatch-nav-inline .qc-mismatch-nav-btn:hover{background:#c0392b;}
+.qc-mismatch-nav-inline .qc-mismatch-nav-btn[data-qc-nav-action="close"]{display:none;}
 .dv-result-header.show{display:flex;}
 .dv-result-header .hdr-title{font-weight:bold;font-size:0.95rem;}
 .dv-result-header .hdr-badge{border-radius:10px;padding:2px 10px;font-size:0.78rem;font-weight:bold;}
@@ -246,7 +265,11 @@ header h1{font-size:1.15rem;letter-spacing:1px;white-space:nowrap;}
 
 /* ===== Result Table ===== */
 .result-table-wrap{display:none;margin:0 20px 12px;background:white;border:1px solid #ddd;border-radius:0 0 8px 8px;max-height:70vh;overflow:auto;}
-.result-table-wrap.show{display:block;}
+/* 2026-11-27 NO001：結果欄（.dv-result-header）がポータルヘッダー下沿に吸頂したまま
+   ページを深くスクロールすると、テーブル領域の上端が吸頂ヘッダーの裏へ回り込み、
+   表頭（thead）と先頭行が隠れていた（実測 zoom125%: theadTop=26 / headerBottom=231）。
+   テーブル領域自体も吸頂ヘッダーの直下に固定し、内部スクロールだけを動かす。 */
+.result-table-wrap.show{display:block;position:sticky;top:calc(var(--qc-header-h,110px) + var(--dv-result-header-h,50px));}
 .result-table{border-collapse:collapse;font-size:0.74rem;font-family:'Segoe UI','Noto Sans JP',sans-serif;table-layout:fixed;}
 .result-table thead{position:sticky;top:0;z-index:20;}
 .result-table thead th{position:relative;background:#1a252f;color:white;padding:7px 8px;border:1px solid #334455;text-align:center;vertical-align:middle;white-space:nowrap;font-size:0.72rem;}
@@ -314,6 +337,8 @@ body.dv-column-resizing{cursor:col-resize;user-select:none;}
 
 /* Row group (設定表行 + ダウンロード行) */
 .row-setting{border-bottom:1px solid #eee;}
+/* LI グループ見出しは横スクロール中も左に貼り付けて読めるようにする。 */
+.dv-li-group-inner{position:sticky;left:0;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;}
 .row-download{border-bottom:2px solid #d0d0d0;}
 .row-notfound{background:#fcfcfc;color:#bbb;}
 
@@ -456,31 +481,40 @@ body.dv-column-resizing{cursor:col-resize;user-select:none;}
   <span class="hdr-badge mismatch qc-mismatch-nav-trigger" id="dv-hdr-mismatch-count"
     data-qc-mismatch-navigator="1" data-qc-scope="__all__" role="button" tabindex="0"
     title="クリックしてこの範囲の不一致を確認">❌ 不一致：0件</span>
+  <span id="dv-hdr-mismatch-nav" class="dv-hdr-mismatch-nav" hidden></span>
 </div>
 
-<!-- Phase 6-2: File Info Bar -->
-<div id="dv-file-info-bar" class="dv-file-info-bar">
-  <span class="info-section">📋 設定表：<span id="dv-setting-file-names">-</span></span>
-  <span class="info-section">📥 SDF：<span id="dv-download-file-names">-</span></span>
+<!-- Phase 6-2〜5: 詳細区（既定は折り畳み・統計とナビには影響しない） -->
+<div id="dv-detail-toggle-row" class="dv-detail-toggle-row">
+  <button type="button" id="dv-detail-toggle" class="dv-detail-toggle"
+    aria-expanded="false" aria-controls="dv-detail-panel"
+    onclick="dvToggleDetailPanel()">詳細を表示</button>
 </div>
+<div id="dv-detail-panel" class="dv-detail-panel" hidden>
+  <!-- Phase 6-2: File Info Bar -->
+  <div id="dv-file-info-bar" class="dv-file-info-bar">
+    <span class="info-section">📋 設定表：<span id="dv-setting-file-names">-</span></span>
+    <span class="info-section">📥 SDF：<span id="dv-download-file-names">-</span></span>
+  </div>
 
-<!-- Phase 6-3: Legend Bar -->
-<div id="dv-legend-bar" class="dv-legend-bar">
-  <span style="font-weight:bold;">凡例：</span>
-  <span class="legend-item"><span class="legend-swatch ok"></span>✅ 一致</span>
-  <span class="legend-item"><span class="legend-swatch mismatch"></span>❌ 不一致</span>
-  <span class="legend-item"><span class="legend-swatch warn"></span>⚠️ 要確認</span>
-  <span class="legend-item"><span class="legend-swatch notfound"></span>⬜ 未マッチ</span>
-  <span style="color:#999;margin-left:8px;font-size:0.72rem;">※ 上段＝設定表 / 下段＝ダウンロード</span>
-</div>
+  <!-- Phase 6-3: Legend Bar -->
+  <div id="dv-legend-bar" class="dv-legend-bar">
+    <span style="font-weight:bold;">凡例：</span>
+    <span class="legend-item"><span class="legend-swatch ok"></span>✅ 一致</span>
+    <span class="legend-item"><span class="legend-swatch mismatch"></span>❌ 不一致</span>
+    <span class="legend-item"><span class="legend-swatch warn"></span>⚠️ 要確認</span>
+    <span class="legend-item"><span class="legend-swatch notfound"></span>⬜ 未マッチ</span>
+    <span style="color:#999;margin-left:8px;font-size:0.72rem;">※ 上段＝設定表 / 下段＝ダウンロード</span>
+  </div>
 
-<!-- Phase 6-5: Row Height Slider Bar -->
-<div id="dv-row-height-bar" class="dv-row-height-bar">
-  <span>📏 行高調整</span>
-  <input type="range" id="dv-row-height-slider" min="20" max="200" value="50" step="2" oninput="dvUpdateRowHeight(this.value)">
-  <input type="number" id="dv-row-height-input" min="20" max="200" value="50" step="2" onchange="dvUpdateRowHeight(this.value)">
-  <span style="font-size:0.7rem;color:#888;">px</span>
-  <button class="btn btn-sm" style="background:#ecf0f1;border:1px solid #bbb;margin-left:auto;" onclick="dvResetRowHeight()">↺ デフォルト</button>
+  <!-- Phase 6-5: Row Height Slider Bar -->
+  <div id="dv-row-height-bar" class="dv-row-height-bar">
+    <span>📏 行高調整</span>
+    <input type="range" id="dv-row-height-slider" min="20" max="200" value="50" step="2" oninput="dvUpdateRowHeight(this.value)">
+    <input type="number" id="dv-row-height-input" min="20" max="200" value="50" step="2" onchange="dvUpdateRowHeight(this.value)">
+    <span style="font-size:0.7rem;color:#888;">px</span>
+    <button class="btn btn-sm" style="background:#ecf0f1;border:1px solid #bbb;margin-left:auto;" onclick="dvResetRowHeight()">↺ デフォルト</button>
+  </div>
 </div>
 
 <!-- Level Tab Bar -->
@@ -557,6 +591,11 @@ let selectedCaseType = 'initial';
 let dvCheckRunning = false;
 let dvExecutionCase = null;
 let dvMismatchNavigator = null;
+// SDF AdGroups.csv に言語/地域/広告枠ソースが存在する場合 true。
+// true のとき LI 層では同名列を比較せず ADG(GP) 層で比較する（重複報告の抑止）。
+let dvAdGroupScopedAvailable = false;
+// LI タイプが Demand Gen（DGC）の案件か。列名・期待値の切替に使う。
+let dvIsDemandGenCase = false;
 
 // ===== Mismatch Navigator（只消费最终渲染的 data-qc-status） =====
 function createQcMismatchNavigator(options = {}){
@@ -614,10 +653,12 @@ function createQcMismatchNavigator(options = {}){
     if(!documentRef||typeof documentRef.createElement!=='function') return null;
     const panel=documentRef.createElement('div');
     if(!panel||typeof panel.setAttribute!=='function'||typeof panel.appendChild!=='function'||typeof panel.addEventListener!=='function') return null;
-    panel.setAttribute('class','qc-mismatch-nav-floating');
+    // ヘッダー内（「不一致：○件」の右）に出す。ホストが無い場合のみ従来の右下固定。
+    const inlineHost=documentRef.getElementById?documentRef.getElementById('dv-hdr-mismatch-nav'):null;
+    panel.setAttribute('class',inlineHost?'qc-mismatch-nav-inline':'qc-mismatch-nav-floating');
     panel.setAttribute('role','region');
     panel.setAttribute('aria-label','不一致ナビゲーター');
-    panel.style.position='fixed';
+    if(!inlineHost) panel.style.position='fixed';
     const label=documentRef.createElement('span');
     label.setAttribute('class','qc-mismatch-nav-label');
     label.textContent='⚠ 不一致';
@@ -652,10 +693,11 @@ function createQcMismatchNavigator(options = {}){
     panel.appendChild(prev);
     panel.appendChild(next);
     panel.appendChild(close);
-    const host=documentRef.body||documentRef.documentElement||documentRef;
+    const host=inlineHost||documentRef.body||documentRef.documentElement||documentRef;
     if(!host||typeof host.appendChild!=='function') return null;
     host.appendChild(panel);
     panel.hidden=true;
+    if(inlineHost) inlineHost.hidden=false;
     floatingElement=panel;
     floatingCount=count;
     return panel;
@@ -667,7 +709,12 @@ function createQcMismatchNavigator(options = {}){
     if(!targets.length||position===undefined){hideFloating();return;}
     const panel=ensureFloating();
     if(!panel) return;
-    if(floatingCount) floatingCount.textContent=`${position+1} / ${targets.length}`;
+    if(floatingCount){
+      const levelLabel=(typeof currentLevel!=='undefined'&&currentLevel)?String(currentLevel):'';
+      floatingCount.textContent=levelLabel
+        ?`${levelLabel}の不一致項目 ${position+1}/${targets.length}`
+        :`${position+1}/${targets.length}`;
+    }
     panel.hidden=false;
   }
   function closeFloating(){
@@ -778,6 +825,19 @@ function syncDvMismatchNavigator(options={}){
   else dvMismatchNavigator.beginLifecycle('__all__');
 }
 function resetDvMismatchNavigator(){ if(dvMismatchNavigator) dvMismatchNavigator.resetAll(); }
+
+// ===== 詳細区（ファイル情報／凡例／行高）の折り畳み =====
+// 既定は折り畳み。主比較表（CP/IO/LI/GP/CR）と統計・不一致ナビには影響しない。
+function dvToggleDetailPanel(force){
+  const panel=document.getElementById('dv-detail-panel');
+  const button=document.getElementById('dv-detail-toggle');
+  if(!panel||!button) return;
+  const nextOpen=typeof force==='boolean'?force:panel.hidden;
+  panel.hidden=!nextOpen;
+  button.setAttribute('aria-expanded',nextOpen?'true':'false');
+  button.textContent=nextOpen?'詳細を閉じる':'詳細を表示';
+}
+window.dvToggleDetailPanel=dvToggleDetailPanel;
 
 function getSelectedDv360CaseType(){
   return selectedCaseType;
@@ -3445,11 +3505,16 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
       if(joined.includes('IO名')&&joined.includes('広告申込情報名')){ioHdr=i;break;}
     }
     if(ioHdr>=0){
+      // 既定値は Ver.8 テンプレートの実列（0-based）。ただし表頭が権威で、
+      // 下の表頭走査が必ず上書きする（テンプレート改版で列がずれても誤読しない）。
       const col={no:1,ioName:2,ioType:3,goal:4,budget:5,budgetNet:6,startDate:9,startTime:10,endDate:11,endTime:12,
-        pacing:13,pacingRate:14,kpi:16,kpiVal:17,optimize:18,fq:19,margin:20,quality:21,liName:23,typeName:24,liSubtype:-1,
-        language:27,region:28,daypart:29,liPeriod:33,liStartDate:34,liEndDate:35,dailyBudget:38,revenueModel:51,
-        gpName:52,gpVideoFormat:53,gpBidStrategy:60,gpBidCost:61,gender:62,genderUnknown:63,
-        ageStart:64,ageEnd:65,ageUnknown:66,audienceList:-1,audienceManual:-1};
+        pacing:13,pacingRate:14,kpi:16,kpiVal:17,optimize:18,fq:19,margin:20,quality:21,typeName:23,liName:24,liSubtype:-1,
+        // 列位置は表頭が唯一の根拠。見出しが無い版（Ver.9 等）で別列を誤読しないよう、
+        // 位置依存の当て推量は行わない（未検出は -1＝空欄）。
+        language:-1,region:-1,daypart:25,liPeriod:28,liStartDate:29,liEndDate:30,dailyBudget:33,revenueModel:41,
+        gpName:42,gpVideoFormat:-1,gpBidStrategy:-1,gpBidCost:-1,gender:-1,genderUnknown:-1,
+        ageStart:-1,ageEnd:-1,ageUnknown:-1,inventorySource:-1,inventoryDetail:-1,
+        audienceList:48,audienceManual:49};
       rows[ioHdr].forEach((h,i)=>{
         const s=text(h);
         if(s.includes('IO名')&&!s.includes('タイプ')) col.ioName=i;
@@ -3473,6 +3538,34 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
         else if(s==='オーディエンスリスト') col.audienceList=i;
         else if(s.includes('広告グループ名')) col.gpName=i;
         else if(s.includes('広告フォーマット')&&i>40) col.gpVideoFormat=i;
+      });
+      // 同名複数列（性別／年齢／広告枠ソース）は出現順で役割を決める。
+      // 「性別」「年齢」の 2 本目は“不明可否”、“広告枠ソース”の 2 本目は“選択した広告枠の明細”。
+      const dupSeen={};
+      rows[ioHdr].forEach((h,i)=>{
+        let hs=text(h).replace(/\s+/g,'');
+        if(!hs) return;
+        // Ver.8 の 2 本目は「広告枠ソース※左記で『選択した広告枠』を選択時にのみ指定。」のように
+        // 注記付きの見出しになる。同一系統として数えるため基底名に寄せる。
+        if(hs.startsWith('広告枠ソース')) hs='広告枠ソース';
+        if(hs==='性別'||hs==='年齢'||hs.startsWith('広告枠ソース')){
+          dupSeen[hs]=(dupSeen[hs]||0)+1;
+          if(hs==='性別'){
+            if(dupSeen[hs]===1) col.gender=i; else if(dupSeen[hs]===2) col.genderUnknown=i;
+          }else if(hs==='年齢'){
+            // 1 本目=下限、その右隣=上限（上限列は見出しが空のことが多い）、2 本目=不明可否
+            if(dupSeen[hs]===1){ col.ageStart=i; col.ageEnd=i+1; }
+            else if(dupSeen[hs]===2) col.ageUnknown=i;
+          }else{
+            if(dupSeen[hs]===1) col.inventorySource=i; else if(dupSeen[hs]===2) col.inventoryDetail=i;
+          }
+          return;
+        }
+        if(hs==='地域'&&i>20) col.region=i;
+        else if(hs==='入札戦略') col.gpBidStrategy=i;          // Ver.8: ラベルと値が同一セル
+        else if(hs==='目標単価') col.gpBidCost=i;              // Ver.8: AK 列に単価そのもの
+        else if(hs==='入札単価') col.gpBidCost=i+1;            // Ver.9: BI=ラベル / BJ=単価
+        else if(hs==='広告申込情報タイプ') col.typeName=i;
       });
       let lastIOName='';
       for(let i=ioHdr+1;i<rows.length;i++){
@@ -3507,6 +3600,8 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
           const audienceSheetReferences=extractYoutubeAudienceSheetReferences(audienceManualRaw).sheetNames;
           const detail={name:opLiName,ioName:lastIOName,sourceSheet:opSheet,sourceRow:i+1,gpName,gpVideoFormat,liSubtype,
             gpBidStrategy,gpBidCost,gender,age,ageUnknown,region:text(r[col.region]),
+            typeName:text(r[col.typeName]),
+            inventorySource:text(r[col.inventorySource]),inventoryDetail:text(r[col.inventoryDetail]),
             language:text(r[col.language]),daypart:text(r[col.daypart]),liPeriod:text(r[col.liPeriod]),
             liStartDate:fmtDateVal(r[col.liStartDate]),liEndDate:fmtDateVal(r[col.liEndDate]),
             dailyBudget:text(r[col.dailyBudget]),revenueModel:text(r[col.revenueModel]),audienceListRaw,audienceManualRaw,
@@ -3685,6 +3780,7 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
             endDate    :followsIo?opDetail.liPeriod:(opDetail.liEndDate||fmtDateVal(readMergedAwareCell(i,col.endDate))),
             endTime    :String(readMergedAwareCell(i,col.endTime)||'').trim(),
             billing    :String(r[col.billing]||'').trim(),
+            bidStrategy:opDetail.gpBidStrategy||'',
             bidCap     :String(r[col.bidCap]||'').trim(),
             typeName   :String(r[col.typeName]||'').trim(),
             inventory  :String(r[col.inventory]||'').trim(),
@@ -3858,6 +3954,10 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
             age:opDetail.age||(matchedLi?matchedLi.fields.age:''),
             ageUnknown:opDetail.ageUnknown||(matchedLi?matchedLi.fields.ageUnknown:''),
             region:opDetail.region||(matchedLi?matchedLi.fields.region:''),
+            language:opDetail.language||(matchedLi?matchedLi.fields.language:'')||'',
+            inventorySource:opDetail.inventorySource||'',
+            inventoryDetail:opDetail.inventoryDetail||'',
+            bidStrategy:opDetail.gpBidStrategy||'',
             parentalStatus:(matchedLi&&matchedLi.fields.parentalStatus)||'',
             householdIncome:(matchedLi&&matchedLi.fields.householdIncome)||'',
             status:''
@@ -3911,6 +4011,10 @@ function parseYoutubeSetting(sheets, sheetNames, fileName, worksheets){
       age:detail.age||(matchedLi&&matchedLi.fields.age)||'',
       ageUnknown:detail.ageUnknown||(matchedLi&&matchedLi.fields.ageUnknown)||'',
       region:detail.region||(matchedLi&&matchedLi.fields.region)||'',
+      // ADG 固有ターゲティング（SDF では AdGroups.csv にしか存在しない）
+      language:detail.language||(matchedLi&&matchedLi.fields.language)||'',
+      inventorySource:detail.inventorySource||'',
+      inventoryDetail:detail.inventoryDetail||'',
       parentalStatus:(matchedLi&&matchedLi.fields.parentalStatus)||'',
       householdIncome:(matchedLi&&matchedLi.fields.householdIncome)||'',status:''
     };
@@ -6509,6 +6613,10 @@ function normVideoType(v){
   if(s.includes('trueview')&&s.includes('non')) return 'vrc_nonskippable';
   if(s.includes('trueview')&&s.includes('view')) return 'vvc';
   if(s.includes('vvc')||s.includes('viewable')) return 'vvc';
+  // DGC（Demand Generation）: 設定表「デマンド ジェネレーション」/ 営業表「DGC」/
+  // SDF Type-Subtype「Demand Gen」を同一 canonical に統一する。
+  if(compact==='dgc'||s.includes('demandgen')||s.includes('demand gen')||
+     s.includes('デマンドジェネレーション')||s.includes('デマンド ジェネレーション')) return 'demand_gen';
   if(s.includes('bumper')) return 'bumper';
   if(s.includes('trueview')&&s.includes('action')) return 'vrc_action';
   if(s.includes('ytn')||s.includes('ネクスト')) return 'ytn';
@@ -6539,6 +6647,8 @@ function normKpi(v){
   if(s.includes('cpcv')||s.includes('再生完了')) return 'cpcv';
   if(s.includes('cpm')||s.includes('インプレッション単価')||s.includes('imp単価')) return 'cpm';
   if(s.includes('cpv')||s.includes('視聴単価')) return 'cpv';
+  // 設定表「クリック単価（CPC）」と SDF Kpi Type「CPC」は同一 KPI 種別。
+  if(s.includes('cpc')||s.includes('クリック単価')) return 'cpc';
   if(s.includes('cpa')||s.includes('コンバージョン単価')||s.includes('cv単価')) return 'cpa';
   if(s.includes('viewability')||s.includes('ビューアビリティ')) return 'viewability';
   if(s.includes('reach')||s.includes('リーチ')) return 'reach';
@@ -6566,11 +6676,14 @@ function normObjective(v){
   if((s.includes('brand')&&s.includes('awareness'))||s.includes('ブランドの知名度')||s.includes('認知度')) return 'brandawareness';
   if(s.includes('consideration')||s.includes('比較検討')||s.includes('関心')) return 'consideration';
   if(s.includes('conversion')||s.includes('コンバージョン')||s.includes('行動')) return 'conversion';
+  // DGC/YouTube: 設定表「クリック」と SDF Io Objective「Click」は同一目標。
+  if(s==='click'||s.includes('クリック')) return 'click';
   return s;
 }
 function normVideoFormat(v){
   if(!v) return '';
   const s=normStr(v);
+  if(s.includes('demandgen')||s.includes('demand gen')||s==='dgc'||s.includes('デマンドジェネレーション')||s.includes('デマンド ジェネレーション')) return 'demand_gen';
   if(s.includes('responsive')||s.includes('レスポンシブ')) return 'responsive';
   if(s.includes('in-stream')||s.includes('インストリーム')) return 'instream';
   return s;
@@ -6924,9 +7037,11 @@ function compareGeography(settingValue,includeValue,excludeValue,referenceInfo){
   const excludeExtra=geoSetDifference(download.exclude,setting.exclude);
   const includeMatches=includeMissing.length===0&&includeExtra.length===0;
   const excludeMatches=excludeMissing.length===0&&excludeExtra.length===0;
+  // 未識別 Code は「一致を確認できない」ので要確認に落とす。ただし配信/除外の集合が
+  // 実際に食い違っている場合は、未識別 Code を含んでいても不一致として扱う
+  // （例: 設定=Japan / SDF=2840 は集合が異なる＝差異。両側一致時のみ要確認）。
   let result='mismatch';
-  if(setting.unknown.length||download.unknown.length) result='warning';
-  else if(includeMatches&&excludeMatches) result='ok';
+  if(includeMatches&&excludeMatches) result=(setting.unknown.length||download.unknown.length)?'warning':'ok';
   const details=[];
   if(includeMissing.length) details.push('配信不足：'+includeMissing.join('、'));
   if(includeExtra.length) details.push('配信追加：'+includeExtra.join('、'));
@@ -9838,18 +9953,28 @@ function compareLI(s,d){
        (sBilling==='cpv'&&dBidStrat==='targetcpv')) billingResult='ok';
     else billingResult='mismatch';
   } else if(!sBilling&&!dBidStrat) billingResult='ok';
-  items.push({label:'課金形態', sVal:sf.billing||'', dVal:df.bidStrategyType||'', result:billingResult});
+  // DGC（Demand Gen）では設定表の当該列は「入札戦略」。列名と内容を一致させる。
+  const dgcLi=normVideoType(sf.videoType||'')==='demand_gen'||normVideoType(df.type||'')==='demand_gen';
+  items.push({label:dgcLi?'入札戦略':'課金形態', key:dgcLi?'入札戦略':'課金形態',
+    sVal:(dgcLi&&sf.bidStrategy?sf.bidStrategy:sf.billing)||'', dVal:df.bidStrategyType||'', result:billingResult,
+    sourceSdfFields:['TrueView Bid Strategy Type','Bid Strategy Type']});
 
   // YouTube / TrueView の実入札は AdGroup の Bid Cost で判定する。
   // 設定表の営業列「入札」と LI の Bid Strategy Value は同一項目と断定できないため、LIでは比較しない。
   items.push({label:'入札単価',sVal:'GPで判定',dVal:'GPで判定',result:'ok'});
 
-  items.push({label:'広告枠ソース', sVal:sf.inventory||'',  dVal:df.inventorySource||'', result:compareField(normInventory(sf.inventory),normInventory(df.inventorySource))});
+  // DGC の「選択した広告枠」は ADG 層（Demand Gen Inventory Source）で比較する。
+  // ここの SDF 値は LI の TrueView Inventory Source で別階層・別意味のため、DGC では出さない。
+  if(!dgcLi){
+    items.push({label:'広告枠ソース', sVal:sf.inventory||'',  dVal:df.inventorySource||'', result:compareField(normInventory(sf.inventory),normInventory(df.inventorySource))});
+  }
   const sRevenue=normPercent(sf.revenueModel),dRevenue=normPercent(df.partnerRevenueAmount);
   const revenueResult=!sRevenue&&!dRevenue?'ok':!sRevenue||!dRevenue?'warning':sRevenue===dRevenue?'ok':'mismatch';
   items.push({label:'収益モデル',sVal:sf.revenueModel||'',
     dVal:[df.partnerRevenueModel,df.partnerRevenueAmount?df.partnerRevenueAmount+'%':''].filter(Boolean).join(' / '),result:revenueResult});
-  items.push({label:'言語',...compareLanguage(sf.language||'',df.languageTargeting||''),sourceSdfFields:['Language Targeting - Include']});
+  if(!dvAdGroupScopedAvailable){
+    items.push({label:'言語',...compareLanguage(sf.language||'',df.languageTargeting||''),sourceSdfFields:['Language Targeting - Include']});
+  }
   // 2026-08-09: YouTube 実案件の Geography 誤判定調査用デバッグ出力
   const geographyComparison=compareGeography(sf.region||'',df.geographyTargeting||'',df.geographyExclude||'',sf.regionReference);
   if(mediaType==='youtube'){
@@ -9868,15 +9993,17 @@ function compareLI(s,d){
       includeExtra:geographyComparison.includeExtra,
     });
   }
-  items.push({label:'地域 / Geography Targeting',...geographyComparison,
-    sourceSdfFields:['Geography Targeting - Include','Geography Targeting - Exclude']});
+  if(!dvAdGroupScopedAvailable){
+    items.push({label:'地域 / Geography Targeting',...geographyComparison,
+      sourceSdfFields:['Geography Targeting - Include','Geography Targeting - Exclude']});
+  }
   const liDemographicFields=[
     ['性別','gender','demographicGender','Demographic Targeting Gender'],
     ['年齢','age','demographicAge','Demographic Targeting Age'],
     ['子供の有無','parentalStatus','demographicParental','Demographic Targeting Parental Status'],
     ['世帯年収','householdIncome','demographicIncome','Demographic Targeting Household Income'],
   ];
-  liDemographicFields.forEach(([label,settingKey,downloadKey,sdfField])=>{
+  if(!dvAdGroupScopedAvailable) liDemographicFields.forEach(([label,settingKey,downloadKey,sdfField])=>{
     const downloadValue=df[downloadKey]||((d.rawFields||{})[sdfField])||'';
     if(!hasMeaningfulDownloadValue(downloadValue)) return;
     const compared=settingKey==='age'
@@ -9885,6 +10012,46 @@ function compareLI(s,d){
     items.push({label,...compared,sourceSdfFields:[sdfField]});
   });
   return items;
+}
+
+// ── Demand Gen 広告枠ソース（2026-11-27）──
+// 設定表「選択した広告枠」/「すべての広告枠」と SDF Demand Gen Inventory Source Strategy の対応。
+// 「選択した広告枠」の具体値（BJ）は Enabled Inventory Sources と比較する。LI の
+// TrueView Inventory Source（YouTube; Discover; Gmail; Video Partners;）とは別階層・別意味。
+function normInventorySourceMode(v){
+  const s=normStr(v).replace(/[「」『』"']/g,'').replace(/\s+/g,'');
+  if(!s) return '';
+  if(s.includes('selectedinventories')||s.includes('選択した広告枠')) return 'selected';
+  if(s.includes('allinventories')||s.includes('すべての広告枠')||s.includes('全ての広告枠')) return 'all';
+  return s;
+}
+function compareInventorySourceMode(settingValue,downloadValue){
+  const sKey=normInventorySourceMode(settingValue),dKey=normInventorySourceMode(downloadValue);
+  if(!sKey&&!dKey) return {sVal:settingValue||'',dVal:downloadValue||'(空欄)',result:'ok'};
+  if(!sKey||!dKey) return {sVal:settingValue||'(空欄)',dVal:downloadValue||'(空欄)',result:'warning',
+    mpDetail:'設定表とSDFの片側にのみ広告枠ソースの指定があります'};
+  return {sVal:settingValue,dVal:downloadValue,result:sKey===dKey?'ok':'mismatch'};
+}
+function normInventoryDetailToken(v){
+  const s=normStr(v).replace(/[「」『』"']/g,'').replace(/[\s\-–—－]+/g,'');
+  if(!s) return '';
+  if(s.includes('youtubeshort')||s.includes('youtubeショート')) return 'youtube_shorts';
+  if(s.includes('videopartners')||s.includes('動画パートナー')) return 'video_partners';
+  if(s.includes('discover')) return 'discover';
+  if(s.includes('gmail')) return 'gmail';
+  if(s==='youtube'||s.includes('youtube動画')||s.includes('youtube動画')) return 'youtube';
+  return s;
+}
+function compareInventoryDetail(settingValue,downloadValue){
+  const toTokens=v=>String(v||'').split(/[;；、\n\r|]+/).map(x=>normInventoryDetailToken(x)).filter(Boolean);
+  const sSet=[...new Set(toTokens(settingValue))].sort();
+  const dSet=[...new Set(toTokens(downloadValue))].sort();
+  if(!sSet.length&&!dSet.length) return {sVal:settingValue||'',dVal:downloadValue||'(空欄)',result:'ok'};
+  if(!sSet.length||!dSet.length) return {sVal:settingValue||'(空欄)',dVal:downloadValue||'(空欄)',result:'warning',
+    mpDetail:'設定表とSDFの片側にのみ広告枠の指定があります'};
+  const ok=sSet.length===dSet.length&&sSet.every((v,i)=>v===dSet[i]);
+  return {sVal:settingValue,dVal:downloadValue,result:ok?'ok':'mismatch',
+    mpDetail:ok?'':'設定表: '+sSet.join(', ')+' / SDF: '+dSet.join(', ')};
 }
 
 function compareGP(s,d,settingAudience){
@@ -9897,24 +10064,85 @@ function compareGP(s,d,settingAudience){
   items.push(buildCaseStatusItem('GP',d));
   if(mediaType==='youtube'){
     const actualVideoAdFormat=String(df.videoAdFormat||raw['Video Ad Format']||'').trim();
-    const responsive=actualVideoAdFormat.toLowerCase()==='responsive';
+    const actualFormatKey=normVideoFormat(actualVideoAdFormat);
+    // DGC（Demand Generation）は Video Ad Format も Demand Gen。普通の YouTube は Responsive。
+    const dgcGp=actualFormatKey==='demand_gen'||normVideoType(sf.videoAdFormat||'')==='demand_gen'||
+      normVideoType(sf.videoFormat||'')==='demand_gen';
+    const expectedFormatKey=dgcGp?'demand_gen':'responsive';
+    const formatOk=actualFormatKey===expectedFormatKey;
     items.push({
       label:'動画フォーマット',
-      sVal:'想定: Responsive',
+      sVal:dgcGp?'想定: Demand Gen':'想定: Responsive',
       dVal:actualVideoAdFormat||'(空欄)',
-      result:responsive?'ok':'warning',
-      mpDetail:responsive?'':'YouTube GP の Video Ad Format は Responsive を想定しています。',
+      result:formatOk?'ok':'warning',
+      mpDetail:formatOk?'':(dgcGp
+        ?'DGC の GP は Video Ad Format = Demand Gen を想定しています。'
+        :'YouTube GP の Video Ad Format は Responsive を想定しています。'),
       sourceSdfFields:['Video Ad Format'],
       hiddenWhenOk:true,
     });
   }else{
     items.push({label:'動画フォーマット',sVal:sf.videoAdFormat||'',dVal:df.videoAdFormat||'',result:compareField(normVideoFormat(sf.videoAdFormat),normVideoFormat(df.videoAdFormat))});
   }
-  items.push({label:'入札単価',sVal:sf.bidCost||'',dVal:df.bidCost||'',result:compareField(normNum(sf.bidCost),normNum(df.bidCost))});
+  // 入札単価: DGC の自動入札（例「クリック数を最大化」）では設定表に ADG 入札単価の対応列がない。
+  // 設定表 AK「目標単価」はマージン控除後の目標単価（例 420×(1-0.2905)=297.99）で、
+  // ADG「Bid Cost」(CPC 実入札) とは指標・階層が異なるため、数値の一致/不一致では判定しない。
+  const gpBidStrategyText=String(sf.bidStrategy||'').trim();
+  const gpIsAutoBid=/最大化|maximize/i.test(gpBidStrategyText);
+  const gpIsDgc=normVideoFormat(String(df.videoAdFormat||raw['Video Ad Format']||''))==='demand_gen'||
+    normVideoType(sf.videoAdFormat||'')==='demand_gen'||normVideoType(sf.videoFormat||'')==='demand_gen';
+  if(gpIsDgc&&gpIsAutoBid){
+    items.push({
+      label:'入札単価',
+      sVal:'参考：'+(sf.bidCost||'(なし)')+'（目標単価）',
+      dVal:df.bidCost||'(空欄)',
+      result:'warning',
+      mpDetail:'設定表の入札戦略が「'+gpBidStrategyText+'」（自動入札）のため ADG 入札単価の設定値はありません。'
+        +'設定表の目標単価 '+(sf.bidCost||'(なし)')+' はマージン控除後の目標単価で、ADG Bid Cost とは指標が異なります。',
+      sourceSdfFields:['Bid Cost'],
+    });
+  }else{
+    items.push({label:'入札単価',sVal:sf.bidCost||'',dVal:df.bidCost||'',result:compareField(normNum(sf.bidCost),normNum(df.bidCost))});
+  }
   items.push({label:'性別',...compareDemographicTargeting(sf.gender||'',df.demographicGender||raw['Demographic Targeting Gender']||'','gender'),sourceSdfFields:['Demographic Targeting Gender']});
   items.push({label:'年齢',...compareAgeDemographicTargeting(sf.age||'',sf.ageUnknown||'',df.demographicAge||raw['Demographic Targeting Age']||''),sourceSdfFields:['Demographic Targeting Age']});
   if(mediaType==='youtube') items.push(...buildYoutubeAudienceComparisonItems(
     settingAudience||createEmptyYoutubeAudienceResult(),d));
+
+  // ── ADG（AdGroup）固有ターゲティング（2026-11-27）──
+  // 言語・地域・広告枠ソースは SDF では AdGroups.csv にのみ存在する。
+  // LI 層にあった同名列は別階層の値なので、ここ（ADG）で比較する。
+  // ただし比較してよいのは「SDF 側に ADG 専用値が存在する案件」だけ。
+  // 無条件に比較すると、SDF に項目が無い通常案件で設定表の値だけが残り
+  // 列も出ないまま不一致件数だけが増える（実測: 案件002 が 1件→8件に破綻）。
+  if(dvAdGroupScopedAvailable&&(mediaType==='youtube'||mediaType==='ott'||mediaType==='display')){
+    const dLanguage=String(df.languageTargeting||raw['Language Targeting - Include']||'').trim();
+    if(hasMeaningfulComparisonValue(dLanguage)||hasMeaningfulComparisonValue(sf.language)){
+      items.push({label:'言語',...compareLanguage(sf.language||'',dLanguage),
+        sourceSdfFields:['Language Targeting - Include']});
+    }
+    const dGeoInclude=String(df.geographyInclude||raw['Geography Targeting - Include']||'').trim();
+    const dGeoExclude=String(df.geographyExclude||raw['Geography Targeting - Exclude']||'').trim();
+    if(hasMeaningfulComparisonValue(dGeoInclude)||hasMeaningfulComparisonValue(dGeoExclude)||hasMeaningfulComparisonValue(sf.region)){
+      const geoItems=compareGeography(sf.region||'',dGeoInclude,dGeoExclude,sf.regionReference);
+      if(mediaType==='youtube'){
+        geoItems.dVal=formatYoutubeLiGeographyDownloadDisplay(
+          parseDownloadGeography(dGeoInclude,dGeoExclude),dGeoInclude,dGeoExclude);
+      }
+      items.push({label:'地域 / Geography Targeting',...geoItems,
+        sourceSdfFields:['Geography Targeting - Include','Geography Targeting - Exclude']});
+    }
+    const dgcInventory=String(raw['Demand Gen Inventory Source Strategy']||'').trim();
+    const dgcEnabled=String(raw['Demand Gen Enabled Inventory Sources']||'').trim();
+    if(dgcInventory||hasMeaningfulComparisonValue(sf.inventorySource)){
+      items.push({label:'広告枠ソース（選択方法）',...compareInventorySourceMode(sf.inventorySource||'',dgcInventory),
+        sourceSdfFields:['Demand Gen Inventory Source Strategy']});
+    }
+    if(dgcEnabled||hasMeaningfulComparisonValue(sf.inventoryDetail)){
+      items.push({label:'広告枠ソース（具体的な広告枠）',...compareInventoryDetail(sf.inventoryDetail||'',dgcEnabled),
+        sourceSdfFields:['Demand Gen Enabled Inventory Sources']});
+    }
+  }
 
   // ── GP MP 統一ルール（2026-08-03） ──
 
@@ -10157,6 +10385,20 @@ function buildComparisonTree(setting, download){
   const sCP=setting.cp,sIO=setting.io,sLI=setting.li,sGP=setting.gp,sCR=setting.cr;
   const settingAudienceCatalog=setting.audience||createEmptyYoutubeAudienceResult();
   const dCP=download.cp,dIO=download.io,dLI=download.li,dGP=download.gp,dCR=download.cr;
+  dvIsDemandGenCase=[...(Array.isArray(dLI)?dLI:[]),...(Array.isArray(sLI)?sLI:[])].some(li=>{
+    const f=(li&&li.fields)||{};
+    return normVideoType(f.type||'')==='demand_gen'||normVideoType(f.subtype||'')==='demand_gen'||
+      normVideoType(f.videoType||'')==='demand_gen';
+  })||[...(Array.isArray(dGP)?dGP:[])].some(gp=>normVideoFormat(((gp&&gp.fields)||{}).videoAdFormat||'')==='demand_gen');
+  // ADG 層にしか存在しないターゲティング（言語・地域・広告枠ソース）が SDF 側にあるか。
+  // ある場合は LI 層の同名比較を停止し、ADG 層でのみ判定する。
+  dvAdGroupScopedAvailable=Array.isArray(dGP)&&dGP.some(gp=>{
+    const f=(gp&&gp.fields)||{},raw=(gp&&gp.rawFields)||{};
+    return hasMeaningfulComparisonValue(String(f.languageTargeting||raw['Language Targeting - Include']||''))||
+      hasMeaningfulComparisonValue(String(f.geographyInclude||raw['Geography Targeting - Include']||''))||
+      hasMeaningfulComparisonValue(String(f.geographyExclude||raw['Geography Targeting - Exclude']||''))||
+      hasMeaningfulComparisonValue(String(raw['Demand Gen Enabled Inventory Sources']||''));
+  });
   const levelAvailability=download.levelAvailability||{};
   const isSdfLevelMissing=level=>levelAvailability[level]==='missing';
   const matchedDCP=new Set(),matchedDIO=new Set(),matchedDLI=new Set(),matchedDGP=new Set(),matchedDCR=new Set();
@@ -10759,6 +11001,14 @@ function getCoreLevelColumns(level,youtubeOnly){
       {key:'入札単価', label:'入札単価'},
       {key:'性別', label:'性別'},
       {key:'年齢', label:'年齢'},
+      ...(dvAdGroupScopedAvailable?[
+        {key:'言語', label:'言語'},
+        {key:'地域 / Geography Targeting', label:'地域'},
+        ...(dvIsDemandGenCase?[
+          {key:'広告枠ソース（選択方法）', label:'広告枠ソース\n（選択方法）'},
+          {key:'広告枠ソース（具体的な広告枠）', label:'広告枠ソース\n（具体的な広告枠）'},
+        ]:[]),
+      ]:[]),
       {key:'Audience Sheet参照', label:'Audience\nSheet参照'},
       {key:'Affinity 配信', label:'Affinity\n配信'},
       {key:'Affinity 除外', label:'Affinity\n除外'},
@@ -10791,16 +11041,20 @@ function getCoreLevelColumns(level,youtubeOnly){
           {key:'予算', label:'予算'},
           {key:'日予算 / Pacing Amount', label:'日予算'},
           {key:'配信ペース', label:'配信ペース'},
-          {key:'課金形態', label:'課金形態'},
-          {key:'入札単価', label:'入札単価'},
-          {key:'広告枠ソース', label:'広告枠ソース'},
+          ...(dvIsDemandGenCase
+            ?[{key:'入札戦略', label:'入札戦略'},{key:'入札単価', label:'入札単価'}]
+            :[{key:'課金形態', label:'課金形態'},{key:'入札単価', label:'入札単価'},{key:'広告枠ソース', label:'広告枠ソース'}]),
           {key:'収益モデル', label:'収益モデル'},
-          {key:'言語', label:'言語'},
-          {key:'地域 / Geography Targeting', label:'地域'},
-          {key:'性別', label:'性別'},
-          {key:'年齢', label:'年齢'},
-          {key:'子供の有無', label:'子供の有無'},
-          {key:'世帯年収', label:'世帯年収'},
+          // 言語・地域・性別・年齢・子供・年収は ADG(AdGroups.csv) 固有。
+          // SDF 側に ADG 値がある場合は ADG 層で比較するため LI 列は出さない。
+          ...(dvAdGroupScopedAvailable?[]:[
+            {key:'言語', label:'言語'},
+            {key:'地域 / Geography Targeting', label:'地域'},
+            {key:'性別', label:'性別'},
+            {key:'年齢', label:'年齢'},
+            {key:'子供の有無', label:'子供の有無'},
+            {key:'世帯年収', label:'世帯年収'},
+          ]),
         ];
       } else if(mediaType==='ott'){
         // OTT LI 専用列定義（compareLI_OTT_* が返す label と key を一致させる）
@@ -11121,13 +11375,17 @@ function renderLevelTable(level,options={newLifecycle:true}){
       const groupBg=ioHasMismatch?'#4a1a1a':ioHasWarning?'#4a351a':ioUnsupportedCount?'#5a4a20':'#1a3a1a';
       const groupColor=ioHasMismatch?'#e74c3c':ioHasWarning?'#f39c12':ioUnsupportedCount?'#f1c40f':'#27ae60';
 
+      // 2026-11-27 NO001：横スクロールすると colspan セル内の文字が左へ流れて消え、
+      // 見出しだけの帯（実測 #4a1a1a / 文字なし）になっていた。ラベルだけ左に貼り付ける。
       html += `<tr data-io-header="1">
         <td colspan="${cols.length + 3}" style="background:${groupBg};
           border-bottom:2px solid ${groupColor};
           color:white;font-weight:bold;font-size:0.82rem;padding:8px 12px;">
-          🗂️ IO：${esc(ioName)}
-          <span style="background:${groupColor};border-radius:10px;padding:2px 8px;font-size:0.72rem;margin-left:8px;">
-            LI ${ioItems.length}件${ioUnsupportedCount?` | 対象外:${ioUnsupportedCount}`:''} | ✅${ioMatchCount} | ❌${ioMismatchCount} | ⚠${ioWarningCount}
+          <span class="dv-li-group-inner">
+            <span>🗂️ IO：${esc(ioName)}</span>
+            <span style="background:${groupColor};border-radius:10px;padding:2px 8px;font-size:0.72rem;">
+              LI ${ioItems.length}件${ioUnsupportedCount?` | 対象外:${ioUnsupportedCount}`:''} | ✅${ioMatchCount} | ❌${ioMismatchCount} | ⚠${ioWarningCount}
+            </span>
           </span>
         </td>
       </tr>`;
@@ -11405,6 +11663,8 @@ window.dvUpdateRowHeight = dvUpdateRowHeight;
 window.dvResetRowHeight = dvResetRowHeight;
 
 function dvShowResultHeader(settingCount, downloadFileCount, matchCount, mismatchCount){
+  const detailToggleRow=document.getElementById('dv-detail-toggle-row');
+  if(detailToggleRow) detailToggleRow.classList.add('show');
   const header = document.getElementById('dv-result-header');
   const mediaTypeEl = document.getElementById('dv-hdr-media-type');
   const settingCountEl = document.getElementById('dv-hdr-setting-count');
@@ -11420,9 +11680,23 @@ function dvShowResultHeader(settingCount, downloadFileCount, matchCount, mismatc
 
   header.classList.add('show');
   header.style.display = 'flex';
+  dvSyncResultHeaderHeight();
 }
 
+// 吸頂ヘッダーの実高を --dv-result-header-h に書き出す（.result-table-wrap の sticky オフセット用）
+function dvSyncResultHeaderHeight(){
+  const header=document.getElementById('dv-result-header');
+  const root=document.documentElement;
+  if(!header||!root) return;
+  const visible=header.classList.contains('show')&&header.offsetParent!==null;
+  root.style.setProperty('--dv-result-header-h',(visible?header.offsetHeight:0)+'px');
+}
+window.dvSyncResultHeaderHeight=dvSyncResultHeaderHeight;
+window.addEventListener('resize',()=>{ if(typeof dvSyncResultHeaderHeight==='function') dvSyncResultHeaderHeight(); });
+
 function dvHideResultHeader(){
+  const detailToggleRow=document.getElementById('dv-detail-toggle-row');
+  if(detailToggleRow) detailToggleRow.classList.remove('show');
   const header = document.getElementById('dv-result-header');
   header.classList.remove('show');
   header.style.display = 'none';

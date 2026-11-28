@@ -969,11 +969,10 @@ function _scUnifiedFailure(items, reason){
 }
 
 function assignAmazonUnifiedFiles(items, options = {}){
-    if(!Array.isArray(items) || items.length < 2){
-        const names = (items || []).map(item => item && item.name
-            ? item.name
-            : item && item.file && item.file.name ? item.file.name : 'ファイル');
-        return _scUnifiedFailure(items || [], `${names.join('、') || 'ファイル'}：設定表とダウンロードデータを含む2つ以上のファイルを選択してください。`);
+    // 2026-11-27 NO002-FIX1（案件018）: 設定表 1 本だけの投入も許可する
+    //（ダウンロード未提供として設定内容のみ確認）。設定表が無い場合は下で失敗させる。
+    if(!Array.isArray(items) || !items.length){
+        return _scUnifiedFailure(items || [], 'ファイルを選択してください。');
     }
 
     const settings = [];
@@ -1001,10 +1000,10 @@ function assignAmazonUnifiedFiles(items, options = {}){
         if(role === 'download') downloads.push(item.file);
     }
 
-    if(!settings.length || !downloads.length){
-        return _scUnifiedFailure(items, !settings.length
-            ? '設定表の役割を確認できるファイルがありません。'
-            : 'ダウンロードデータの役割を確認できるファイルがありません。');
+    // 2026-11-27 NO002-FIX1（案件018）: 設定表だけで投入された場合は「ダウンロード未提供」として
+    // 設定内容の一覧確認のみ行う（比較はしない）。ダウンロードが無いこと自体をエラーにしない。
+    if(!settings.length){
+        return _scUnifiedFailure(items, '設定表の役割を確認できるファイルがありません。');
     }
 
     scFilesS = settings;
@@ -1072,9 +1071,11 @@ function scSyncControls(){
     const controls = document.getElementById('sc-controls');
     const button = document.getElementById('sc-check-btn');
     if(!controls) return;
+    // 2026-11-27 NO002-FIX1（案件018）: 設定表だけでも「ダウンロード未提供」として
+    // 設定内容の確認を開始できるようにする（比較は行わない）。
     const unifiedReady = scUploadMode === 'unified'
         && scUnifiedState && scUnifiedState.confirmed
-        && !scUnifiedState.reason && scFilesS.length > 0 && scFilesD.length > 0;
+        && !scUnifiedState.reason && scFilesS.length > 0;
     const legacyReady = scUploadMode === 'legacy' && scFilesS.length > 0 && scFilesD.length > 0;
     const ready = unifiedReady || legacyReady;
     controls.style.display = ready ? 'flex' : 'none';
@@ -1123,6 +1124,11 @@ function handleScUnifiedFiles(files){
         if(!seen.has(key)){ seen.add(key); uniqueFiles.push(file); }
     });
     if(!uniqueFiles.length) return;
+    // 2026-11-28 NO002-FIX2: 既に確定済みで設定表があるとき、ダウンロードだけを選び直す操作は
+    // 「差分補充」として扱い、設定表を消さない（従来は毎回リセットされ、再選択が必要だった）。
+    const prevConfirmed = !!(scUnifiedState && scUnifiedState.confirmed && scFilesS.length);
+    const prevFilesSnapshot = (scUnifiedState && Array.isArray(scUnifiedState.files)) ? scUnifiedState.files.map(e => ({...e})) : [];
+    const prevS = scFilesS.slice();
     const seq = ++scUnifiedUploadSeq;
     scFilesS = [];
     scFilesD = [];
@@ -1144,6 +1150,24 @@ function handleScUnifiedFiles(files){
         });
     }))).then(items => {
         if(seq !== scUnifiedUploadSeq) return;
+        const onlyDownload = prevConfirmed && items.length === 1 && items[0]
+            && items[0].role === 'download' && !items[0].conflict && !items[0].error;
+        if(onlyDownload){
+            scFilesS = prevS;
+            scFilesD = [items[0].file];
+            scWbsS = [];
+            scWbsD = [];
+            scUnifiedState = {
+                files: [
+                    ...prevFilesSnapshot.filter(e => e.role === 'setting'),
+                    {file: items[0].file, classification: items[0], role: 'download', source: 'manual'},
+                ],
+                status: 'ready', confirmed: true, reason: '',
+            };
+            renderAmazonUnifiedUploadState();
+            scSyncControls();
+            return;
+        }
         assignAmazonUnifiedFiles(items);
     }).catch(error => {
         if(seq !== scUnifiedUploadSeq) return;
@@ -1402,7 +1426,7 @@ function runSettingCheck(){
     }
     modeError.textContent = '';
     modeError.style.display = 'none';
-    if(!scFilesS.length || !scFilesD.length){ alert('設定表とダウンロードデータを両方アップロードしてください'); return; }
+    if(!scFilesS.length){ alert('設定表をアップロードしてください'); return; }
     // 「自動検出」は有効な選択肢（読込後に実際のシステムを判定する）。無効値のみここで弾く
     if(scSystem !== 'auto' && !SC_SYSTEMS[scSystem]){ alert('チェック対象を選択してください'); return; }
     scCheckRunning = true;
@@ -3458,12 +3482,26 @@ function readSettingTableVideo(wb, system){
     const SKIP_KW = ['入稿物','ブラックリスト','選択','ASIN','Deal',
                      'セグメント','Instructions','Reference'];
     const candidateSheets = [];
+    // 2026-11-27 NO002: 隠しシート（例「PVA設定シート（業推記載）」）は業務主表ではない。
+    // これを候補に含めると記載例の LI が余分な行として混入する（実測: 案件016 が 2 行→3 行、
+    // 開始日 11/9 の行が通常 LI として Bonus IO 配下に二重表示）。
+    // 主表は表示中のシートのみ。隠しシートは「参照」専用として扱う。
+    const _hiddenSheets = new Set();
+    if(wb && wb.Workbook && Array.isArray(wb.Workbook.Sheets)){
+        wb.Workbook.Sheets.forEach((meta, i)=>{
+            if(meta && meta.Hidden) _hiddenSheets.add(wb.SheetNames[i]);
+        });
+    }
 
     for(const sname of wb.SheetNames){
         const ws = wb.Sheets[sname];
         if(!ws || !ws['!ref']) continue;
+        if(_hiddenSheets.has(sname)) continue;
         if(SKIP_KW.some(kw => sname.includes(kw))) continue;
-        const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}).slice(0,35);
+        // 2026-11-27 NO002（案件018 Refa aura 新FMT）: 表頭が 45 行目にある様式では
+        // 先頭 35 行だけを見るとスコア 0 になり、設定表そのものが候補から外れていた。
+        // 判定材料は表頭行なので、走査窓を 60 行に広げる（表頭検出側は元から 100 行走査）。
+        const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}).slice(0,60);
         const rowStr = rows.map(r=>r.join(' ')).join(' ');
         let score = 0;
         if(rowStr.includes('ラインアイテム名'))  score += 10;
@@ -3875,6 +3913,9 @@ function readSettingTableDSPVideo(wb){
 // ===== VIDEO LINE ITEMS 下载数据読み取り（PVA/OTT共用）=====
 function readDownloadDataVideoMulti(wbsD){
     const liMap = {};
+    // 2026-11-27 NO002-FIX1（案件016）: 同名 LI が別 Order に存在しても潰れないよう、
+    // 名前 → 行配列の索引を持つ。親 Order での絞り込みはこの配列に対して行う。
+    const liRows = {};
     const files = [];
     const ioDownloadMap = {};
 
@@ -3936,8 +3977,9 @@ function readDownloadDataVideoMulti(wbsD){
                 if(h) obj[h] = row[idx] !== undefined ? String(row[idx]).trim() : '';
             });
 
-            if(orderColIdx !== -1 && !fileIoName){
+            if(orderColIdx !== -1){
                 const orderVal = String(row[orderColIdx] || '').trim();
+                // 行ごとに親 Order を読む。空欄は直前の Order を引き継ぐ（結合セルの記載に対応）。
                 if(orderVal && !junkPattern.test(orderVal)) fileIoName = orderVal;
             }
 
@@ -3945,6 +3987,8 @@ function readDownloadDataVideoMulti(wbsD){
             obj.__FILE_D__    = fileName;
 
             liMap[liName] = obj;
+            if(!liRows[liName]) liRows[liName] = [];
+            liRows[liName].push(obj);
             fileLis.push({ name:liName, status:obj['Active/Inactive']||'' });
 
             if(fileIoName){
@@ -3959,10 +4003,69 @@ function readDownloadDataVideoMulti(wbsD){
         });
     });
 
-    return { liMap, files, ioDownloadMap };
+    return { liMap, liRows, files, ioDownloadMap };
 }
 
 // ===== PVA/OTT 共用列定義 =====
+// ダウンロードの地域トークンが日本か他国かを判定する（狭い規則のみ・推測しない）。
+// COUNTRY:Japan → JP / COUNTRY:<他国> → NONJP / PREFECTURE:・CITY:・「, JP」→ JP / それ以外 → UNKNOWN
+// 地域トークンを「国 + 階層」に分解する（推測しない狭い規則）。
+//   COUNTRY:Japan            → { country:'JP', level:'country'    }  ← 日本全国
+//   PREFECTURE:Kumamoto, JP  → { country:'JP', level:'prefecture' }  ← 日本の県（全国より細かい）
+//   CITY:New York, US        → { country:'US', level:'city'       }  ← 外国の都市
+//   国が判別できない          → { country:'',   level:'unknown'    }  ← 要確認
+// 2026-11-28 NO002-FIX3: 「英字なら外国」をやめ、実在する国名・国コードだけを外国と認める。
+// 旧実装は任意の英単語／任意の 2 文字を外国扱いしていたため、COUNTRY:UNKNOWN や COUNTRY:ZZ が
+// 「不一致」になっていた（判定できないものは要確認に残すのが正しい）。
+const _ISO_COUNTRY_CODES = new Set(('AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ '
+    + 'CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR '
+    + 'GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP '
+    + 'KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT '
+    + 'MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW '
+    + 'SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG '
+    + 'UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW').split(' ').filter(Boolean));
+const _COUNTRY_NAMES = new Set(['japan', 'unitedstates', 'unitedstatesofamerica', 'usa', 'unitedkingdom', 'greatbritain',
+    'england', 'scotland', 'wales', 'canada', 'australia', 'newzealand', 'china', 'southkorea', 'korea', 'taiwan',
+    'hongkong', 'singapore', 'thailand', 'vietnam', 'indonesia', 'malaysia', 'philippines', 'india', 'france',
+    'germany', 'italy', 'spain', 'netherlands', 'belgium', 'switzerland', 'sweden', 'norway', 'denmark', 'finland',
+    'ireland', 'portugal', 'austria', 'poland', 'czechia', 'czechrepublic', 'greece', 'turkey', 'russia', 'brazil',
+    'mexico', 'argentina', 'chile', 'colombia', 'southafrica', 'egypt', 'israel', 'saudiarabia',
+    'unitedarabemirates', 'uae', 'peru']);
+// 国名 → 'JP' / 国コード / 'NON_JP'（外国）/ ''（判定不能）
+function _countryFromName(name){
+    const t = String(name || '').trim();
+    if(!t) return '';
+    // 2026-11-28 NO002-FIX3b: 归一化の前に原値を検証する。
+    // 数字や記号を含む値（JP1 / US1 / 1005 など）は国名・国コードではないので判定不能に落とす。
+    // 許容するのは英字・空白・ピリオド・アポストロフィ・ハイフンのみ（大小文字と前後空白は許容）。
+    if(/[^A-Za-z .'\-]/.test(t)) return '';
+    const key = t.toLowerCase().replace(/[.'\-]/g, '').replace(/\s+/g, '');
+    if(!key) return '';
+    if(key === 'japan' || key === 'jp') return 'JP';
+    if(key.length === 2) return _ISO_COUNTRY_CODES.has(key.toUpperCase()) ? key.toUpperCase() : '';
+    return _COUNTRY_NAMES.has(key) ? 'NON_JP' : '';
+}
+
+function _parseGeoToken(token){
+    const raw = String(token || '').trim();
+    if(!raw) return null;
+    let m = raw.match(/^COUNTRY\s*:\s*(.+)$/i);
+    if(m) return { country: _countryFromName(m[1]), level: 'country', raw };
+    m = raw.match(/^(PREFECTURE|CITY|DMA|POSTAL_CODE)\s*:\s*(.+)$/i);
+    if(m){
+        const suffix = m[2].match(/,\s*([A-Za-z]{2})\s*$/);
+        return {
+            country: suffix ? _countryFromName(suffix[1]) : '',
+            level: m[1].toUpperCase() === 'PREFECTURE' ? 'prefecture' : 'city',
+            raw,
+        };
+    }
+    // 接頭辞なしの裸値も、実在する国名・国コードだけを確定扱いにする。
+    const bare = raw.trim();
+    const bareCountry = _countryFromName(bare);
+    return { country: bareCountry, level: bareCountry === 'JP' ? 'country' : 'unknown', raw };
+}
+
 const DL_COLUMNS_VIDEO = [
     { key:'Line ID',                   ja:'ラインID',            checkFn:null, autoHide:true },
     { key:'Advertiser ID*',            ja:'広告主ID',            checkFn:null, autoHide:true },
@@ -4102,7 +4205,37 @@ const DL_COLUMNS_VIDEO = [
         // 含む地域がエリアシートに無い場合
         if(area.targeted.length === 0){
             const dlAreas = v ? v.split(';').map(x => x.trim()).filter(Boolean) : [];
-            if(dlAreas.length === 0) return null;   // 両方なし → 非設定項目（チェック対象外）
+            // 2026-11-27 NO002-FIX1（案件017 CMJ）: エリアシートに「除外だけ」が書かれている案件は、
+            // 含む側の明示が無い＝既定は「日本全国」。全国／県／外国都市を階層で区別して比較する。
+            if((area.excluded || []).length > 0){
+                if(dlAreas.length === 0){
+                    s.__location_diff__ = '【配信地域：ダウンロードに配信地域の指定がない（期待は日本全国＝エリアシートは除外のみ）】';
+                    return false;
+                }
+                const parsed = dlAreas.map(_parseGeoToken).filter(Boolean);
+                const nonJp = parsed.filter(p => p.country && p.country !== 'JP');
+                const unknown = parsed.filter(p => !p.country);
+                // 確定した外国がある時点で「日本全国」ではないと判断できる。
+                // 判定できない項目は不一致を妨げず、理由に併記する（要確認にはしない）。
+                if(nonJp.length){
+                    const unknownNote = unknown.length
+                        ? `\n  ※ 判定できない項目：${unknown.map(p => p.raw).join(' / ')}`
+                        : '';
+                    s.__location_diff__ = `【配信地域：エリアシートは除外のみ＝期待は日本全国。ダウンロードに日本以外の地域がある】\n  → ${nonJp.map(p => p.raw).join('\n  → ')}${unknownNote}`;
+                    return false;
+                }
+                if(unknown.length){
+                    s.__location_diff__ = `⚠️ ダウンロードの地域コードを判定できません：\n  → ${unknown.map(p => p.raw).join('\n  → ')}`;
+                    return null;   // 判定できる項目が無い → 要確認（静かに一致させない）
+                }
+                const nationwide = parsed.some(p => p.country === 'JP' && p.level === 'country');
+                if(!nationwide){
+                    s.__location_diff__ = `【配信地域：期待は日本全国（除外のみのエリアシート）。ダウンロードは一部地域のみ】\n  → ${parsed.map(p => p.raw).join('\n  → ')}`;
+                    return false;
+                }
+                return true;   // COUNTRY:Japan 指定 → 日本全国と一致
+            }
+            if(dlAreas.length === 0) return null;   // エリアシート側に含む・除外とも無い → 非設定項目
             // DL側に含む地域がある → 不一致（DL多出）を明示
             s.__location_diff__ = `【配信地域：ダウンロードにあるがエリアシートにない】\n  → ${dlAreas.join('\n  → ')}`;
             return false;
@@ -4669,43 +4802,410 @@ const DL_COLUMNS_VIDEO = [
 ];
 
 // ===== PVA/OTT マッチング比対 =====
-function matchAndCompareVideo(settingData, downloadMap, system){
+// 親 Order 名の比較用に正規化する（空白除去・"-J1000…" の案件 ID 接尾辞を落とす・小文字化）。
+// 2026-11-28 NO002-FIX3: 案件番号（J + 数字）を「除去」せず証拠として取り出す。
+// 旧実装は両側から -J… を落としてから比較していたため、
+//   Campaign-J1000423586 と Campaign-J1000429687 が同一 Order 扱いになっていた。
+// base は案件番号トークンを取り除いた名前（出現位置は問わない）、caseNo は J 番号そのもの。
+function _splitOrderName(v){
+    const raw = String(v || '').replace(/\s+/g, '');
+    const m = raw.match(/^(.*?)[-_](J\d{6,})(.*)$/i);
+    if(m) return { base: (m[1] + m[3]).toLowerCase(), caseNo: m[2].toUpperCase() };
+    return { base: raw.toLowerCase(), caseNo: '' };
+}
+function _normOrderName(v){
+    return _splitOrderName(v).base;
+}
+// 同一性判定の内訳を返す。
+//   level 2 = 同一 Order（案件番号も一致、または双方とも番号なし）
+//   level 1 = 一方だけ案件番号あり（既存の互換。base 完全一致が前提）
+//   level 0 = 別 Order（base 相違 / 案件番号の衝突 / 空）
+function _orderCompare(settingIo, downloadIo){
+    const a = _splitOrderName(settingIo), b = _splitOrderName(downloadIo);
+    if(!a.base || !b.base) return { level:0, reason:'empty' };
+    if(a.base !== b.base) return { level:0, reason:'name' };
+    if(a.caseNo && b.caseNo && a.caseNo !== b.caseNo){
+        return { level:0, reason:'case', caseA:a.caseNo, caseB:b.caseNo };
+    }
+    // 双方に番号がある／双方とも番号が無い → 同一 Order。片側だけ → 既存互換の 1。
+    const oneSided = (!a.caseNo && !!b.caseNo) || (!!a.caseNo && !b.caseNo);
+    return { level: oneSided ? 1 : 2, reason:'' };
+}
+function _orderMatchLevel(settingIo, downloadIo){
+    return _orderCompare(settingIo, downloadIo).level;
+}
+function _orderMatches(settingIo, downloadIo){
+    return _orderMatchLevel(settingIo, downloadIo) > 0;
+}
+function _liNameFuzzy(a, b){
+    const nl = String(a || '').toLowerCase(), ll = String(b || '').toLowerCase();
+    if(!nl || !ll) return false;
+    return nl === ll ||
+        (nl.includes(ll) && ll.length / nl.length > 0.7) ||
+        (ll.includes(nl) && nl.length / ll.length > 0.7);
+}
+
+// 2026-11-28 NO002-FIX2: 親 Order を先に確定し、その範囲で LI を照合する共通処理。
+// PVA / OTT / Online Video の全経路で同じ規則を使う（分岐ごとの実装差をなくす）。
+//   - 同一 Order（完全一致）内の同名 → 採用
+//   - 同一 Order 内の名称ゆれ（既存の fuzzy 閾値）→ 1 件に限り採用
+//   - 別 Order に同名がある → 所属要確認（取り違えない）
+//   - 設定側の Order がダウンロードに無い → 未発見
+// 2026-11-28 NO005-FIX3d: 親 Order の対応は「整批・2 段階」で確定する。
+//   第 1 段階（完全一致）：両側の案件番号が一致する組（番号付き同士／番号なし同士）を先に確保する。
+//   第 2 段階（残り）：親がまだ決まっていない設定 Order だけを、まだ使われていないダウンロード Order で解決する。
+//   ・完全一致で先に確保したダウンロード Order は、番号を省略した別の設定 Order に流用しない（＝所属要確認）。
+//   ・片側だけ番号がある互換は、残っていて、かつ両側で唯一のときだけ採用する。
+//   ・番号が食い違うだけ → 別 Order（照合しない）。
+//   ・同じダウンロード Order を 2 つ以上の設定 Order が取り合う → どちらも決められない。
+//   採用順は設定行・ファイルの投入順に依存しない（整批で候補を作ってから確定する）。
+function _buildOrderResolution(settingData, dlRows){
+    const settingOrders = [];
+    (settingData || []).forEach(r => {
+        const n = String((r && r.__IO_NAME__) || '').trim();
+        if(n && !settingOrders.includes(n)) settingOrders.push(n);
+    });
+    const dlOrders = [];
+    (dlRows || []).forEach(x => {
+        const n = String((x.row && x.row.__IO_NAME_D__) || '').trim();
+        if(n && !dlOrders.includes(n)) dlOrders.push(n);
+    });
+    const split = n => _splitOrderName(n);
+    const sameBase = n => { const s = split(n); return dlOrders.filter(d => split(d).base === s.base); };
+
+    const res = {};        // settingOrder -> { status:'mapped'|'ambiguous'|'conflict'|'missing', target, note }
+    const taken = {};      // downloadOrder -> settingOrder（第 1 段階で確保済み）
+    const reserved = {};   // downloadOrder -> true（完全一致候補が付いた＝第 2 段階では使わない）
+    const pending = [];    // 第 2 段階へ回す設定 Order
+
+    // ── 第 1 段階：完全一致を整批で先に確保する
+    const exactOf = {};        // settingOrder -> downloadOrder
+    const exactClaims = {};    // downloadOrder -> [settingOrder]
+    settingOrders.forEach(so => {
+        const s = split(so);
+        const base = s.base ? sameBase(so) : [];
+        if(!base.length){ pending.push(so); return; }
+        const exact = base.filter(d => split(d).caseNo === s.caseNo);
+        // NO006-FIX3e: 完全一致候補が付いた Order は、取り合いで確定できなくても第 2 段階では使わない。
+        exact.forEach(d => { reserved[d] = true; });
+        if(exact.length > 1){
+            res[so] = { status:'ambiguous',
+                note: s.caseNo
+                    ? `同じ案件番号のダウンロード Order が複数あります（${exact.join(' / ')}）`
+                    : `案件番号のないダウンロード Order が複数あります（${exact.join(' / ')}）` };
+            return;
+        }
+        if(exact.length === 1){
+            exactOf[so] = exact[0];
+            (exactClaims[exact[0]] = exactClaims[exact[0]] || []).push(so);
+            return;
+        }
+        pending.push(so);
+    });
+    Object.keys(exactOf).forEach(so => {
+        const t = exactOf[so];
+        if(exactClaims[t].length > 1){
+            res[so] = { status:'ambiguous',
+                note:`設定側の複数 Order（${exactClaims[t].join(' / ')}）が同じダウンロード Order（${t}）に完全一致するため親 Order を一意に決められません` };
+            return;
+        }
+        taken[t] = so;
+        res[so] = { status:'mapped', target:t };
+    });
+
+    // ── 第 2 段階：残った設定 Order だけを、残っているダウンロード Order で解決する
+    const proposed = {};   // settingOrder -> downloadOrder
+    const claims = {};     // downloadOrder -> [settingOrder]
+    pending.forEach(so => {
+        if(res[so]) return;
+        const s = split(so);
+        const base = s.base ? sameBase(so) : [];
+        if(!base.length){ res[so] = { status:'missing' }; return; }
+
+        const free = base.filter(d => !taken[d] && !reserved[d]);
+        if(!free.length){
+            const users = [...new Set(base.map(d => taken[d]).filter(Boolean))];
+            const contested = base.filter(d => reserved[d] && !taken[d]);
+            const reason = users.length
+                ? (contested.length
+                    ? `設定側の Order（${users.join(' / ')}）が完全一致で使用済み、または他の設定 Order との取り合い中`
+                    : `設定側の Order（${users.join(' / ')}）が完全一致で使用済み`)
+                : `設定側の複数 Order の完全一致候補になっている（取り合い中）`;
+            res[so] = { status:'ambiguous',
+                note:`ダウンロード Order（${base.join(' / ')}）は${reason}のため、この設定 Order（${so}）の親を一意に決められません` };
+            return;
+        }
+        // 番号あり設定 → 番号なしダウンロード（片側省略の互換）だけを候補にする。
+        // 番号なし設定 → 残っているダウンロード Order（番号の有無を問わない）を候補にする。
+        const cands = s.caseNo ? free.filter(d => !split(d).caseNo) : free;
+        if(!cands.length){
+            res[so] = { status:'conflict',
+                note:`案件番号が異なるため別 Order と判定しました（設定: ${s.caseNo} / ダウンロード: ${free.map(d => split(d).caseNo || '番号なし').join(' / ')}）` };
+            return;
+        }
+        if(cands.length > 1){
+            res[so] = { status:'ambiguous',
+                note: s.caseNo
+                    ? `案件番号のないダウンロード Order が複数あります（${cands.join(' / ')}）`
+                    : `案件番号を省略した設定 Order（${so}）は、ダウンロード側の複数 Order（${cands.map(d => split(d).caseNo || '番号なし').join(' / ')}）に該当し得るため親 Order を一意に決められません` };
+            return;
+        }
+        proposed[so] = cands[0];
+        (claims[cands[0]] = claims[cands[0]] || []).push(so);
+    });
+    Object.keys(proposed).forEach(so => {
+        const t = proposed[so];
+        if(claims[t].length > 1){
+            res[so] = { status:'ambiguous',
+                note:`設定側の複数 Order（${claims[t].join(' / ')}）が同じダウンロード Order（${t}）に該当するため親 Order を一意に決められません` };
+        } else {
+            res[so] = { status:'mapped', target:t };
+        }
+    });
+    return res;
+}
+
+// 2026-11-28 NO006-FIX3e: ダウンロード側の Line ID は Bulk の実ヘッダー（"Line ID"）から読む。
+// 数値変換はせず、前導 0 を保った文字列のまま扱う。列が無い／空値は '' を返し、従来の行単位判定に任せる。
+function _dlLineIdOf(row){
+    if(!row || typeof row !== 'object') return '';
+    const key = Object.keys(row).find(k => /^line\s*id$/i.test(String(k).replace(/\s+/g, ' ').trim()));
+    if(!key) return '';
+    const v = row[key];
+    if(v === undefined || v === null) return '';
+    return String(v).trim();
+}
+
+// 2026-11-28 NO005-FIX3d: 同一の親 Order の中で、1 つのダウンロード行を 2 つの設定 LI が
+// 同時に採用しないようにする（旧実装は設定行ごとに独立して探すため、_B が原名の行を奪えた）。
+//   ① 同名（完全一致）を整批で先に確保する。両側で唯一のときだけ採用。
+//   ② 残った設定 LI と残ったダウンロード行だけで従来の fuzzy 照合。
+//      候補は両側で唯一のときだけ採用（取り合いは要確認）。
+//   採用順は設定行の並びに依存しない。
+function _buildLiResolution(settingData, dlRows, orderResolution){
+    const out = new Map();
+    if(!orderResolution || !dlRows || !dlRows.length) return out;
+    const dlOrderOf = x => String((x.row && x.row.__IO_NAME_D__) || '');
+    const groups = new Map();      // 親 Order -> { rows:[設定行], dl:[ダウンロード行] }
+    (settingData || []).forEach(sRow => {
+        const io = String((sRow && sRow.__IO_NAME__) || '');
+        const ord = io ? orderResolution[io] : null;
+        if(!ord || ord.status !== 'mapped') return;   // 親が未確定の行は従来経路に任せる
+        let g = groups.get(ord.target);
+        if(!g){
+            g = { rows:[], dl: dlRows.filter(x => dlOrderOf(x) === ord.target) };
+            groups.set(ord.target, g);
+        }
+        g.rows.push(sRow);
+    });
+
+    groups.forEach((g, target) => {
+        const used = new Set();
+        const done = new Map();        // sRow -> 判定結果
+
+        // ① 同名（完全一致）
+        const exactOf = new Map();     // sRow -> [ダウンロード行]
+        g.rows.forEach(sRow => {
+            const name = String(sRow.__LI_NAME__ || '');
+            exactOf.set(sRow, g.dl.filter(x => x.name === name));
+        });
+        const exactClaims = new Map(); // ダウンロード行 -> [設定行]
+        g.rows.forEach(sRow => {
+            const c = exactOf.get(sRow);
+            if(c.length === 1){
+                const arr = exactClaims.get(c[0].row) || [];
+                arr.push(sRow);
+                exactClaims.set(c[0].row, arr);
+            }
+        });
+        g.rows.forEach(sRow => {
+            const c = exactOf.get(sRow);
+            if(c.length > 1){
+                done.set(sRow, { dRow:null, ambiguous:true,
+                    note:`同一 Order 内に同名 LI が複数あります（${target}）` });
+                return;
+            }
+            if(c.length === 1 && exactClaims.get(c[0].row).length === 1){
+                used.add(c[0].row);
+                done.set(sRow, { dRow:c[0].row, matchedName:c[0].name });
+            }
+        });
+
+        // ② 残りだけで fuzzy（両側で唯一のときだけ採用）
+        const rest = g.rows.filter(sRow => !done.has(sRow));
+        const restDl = g.dl.filter(x => !used.has(x.row));
+        const fuzzyOf = new Map();
+        rest.forEach(sRow => {
+            const name = String(sRow.__LI_NAME__ || '');
+            fuzzyOf.set(sRow, restDl.filter(x => _liNameFuzzy(x.name, name)));
+        });
+        // NO006-FIX3e: 候補関係は、設定側が 1 件に絞れていない行の分も含めてダウンロード側で数える。
+        // （絞れていない行が同じ行を狙っているなら、その行は「1 本の設定 LI だけが指している」とは言えない）
+        const fuzzyClaims = new Map();
+        rest.forEach(sRow => {
+            (fuzzyOf.get(sRow) || []).forEach(x => {
+                const arr = fuzzyClaims.get(x.row) || [];
+                arr.push(sRow);
+                fuzzyClaims.set(x.row, arr);
+            });
+        });
+        rest.forEach(sRow => {
+            const name = String(sRow.__LI_NAME__ || '');
+            const c = fuzzyOf.get(sRow);
+            if(c.length === 0){
+                const elsewhere = dlRows.filter(x => x.name === name && dlOrderOf(x) !== target);
+                if(elsewhere.length){
+                    done.set(sRow, { dRow:null, ambiguous:true,
+                        note:`同名 LI は別 Order（${[...new Set(elsewhere.map(dlOrderOf))].join(' / ')}）にのみ存在します（設定側の親: ${target}）` });
+                } else {
+                    done.set(sRow, { dRow:null, ambiguous:false,
+                        note:`設定側の Order（${target}）に該当 LI がありません` });
+                }
+                return;
+            }
+            if(c.length > 1){
+                done.set(sRow, { dRow:null, ambiguous:true,
+                    note:`同一 Order 内に候補が複数あります（${target}）` });
+                return;
+            }
+            if(fuzzyClaims.get(c[0].row).length > 1){
+                done.set(sRow, { dRow:null, ambiguous:true,
+                    note:`同じダウンロード行（${c[0].name}）を設定側の複数 LI が候補にしているため一意に決められません（${target}）` });
+                return;
+            }
+            done.set(sRow, { dRow:c[0].row, matchedName:c[0].name });
+        });
+
+        // ③ NO006-FIX3e: 同じ親 Order 内で、同じ Line ID を 2 回採用しない。
+        //    ID が空の行は従来の行単位判定のまま（ここでは何もしない）。
+        const byLineId = new Map();   // Line ID -> [{ sRow, name }]
+        done.forEach((v, sRow) => {
+            if(!v || !v.dRow) return;
+            const id = _dlLineIdOf(v.dRow);
+            if(!id) return;
+            const arr = byLineId.get(id) || [];
+            arr.push({ sRow, name: String(v.matchedName || '') });
+            byLineId.set(id, arr);
+        });
+        byLineId.forEach((arr, id) => {
+            if(arr.length < 2) return;
+            const names = [...new Set(arr.map(a => a.name).filter(Boolean))];
+            const reason = names.length > 1
+                ? `同じ Line ID（${id}）が別の LI 名（${names.join(' / ')}）に採用されているため`
+                : `同じ Line ID（${id}）が複数の設定 LI に採用されているため`;
+            arr.forEach(a => done.set(a.sRow, { dRow:null, ambiguous:true,
+                note:`${reason}所属を確認してください（${target}）` }));
+        });
+
+        done.forEach((v, sRow) => out.set(sRow, v));
+    });
+    return out;
+}
+function _resolveDownloadRow(liName, ioName, downloadMap, downloadRows, orderResolution, preResolved){
+    if(preResolved) return preResolved;   // NO005-FIX3d: 整批で確定済みの割当をそのまま使う
+    const dlRows = [];
+    if(downloadRows && typeof downloadRows === 'object'){
+        Object.keys(downloadRows).forEach(n => (downloadRows[n] || []).forEach(r => dlRows.push({ name:n, row:r })));
+    }
+    if(!dlRows.length && downloadMap){
+        Object.keys(downloadMap).forEach(n => dlRows.push({ name:n, row:downloadMap[n] }));
+    }
+    const sameName = dlRows.filter(x => x.name === liName);
+
+    // ⓪ 設定側の親 Order が読み取れない場合は、LI 名が一意でも所属を確定しない。
+    //    （2026-11-28 NO002-FIX3: 名前だけの一致は「同じ名前の別 Order」を排除できない）
+    if(!ioName){
+        const cands = sameName.length ? sameName : dlRows.filter(x => _liNameFuzzy(x.name, liName));
+        if(!cands.length) return { dRow:null, ambiguous:false };
+        return { dRow:null, ambiguous:true,
+            note:`設定側の親 Order が読み取れないため所属を確認できません（LI 名のみ一致: ${cands.slice(0,3).map(x => (x.row && x.row.__IO_NAME_D__) || x.name).join(' / ')}）` };
+    }
+
+    // ① 先に確定した親 Order の対応を使う（FIX3c）。
+    const ord = (orderResolution && typeof orderResolution === 'object') ? orderResolution[ioName] : null;
+    const dlOrderOf = x => String((x.row && x.row.__IO_NAME_D__) || '');
+    if(ord && ord.status === 'ambiguous'){
+        // 親が一意に決められない Order は、配下の LI を LI 名で切り分けず全部「所属要確認」にする。
+        return { dRow:null, ambiguous:true, note: ord.note };
+    }
+    if(ord && ord.status === 'mapped'){
+        const target = ord.target;
+        const inTarget = x => dlOrderOf(x) === target;
+        const exact = sameName.filter(inTarget);
+        if(exact.length === 1) return { dRow: exact[0].row, matchedName: exact[0].name };
+        if(exact.length > 1){
+            return { dRow:null, ambiguous:true,
+                note:`同一 Order 内に同名 LI が複数あります（${target}）` };
+        }
+        const fuzzy = dlRows.filter(x => inTarget(x) && _liNameFuzzy(x.name, liName));
+        if(fuzzy.length === 1) return { dRow: fuzzy[0].row, matchedName: fuzzy[0].name };
+        if(fuzzy.length > 1){
+            return { dRow:null, ambiguous:true,
+                note:`同一 Order 内に候補が複数あります（${target}）` };
+        }
+        const elsewhere = sameName.filter(x => !inTarget(x));
+        if(elsewhere.length){
+            return { dRow:null, ambiguous:true,
+                note:`同名 LI は別 Order（${[...new Set(elsewhere.map(dlOrderOf))].join(' / ')}）にのみ存在します（設定側の親: ${target}）` };
+        }
+        return { dRow:null, ambiguous:false,
+            note:`設定側の Order（${target}）に該当 LI がありません` };
+    }
+    if(ord && ord.status === 'conflict'){
+        const elsewhere = sameName.filter(x => x.row && x.row.__IO_NAME_D__);
+        if(elsewhere.length) return { dRow:null, ambiguous:true, note: ord.note };
+        return { dRow:null, ambiguous:false,
+            note:`ダウンロードに設定側の Order（${ioName}）がありません` };
+    }
+
+    // ② フォールバック（同じ base のダウンロード Order が 1 つも無い場合）
+    //    同名 LI が別 Order にあれば取り違えず「所属要確認」、無ければ未発見。
+    const otherOrder = sameName.filter(x => x.row && x.row.__IO_NAME_D__);
+    if(otherOrder.length){
+        const conflict = otherOrder
+            .map(x => ({ x, cmp: _orderCompare(ioName, x.row && x.row.__IO_NAME_D__) }))
+            .find(o => o.cmp.reason === 'case');
+        if(conflict){
+            return { dRow:null, ambiguous:true,
+                note:`同名 LI はありますが案件番号が異なるため別 Order と判定しました（設定: ${conflict.cmp.caseA} / ダウンロード: ${conflict.cmp.caseB}）` };
+        }
+        return { dRow:null, ambiguous:true,
+            note:`同名 LI が別 Order にあります（設定: ${ioName} / ダウンロード: ${[...new Set(otherOrder.map(dlOrderOf))].join(' / ')}）` };
+    }
+    return { dRow:null, ambiguous:false,
+        note:`ダウンロードに設定側の Order（${ioName}）がありません` };
+}
+
+function matchAndCompareVideo(settingData, downloadMap, system, downloadRows){
     const results = [];
+    // downloadMap は同名 LI が上書きされるため、Order 内検索は「全行」に対して行う。
+    const allDlRows = [];
+    Object.keys(downloadRows || {}).forEach(name => {
+        (downloadRows[name] || []).forEach(row => allDlRows.push({ name, row }));
+    });
+    // 2026-11-28 NO002-FIX3c: LI 照合の前に、整批で親 Order の対応を確定する。
+    const orderResolution = _buildOrderResolution(settingData, allDlRows);
+    // 2026-11-28 NO005-FIX3d: 親 Order 内でダウンロード行が重複採用されないよう、LI も整批で確定する。
+    const liResolution = _buildLiResolution(settingData, allDlRows, orderResolution);
 
     for(const sRow of settingData){
         const liName  = sRow.__LI_NAME__;
         const ioName  = sRow.__IO_NAME__ || '';
         let dRow = null, matchedName = liName;
+        let orderAmbiguous = false;
+        let orderNote = '';
 
-        // ① 完全一致
-        if(downloadMap[liName]) dRow = downloadMap[liName];
+        // 2026-11-28 NO002-FIX2: 親 Order を先に確定してから LI を照合する（共通処理）。
+        const resolved = _resolveDownloadRow(liName, ioName, downloadMap, downloadRows, orderResolution, liResolution.get(sRow));
+        dRow = resolved.dRow;
+        matchedName = resolved.matchedName || liName;
+        orderAmbiguous = !!resolved.ambiguous;
+        orderNote = resolved.note || '';
+        sRow.__ORDER_NOTE__ = resolved.note || '';
+        sRow.__ORDER_MISSING__ = !dRow && !orderAmbiguous;
 
-        // ② IO名スコープでファジー検索
-        if(!dRow && ioName){
-            const scopedNames = Object.keys(downloadMap).filter(n => {
-                const d = downloadMap[n];
-                return d.__IO_NAME_D__ &&
-                    (d.__IO_NAME_D__.includes(ioName) || ioName.includes(d.__IO_NAME_D__));
-            });
-            const fuzzy = scopedNames.find(n => {
-                const nl = n.toLowerCase(), ll = liName.toLowerCase();
-                return nl === ll ||
-                    (nl.includes(ll) && ll.length/nl.length > 0.7) ||
-                    (ll.includes(nl) && nl.length/ll.length > 0.7);
-            });
-            if(fuzzy){ dRow = downloadMap[fuzzy]; matchedName = fuzzy; }
-        }
-
-        // ③ 全体ファジー（フォールバック）
-        if(!dRow){
-            const fuzzy = Object.keys(downloadMap).find(n => {
-                const nl = n.toLowerCase(), ll = liName.toLowerCase();
-                return nl === ll ||
-                    (nl.includes(ll) && ll.length/nl.length > 0.7) ||
-                    (ll.includes(nl) && nl.length/ll.length > 0.7);
-            });
-            if(fuzzy){ dRow = downloadMap[fuzzy]; matchedName = fuzzy; }
-        }
+        if(orderAmbiguous) sRow.__ORDER_AMBIGUOUS__ = orderNote;
+        else delete sRow.__ORDER_AMBIGUOUS__;
 
         const found = !!dRow;
 
@@ -4715,6 +5215,75 @@ function matchAndCompareVideo(settingData, downloadMap, system){
             const aliases = DL_COL_ALIASES[key] || [];
             for(const a of aliases){ if(dRow[a] !== undefined) return String(dRow[a] || ''); }
             return '';
+        }
+
+        // 2026-11-27 NO002（案件015 Umios）: セグメント明細は「1項目1行・左寄せ」で出す。
+        // 設定表 B11:B12 のように同一グループ内で同名が重複する場合は、グループ単位で畳む
+        // （別グループ・別条件の同名は統合しない）。
+        function _formatAudienceSettingDetail(row){
+            // PVA は __SEGMENT_SHEET__ に単一ブロック、DSP は配列を入れる。両対応で受ける。
+            const raw = row.__SEGMENT_SHEET__;
+            const blocks = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+            // findDSPSegmentBlock は block.liNames を前提にするため、持たないブロックは名前照合から外す。
+            const named = blocks.filter(b => b && Array.isArray(b.liNames));
+            const block = findDSPSegmentBlock(named, row.__LI_NAME__) ||
+                blocks.find(b => b && Array.isArray(b.groups)) || null;
+            if(!block) return '';
+            const lines = [];
+            (block.groups || []).forEach((g, i)=>{
+                // ブロック実体は { type:'Include', segments:[...], innerOp:'or' } 形式。
+                // 同一グループ内の同名（例 B11:B12）だけを畳み、別グループは統合しない。
+                const items = g.items || g.segments || [];
+                const uniq = [...new Set(items.map(x => String(x).trim()).filter(Boolean))];
+                if(!uniq.length) return;
+                const op = g.key || g.innerOp || 'or';
+                const kind = g.type ? `${g.type} / ` : '';
+                lines.push(`グループ${i + 1}（${kind}${op}）`);
+                uniq.forEach(n => lines.push('・' + n));
+            });
+            const nots = [...new Set((block.notItems || []).map(x => String(x).trim()).filter(Boolean))];
+            if(nots.length){
+                lines.push('除外（NOT）');
+                nots.forEach(n => lines.push('・' + n));
+            }
+            return lines.join('\n');
+        }
+
+        // ダウンロード側：AR の AND グループ構造を保ち、名前（ID）で1項目1行にする。
+        function _formatAudienceDownloadDetail(arVal, atVal){
+            const at = String(atVal || '');
+            if(!at) return '';
+            const idToName = {};
+            at.split(/[;；\n]/).forEach(it=>{
+                const t = it.trim();
+                if(!t) return;
+                const m = t.match(/^(.+?)\s*\((\d{5,})\)\s*$/);
+                if(m) idToName[m[2].trim()] = m[1].trim();
+            });
+            const label = id => idToName[id] ? `${idToName[id]}（${id}）` : `(未登録ID:${id})`;
+            const lines = [];
+            const groups = [...String(arVal || '').matchAll(/\(([^)]+)\)/g)];
+            groups.forEach((pg, i)=>{
+                const ids = pg[1].split(/[;；\s]+/).map(x => x.trim()).filter(Boolean);
+                const names = [...new Set(ids.map(label))];
+                if(!names.length) return;
+                lines.push(`グループ${i + 1}`);
+                names.forEach(n => lines.push('・' + n));
+            });
+            const notMatch = String(arVal || '').match(/\[NOT\s+([^\]]+)\]/i);
+            if(notMatch){
+                const ids = notMatch[1].split(/[;；\s]+/).map(x => x.trim()).filter(Boolean);
+                const names = [...new Set(ids.map(label))];
+                if(names.length){
+                    lines.push('除外（NOT）');
+                    names.forEach(n => lines.push('・' + n));
+                }
+            }
+            if(!lines.length){
+                [...new Set(at.split(/[;；\n]/).map(x => x.trim()).filter(Boolean))]
+                    .forEach(n => lines.push('・' + n));
+            }
+            return lines.join('\n');
         }
 
         function sGetForCol(key){
@@ -4743,9 +5312,10 @@ function matchAndCompareVideo(settingData, downloadMap, system){
                     if(!area || sRow.__AREA_SHEET_AMBIGUOUS__){
                         return `エリアシート参照（${sRow.__AREA_SHEET_DEBUG__ || '特定不可'}）`;
                     }
-                    return area.targeted.length > 0
-                        ? `エリアシート（含む）：${area.targeted.join('、')}`
-                        : '';   // 含む指定なし → 非設定項目として空表示
+                    if(area.targeted.length > 0) return `エリアシート（含む）：${area.targeted.join('、')}`;
+                    // 除外だけが書かれたエリアシートは「包含の明示なし＝既定 Japan」
+                    if((area.excluded||[]).length > 0) return '日本全国（除外のみのため既定）';
+                    return '';   // 含む・除外ともに無指定 → 非設定項目として空表示
                 })(),
                 'Location excluding 1 of 2': (() => {
                     const loc = sRow.location || sRow.region || '';
@@ -4787,12 +5357,21 @@ function matchAndCompareVideo(settingData, downloadMap, system){
         const colResults = DL_COLUMNS_VIDEO.filter(col => !isAmazonQcExcludedColumn(col)).map(col => {
     const dVal = dGet(col.key);
     const sVal = sGetForCol(col.key);
+    // 表示だけ差し替える（比較は従来どおり sVal / dVal の生値で行う）
+    let dispS = '', dispD = '';
+    if(col.key === 'Audience names'){
+        dispS = _formatAudienceSettingDetail(sRow);
+        dispD = _formatAudienceDownloadDetail(dGet('Audiences - include'), dVal);
+    }
     let result = null;
     if(found && col.checkFn){
         try { result = col.checkFn(sRow, dVal, dRow); }  // ← 加第3个参数 dRow
         catch(e){ result = null; }
     }
-    return { key:col.key, ja:col.ja, sVal, dVal, result,
+    return { key:col.key, ja:col.ja, sVal, dVal, dispS, dispD, result,
+        // 地域の差異理由（包含／排除で別フィールドに出す）
+        locationNote: col.key === 'Location targeting 1 of 2' ? (sRow.__location_diff__ || '')
+            : col.key === 'Location excluding 1 of 2' ? (sRow.__location_excl_diff__ || '') : '',
         skipReason: sRow.__pg_skip__ && PG_SKIP_KEYS.includes(col.key)
                 ? sRow.__pg_skip__ : '',
         // ★ 字段状態の明示（match/mismatch/review/skip）
@@ -4810,6 +5389,8 @@ function matchAndCompareVideo(settingData, downloadMap, system){
     __FILE_S__:     sRow.__FILE_S__  || '',
     found,
     matchedName:    dRow ? matchedName : null,
+    orderAmbiguous: !!sRow.__ORDER_AMBIGUOUS__,
+    orderNote:      sRow.__ORDER_AMBIGUOUS__ || '',
     matchedIOName:  dRow ? (dRow.__IO_NAME_D__ || '') : '',
     matchedFileD:   dRow ? (dRow.__FILE_D__    || '') : '',
     isPause:        dRow ? (dRow['Active/Inactive']||'').toLowerCase()==='pause' : null,
@@ -4846,40 +5427,27 @@ function matchAndCompareVideo(settingData, downloadMap, system){
 }
 
 // ===== DSP Online Video マッチング比対 =====
-function matchAndCompareDSPVideo(settingData, downloadMap, system){
+function matchAndCompareDSPVideo(settingData, downloadMap, system, downloadRows){
     const results = [];
+    // 2026-11-28 NO002-FIX3c: PVA/OTT と同じく、先に親 Order の対応を確定する。
+    const allDlRows = [];
+    Object.keys(downloadRows || {}).forEach(name => {
+        (downloadRows[name] || []).forEach(row => allDlRows.push({ name, row }));
+    });
+    const orderResolution = _buildOrderResolution(settingData, allDlRows);
+    // 2026-11-28 NO005-FIX3d: PVA/OTT と同じく、親 Order 内の LI 割当も整批で確定する。
+    const liResolution = _buildLiResolution(settingData, allDlRows, orderResolution);
     for(const sRow of settingData){
         const liName = sRow.__LI_NAME__;
         const ioName = sRow.__IO_NAME__ || '';
-        let dRow = null;
-        let matchedName = liName;
-
-        if(downloadMap[liName]) dRow = downloadMap[liName];
-        if(!dRow && ioName){
-            const scopedNames = Object.keys(downloadMap).filter(name => {
-                const row = downloadMap[name];
-                return row.__IO_NAME_D__ &&
-                    (row.__IO_NAME_D__.includes(ioName) || ioName.includes(row.__IO_NAME_D__));
-            });
-            const fuzzy = scopedNames.find(name => {
-                const dl = name.toLowerCase();
-                const setting = liName.toLowerCase();
-                return dl === setting ||
-                    (dl.includes(setting) && setting.length / dl.length > 0.7) ||
-                    (setting.includes(dl) && dl.length / setting.length > 0.7);
-            });
-            if(fuzzy){ dRow = downloadMap[fuzzy]; matchedName = fuzzy; }
-        }
-        if(!dRow){
-            const fuzzy = Object.keys(downloadMap).find(name => {
-                const dl = name.toLowerCase();
-                const setting = liName.toLowerCase();
-                return dl === setting ||
-                    (dl.includes(setting) && setting.length / dl.length > 0.7) ||
-                    (setting.includes(dl) && dl.length / setting.length > 0.7);
-            });
-            if(fuzzy){ dRow = downloadMap[fuzzy]; matchedName = fuzzy; }
-        }
+        // 2026-11-28 NO002-FIX2: PVA/OTT と同じ規則（親 Order を先に確定）に統一。
+        // 旧実装はダウンロードの全行から名前だけで拾っていたため、別 Order の同名 LI に当たっていた。
+        const resolved = _resolveDownloadRow(liName, ioName, downloadMap, downloadRows, orderResolution, liResolution.get(sRow));
+        let dRow = resolved.dRow;
+        let matchedName = resolved.matchedName || liName;
+        sRow.__ORDER_AMBIGUOUS__ = resolved.ambiguous ? (resolved.note || '所属不明') : '';
+        sRow.__ORDER_NOTE__ = resolved.note || '';
+        sRow.__ORDER_MISSING__ = !dRow && !resolved.ambiguous;
 
         const found = !!dRow;
         const dGet = key => {
@@ -4951,6 +5519,9 @@ function matchAndCompareDSPVideo(settingData, downloadMap, system){
             __FILE_S__: sRow.__FILE_S__ || '',
             found,
             matchedName: dRow ? matchedName : null,
+            orderAmbiguous: !!sRow.__ORDER_AMBIGUOUS__,
+            orderNote: sRow.__ORDER_NOTE__ || '',
+            notCompared: false,
             matchedIOName: dRow ? (dRow.__IO_NAME_D__ || '') : '',
             matchedFileD: dRow ? (dRow.__FILE_D__ || '') : '',
             isPause: dRow ? String(dRow['Active/Inactive'] || '').toLowerCase() === 'pause' : null,
@@ -6323,7 +6894,20 @@ function autoDetectAndApply(){
     // チェック対象：自動検出モードのときのみ判定値を更新する。
     // 選択肢（scSystem）は「自動検出」のまま変更せず、判定結果は scDetectedSystem に保持する
     if(!scSystemManual){
-        const sysRes = detectDownloadSystemAuto(scWbsD, scWbsS);
+        let sysRes = detectDownloadSystemAuto(scWbsD, scWbsS);
+        // 2026-11-27 NO002-FIX1（案件018）: ダウンロード未提供でも、設定表の構造から
+        // PVA / OTT を推定して一覧確認を開始できるようにする。
+        if(!sysRes.determined && (!scWbsD || !scWbsD.length) && scWbsS && scWbsS.length){
+            try{
+                const pvaRows = readSettingTableVideo(scWbsS[0].wb, 'amazon_pva');
+                const ottRows = readSettingTableVideo(scWbsS[0].wb, 'amazon_ott');
+                if(pvaRows.length && pvaRows.length >= ottRows.length){
+                    sysRes = { determined:true, system:'amazon_pva', detail:'設定表の構造から PVA と判定（ダウンロード未提供）' };
+                } else if(ottRows.length){
+                    sysRes = { determined:true, system:'amazon_ott', detail:'設定表の構造から OTT と判定（ダウンロード未提供）' };
+                }
+            }catch(_e){ /* 推定できなければ従来どおり停止 */ }
+        }
         if(sysRes.determined){
             scDetectedSystem = sysRes.system;
             msgs.push(SC_SYSTEMS[scDetectedSystem].label);
@@ -6390,6 +6974,8 @@ function checkAmazon(wbsS, wbsD, system, caseMode){
         allSettingData = allSettingData.concat(rows);
     });
 
+    // 2026-11-27 NO002-FIX1（案件018）: ダウンロード未提供でも設定表の LI を一覧表示する。
+    const noDownload = !Array.isArray(wbsD) || wbsD.length === 0;
     const liSkipped = caseMode==='creative_addition';
     // CR追加案件ではLI設定値の比較は実行しないが、ダウンロードCRの日時が空白の場合に
     // 「LIに準ずる」継承解析を行うため、LIダウンロードデータは必ず読み込む
@@ -6404,18 +6990,38 @@ function checkAmazon(wbsS, wbsD, system, caseMode){
     const creative = compareCreativeData(
         creativeSettingData, creativeDownloadData, allSettingData, caseMode, downloadData.liMap
     );
-    const liItems = liSkipped ? [] :
+    const liItems = noDownload
+        ? allSettingData.map(sRow => ({
+            liName: sRow.__LI_NAME__,
+            __IO_NAME__: sRow.__IO_NAME__ || '',
+            __SHEET__: sRow.__SHEET__ || '',
+            __FILE_S__: sRow.__FILE_S__ || '',
+            found: false,
+            notCompared: true,
+            matchedName: null,
+            matchedIOName: '',
+            matchedFileD: '',
+            isPause: null,
+            activeStatus: '',
+            colResults: [],
+            needsReview: false,
+            orderAmbiguous: false,
+            orderNote: '',
+            csv: {},
+          }))
+        : (liSkipped ? [] :
         system === 'amazon_dsp_video'
-            ? matchAndCompareDSPVideo(allSettingData, downloadData.liMap, system)
+            ? matchAndCompareDSPVideo(allSettingData, downloadData.liMap, system, downloadData.liRows)
             : (system === 'amazon_pva' || system === 'amazon_ott')
-                ? matchAndCompareVideo(allSettingData, downloadData.liMap, system)
-                : matchAndCompareDSP(allSettingData, downloadData.liMap, system);
+                ? matchAndCompareVideo(allSettingData, downloadData.liMap, system, downloadData.liRows)
+                : matchAndCompareDSP(allSettingData, downloadData.liMap, system));
 
     return {
         system,
         caseMode,
         caseModeLabel:SC_CASE_MODES[caseMode],
         liSkipped,
+        downloadProvided: !noDownload,
         settingCount:  allSettingData.length,
         downloadCount: Object.keys(downloadData.liMap).length,
         downloadFiles: downloadData.files,
@@ -6931,9 +7537,20 @@ function readSettingTableDSP(wb){
                      '馬さん','Instructions','Reference','セグメント',
                      'Deal','デモグラ'];
     const candidateSheets = [];
+    // 2026-11-27 NO002: 隠しシート（例「PVA設定シート（業推記載）」）は業務主表ではない。
+    // これを候補に残すと、記載例の LI が余分な行として混入する（実測: 案件016 が 2 行→3 行、
+    // 開始日 11/9 の行が増え、通常 LI が Bonus IO 配下に二重表示された）。
+    // 主表として使うのは表示中のシートのみ。ただし全部が隠しの場合は従来どおり扱う。
+    const _hiddenSheets = new Set();
+    if(wb && wb.Workbook && Array.isArray(wb.Workbook.Sheets)){
+        wb.Workbook.Sheets.forEach((meta, i)=>{
+            if(meta && meta.Hidden) _hiddenSheets.add(wb.SheetNames[i]);
+        });
+    }
     for(const sname of wb.SheetNames){
         const ws = wb.Sheets[sname];
         if(!ws || !ws['!ref']) continue;
+        if(_hiddenSheets.has(sname)) continue;
         if(SKIP_KW.some(kw => sname.includes(kw))) continue;
         const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}).slice(0,35);
         const rowStr = rows.map(r=>r.join(' ')).join(' ');
@@ -6948,7 +7565,10 @@ function readSettingTableDSP(wb){
         if(sname.includes('設定シート')||sname.includes('LineItem')) score += 5;
         if(score >= 5) candidateSheets.push({ sname, score, ws });
     }
-    if(!candidateSheets.length) return [];
+    if(!candidateSheets.length){
+        // 隠しシートしか該当が無い場合は、主表不在で空を返す（推測で隠しシートを使わない）。
+        return [];
+    }
     const result = [];
     for(const { sname, ws } of candidateSheets){
         const ioName = _extractIOName(ws);
@@ -8437,8 +9057,29 @@ function scIOSelectAll(val){
 }
 
 // ===== renderScResult（IO名グルーピング強化） =====
+// 2026-11-28 NO002-FIX3: ダウンロード未提供時の媒体表示は「設定表の根拠」から決める。
+// 旧実装は amazon_pva を一律 Online Video と表示していたため、本来の PVA 設定表まで
+// Online Video に見えていた。設定表のメディア列が Online Video / Streaming TV を明示して
+// いる場合だけ確定し、それ以外（Video 等）は中立の「設定表一覧」に落とす。
+function _detectSettingMediaLabel(rows, system){
+    const vals = [...new Set((rows || [])
+        .map(r => String((r && r.media) || '').toLowerCase().replace(/\s+/g, ' ').trim())
+        .filter(Boolean))];
+    if(vals.some(v => v.includes('online video'))) return 'Online Video';
+    if(vals.some(v => v.includes('streaming') && v.includes('tv'))){
+        // OTT でも Streaming TV は使われるため、OTT 判定済みなら確定しない。
+        return system === 'amazon_ott' ? '' : 'PVA';
+    }
+    if(vals.some(v => v.includes('tver'))) return 'OTT';
+    return '';
+}
+
 function renderScResult(executionCase){
     if(!scResults) return;
+    // 2026-11-28 NO002-FIX2: ダウンロード未提供モードの判定は描画全体で使うため関数先頭で確定する。
+    const downloadProvided = scResults.downloadProvided !== false;
+    // 媒体名はダウンロード未提供時のみ使う（設定表のメディア列が根拠）。
+    const settingMediaLabel = _detectSettingMediaLabel(scResults.settingData, scResults.system);
     resetScMismatchNavigator();
     const result=document.getElementById('sc-result-area');
     if(scResults.error){
@@ -8644,7 +9285,13 @@ function renderScResult(executionCase){
             </div>
             <div style="font-size:0.68rem;color:#bdc3c7;padding-left:18px;">
                 LI:${st.total}件
-                ${st.mismatch>0?`<span style="color:#f39c12;">⚠${st.mismatch}不一致</span>`:'<span style="color:#2ecc71;">✅</span>'}
+                ${downloadProvided
+                    ? (st.mismatch>0
+                        ? `<span style="color:#f39c12;">⚠${st.mismatch}不一致</span>`
+                        : (((st.total||0)-(st.found||0))>0
+                            ? `<span style="color:#f39c12;">⚠${(st.total||0)-(st.found||0)}未発見</span>`
+                            : `<span style="color:#2ecc71;">✅</span>`))
+                    : `<span style="color:#f39c12;">未比較</span>`}
             </div>
             <div style="font-size:0.65rem;color:#95a5a6;padding-left:18px;word-break:break-all;">
                 📋${st.files.join(',')||'?'}
@@ -8724,7 +9371,9 @@ const visibleCols = activeCols.filter(col=>{
     <div style="background:#2c3e50;color:white;border-radius:8px 8px 0 0;
                 padding:12px 16px;display:flex;align-items:center;
                 gap:10px;flex-wrap:wrap;margin-top:16px;">
-        <span style="font-weight:bold;font-size:0.95rem;">✅ ${sys.label||system} チェック結果</span>
+        <span style="font-weight:bold;font-size:0.95rem;">${downloadProvided
+            ? `✅ ${sys.label||system} チェック結果`
+            : `📋 ${settingMediaLabel ? `設定表一覧（${settingMediaLabel}）` : '設定表一覧'}`}</span>
         <span style="background:#8e44ad;border-radius:10px;padding:2px 10px;font-size:0.8rem;">
             案件区分：${esc(SC_CASE_MODES[scResults.caseMode]||'未選択')}
         </span>
@@ -8732,10 +9381,12 @@ const visibleCols = activeCols.filter(col=>{
             設定表：${settingCount}件 / ${scFilesS.length}ファイル
         </span>
         <span style="background:#2980b9;border-radius:10px;padding:2px 10px;font-size:0.8rem;">
-            ダウンロード：${scFilesD.length}ファイル
+            ダウンロード：${downloadProvided ? scFilesD.length + 'ファイル' : '未提供'}
         </span>
         <span style="background:#27ae60;border-radius:10px;padding:2px 10px;font-size:0.8rem;">後台マッチ：${foundCount}件</span>
-        <span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.8rem;">未発見：${notFoundCount}件</span>
+        ${downloadProvided
+            ? `<span style="background:#e74c3c;border-radius:10px;padding:2px 10px;font-size:0.8rem;">未発見：${notFoundCount}件</span>`
+            : `<span style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">未比較（ダウンロード未提供）：${notFoundCount}件</span>`}
         <span class="qc-mismatch-nav-trigger" data-qc-mismatch-navigator="1" data-qc-scope="__all__" role="button" tabindex="0"
               title="クリックしてこの範囲の不一致を確認"
               style="background:#e67e22;border-radius:10px;padding:2px 10px;font-size:0.8rem;">不一致：${mismatchCount}項目</span>
@@ -8945,7 +9596,11 @@ const visibleCols = activeCols.filter(col=>{
                     ${(st.mismatch||0)>0?`／ <span class="qc-mismatch-nav-trigger" data-qc-mismatch-navigator="1" data-qc-scope="${esc(ioName)}"
                         role="button" tabindex="0" title="クリックしてこの範囲の不一致を確認"
                         style="color:#f39c12;">⚠️ 不一致${st.mismatch}項目</span>`:''}
-                    ${(st.total||0)-(st.found||0)>0?`／ <span style="color:#ff9999;">未発見${(st.total||0)-(st.found||0)}件</span>`:''}
+                    ${(st.total||0)-(st.found||0)>0
+                        ? (downloadProvided
+                            ? `／ <span style="color:#ff9999;">未発見${(st.total||0)-(st.found||0)}件</span>`
+                            : `／ <span style="color:#ffcc80;">未比較${(st.total||0)-(st.found||0)}件</span>`)
+                        : ''}
                 </span>
                 ${st.files&&st.files.length>0?`<span style="font-size:0.68rem;color:#bdc3c7;margin-left:8px;">📋 ${st.files.join(' / ')}</span>`:''}
                 ${st.dlFiles&&st.dlFiles.length>0?`<span style="font-size:0.68rem;color:#82e0aa;margin-left:8px;">📥 ${st.dlFiles.join(' / ')}</span>`:''}
@@ -8960,7 +9615,11 @@ const visibleCols = activeCols.filter(col=>{
             // ★ 未カバー項目があるLIは「要確認」として match にはしない
             const rowStatus=!item.found?'notfound':(hasMismatch||item.needsReview)?'mismatch':'match';
             const badges=[];
-            if(!item.found) badges.push(`<span style="background:#95a5a6;color:white;border-radius:3px;padding:1px 6px;font-size:0.68rem;">後台未発見</span>`);
+            if(!item.found) badges.push(item.notCompared
+                ? `<span style="background:#e67e22;color:white;border-radius:3px;padding:1px 6px;font-size:0.68rem;">未比較</span>`
+                : (item.orderAmbiguous
+                ? `<span style="background:#f39c12;color:white;border-radius:3px;padding:1px 6px;font-size:0.68rem;">所属要確認</span>`
+                : `<span style="background:#95a5a6;color:white;border-radius:3px;padding:1px 6px;font-size:0.68rem;">後台未発見</span>`));
 
             // 設定表行
             html+=`
@@ -8972,7 +9631,7 @@ const visibleCols = activeCols.filter(col=>{
                            position:sticky;left:0;z-index:20;box-shadow:2px 0 4px rgba(0,0,0,0.15);">
                     ${rowNo}
                 </td>
-                <td rowspan="2" data-sticky="li"
+                <td rowspan="2" data-sticky="li" data-matched-io="${esc(item.matchedIOName || '')}"
                     style="border:1px solid #ddd;padding:6px 8px;vertical-align:middle;
                            position:sticky;left:${COL_NO_W}px;z-index:20;box-shadow:2px 0 4px rgba(0,0,0,0.1);
                            background:white;overflow:hidden;">
@@ -9008,7 +9667,11 @@ const visibleCols = activeCols.filter(col=>{
                     style="padding:10px;background:#f8f8f8;color:#888;
                            font-size:0.82rem;text-align:center;vertical-align:middle;
                            height:${SC_ROW_HEIGHT}px;">
-                    ⚠️ ダウンロードデータに見つかりませんでした
+                    ${item.notCompared
+                        ? '📥 ダウンロード未提供（未比較）— 設定内容のみ表示'
+                        : (item.orderAmbiguous
+                            ? `⚠️ 要確認：${esc(item.orderNote || 'ダウンロードの親 Order を特定できません')}`
+                            : '⚠️ ダウンロードデータに見つかりませんでした')}
                 </td></tr>
                 <tr class="sc-li-row" data-li-idx="${idx}" data-io="${esc(ioName)}" data-status="${rowStatus}"
                     style="height:${SC_ROW_HEIGHT}px;border-bottom:3px solid #ccc;"></tr>`;
@@ -9018,6 +9681,9 @@ const visibleCols = activeCols.filter(col=>{
                     const cr=item.colResults?item.colResults.find(c=>c.key===col.key):null;
                     const sVal=cr?String(cr.sVal||'').trim():'';
                     const dVal=cr?String(cr.dVal||'').trim():'';
+                    const dispS=cr?String(cr.dispS||''):'';
+                    const dispD=cr?String(cr.dispD||''):'';
+                    const locNote=cr?String(cr.locationNote||'').replace(/\s*\n\s*/g,' / ').trim():'';
                     const result=cr?cr.result:null;
                     const skipReason=cr?cr.skipReason||'':'';
                     const qcMismatchAttr=result===false&&!skipReason
@@ -9032,14 +9698,9 @@ const visibleCols = activeCols.filter(col=>{
                     html+=`<td data-col-key="${col.key}"${qcMismatchAttr}
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
                                vertical-align:middle;height:${SC_ROW_HEIGHT}px;overflow:hidden;
-                               white-space:nowrap;text-overflow:ellipsis;text-align:left !important;${hideStyle}"
+                               ${col.key==='Audience names'?'white-space:pre-line;text-overflow:clip;':'white-space:nowrap;text-overflow:ellipsis;'}text-align:left !important;${hideStyle}"
                         title="${esc(sVal)}"
-                        ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'${SC_ROW_HEIGHT}px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
-                        <span style="font-size:0.73rem;color:${color};text-align:left;display:block;">
-                            ${sVal||'<span style="color:#ccc;">—</span>'}
-                            ${skipLabel}
-                        </span>
-                    </td>`;
+                        ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':(this.getAttribute('data-col-key')==='Audience names'?'pre-line':'nowrap');this.style.height=e?'auto':'${SC_ROW_HEIGHT}px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');"><span style="font-size:0.73rem;color:${color};text-align:left;display:block;">${(dispS||sVal)||'<span style="color:#ccc;">—</span>'}${skipLabel}</span></td>`;
                 });
                 html+=`</tr>`;
 
@@ -9050,6 +9711,9 @@ const visibleCols = activeCols.filter(col=>{
                     const cr=item.colResults?item.colResults.find(c=>c.key===col.key):null;
                     const sVal=cr?String(cr.sVal||'').trim():'';
                     const dVal=cr?String(cr.dVal||'').trim():'';
+                    const dispS=cr?String(cr.dispS||''):'';
+                    const dispD=cr?String(cr.dispD||''):'';
+                    const locNote=cr?String(cr.locationNote||'').replace(/\s*\n\s*/g,' / ').trim():'';
                     const result=cr?cr.result:null;
                     const skipReason=cr?cr.skipReason||'':'';
                     const bothEmpty=!dVal&&!sVal;
@@ -9062,12 +9726,9 @@ const visibleCols = activeCols.filter(col=>{
                     html+=`<td data-col-key="${col.key}"
                         style="padding:4px 8px;${border};border-left:2px solid #ccc;background:${bg};
                                vertical-align:middle;height:${SC_ROW_HEIGHT}px;overflow:hidden;
-                               white-space:nowrap;text-overflow:ellipsis;text-align:left !important;${hideStyle}"
+                               ${col.key==='Audience names'?'white-space:pre-line;text-overflow:clip;':'white-space:nowrap;text-overflow:ellipsis;'}text-align:left !important;${hideStyle}"
                         title="${esc([dVal, _getLocationExcludingNote(item,col.key,dVal)].filter(Boolean).join('\n'))}"
-                        ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':'nowrap';this.style.height=e?'auto':'${SC_ROW_HEIGHT}px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');">
-                        <span style="font-size:0.73rem;text-align:left;display:block;${skipReason?'color:#2c3e50':effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':(LOCATION_EXCLUDING_KEYS.has(col.key)&&!_isNullWithMeaningfulValue(col.key,dVal))?'color:#333':'color:#856404'};">
-                            ${dVal||'<span style="color:#ccc;">—</span>'}
-                        </span>
+                        ondblclick="var e=this.classList.toggle('sc-exp');this.style.whiteSpace=e?'pre-wrap':(this.getAttribute('data-col-key')==='Audience names'?'pre-line':'nowrap');this.style.height=e?'auto':'${SC_ROW_HEIGHT}px';this.style.overflow=e?'visible':'hidden';this.style.setProperty('text-align','left','important');"><span style="font-size:0.73rem;text-align:left;display:block;${skipReason?'color:#2c3e50':effectiveResult===false?'color:#c0392b;font-weight:bold':effectiveResult===true?'color:#333':(LOCATION_EXCLUDING_KEYS.has(col.key)&&!_isNullWithMeaningfulValue(col.key,dVal))?'color:#333':'color:#856404'};">${(dispD||dVal)||'<span style="color:#ccc;">—</span>'}${(result===false&&locNote)?`<span style="display:block;font-size:0.66rem;color:#922b21;margin-top:2px;" title="${esc(locNote)}">↳ ${esc(locNote.slice(0,90))}</span>`:''}</span>
                         ${skipLabel || confirmLabel}
                         ${(()=>{
     const noteKey = col.key === 'Brand suitability content exclusion categories'
